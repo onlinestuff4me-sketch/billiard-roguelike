@@ -120,6 +120,8 @@ export const BOON_DEFS = [
       `Leaves a burning zone at the launch point: ${Math.round(v.dps)} dmg/s for ${v.duration.toFixed(
         1
       )}s.`,
+    effect: () => 'Leave a pool of fire behind',
+    numbers: (v) => `${Math.round(v.dps)} dmg/sec · ${v.duration.toFixed(1)}s · ${v.radius.toFixed(1)}m`,
     run(event, v, game) {
       game.boons.spawnField({
         x: event.x,
@@ -146,6 +148,8 @@ export const BOON_DEFS = [
       `Launching detonates a shockwave: ${Math.round(v.damage)} dmg and heavy knockback within ${v.radius.toFixed(
         1
       )}m.`,
+    effect: () => 'Blast enemies away as you launch',
+    numbers: (v) => `${Math.round(v.damage)} damage · ${v.radius.toFixed(1)}m · knocks back`,
     run(event, v, game) {
       const hits = enemiesWithin(game, event.x, event.z, v.radius);
       game.fx.shockwave(event.x, event.z, PALETTE.player, v.radius * 1.6, 0.4);
@@ -164,6 +168,8 @@ export const BOON_DEFS = [
     flavour: 'The break is the whole game.',
     values: (rank, scalar) => ({ bonus: 0.45 * scalar * rank }),
     desc: (v) => `The first hit of every launch deals +${pct(v.bonus)} damage.`,
+    effect: () => 'Your first hit each shot hits harder',
+    numbers: (v) => `+${pct(v.bonus)} damage`,
     stats: (v) => ({ firstHitBonus: v.bonus }),
     run() {
       /* Passive: consumed by the damage model via stats.firstHitBonus. */
@@ -179,6 +185,8 @@ export const BOON_DEFS = [
     flavour: 'The line itself cuts.',
     values: (rank, scalar) => ({ radius: 1.5 + 0.18 * rank, dps: 34 * scalar * rank }),
     desc: (v) => `Your flight path shreds: ${Math.round(v.dps)} dmg/s to anything you pass.`,
+    effect: () => 'Damage everything you fly through',
+    numbers: (v) => `${Math.round(v.dps)} dmg/sec · ${v.radius.toFixed(1)}m trail`,
     run(event, v, game) {
       const player = event.player;
       if (player.speed < PLAYER.settleSpeed) return;
@@ -205,6 +213,8 @@ export const BOON_DEFS = [
     values: (rank, scalar) => ({ radius: 2.2 + 0.4 * rank, cone: 0.2 + 0.1 * scalar }),
     desc: (v) =>
       `A frontal deflection shield destroys enemy shots within ${v.radius.toFixed(1)}m while airborne.`,
+    effect: () => 'Destroy enemy shots in your path',
+    numbers: (v) => `${v.radius.toFixed(1)}m shield · only while flying`,
     run(event, v, game) {
       const player = event.player;
       const speed = player.speed;
@@ -237,6 +247,8 @@ export const BOON_DEFS = [
     }),
     desc: (v) =>
       `Pierce with ${pct(v.retention)} speed retained and launch ${pct(v.speed - 1)} faster.`,
+    effect: () => 'Keep your speed after a kill',
+    numbers: (v) => `${pct(v.retention)} speed kept · +${pct(v.speed - 1)} launch speed`,
     stats: (v) => ({ pierceRetention: v.retention, launchSpeedMult: v.speed }),
     run() {
       /* Passive. */
@@ -259,6 +271,8 @@ export const BOON_DEFS = [
       `Impacts zap ${v.targets} nearby target${v.targets > 1 ? 's' : ''} for ${Math.round(
         v.damage
       )} damage.`,
+    effect: (v) => `Lightning jumps to ${v.targets} more enem${v.targets > 1 ? 'ies' : 'y'}`,
+    numbers: (v) => `${Math.round(v.damage)} damage each · ${v.radius.toFixed(1)}m reach`,
     run(event, v, game) {
       const targets = nearestEnemies(game, event.x, event.z, v.radius, v.targets, event.enemy);
       for (const enemy of targets) {
@@ -279,6 +293,8 @@ export const BOON_DEFS = [
     flavour: 'Hit them where the shield is not.',
     values: (rank, scalar) => ({ bonus: 1.0 * scalar * rank }),
     desc: (v) => `Backstabs deal an additional +${pct(v.bonus)} damage.`,
+    effect: () => 'Hits from behind do far more',
+    numbers: (v) => `+${pct(v.bonus)} backstab damage`,
     stats: (v) => ({ backstabBonus: v.bonus }),
     run(event, v, game) {
       if (!event.result?.backstab) return;
@@ -293,6 +309,8 @@ export const BOON_DEFS = [
     flavour: 'Make your own caroms.',
     values: (rank, scalar) => ({ radius: 3.2 + 0.4 * rank, knock: 15 + 4 * scalar * rank }),
     desc: (v) => `Impacts blast neighbours outward at ${Math.round(v.knock)} m/s — free caroms.`,
+    effect: () => 'Knock nearby enemies flying',
+    numbers: (v) => `${Math.round(v.knock)} m/s blast · ${v.radius.toFixed(1)}m · makes caroms`,
     run(event, v, game) {
       const targets = enemiesWithin(game, event.x, event.z, v.radius, event.enemy);
       if (!targets.length) return;
@@ -313,6 +331,8 @@ export const BOON_DEFS = [
       damage: 0.5 * scalar * rank
     }),
     desc: (v) => `+${v.bounces} wall bounces and +${pct(v.damage)} damage per rail banked.`,
+    effect: () => 'Bank more, and hit harder each time',
+    numbers: (v) => `+${v.bounces} bounces · +${pct(v.damage)} damage per bank`,
     stats: (v) => ({ maxBounces: v.bounces, bankDamageBonus: v.damage }),
     run(event, v, game) {
       game.fx.burst(event.x, event.z, 6, PALETTE.carom, 7, 0.6);
@@ -326,6 +346,8 @@ export const BOON_DEFS = [
     flavour: 'Leave something behind at every cushion.',
     values: (rank, scalar) => ({ radius: 3.0 + 0.4 * rank, damage: 22 * scalar * rank }),
     desc: (v) => `Each bank detonates for ${Math.round(v.damage)} damage within ${v.radius.toFixed(1)}m.`,
+    effect: () => 'Every wall bounce explodes',
+    numbers: (v) => `${Math.round(v.damage)} damage · ${v.radius.toFixed(1)}m`,
     run(event, v, game) {
       game.fx.shockwave(event.x, event.z, PALETTE.hazard, v.radius * 1.6, 0.34);
       game.fx.burst(event.x, event.z, 10, PALETTE.hazard, 9, 0.8);
@@ -348,6 +370,8 @@ export const BOON_DEFS = [
     flavour: 'The cushion gives more than it takes.',
     values: (rank, scalar) => ({ boost: 1 + 0.14 * scalar * rank, cap: 58 }),
     desc: (v) => `Banks accelerate you by ${pct(v.boost - 1)} instead of bleeding speed.`,
+    effect: () => 'Speed up every time you bank',
+    numbers: (v) => `+${pct(v.boost - 1)} speed per bounce`,
     run(event, v, game) {
       const player = event.player;
       const speed = player.speed;
@@ -368,6 +392,21 @@ export const PHASE_LABEL = {
   trajectory: 'Trajectory',
   impact: 'Impact',
   rebound: 'Rebound'
+};
+
+/**
+ * Player-facing trigger text.
+ *
+ * The internal phase names are engine vocabulary — "Impact" and "Launch" mean
+ * something precise at the dispatch site and nothing at all to someone reading
+ * a card for the first time. The reward screen exists to be decided in about a
+ * second, so it says plainly *when* an upgrade fires instead.
+ */
+export const TRIGGER_LABEL = {
+  launch: 'When you launch',
+  trajectory: 'While flying',
+  impact: 'When you hit',
+  rebound: 'When you bounce'
 };
 
 /* ------------------------------------------------------------------ *
