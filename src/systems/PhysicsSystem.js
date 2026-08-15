@@ -269,6 +269,49 @@ export class PhysicsSystem {
     if (game.zones && game.zones.length) this.resolveZones(h, game);
   }
 
+  /**
+   * Resolve a near-elastic collision between two circular bodies.
+   *
+   * This is the standard impulse along the line of centres:
+   *
+   *     j = -(1 + e)(v_rel · n) / (1/mA + 1/mB)
+   *
+   * with `n` pointing from A to B. Only the normal component is exchanged; each
+   * body keeps its tangential velocity, which is exactly what produces the
+   * familiar billiard results — full transfer on a head-on hit between equal
+   * masses, and a 90° separation on a cut.
+   *
+   * Nothing here is scripted or randomised, so the outcome always matches the
+   * line the aim preview drew before the shot.
+   *
+   * @param {object} a first body ({ vx, vz, mass })
+   * @param {object} b second body
+   * @param {number} nx unit normal from A toward B
+   * @param {number} nz
+   * @param {number} e restitution
+   * @returns {number} the impulse magnitude applied (0 if already separating)
+   */
+  resolveBallImpulse(a, b, nx, nz, e = PHYSICS.ballRestitution) {
+    const rvx = a.vx - b.vx;
+    const rvz = a.vz - b.vz;
+    const vn = rvx * nx + rvz * nz;
+    // Negative means they are already moving apart — resolving again would
+    // suck them back together and cause jitter on a resting contact.
+    if (vn <= 0) return 0;
+
+    const invA = a.mass > 0 ? 1 / a.mass : 0;
+    const invB = b.mass > 0 ? 1 / b.mass : 0;
+    const total = invA + invB;
+    if (total <= 0) return 0;
+
+    const j = (-(1 + e) * vn) / total;
+    a.vx += j * invA * nx;
+    a.vz += j * invA * nz;
+    b.vx -= j * invB * nx;
+    b.vz -= j * invB * nz;
+    return Math.abs(j);
+  }
+
   /** Semi-implicit integration with per-state exponential drag. */
   integrate(body, h) {
     body.x += body.vx * h;
@@ -525,27 +568,28 @@ export class PhysicsSystem {
         }) || {};
       enemy.strikeCooldown = 0.14;
 
-      // Object ball leaves along the centre-to-centre line, exactly as the
-      // carom cone in the aim preview promised.
-      const ratio = (2 * player.mass) / (player.mass + enemy.mass);
-      const knockSpeed = Math.min(
-        impactSpeed * PLAYER.momentumTransfer * ratio * 0.5,
-        impactSpeed * 1.15
-      );
-      if (enemy.alive) enemy.applyKnock(-nx * knockSpeed, -nz * knockSpeed);
-
-      if (result.killed || enemy.config.pierceable) {
-        // Pierce: keep the line, pay a small speed tax, chain into the next body.
+      if (result.killed || !enemy.alive) {
+        // The body shattered, so there is nothing left to bounce off: hold the
+        // line and pay a small speed tax. This is the *only* pass-through case.
+        // Making it conditional on the kill rather than on an archetype flag is
+        // what removes the old "why did I go through that one but not this one?"
+        // — the answer is now visible on screen.
         const retention = player.stats.pierceRetention;
         player.vx *= retention;
         player.vz *= retention;
-      } else {
-        const r = reflect(player.vx, player.vz, nx, nz, PLAYER.heavyRetention);
-        player.vx = r.x;
-        player.vz = r.z;
-        player.x += nx * (depth + PHYSICS.skin);
-        player.z += nz * (depth + PHYSICS.skin);
+        return;
       }
+
+      // Textbook two-body impulse along the line of centres. Solving it properly
+      // (rather than scripting a knock speed) is what makes the table legible:
+      // equal masses head-on give a stop shot, a cut sends the object ball down
+      // the centre line while the cue ball leaves along the tangent — the 90°
+      // rule the aim preview draws.
+      this.resolveBallImpulse(player, enemy, -nx, -nz, PHYSICS.ballRestitution);
+      if (enemy.alive) enemy.applyKnock(enemy.vx, enemy.vz);
+
+      player.x += nx * (depth + PHYSICS.skin);
+      player.z += nz * (depth + PHYSICS.skin);
       return;
     }
 
@@ -597,17 +641,10 @@ export class PhysicsSystem {
       a.caromCooldown = 0.15;
       b.caromCooldown = 0.15;
 
-      if (target.alive) {
-        const outSpeed = Math.min(
-          speed * PHYSICS.caromTransfer * Math.sqrt(striker.mass / target.mass),
-          speed * 1.2
-        );
-        target.applyKnock(sx * outSpeed, sz * outSpeed);
-      }
-      // The striker keeps travelling, deflected and slower.
-      const r = reflect(striker.vx, striker.vz, -sx, -sz, 1 - PHYSICS.caromTransfer * 0.6);
-      striker.vx = r.x;
-      striker.vz = r.z;
+      // Object balls collide by the same rule the cue ball does, so a carom in
+      // the middle of a chain is as readable as the opening strike.
+      this.resolveBallImpulse(striker, target, sx, sz, PHYSICS.ballRestitution);
+      if (target.alive) target.applyKnock(target.vx, target.vz);
     }
 
     // Always separate so bodies never stack.

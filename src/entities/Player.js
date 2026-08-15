@@ -209,15 +209,39 @@ class AimRenderer {
     this.cone.frustumCulled = false;
     this.group.add(this.cone);
 
-    // Impact marker.
-    this.markerMat = new THREE.MeshBasicMaterial({
-      color: PALETTE.carom,
+    // 4. Cue-ball tangent line — the 90° rule.
+    //    On a cut, the striking ball leaves perpendicular to the object ball's
+    //    departure. Drawing it is what turns "why did I end up there?" into a
+    //    decision you make before releasing, and it is the single most useful
+    //    aid real pool players train with.
+    this.tangentPositions = new Float32Array(6);
+    this.tangentGeo = new THREE.BufferGeometry();
+    this.tangentGeo.setAttribute('position', new THREE.BufferAttribute(this.tangentPositions, 3));
+    this.tangentGeo.setDrawRange(0, 0);
+    this.tangentMat = new THREE.LineBasicMaterial({
+      color: PALETTE.player,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.75,
+      depthWrite: false
+    });
+    this.tangent = new THREE.LineSegments(this.tangentGeo, this.tangentMat);
+    this.tangent.frustumCulled = false;
+    this.group.add(this.tangent);
+
+    // Ghost ball — a full outline of the cue ball at its contact position.
+    // Aiming at a whole shape reads faster than aiming at an abstract point,
+    // which is why the ghost-ball method is what beginners are taught first.
+    this.markerMat = new THREE.MeshBasicMaterial({
+      color: PALETTE.bone,
+      transparent: true,
+      opacity: 0.5,
       depthWrite: false,
       blending: THREE.AdditiveBlending
     });
-    this.marker = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.62, 24), this.markerMat);
+    this.marker = new THREE.Mesh(
+      new THREE.RingGeometry(PLAYER.radius * 0.88, PLAYER.radius, 32),
+      this.markerMat
+    );
     this.marker.rotation.x = -Math.PI / 2;
     this.marker.visible = false;
     this.group.add(this.marker);
@@ -299,7 +323,7 @@ class AimRenderer {
     this.dashGeo.setDrawRange(0, v);
     this.dashGeo.attributes.position.needsUpdate = true;
 
-    // --- carom cone + impact marker ---
+    // --- object-ball departure + ghost ball + cue tangent ---
     if (prediction.hit && prediction.caromDir) {
       const h = prediction.hit;
       const cd = prediction.caromDir;
@@ -317,11 +341,38 @@ class AimRenderer {
       this.coneGeo.attributes.position.needsUpdate = true;
       this.cone.visible = true;
 
+      // The ghost ball sits where the cue ball's centre stops at contact, which
+      // is exactly the point the swept-circle predictor solved for.
       this.marker.visible = true;
       this.marker.position.set(h.x, y, h.z);
+
+      // Tangent = perpendicular to the object ball's line, taking whichever of
+      // the two perpendiculars the cue ball is already travelling towards.
+      const last = segments[segments.length - 1];
+      let inX = last ? last.bx - last.ax : 0;
+      let inZ = last ? last.bz - last.az : 0;
+      const inLen = Math.hypot(inX, inZ);
+      if (inLen > 1e-5) {
+        inX /= inLen;
+        inZ /= inLen;
+        let tx = -cd.z;
+        let tz = cd.x;
+        if (tx * inX + tz * inZ < 0) {
+          tx = -tx;
+          tz = -tz;
+        }
+        const TL = TRAJECTORY.tangentLength;
+        this.tangentPositions.set([h.x, y, h.z, h.x + tx * TL, y, h.z + tz * TL]);
+        this.tangentGeo.setDrawRange(0, 2);
+        this.tangentGeo.attributes.position.needsUpdate = true;
+        this.tangent.visible = true;
+      } else {
+        this.tangent.visible = false;
+      }
     } else {
       this.cone.visible = false;
       this.marker.visible = false;
+      this.tangent.visible = false;
     }
 
     // --- pull band ---
@@ -341,6 +392,8 @@ class AimRenderer {
     this.dashMat.dispose();
     this.coneGeo.dispose();
     this.coneMat.dispose();
+    this.tangentGeo.dispose();
+    this.tangentMat.dispose();
     this.marker.geometry.dispose();
     this.markerMat.dispose();
     this.pullGeo.dispose();

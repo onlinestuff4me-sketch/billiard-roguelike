@@ -54,20 +54,27 @@ export const TIME = {
  * FOCUS — the bullet-time resource
  * ------------------------------------------------------------------ */
 export const FOCUS = {
-  /** Maximum seconds of slow-mo held in the gauge. */
-  max: 2.0,
+  /**
+   * Maximum seconds of slow-mo held in the gauge.
+   *
+   * Slow-mo is the most enjoyable part of the loop, so the gauge is deliberately
+   * generous: a full tank is over four seconds of real thinking time, and the
+   * drain is slow enough that a careful aim never feels rushed. Focus still
+   * matters as a resource — it just stops being the thing that ends your fun.
+   */
+  max: 4.5,
   /** Drain per second of real time while aiming. */
-  drainPerSecond: 1.0,
+  drainPerSecond: 0.5,
   /** Passive trickle while not aiming. */
-  regenPerSecond: 0.32,
+  regenPerSecond: 0.85,
   /** Refunds. */
-  onKill: 0.5,
-  onChainHit: 0.22,
-  onWallSplat: 0.4,
-  onCarom: 0.3,
-  onRoomClear: 2.0,
+  onKill: 0.6,
+  onChainHit: 0.25,
+  onWallSplat: 0.5,
+  onCarom: 0.4,
+  onRoomClear: 4.5,
   /** Below this you cannot start a new aim (prevents stutter-aiming). */
-  minToAim: 0.18
+  minToAim: 0.1
 };
 
 /* ------------------------------------------------------------------ *
@@ -76,28 +83,38 @@ export const FOCUS = {
 export const PLAYER = {
   radius: 0.62,
   maxHp: 100,
-  /** Slingshot power curve. Pull length is clamped to maxPull world units. */
-  maxPull: 6.0,
-  minPull: 0.45,
-  launchSpeedMin: 16,
-  launchSpeedMax: 48,
-  /** Exponent applied to normalised pull — >1 makes small pulls gentler. */
-  pullCurve: 1.35,
+  /**
+   * Slingshot geometry, measured in WORLD units from the ball to the finger.
+   *
+   * Aiming is anchored at the ball (see InputManager): the further out you
+   * drag, the longer the lever arm and the finer the angular control. maxPull
+   * is therefore a comfortable thumb reach rather than a screen-pixel budget.
+   */
+  maxPull: 8.0,
+  /** Inside this radius the pull is too short to fire — release cancels. */
+  minPull: 1.1,
+  launchSpeedMin: 14,
+  launchSpeedMax: 46,
+  /** Exponent applied to normalised pull. 1.0 = linear, i.e. predictable. */
+  pullCurve: 1.0,
   /** Velocity damping (per second, multiplicative) in each state. */
-  dragLaunched: 0.42,
+  dragLaunched: 0.26,
   dragIdle: 2.6,
   /** Below this speed a launched player settles back to IDLE. */
-  settleSpeed: 3.2,
+  settleSpeed: 2.2,
   /** Contact damage of a full-power cue strike before multipliers. */
   strikeDamage: 22,
   /** Damage scales with impact speed relative to this reference. */
   referenceSpeed: 34,
-  /** Speed retained when piercing through a light mob. */
-  pierceRetention: 0.86,
-  /** Speed retained when rebounding off a heavy target. */
-  heavyRetention: 0.62,
-  /** Momentum handed to a struck enemy (fraction of impact speed). */
-  momentumTransfer: 0.92,
+  /**
+   * Speed retained when passing through a body the strike just destroyed.
+   *
+   * Surviving bodies are no longer pierced — they are resolved with a real
+   * two-body impulse (PHYSICS.ballRestitution). Momentum transfer and rebound
+   * speed now fall out of that solve rather than being dialled in here, which
+   * is what lets the aim preview promise the outcome.
+   */
+  pierceRetention: 0.9,
   /** Emergency dash (quick flick, no slow-mo). */
   dashSpeed: 30,
   dashDuration: 0.2,
@@ -117,14 +134,28 @@ export const PLAYER = {
  * PHYSICS — billiard response
  * ------------------------------------------------------------------ */
 export const PHYSICS = {
-  /** Base number of rail rebounds a launch survives (boons add more). */
-  baseMaxBounces: 1,
+  /**
+   * Rail rebounds a launch survives before it is forced to settle.
+   *
+   * Kept high on purpose: a ball that stops dead at a cushion reads as a bug,
+   * not a rule. Friction (PLAYER.dragLaunched) is what actually ends a stroke;
+   * this is only a safety valve against a perfectly periodic orbit.
+   */
+  baseMaxBounces: 6,
   /** Energy retained by the player on a rail rebound. */
-  wallRestitution: 0.94,
+  wallRestitution: 0.96,
   /** Energy retained by a knocked enemy on a rail rebound. */
-  enemyWallRestitution: 0.55,
+  enemyWallRestitution: 0.82,
   /** Energy retained on an obstacle rebound. */
-  obstacleRestitution: 0.9,
+  obstacleRestitution: 0.94,
+  /**
+   * Restitution for ball-vs-ball impulses (player↔enemy, enemy↔enemy).
+   *
+   * Near-elastic, so collisions obey the textbook billiard results the aim
+   * preview draws: the object ball leaves along the line of centres, and the
+   * cue ball departs along the tangent — the 90° rule.
+   */
+  ballRestitution: 0.96,
   /** Speed above which a knocked enemy splats against a rail. */
   wallSplatSpeed: 16,
   wallSplatDamage: 34,
@@ -136,7 +167,7 @@ export const PHYSICS = {
   /** Knocked enemies decay to harmless below this speed. */
   knockedSettleSpeed: 5.0,
   enemyDrag: 1.5,
-  knockedDrag: 0.55,
+  knockedDrag: 0.4,
   /** Separation bias so resolved circles never re-overlap next step. */
   skin: 0.002,
   /** Backstab window: cos(angle) threshold behind a shielded target. */
@@ -163,10 +194,20 @@ export const TRAJECTORY = {
   /** How far the prediction sweep runs before giving up (world units). */
   maxDistance: 46,
   /** Reflection segments drawn beyond the first rail contact. */
-  previewBounces: 3,
-  /** Length of the predicted carom deflection cone. */
-  caromConeLength: 5.5,
-  caromConeAngle: 0.34,
+  previewBounces: 4,
+  /** Length of the predicted object-ball departure line. */
+  caromConeLength: 6.5,
+  /**
+   * Half-angle of the departure cone. Kept narrow: the collision solver is
+   * deterministic, so the object ball's line is a promise, not a guess. The
+   * cone exists to read as a direction at a glance, not to hedge.
+   */
+  caromConeAngle: 0.12,
+  /**
+   * Length of the cue ball's own post-impact tangent line — the 90° rule.
+   * Showing where *you* end up is what makes a collision legible in advance.
+   */
+  tangentLength: 4.6,
   dashLength: 0.42,
   dashGap: 0.3
 };
@@ -440,16 +481,40 @@ export const RENDER = {
  * INPUT
  * ------------------------------------------------------------------ */
 export const INPUT = {
-  /** Pointer-down shorter than this with enough travel = emergency dash. */
-  flickMaxDuration: 0.15,
-  flickMinDistancePx: 26,
-  /** Drag distance (px) mapped to PLAYER.maxPull. Scaled by stage height. */
-  pullPixelsAtReferenceHeight: 320,
-  referenceStageHeight: 900,
-  /** Slingshot semantics: drag away from the target, release to fire opposite. */
+  /**
+   * Aiming is BALL-ANCHORED, the way 8 Ball Pool rotates the cue about the cue
+   * ball: the launch direction is the vector from your finger to the ball, not
+   * the delta from wherever you happened to touch down.
+   *
+   * The consequence that matters is angular resolution. With a drag-delta
+   * anchor the lever arm starts at zero, so the first pixels of movement swing
+   * the aim through tens of degrees — the classic "finicky" feel. Anchored at
+   * the ball, the lever arm is your distance from it, so pulling further out
+   * buys finer control exactly when you want it: on a long, committed shot.
+   */
+  /** Slingshot semantics: pull away from the target, release to fire opposite. */
   invertAim: true,
-  /** Dead-zone before an aim registers. */
-  deadZonePx: 6
+  /**
+   * Inside this world radius the direction is degenerate (dividing by ~0), so
+   * the last good heading is held instead of letting the aim spin.
+   */
+  aimDeadRadius: 0.55,
+  /**
+   * Exponential smoothing time constant (seconds) applied to the aim heading.
+   * Long enough to swallow finger tremor, short enough to feel direct.
+   */
+  aimSmoothing: 0.045,
+  /**
+   * Emergency dash is a DOUBLE TAP, not a flick.
+   *
+   * A flick used to share the aim gesture, so any quick, decisive shot was
+   * silently eaten and became a dash instead. Separating them means a gesture
+   * can never be misread as the other.
+   */
+  doubleTapMs: 260,
+  doubleTapMaxTravelPx: 24,
+  /** Movement past this many pixels means the touch was a drag, not a tap. */
+  tapMaxTravelPx: 14
 };
 
 /* ------------------------------------------------------------------ *

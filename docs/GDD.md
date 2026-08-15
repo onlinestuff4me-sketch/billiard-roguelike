@@ -71,18 +71,25 @@ where everything you touch becomes ammunition.*
 1. **Threat (real time, 1.0x).** Solids walk you down, Stripes line up a shot, an
    Eight-Ball turns its shield toward you. Standing still is death; the room is
    always pressuring the player to commit to a stroke.
-2. **Focus (0.20x).** Pointer-down instantly dilates time. The Focus gauge (2.0s max)
-   begins draining in *real* time, so a long aim costs roughly 10 seconds of enemy
-   movement compressed into 2 seconds of thinking.
-3. **Aim.** Dragging sets the pull vector. Three preview layers render: the primary
-   cue path, ghosted rail reflections, and the carom deflection cone off the first
-   body you would strike.
+2. **Focus (0.20x).** Pointer-down instantly dilates time. The Focus gauge (4.5 max)
+   drains at 0.5 per *real* second, so a full tank is roughly nine seconds of real
+   thinking time, during which the table advances less than two. Slow-mo is the most
+   enjoyable thing in the loop, so the budget is deliberately generous — Focus is
+   there to stop you camping in bullet-time, not to cut a good plan short.
+3. **Aim.** The shot rotates about the cue ball: drag anywhere and the launch line
+   runs from your finger through the ball, so pulling further out both raises power
+   and sharpens the angle. Four preview layers render — the cue path, ghosted rail
+   reflections, a **ghost ball** at the contact position, and the departure line of
+   the body you would strike, with the cue ball's own **tangent** at right angles
+   to it.
 4. **Release.** The player becomes a high-velocity cue ball with invulnerability
    frames for the duration of the flight. This is the core risk inversion: *moving
    is safe, hesitating is not.*
 5. **Cascade.** Struck enemies become lethal object balls. Enemy-into-enemy is a
-   **Carom**. Enemy-into-rail at speed is a **Wall-Splat**. Light mobs are pierced
-   through so a single stroke can chain 4+ bodies.
+   **Carom**. Enemy-into-rail at speed is a **Wall-Splat**. Every body that survives
+   the hit is a genuine collision — the object ball leaves down the line of centres
+   and you leave along the tangent — while a body you destroy outright is passed
+   through, which is what keeps a single stroke chaining 4+ deep.
 6. **Clear → Reward.** Two glowing doors spawn on the top rail. You must *slingshot
    into* the door you want — the reward choice is itself a shot.
 
@@ -313,10 +320,15 @@ all three with a single vector.
 | Input | Action |
 | --- | --- |
 | **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
-| **Drag** | Pull the slingshot back; length = power, direction = inverse of launch |
+| **Drag anywhere** | Rotates the shot about the cue ball. The launch line runs from your finger through the ball; distance from the ball sets power *and* buys angular precision |
 | **Release** | Launch the cue ball with i-frames for the flight |
-| **Quick flick (<150 ms)** | Emergency dash — no slow-mo, no Focus cost, 0.75 s cooldown |
-| **Release inside the dead-zone** | Cancels the aim and refunds nothing but the drain |
+| **Double tap** | Emergency dash toward the tapped point — no slow-mo, no Focus cost, 0.75 s cooldown |
+| **Release within 1.1 u of the ball** | Too short to fire; cancels the aim |
+
+Aiming is anchored at the ball rather than at wherever your thumb landed, because a
+drag-delta anchor has no lever arm at the moment the aim begins — the first few
+pixels swing the shot wildly and it never settles. Anchoring at the ball means a
+long pull is also a precise one, so committing to a big shot is rewarded twice.
 
 ---
 

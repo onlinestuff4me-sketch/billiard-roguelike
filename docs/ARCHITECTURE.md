@@ -150,7 +150,7 @@ height, hover, squash). This keeps every test 2-D and cheap.
 ```
 1. integrate velocities            (drag per state, per entity)
 2. player  ↔ rails / obstacles     → reflect, decrement bounce budget, onRebound
-3. player  ↔ enemies               → cue strike: damage, impulse transfer, pierce
+3. player  ↔ enemies               → cue strike: damage, then a two-body impulse
 4. enemies ↔ enemies               → carom when the striker is KNOCKED and fast
 5. enemies ↔ rails / obstacles     → wall-splat when fast, else damped reflect
 6. projectiles ↔ player / geometry
@@ -158,11 +158,28 @@ height, hover, squash). This keeps every test 2-D and cheap.
 8. resolve residual overlaps       (positional bias, PHYSICS.skin)
 ```
 
-Collision response is **impulse-based and deterministic**: reflection uses
-`v' = (v − 2(v·n)n) · restitution`, and momentum transfer to a struck body is
-`impactSpeed × momentumTransfer × (1/massRatio)` along the contact normal. No random
-jitter is ever added — the prediction preview and the actual outcome run the same
-math, which is a hard requirement of the "legible physics" pillar.
+Collision response is **impulse-based and deterministic**. Static geometry reflects
+with `v' = (v − 2(v·n)n) · restitution`. Ball-vs-ball — cue into enemy, and enemy
+into enemy — is solved as a real two-body collision along the line of centres:
+
+```
+j = −(1 + e)(v_rel · n) / (1/mA + 1/mB)        n = unit vector from A to B
+vA += (j/mA) n        vB −= (j/mB) n
+```
+
+Only the normal component is exchanged; each body keeps its tangential velocity.
+That single rule reproduces the results a player already expects from a pool table
+without any of them being special-cased: equal masses head-on give a stop shot, a
+cut sends the object ball down the centre line while the cue ball departs along the
+tangent (the **90° rule**), and momentum is conserved exactly. A heavier Eight-Ball
+throws the cue ball back purely because of its mass.
+
+The one pass-through case is a body the strike *destroyed* — there is nothing left
+to bounce off. Surviving bodies always collide, so "why did I go through that one
+but not this one?" has an answer visible on screen.
+
+No random jitter is ever added — the prediction preview and the actual outcome run
+the same math, which is a hard requirement of the "legible physics" pillar.
 
 ### 4.3 Trajectory prediction
 
@@ -199,11 +216,25 @@ scaled delta each frame and applies the camera offset/ortho-zoom directly. It is
 only module allowed to touch `camera.position` and `camera.zoom`.
 
 ### 5.2 `core/InputManager.js`
-A pointer state machine (`IDLE → AIMING → RELEASED`) over unified Pointer Events with
-a touch fallback. It converts screen pixels to world units using the live stage
-height (so pull distance feels identical on any device), classifies quick flicks as
-dashes, and emits `onAimStart / onAimUpdate / onRelease / onFlick`. It never touches
-the player directly.
+A pointer state machine (`IDLE → AIMING`) over unified Pointer Events with a touch
+fallback, emitting `onAimStart / onAimUpdate / onRelease / onAimCancel / onFlick`.
+It never touches the player directly — it is handed an anchor and returns aim data.
+
+**Aiming is anchored at the ball**, the model 8 Ball Pool uses: the launch direction
+is the vector from the finger to the cue ball, and dragging anywhere rotates the
+shot about the ball. The reason is angular resolution. Deriving the heading from a
+drag *delta* gives a lever arm that starts at zero, so the first pixels of movement
+swing the aim through tens of degrees and it can never settle. Anchored at the ball,
+the lever arm is the distance to it: one world unit of finger travel turns the shot
+by ~45° at 1 u out but only ~9.5° at 6 u out. Pulling further therefore buys finer
+control exactly when a shot deserves it, and power (radial) and heading (angular)
+become independent axes of one polar gesture instead of competing for the same
+pixels. A short exponential filter (45 ms) removes finger tremor, and inside
+`INPUT.aimDeadRadius` the last good heading is held rather than allowed to spin.
+
+The emergency dash is a **double tap**, not a flick. Sharing the aim gesture meant
+any quick, decisive shot was silently reinterpreted as a dash; separating them means
+neither gesture can be mistaken for the other.
 
 ### 5.3 `core/AudioManager.js`
 Lazy `AudioContext`, a master gain → low-pass chain, a cached white-noise buffer, and
