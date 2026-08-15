@@ -5,7 +5,7 @@
  *     ▲                      │                                │
  *     │                 quick release (<150 ms, >26 px) ──► FLICK (dash)
  *     │                      │                                │
- *     └──────── pointerup / cancel ◄────────────── RELEASE (launch)
+ *     └──────── pointerup / cancel ◄───────────────── RELEASE (launch)
  *
  * The manager knows nothing about the player. It converts pointer pixels into a
  * normalised pull (direction + power) and emits callbacks; the game decides what
