@@ -41,7 +41,7 @@ where everything you touch becomes ammunition.*
 ## 2. Core Loop
 
 ```
-        ┌───────────────────────────────────────────────────────┐
+        ┌──────────────────────────────────────────────────────────┐
         │                                                          │
         ▼                                                          │
   REAL-TIME THREAT ──► HOLD: BULLET-TIME AIM ──► DRAG: SLINGSHOT   │
@@ -58,7 +58,7 @@ where everything you touch becomes ammunition.*
         │                                   caroms · wall-splats · │
         │                                   pierces · banks        │
         │                                              │           │
-        └────────────────── enemies remain ◄────────────┤           │
+        └───────────────── enemies remain ◄────────────┤           │
                                                        │           │
                                               room cleared         │
                                                        ▼           │
@@ -210,14 +210,14 @@ three runs. So the generator splits responsibility exactly like Hades does:
 **hand-authored space, procedural contents.**
 
 ```
- ┌─────────────────────────┐   ┌─────────────────────────┐
+ ┌──────────────────────────┐   ┌──────────────────────────┐
  │  HANDCRAFTED             │   │  PROCEDURAL              │
  │  ─────────────           │   │  ──────────              │
  │  · Table geometry pool   │   │  · Threat budget         │
  │  · Collision layout      │   │  · Archetype composition │
  │  · Spawn anchors         │──►│  · Environmental injectors│
  │  · Sightlines & angles   │   │  · Door rewards          │
- └─────────────────────────┘   └─────────────────────────┘
+ └──────────────────────────┘   └──────────────────────────┘
         stable, learnable              fresh every run
 ```
 
