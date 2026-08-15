@@ -1,23 +1,36 @@
 /**
  * InputManager.js — one-thumb pointer state machine.
  *
- *   IDLE ──pointerdown──► PRESSED ──drag past dead-zone──► AIMING
- *     ▲                      │                                │
- *     │                 quick release (<150 ms, >26 px) ──► FLICK (dash)
- *     │                      │                                │
- *     └──────── pointerup / cancel ◄───────────────── RELEASE (launch)
+ *   IDLE ──pointerdown──► AIMING ──pointerup, pull >= minPull──► RELEASE (launch)
+ *     ▲                     │                                       │
+ *     │                     └── pointerup, pull < minPull ──► CANCEL │
+ *     │                                                             │
+ *     └──────────── double tap (two taps < 260 ms) ──► DASH ◄────────┘
  *
- * The manager knows nothing about the player. It converts pointer pixels into a
- * normalised pull (direction + power) and emits callbacks; the game decides what
- * that means. Pull distance is normalised against the live stage height so the
- * slingshot feels identical on a phone and on a desktop letterbox.
+ * AIMING IS ANCHORED AT THE BALL.
+ *
+ * The launch direction is the vector from your finger to the cue ball, not the
+ * delta from wherever you first touched down. This is the model 8 Ball Pool
+ * uses — the cue rotates about the cue ball while you drag anywhere on the
+ * table — and the reason is angular resolution, not fidelity.
+ *
+ * With a drag-delta anchor the lever arm *starts at zero*: the first pixels of
+ * movement swing the heading through tens of degrees, so the aim can never
+ * settle. Anchored at the ball, the lever arm is your distance from it. Moving
+ * your finger one unit sideways at six units out turns the shot by ~9°; the
+ * same motion at one unit out turns it by ~45°. Pulling further therefore buys
+ * finer control precisely when a shot deserves it, and power (radial distance)
+ * and heading (angle) become independent axes of one polar gesture instead of
+ * fighting over the same pixels.
+ *
+ * The manager knows nothing about the player beyond an anchor position; it
+ * emits normalised aim payloads and the game decides what they mean.
  */
 
 import { INPUT, PLAYER, ARENA, RENDER } from '../config.js';
 
 const STATE = {
   IDLE: 'idle',
-  PRESSED: 'pressed',
   AIMING: 'aiming'
 };
 
@@ -25,11 +38,12 @@ export class InputManager {
   /**
    * @param {HTMLElement} element the stage element that receives pointer events
    * @param {object} handlers
+   * @param {() => {x:number,z:number}} handlers.getAnchor world position to aim about
    * @param {() => void} [handlers.onAimStart]
    * @param {(aim: object) => void} [handlers.onAimUpdate]
    * @param {() => void} [handlers.onAimCancel]
    * @param {(aim: object) => void} [handlers.onRelease]
-   * @param {(aim: object) => void} [handlers.onFlick]
+   * @param {(aim: object) => void} [handlers.onFlick] double-tap dash
    * @param {() => boolean} [handlers.isEnabled]
    * @param {import('three').OrthographicCamera} [handlers.camera]
    */
@@ -47,8 +61,19 @@ export class InputManager {
     this.startTime = 0;
     this.holdTime = 0;
 
-    /** Latest computed aim payload (also handed to callbacks). */
+    /** Smoothed heading, kept between frames so tremor cannot reach the aim. */
+    this._dirX = 0;
+    this._dirZ = -1;
+    this._lastAimTime = 0;
+    this._hasHeading = false;
+
+    /** Double-tap bookkeeping. */
+    this._lastTapTime = -Infinity;
+    this._lastTapX = 0;
+    this._lastTapY = 0;
+
     this.aim = this._makeAim();
+    this._world = { x: 0, z: 0 };
 
     this._onDown = this._handleDown.bind(this);
     this._onMove = this._handleMove.bind(this);
@@ -84,13 +109,15 @@ export class InputManager {
     return {
       /** Launch direction (unit, world XZ). */
       dirX: 0,
-      dirZ: 0,
-      /** Pull vector in world units (opposite the launch direction). */
+      dirZ: -1,
+      /** Pull vector in world units, pointing along the launch direction. */
       pullX: 0,
       pullZ: 0,
       /** 0..1 power ramp after the response curve. */
       power: 0,
-      /** Raw drag distance in CSS pixels. */
+      /** Distance from the anchor to the finger, in world units. */
+      pullLength: 0,
+      /** Raw travel from the touch-down point, in CSS pixels (tap detection). */
       distPx: 0,
       /** Pointer position projected onto the table. */
       worldX: 0,
@@ -109,10 +136,9 @@ export class InputManager {
     return this.state === STATE.AIMING;
   }
 
-  /** Pixels of drag that correspond to maximum pull, scaled to this screen. */
-  get pixelsForMaxPull() {
-    const h = this.element.clientHeight || INPUT.referenceStageHeight;
-    return INPUT.pullPixelsAtReferenceHeight * (h / INPUT.referenceStageHeight);
+  /** Anchor to rotate the aim about — the cue ball. */
+  _anchor() {
+    return this.handlers.getAnchor?.() || { x: 0, z: 0 };
   }
 
   /** Project a client-space point onto the table plane (world XZ). */
@@ -129,41 +155,76 @@ export class InputManager {
     return out;
   }
 
-  _updateAim(now) {
-    const dx = this.currentX - this.startX;
-    const dy = this.currentY - this.startY;
-    const distPx = Math.hypot(dx, dy);
+  /**
+   * Recompute the aim from the anchor and the live finger position.
+   * @param {number} now performance.now() timestamp
+   * @param {boolean} snap skip smoothing (used on touch-down)
+   */
+  _updateAim(now, snap = false) {
     const aim = this.aim;
-    aim.distPx = distPx;
+    const anchor = this._anchor();
+    const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
+
+    aim.worldX = finger.x;
+    aim.worldZ = finger.z;
     aim.hold = (now - this.startTime) / 1000;
+    aim.distPx = Math.hypot(this.currentX - this.startX, this.currentY - this.startY);
 
-    if (distPx < 0.0001) {
-      aim.valid = false;
-      aim.power = 0;
-      aim.dirX = 0;
-      aim.dirZ = 0;
-      aim.pullX = 0;
-      aim.pullZ = 0;
-    } else {
-      const invLen = 1 / distPx;
-      // Drag direction in world space (screen-right = +X, screen-down = +Z).
-      const dragX = dx * invLen;
-      const dragZ = dy * invLen;
-      const sign = INPUT.invertAim ? -1 : 1;
-      aim.dirX = dragX * sign;
-      aim.dirZ = dragZ * sign;
+    // Vector from the finger to the ball IS the launch direction: pull back,
+    // fire forward. Its length is the draw of the slingshot.
+    const toBallX = anchor.x - finger.x;
+    const toBallZ = anchor.z - finger.z;
+    const pullLength = Math.hypot(toBallX, toBallZ);
+    aim.pullLength = pullLength;
 
-      const raw = Math.min(distPx / this.pixelsForMaxPull, 1);
-      aim.power = Math.pow(raw, PLAYER.pullCurve);
-      const pullLength = raw * PLAYER.maxPull;
-      aim.pullX = dragX * pullLength;
-      aim.pullZ = dragZ * pullLength;
-      aim.valid = distPx >= INPUT.deadZonePx;
+    if (pullLength > INPUT.aimDeadRadius) {
+      const inv = 1 / pullLength;
+      let targetX = toBallX * inv;
+      let targetZ = toBallZ * inv;
+      if (!INPUT.invertAim) {
+        targetX = -targetX;
+        targetZ = -targetZ;
+      }
+
+      if (snap || !this._hasHeading) {
+        this._dirX = targetX;
+        this._dirZ = targetZ;
+        this._hasHeading = true;
+      } else {
+        // Blend the unit vectors rather than the angles: no wraparound seam.
+        const dt = Math.max(0, (now - this._lastAimTime) / 1000);
+        const alpha = 1 - Math.exp(-dt / INPUT.aimSmoothing);
+        this._dirX += (targetX - this._dirX) * alpha;
+        this._dirZ += (targetZ - this._dirZ) * alpha;
+        const len = Math.hypot(this._dirX, this._dirZ);
+        if (len > 1e-6) {
+          this._dirX /= len;
+          this._dirZ /= len;
+        } else {
+          this._dirX = targetX;
+          this._dirZ = targetZ;
+        }
+      }
     }
+    // Inside the dead radius the heading is degenerate, so the last good one is
+    // held: the aim line parks instead of spinning under your thumb.
 
-    const world = this.screenToWorld(this.currentX, this.currentY);
-    aim.worldX = world.x;
-    aim.worldZ = world.z;
+    this._lastAimTime = now;
+
+    aim.dirX = this._dirX;
+    aim.dirZ = this._dirZ;
+
+    const clamped = Math.min(pullLength, PLAYER.maxPull);
+    aim.pullX = this._dirX * clamped;
+    aim.pullZ = this._dirZ * clamped;
+
+    // Power ramps from zero at the minimum draw, so the shortest legal shot is
+    // a genuine soft tap rather than a jump to some arbitrary floor.
+    const span = Math.max(PLAYER.maxPull - PLAYER.minPull, 1e-4);
+    const raw = Math.min(Math.max((clamped - PLAYER.minPull) / span, 0), 1);
+    aim.power = Math.pow(raw, PLAYER.pullCurve);
+    aim.valid = pullLength >= PLAYER.minPull;
+
     return aim;
   }
 
@@ -188,10 +249,15 @@ export class InputManager {
     this.startX = this.currentX = event.clientX;
     this.startY = this.currentY = event.clientY;
     this.startTime = performance.now();
-    this.state = STATE.PRESSED;
-    this._updateAim(this.startTime);
+    this.holdTime = 0;
+    this.state = STATE.AIMING;
+
+    // Snap on touch-down: the aim should already point where you put your thumb,
+    // with no visible swing in from the previous shot's heading.
+    this._updateAim(this.startTime, true);
 
     this.handlers.onAimStart?.(this.aim);
+    this.handlers.onAimUpdate?.(this.aim);
   }
 
   _handleMove(event) {
@@ -200,13 +266,7 @@ export class InputManager {
     this.currentX = event.clientX;
     this.currentY = event.clientY;
     const aim = this._updateAim(performance.now());
-
-    if (this.state === STATE.PRESSED && aim.distPx >= INPUT.deadZonePx) {
-      this.state = STATE.AIMING;
-    }
-    if (this.state === STATE.AIMING || this.state === STATE.PRESSED) {
-      this.handlers.onAimUpdate?.(aim);
-    }
+    if (this.state === STATE.AIMING) this.handlers.onAimUpdate?.(aim);
   }
 
   _handleUp(event) {
@@ -217,17 +277,27 @@ export class InputManager {
 
     const now = performance.now();
     const aim = this._updateAim(now);
-    const duration = (now - this.startTime) / 1000;
     this._release(event.pointerId);
 
-    if (duration <= INPUT.flickMaxDuration && aim.distPx >= INPUT.flickMinDistancePx) {
-      // Emergency dash: travels *with* the swipe, no slow-mo, no Focus cost.
-      const flick = {
-        ...aim,
-        dirX: INPUT.invertAim ? -aim.dirX : aim.dirX,
-        dirZ: INPUT.invertAim ? -aim.dirZ : aim.dirZ
-      };
-      this.handlers.onFlick?.(flick);
+    // --- tap / double tap ---------------------------------------------
+    if (aim.distPx <= INPUT.tapMaxTravelPx) {
+      const sinceLast = now - this._lastTapTime;
+      const travel = Math.hypot(this.currentX - this._lastTapX, this.currentY - this._lastTapY);
+      if (sinceLast <= INPUT.doubleTapMs && travel <= INPUT.doubleTapMaxTravelPx) {
+        this._lastTapTime = -Infinity;
+        // Dash travels *toward* the tapped point, which is the direction the
+        // player is already looking at — the opposite of the slingshot.
+        this.handlers.onFlick?.({
+          ...aim,
+          dirX: -aim.dirX,
+          dirZ: -aim.dirZ
+        });
+        return;
+      }
+      this._lastTapTime = now;
+      this._lastTapX = this.currentX;
+      this._lastTapY = this.currentY;
+      this.handlers.onAimCancel?.();
       return;
     }
 
@@ -268,6 +338,23 @@ export class InputManager {
       this.holdTime += rawDt;
       this.aim.hold = this.holdTime;
     }
+  }
+
+  /**
+   * Re-derive the aim against the anchor's *current* position.
+   *
+   * The ball can move under a held thumb — it is still rolling, or a rebound
+   * carried it — so a stationary finger would otherwise keep aiming at where
+   * the ball used to be. The game calls this after the simulation step so the
+   * preview is drawn from the position the ball actually ended the frame at.
+   *
+   * @returns {object|null} the refreshed aim, or null when not aiming
+   */
+  refresh() {
+    if (this.state === STATE.IDLE || this.pointerId === null) return null;
+    const aim = this._updateAim(performance.now());
+    aim.hold = this.holdTime;
+    return aim;
   }
 }
 

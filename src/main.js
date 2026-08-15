@@ -942,6 +942,8 @@ function refreshPrediction() {
 const input = new InputManager(stage, {
   camera,
   isEnabled: () => game.running && player.alive && game.state !== 'modal',
+  // Aiming rotates about the cue ball, so the anchor is the ball itself.
+  getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
     const hasFocus = player.startAim();
     if (hasFocus) {
@@ -1080,7 +1082,16 @@ function frame(now) {
       // Frozen (hit-stop): keep presentation alive, skip simulation.
       player.update(0, rawDt, game, aiming && engine.inBulletTime);
     }
-    if (aiming && input.aim.valid) refreshPrediction();
+    // Re-derive the aim now that the ball has finished moving, so a held thumb
+    // keeps pointing at the ball rather than at where it was a frame ago.
+    if (aiming) {
+      const aim = input.refresh();
+      if (aim) {
+        player.updateAim(aim);
+        if (aim.valid) refreshPrediction();
+        else player.hideTrajectory();
+      }
+    }
 
     hud.update(
       {
