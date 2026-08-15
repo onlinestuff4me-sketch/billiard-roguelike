@@ -507,50 +507,63 @@
         text-transform: uppercase;
       }
 
-      .card-phase { color: var(--cyan); }
-      .boon-card.phase-launch .card-phase { color: var(--amber); }
-      .boon-card.phase-impact .card-phase { color: var(--magenta); }
-      .boon-card.phase-rebound .card-phase { color: var(--violet); }
+      /*
+       * Card hierarchy, largest to smallest: what it DOES, then the numbers,
+       * then when it fires, then its name. The name used to lead and it is the
+       * one line that cannot help you choose — "Chain Arc" means nothing until
+       * you already own it.
+       */
+      .card-trigger { color: var(--cyan); }
+      .boon-card.phase-launch .card-trigger { color: var(--amber); }
+      .boon-card.phase-impact .card-trigger { color: var(--magenta); }
+      .boon-card.phase-rebound .card-trigger { color: var(--violet); }
       .card-rarity { color: var(--muted); }
 
-      .card-glyph {
-        position: absolute;
-        right: clamp(10px, 2.8vmin, 16px);
-        top: 50%;
-        transform: translateY(-40%);
-        font-size: clamp(28px, 9vmin, 48px);
-        line-height: 1;
-        opacity: 0.22;
+      .card-effect {
+        margin-top: 0.34em;
+        font-size: clamp(15px, 4.3vmin, 23px);
+        font-weight: 700;
+        line-height: 1.24;
+        letter-spacing: 0.005em;
+        color: var(--bone);
+        max-width: 84%;
+        text-wrap: balance;
       }
 
-      .card-name {
-        margin-top: 0.35em;
-        font-size: clamp(15px, 4.4vmin, 24px);
-        font-weight: 700;
-        letter-spacing: 0.06em;
+      .card-numbers {
+        margin-top: 0.42em;
+        font-size: clamp(11px, 3vmin, 15px);
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: var(--cyan);
+        max-width: 88%;
+        font-variant-numeric: tabular-nums;
+      }
+      .boon-card.phase-launch .card-numbers { color: var(--amber); }
+      .boon-card.phase-impact .card-numbers { color: var(--magenta); }
+      .boon-card.phase-rebound .card-numbers { color: var(--violet); }
+
+      .card-foot {
+        margin-top: 0.7em;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        font-size: clamp(8px, 2.2vmin, 11px);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .card-glyph {
+        font-size: 1.5em;
+        line-height: 1;
+        opacity: 0.75;
       }
 
       .card-rank {
-        font-size: clamp(8px, 2.1vmin, 11px);
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
+        margin-left: auto;
         color: var(--amber);
-      }
-
-      .card-desc {
-        margin-top: 0.5em;
-        font-size: clamp(10px, 2.7vmin, 14px);
-        line-height: 1.5;
-        color: rgba(234, 246, 255, 0.92);
-        max-width: 82%;
-      }
-
-      .card-flavour {
-        margin-top: 0.4em;
-        font-size: clamp(9px, 2.4vmin, 12px);
-        font-style: italic;
-        color: var(--muted);
-        max-width: 82%;
+        letter-spacing: 0.14em;
       }
 
       .boon-empty {

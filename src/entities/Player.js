@@ -293,6 +293,9 @@ class AimRenderer {
       this.primaryGeo.attributes.position.needsUpdate = true;
       this.primary.visible = true;
       this.primaryMat.opacity = 0.45 + 0.5 * power;
+      // The line states outright whether this shot connects: gold means it
+      // lands on a body, cyan means it does not. No counting pixels.
+      this.primaryMat.color.setHex(prediction.hit ? PALETTE.carom : PALETTE.aim);
     } else {
       this.primary.visible = false;
     }
@@ -733,8 +736,16 @@ export class Player {
       this.body.scale.setScalar(1);
     }
 
-    this.haloMat.opacity = this.invulnerable ? 0.55 + Math.sin(performance.now() / 60) * 0.2 : 0.22;
-    this.halo.scale.setScalar(this.invulnerable ? 1.15 : 1);
+    // --- armed / vulnerable tell --------------------------------------
+    // While flying you are both untouchable and the thing doing the damage;
+    // once you settle, the exact opposite is true. That inversion is the core
+    // risk rule of the game and it was previously only a faint opacity shift,
+    // so it now changes colour as well: cyan halo = armed and safe, amber ring
+    // = you can be hit.
+    const armed = this.invulnerable;
+    this.haloMat.color.setHex(armed ? PALETTE.player : PALETTE.heavy);
+    this.haloMat.opacity = armed ? 0.55 + Math.sin(performance.now() / 60) * 0.2 : 0.34;
+    this.halo.scale.setScalar(armed ? 1.15 : 1);
   }
 
   /** Draw the three aim layers from a fresh prediction. */

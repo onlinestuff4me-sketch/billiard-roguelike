@@ -503,7 +503,30 @@ export class Enemy {
       this.shieldMat.opacity = 0.55 + (distToPlayer < 12 ? 0.35 : 0.1);
     }
 
-    this.markerMat.opacity = spawning ? 0.08 : 0.28;
+    // --- threat tell --------------------------------------------------
+    // The hardest thing to read on the table was which bodies can actually
+    // hurt you, so the ground ring answers exactly that and nothing else:
+    //
+    //   ACTIVE    hot red ring   — touching this costs you HP
+    //   KNOCKED   gold ring      — ammunition now: harmless to you, lethal
+    //                              to its own side
+    //   SPAWNING  barely there   — no collision at all yet
+    if (this.state === ENEMY_STATE.ACTIVE) {
+      // A slow pulse separates "dangerous" from "inert" in peripheral vision,
+      // which is where these usually are while you line a shot up.
+      const pulse = 0.42 + Math.sin(performance.now() / 300 + this.x) * 0.1;
+      this.markerMat.color.setHex(PALETTE.hazard);
+      this.markerMat.opacity = pulse;
+      this.marker.scale.setScalar(1);
+    } else if (knocked) {
+      this.markerMat.color.setHex(PALETTE.carom);
+      this.markerMat.opacity = 0.6;
+      this.marker.scale.setScalar(1.18);
+    } else {
+      this.markerMat.color.copy(this.baseColor);
+      this.markerMat.opacity = 0.08;
+      this.marker.scale.setScalar(1);
+    }
   }
 
   dispose() {

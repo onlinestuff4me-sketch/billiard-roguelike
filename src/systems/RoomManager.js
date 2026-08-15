@@ -195,7 +195,7 @@ export const LAYOUTS = [
 export const DOOR_REWARDS = [
   {
     id: 'boon',
-    label: 'Boon',
+    label: 'Upgrade',
     glyph: '◆',
     color: PALETTE.door,
     weight: 3,

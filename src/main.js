@@ -1118,5 +1118,9 @@ function frame(now) {
 
 requestAnimationFrame(frame);
 
-// Expose the context for console-side tuning during playtests.
-if (import.meta.env?.DEV) window.__billiard = game;
+// Expose the context for console-side tuning during playtests. The UI handles
+// come too, so a reward screen can be summoned without clearing a room first.
+if (import.meta.env?.DEV) {
+  game.ui = { modal, hud };
+  window.__billiard = game;
+}
