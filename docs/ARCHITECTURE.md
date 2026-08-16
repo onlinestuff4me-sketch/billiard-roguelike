@@ -66,6 +66,7 @@ billiard-roguelike/
 ├── docs/
 │   ├── GDD.md                 design: loop, multipliers, boons, generation
 │   ├── STYLE_GUIDE.md         visual, audio and enemy-language blueprint
+│   ├── AIMING.md              pointer/touch spec: model, rationale, verification
 │   └── ARCHITECTURE.md        this document
 └── src/
     ├── main.js                bootstrap · loop · combat rules · FX · run flow
