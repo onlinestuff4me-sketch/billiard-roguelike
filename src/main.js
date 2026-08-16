@@ -1162,6 +1162,6 @@ requestAnimationFrame(frame);
 // Expose the context for console-side tuning during playtests. The UI handles
 // come too, so a reward screen can be summoned without clearing a room first.
 if (import.meta.env?.DEV) {
-  game.ui = { modal, hud };
+  game.ui = { modal, hud, input };
   window.__billiard = game;
 }
