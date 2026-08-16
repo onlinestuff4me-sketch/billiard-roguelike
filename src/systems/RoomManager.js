@@ -259,7 +259,10 @@ export class RoomManager {
     const rng = this.rng;
 
     // --- 1. handcrafted geometry -------------------------------------
-    this.layout = pick(rng, LAYOUTS);
+    // The first two rooms are always the empty table. Obstacles are a second
+    // idea, and the opening only has room for one: that hitting things with
+    // yourself is the game. Clutter here reads as difficulty, not as teaching.
+    this.layout = level <= 2 ? LAYOUTS[0] : pick(rng, LAYOUTS);
     this.colliders = this.layout.obstacles.map((o) => ({
       ...o,
       kind: o.kind || 'obstacle',

@@ -320,18 +320,21 @@ all three with a single vector.
 | Input | Action |
 | --- | --- |
 | **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
-| **Drag anywhere** | A stick appears under your thumb. The shot fires opposite the drag; how far you pull sets power |
-| **Release** | Launch the cue ball with i-frames for the flight |
-| **Double tap** | Emergency dash toward the tapped point — no slow-mo, no Focus cost, 0.75 s cooldown |
-| **Release near the stick centre** | Too short to fire; cancels the aim |
+| **Touch anywhere** | The ball aims **at your finger**. Drag to adjust |
+| **Release** | Launch. Every shot is the same speed |
 
-Where you put your thumb does not matter — only how you move it. Touching down never
-moves the aim, so there is no "behind the ball" or "in front of the ball" case to
-learn and no 180° flip waiting at the boundary; the ball is not part of the
-calculation. Sensitivity is uniform everywhere on screen because the stick radius,
-not your distance from the ball, is the lever arm. Push past that radius and the
-stick's origin is dragged along behind your thumb, so the aim eases toward the
-direction you are travelling rather than snapping to where you are.
+That is the whole control. Power was removed on purpose: a charge meter asked
+"how hard?" on every stroke when the answer was always "as hard as possible",
+and it bundled a second decision into a gesture that only ever had one
+interesting one. The angle is the game — banks, cuts and chains — so the angle
+is all the gesture means.
+
+Pointing also removes the ambiguity that made earlier schemes unpredictable.
+"Toward my finger" reads the same from every side of the ball, so there is no
+behind-vs-in-front case to learn and no 180° flip at a boundary. Sensitivity is
+capped by holding the aim cursor at least `INPUT.minAimRadius` (6 u) from the
+ball: touching right beside it pushes the cursor out along the same heading
+instead of turning twitchy.
 
 ---
 
