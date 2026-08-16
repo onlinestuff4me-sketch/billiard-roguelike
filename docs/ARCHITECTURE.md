@@ -220,24 +220,28 @@ A pointer state machine (`IDLE → AIMING`) over unified Pointer Events with a t
 fallback, emitting `onAimStart / onAimUpdate / onRelease / onAimCancel / onFlick`.
 It never touches the player directly — it is handed an anchor and returns aim data.
 
-**The aim is a compass needle: acquired contextually, then steered.** It persists
-between shots — 12 o'clock on the first, thereafter the ball's last travel
-direction. Touching refines it rather than replacing it:
+**Turn the cue: the line tracks the thumb's rotation about the ball, 1:1.** This is
+the 8 Ball Pool model. The heading persists between shots — 12 o'clock on the
+first, thereafter the ball's last travel direction — and dragging rotates it.
 
-- **in front** of the heading → the line snaps to run ball → thumb
-- **behind** the heading → the line keeps pointing forward, away from the thumb
+Two earlier attempts failed on this exact point. An absolute scheme snapped the
+line to the thumb, which put the thumb on the forward path and hid the table being
+read. A horizontal-travel-only scheme fixed the occlusion but meant sweeping the
+thumb in an arc did not turn the line in an arc, which is what made it feel wrong.
 
-The behind case is why this exists. Aiming purely by pointing put the thumb on the
-forward path, hiding the table the player was reading — unusable on a phone.
-Holding from behind now keeps the whole shot visible.
+Steering applies the **angular delta of the thumb about the ball**: each frame the
+bearing `atan2(fz - bz, fx - bx)` is taken, the shortest-way-round difference from
+last frame is computed, and the heading is rotated by it. Sweep the thumb 30°
+around the ball and the line turns 30°.
 
-Steering is one-dimensional and identical in both cases: horizontal thumb travel
-rotates the needle, right clockwise. Because screen-up is `-Z` and screen-right is
-`+X`, the on-screen angle `atan2(z, x)` increases clockwise, so rightward travel
-simply adds. Rotation measures *travel*, not position, so gain is uniform
-(`INPUT.rotateGainPerPx`, ~0.43°/px) and the thumb need not be anywhere in
-particular. Vertical travel is left free — which is what lets power be a hold
-rather than a pull, so the two axes never compete.
+Only the delta is used, never the absolute bearing, so touching down moves nothing
+and placement is irrelevant. Inside `INPUT.minAimRadius` the bearing is undefined,
+so rotation suspends and the stored bearing is dropped — re-emerging on the far
+side then resumes cleanly instead of snapping.
+
+Precision scales with reach for free: the same finger movement subtends a smaller
+angle further out. Measured, 60 px of travel turns the shot 42° close to the ball
+and 13° at reach.
 
 Power charges over `PLAYER.chargeTime` from `PLAYER.minPower` to full, and drives
 launch speed between `launchSpeedMin` and `launchSpeedMax`.

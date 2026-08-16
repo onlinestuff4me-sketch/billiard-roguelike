@@ -512,33 +512,26 @@ export const INPUT = {
    * buys finer control exactly when you want it: on a long, committed shot.
    */
   /**
-   * A PERSISTENT HEADING, ACQUIRED CONTEXTUALLY, THEN STEERED.
+   * TURN THE CUE: the line tracks your thumb's rotation about the ball, 1:1.
    *
-   * The aim is a compass needle the game remembers between shots: 12 o'clock
-   * on the very first shot, and afterwards whichever way the ball was last
-   * travelling. Touching does not replace it wholesale; it refines it.
+   * This is the 8 Ball Pool model. The aim carries a persistent heading, and
+   * dragging rotates it by exactly the angle your thumb sweeps *around the
+   * ball* — swing your thumb 30° clockwise about it and the line turns 30°
+   * clockwise. Nothing snaps when you touch down, so where you put your thumb
+   * never matters; only how you turn it does.
    *
-   *   Touch IN FRONT of the heading  → the line snaps to run ball → thumb.
-   *   Touch BEHIND the heading       → the line keeps pointing forward, away
-   *                                    from the thumb.
-   *
-   * That second case is the point. Aiming by pointing put the thumb on top of
-   * the forward path, covering the exact stretch of table you were trying to
-   * read. Touching behind lets you hold the ball from below and still see
-   * everything ahead of it.
-   *
-   * From there the control is one-dimensional and identical in both cases:
-   * thumb right rotates the needle clockwise, thumb left counter-clockwise.
+   * Two things fall out of that, and both are why the real game feels the way
+   * it does. Precision scales with reach: the same finger movement subtends a
+   * smaller angle further from the ball, so sliding out buys fine control for
+   * free. And you can hold the ball from below and still steer, which keeps
+   * your thumb off the forward path you are trying to read.
    */
-  /** Radians of rotation per pixel of horizontal thumb travel (~0.43°/px). */
-  rotateGainPerPx: 0.0075,
   /**
-   * Dot-product threshold separating "in front" from "behind". Exactly 0 is a
-   * clean hemisphere split, which is the only version that needs no explaining.
+   * Touches closer than this to the ball give no usable bearing — the angle
+   * under your thumb is undefined at the centre — so rotation is suspended
+   * inside it and resumes cleanly when the thumb comes back out.
    */
-  frontDot: 0,
-  /** Touches closer than this to the ball give no usable bearing; heading holds. */
-  minAimRadius: 1.2,
+  minAimRadius: 1.8,
   /**
    * Exponential smoothing time constant (seconds) applied to the aim heading.
    * Long enough to swallow finger tremor, short enough to feel direct.

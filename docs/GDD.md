@@ -320,25 +320,25 @@ all three with a single vector.
 | Input | Action |
 | --- | --- |
 | **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
-| **Touch in front of the aim** | The line snaps to run from the ball out to your thumb |
-| **Touch behind the aim** | The line keeps pointing forward, away from your thumb |
-| **Slide right / left** | Rotates the aim clockwise / counter-clockwise (~0.43°/px) |
+| **Touch anywhere** | Nothing moves. The line stays where it was |
+| **Turn your thumb around the ball** | The line turns with it, 1:1 — sweep 30° clockwise, the line turns 30° clockwise |
 | **Hold** | Charges the shot, from 32% to full over 0.85 s |
 | **Release** | Launch at the charged speed |
 
-The aim is a compass needle the game remembers between shots — 12 o'clock on
-the first, and afterwards whichever way the ball was last travelling. Touching
-refines that heading rather than replacing it.
+This is how a cue works in 8 Ball Pool. The aim carries a heading the game
+remembers between shots — 12 o'clock on the first, thereafter the ball's last
+travel direction — and dragging rotates it by exactly the angle your thumb
+sweeps *around the ball*.
 
-The behind case is the important one. Aiming purely by pointing put the thumb
-directly on the forward path, covering the stretch of table you were trying to
-read — unusable on a phone. Touching behind the ball now means "hold it from
-here and keep looking ahead", and the whole shot stays visible.
+Only the change is applied, never your thumb's absolute bearing, so touching
+down never moves the line and where you put your thumb is irrelevant. What
+matters is how you turn it.
 
-Steering is then one-dimensional and identical from either side, and because it
-measures *travel* rather than position, sensitivity is uniform everywhere on
-screen. Vertical movement is left free, which is what lets power be a hold
-instead of a pull: the two axes never compete.
+Two things follow, and both are why the real game feels right. **Reach buys
+precision**: the same finger movement subtends a smaller angle further from the
+ball, so sliding out gives fine control for free — measured, 60 px of travel
+turns the shot 42° close in but only 13° at reach. And you can hold the ball
+from below and still steer, which keeps your thumb off the path you are reading.
 
 ---
 

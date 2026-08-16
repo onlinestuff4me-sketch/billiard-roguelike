@@ -5,26 +5,25 @@
  *     ▲                                              │
  *     └──────────────────────────────────────────────┘
  *
- * A COMPASS NEEDLE: ACQUIRED CONTEXTUALLY, THEN STEERED.
+ * TURN THE CUE: the line tracks your thumb's rotation about the ball, 1:1.
  *
- * The aim persists between shots — 12 o'clock on the first, and afterwards
- * whichever way the ball was last travelling. Touching refines that heading
- * rather than replacing it:
+ * This is the 8 Ball Pool model. The aim carries a persistent heading — 12
+ * o'clock on the first shot, thereafter the ball's last travel direction — and
+ * dragging rotates it by exactly the angle the thumb sweeps *around the ball*.
+ * Swing 30° clockwise about it and the line turns 30° clockwise.
  *
- *   Touch IN FRONT of the heading  → the line snaps to run ball → thumb.
- *   Touch BEHIND the heading       → the line keeps pointing forward, away
- *                                    from the thumb.
+ * Only the delta is ever applied, never the absolute bearing. Touching down
+ * therefore moves nothing, and where the thumb sits is irrelevant; the line
+ * follows how it turns. Earlier attempts failed on exactly this point — an
+ * absolute scheme snapped the line to the thumb and put it on top of the
+ * forward path, and a horizontal-travel-only scheme meant sweeping the thumb
+ * in an arc did not turn the line in an arc, which is what made it feel wrong.
  *
- * The second case is the reason this exists. Aiming purely by pointing put the
- * thumb directly on the forward path, covering the stretch of table the player
- * was trying to read — unusable on a phone. Touching behind the ball now means
- * "hold it from here and keep looking ahead", and the whole shot stays visible.
- *
- * From there, steering is one-dimensional and identical in both cases: thumb
- * right rotates the needle clockwise, thumb left counter-clockwise. Because
- * rotation is *travel*, not position, gain is uniform everywhere on screen and
- * the thumb never has to be anywhere in particular. Vertical travel is free,
- * which is what lets power be a hold rather than a pull.
+ * Two properties fall out of the geometry, and both are why the real game
+ * feels the way it does. Precision scales with reach: the same finger movement
+ * subtends a smaller angle further from the ball, so sliding out buys fine
+ * control for free. And the ball can be held from below and still steered,
+ * which keeps the thumb off the path being read.
  *
  * The manager knows nothing about the player beyond an anchor position; it
  * emits normalised aim payloads and the game decides what they mean.
@@ -76,8 +75,8 @@ export class InputManager {
     this._targetZ = -1;
     this._lastAimTime = 0;
     this._hasHeading = true;
-    /** Last x used for rotation, so steering measures travel, not position. */
-    this._lastRotX = 0;
+    /** Thumb bearing around the ball last frame; steering applies the delta. */
+    this._lastBearing = null;
 
     /** Double-tap bookkeeping. */
     this._lastTapTime = -Infinity;
@@ -180,29 +179,16 @@ export class InputManager {
   }
 
   /**
-   * Acquire a bearing from where the thumb landed.
-   *
-   * Screen-right is +X and screen-down is +Z, so "in front" is simply a
-   * positive dot product against the heading the needle already carries.
+   * Bearing of the thumb around the ball, or null when it is too close to the
+   * centre for the angle to mean anything.
    */
-  _acquire() {
+  _bearing() {
     const ball = this._anchor();
     const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
     const vx = finger.x - ball.x;
     const vz = finger.z - ball.z;
-    const dist = Math.hypot(vx, vz);
-    // Too close to the ball to mean anything: keep the needle where it is.
-    if (dist < INPUT.minAimRadius) return;
-
-    const dot = (vx / dist) * this._dirX + (vz / dist) * this._dirZ;
-    if (dot > INPUT.frontDot) {
-      // In front: the line runs from the ball out to the thumb.
-      this._dirX = vx / dist;
-      this._dirZ = vz / dist;
-    }
-    // Behind: the needle is left alone, so the line keeps pointing forward and
-    // away from the thumb. This is what keeps the forward path unobscured —
-    // hold the ball from below and the whole shot stays visible.
+    if (Math.hypot(vx, vz) < INPUT.minAimRadius) return null;
+    return Math.atan2(vz, vx);
   }
 
   /**
@@ -213,19 +199,31 @@ export class InputManager {
     const aim = this.aim;
     const dt = Math.max(0, (now - this._lastAimTime) / 1000);
 
-    // --- steering: horizontal thumb travel rotates the needle -----------
-    // Screen-up is -Z and screen-right is +X, so the on-screen angle
-    // atan2(z, x) *increases* clockwise. Rightward travel therefore adds.
-    const dxPx = this.currentX - this._lastRotX;
-    this._lastRotX = this.currentX;
-    if (dxPx !== 0) {
-      const theta = dxPx * INPUT.rotateGainPerPx;
-      const c = Math.cos(theta);
-      const s = Math.sin(theta);
-      const nx = this._dirX * c - this._dirZ * s;
-      const nz = this._dirX * s + this._dirZ * c;
-      this._targetX = nx;
-      this._targetZ = nz;
+    // --- steering: the line tracks your thumb's rotation about the ball ---
+    // Turn your thumb 30° around the ball and the line turns 30° the same way.
+    // It is the delta that is applied, never the absolute bearing, so touching
+    // down never moves the line and where the thumb sits is irrelevant — only
+    // how it sweeps. Reach then buys precision on its own, because the same
+    // finger movement subtends a smaller angle further out.
+    const bearing = this._bearing();
+    if (bearing !== null) {
+      if (this._lastBearing !== null) {
+        let d = bearing - this._lastBearing;
+        // Shortest way round, so crossing ±π never spins the line the long way.
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        const c = Math.cos(d);
+        const s = Math.sin(d);
+        const tx = this._targetX;
+        const tz = this._targetZ;
+        this._targetX = tx * c - tz * s;
+        this._targetZ = tx * s + tz * c;
+      }
+      this._lastBearing = bearing;
+    } else {
+      // Inside the dead radius the bearing is meaningless. Forget it rather
+      // than hold it, so re-emerging on the far side does not snap the line.
+      this._lastBearing = null;
     }
 
     // Ease toward the target so tremor never reaches the drawn line.
@@ -283,12 +281,12 @@ export class InputManager {
     this.holdTime = 0;
     this.state = STATE.AIMING;
 
-    // Acquire from the touch, then steer from there.
-    this._lastRotX = event.clientX;
+    // Nothing snaps: the line stays exactly where it was and the thumb starts
+    // turning it from here. Only the sweep matters, never the placement.
     this._lastAimTime = this.startTime;
-    this._acquire();
     this._targetX = this._dirX;
     this._targetZ = this._dirZ;
+    this._lastBearing = this._bearing();
     this._updateAim(this.startTime);
 
     this.handlers.onAimStart?.(this.aim);
