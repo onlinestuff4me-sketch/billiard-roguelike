@@ -320,15 +320,18 @@ all three with a single vector.
 | Input | Action |
 | --- | --- |
 | **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
-| **Drag anywhere** | Rotates the shot about the cue ball. The launch line runs from your finger through the ball; distance from the ball sets power *and* buys angular precision |
+| **Drag anywhere** | A stick appears under your thumb. The shot fires opposite the drag; how far you pull sets power |
 | **Release** | Launch the cue ball with i-frames for the flight |
 | **Double tap** | Emergency dash toward the tapped point — no slow-mo, no Focus cost, 0.75 s cooldown |
-| **Release within 1.1 u of the ball** | Too short to fire; cancels the aim |
+| **Release near the stick centre** | Too short to fire; cancels the aim |
 
-Aiming is anchored at the ball rather than at wherever your thumb landed, because a
-drag-delta anchor has no lever arm at the moment the aim begins — the first few
-pixels swing the shot wildly and it never settles. Anchoring at the ball means a
-long pull is also a precise one, so committing to a big shot is rewarded twice.
+Where you put your thumb does not matter — only how you move it. Touching down never
+moves the aim, so there is no "behind the ball" or "in front of the ball" case to
+learn and no 180° flip waiting at the boundary; the ball is not part of the
+calculation. Sensitivity is uniform everywhere on screen because the stick radius,
+not your distance from the ball, is the lever arm. Push past that radius and the
+stick's origin is dragged along behind your thumb, so the aim eases toward the
+direction you are travelling rather than snapping to where you are.
 
 ---
 

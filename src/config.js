@@ -494,16 +494,26 @@ export const INPUT = {
    */
   /** Slingshot semantics: pull away from the target, release to fire opposite. */
   invertAim: true,
+
   /**
-   * Inside this world radius the direction is degenerate (dividing by ~0), so
-   * the last good heading is held instead of letting the aim spin.
+   * FLOATING STICK RADIUS, as a fraction of stage height.
+   *
+   * This one number sets the sensitivity of the whole game. Angular gain is
+   * 1/radius radians per pixel of finger travel, so a larger radius is a
+   * longer lever and a steadier aim.
+   *
+   * Frame-by-frame measurement of Endless Madness put its angular gain near
+   * 0.8°/px at a 402px-wide analysis scale, implying a pivot radius of roughly
+   * 18% of the screen. 0.16 of stage height lands in the same neighbourhood.
    */
-  aimDeadRadius: 0.55,
+  stickRadiusFraction: 0.16,
+  /** Below this fraction of stage height the stick is centred: heading holds. */
+  stickDeadzoneFraction: 0.018,
   /**
    * Exponential smoothing time constant (seconds) applied to the aim heading.
    * Long enough to swallow finger tremor, short enough to feel direct.
    */
-  aimSmoothing: 0.045,
+  aimSmoothing: 0.055,
   /**
    * Emergency dash is a DOUBLE TAP, not a flick.
    *

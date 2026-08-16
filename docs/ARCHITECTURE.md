@@ -220,17 +220,32 @@ A pointer state machine (`IDLE → AIMING`) over unified Pointer Events with a t
 fallback, emitting `onAimStart / onAimUpdate / onRelease / onAimCancel / onFlick`.
 It never touches the player directly — it is handed an anchor and returns aim data.
 
-**Aiming is anchored at the ball**, the model 8 Ball Pool uses: the launch direction
-is the vector from the finger to the cue ball, and dragging anywhere rotates the
-shot about the ball. The reason is angular resolution. Deriving the heading from a
-drag *delta* gives a lever arm that starts at zero, so the first pixels of movement
-swing the aim through tens of degrees and it can never settle. Anchored at the ball,
-the lever arm is the distance to it: one world unit of finger travel turns the shot
-by ~45° at 1 u out but only ~9.5° at 6 u out. Pulling further therefore buys finer
-control exactly when a shot deserves it, and power (radial) and heading (angular)
-become independent axes of one polar gesture instead of competing for the same
-pixels. A short exponential filter (45 ms) removes finger tremor, and inside
-`INPUT.aimDeadRadius` the last good heading is held rather than allowed to spin.
+**Aiming is a floating stick with a trailing anchor.** Frame-by-frame analysis of
+Endless Madness shows the pattern directly: an anchor marker appears wherever the
+thumb lands, a line is drawn from it to the finger, and the aim follows *that
+displacement vector*. The ball's position is not an input at all.
+
+That is what makes placement stop mattering. An absolute scheme — aim along
+finger→ball — must answer "what if the thumb is in front of the ball rather than
+behind it?", and every answer is a rule to learn with a 180° flip at the boundary.
+A relative stick never asks: touching down moves nothing, and only movement from
+your own start point steers. Behind, in front and on top of the ball are identical.
+
+Two properties fall out of the geometry:
+
+- **Gain is 1/R rad per pixel.** An absolute anchor has a lever arm that collapses
+  toward zero as the thumb nears the ball, which is why small movements used to
+  swing the aim wildly. Here R is fixed, so sensitivity is uniform across the
+  screen. Measured gain in Endless Madness was ≈0.8°/px, implying a pivot near 18%
+  of screen width; `INPUT.stickRadiusFraction` (0.16 of stage height) matches.
+- **The anchor trails.** Past R it is dragged behind the finger, so the heading
+  eases toward the direction you are *travelling* rather than snapping to where you
+  are — a low-pass filter made of geometry, before the explicit 55 ms exponential
+  filter is applied at all.
+
+Power is the stick's deflection, so heading and power stay independent axes of one
+polar gesture. Below `INPUT.stickDeadzoneFraction` the heading is held rather than
+allowed to spin around a degenerate centre.
 
 The emergency dash is a **double tap**, not a flick. Sharing the aim gesture meant
 any quick, decisive shot was silently reinterpreted as a dash; separating them means
