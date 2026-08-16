@@ -220,26 +220,32 @@ A pointer state machine (`IDLE → AIMING`) over unified Pointer Events with a t
 fallback, emitting `onAimStart / onAimUpdate / onRelease / onAimCancel / onFlick`.
 It never touches the player directly — it is handed an anchor and returns aim data.
 
-**The aim is a virtual cursor: you point at things.** Touch anywhere and the ball
-aims at your finger; drag and the heading follows. Release fires, at one fixed
-speed. That is the entire control surface.
+**The aim is a compass needle: acquired contextually, then steered.** It persists
+between shots — 12 o'clock on the first, thereafter the ball's last travel
+direction. Touching refines it rather than replacing it:
 
-Two earlier schemes were tried and both asked too much. A slingshot inverted the
-gesture — you aimed *away* from your target — and bundled a power axis into the
-same drag, so every stroke answered two questions when only one was interesting. A
-relative floating stick fixed the inversion but made placement meaningless, which
-is its own confusion: tapping directly at a target did nothing at all.
+- **in front** of the heading → the line snaps to run ball → thumb
+- **behind** the heading → the line keeps pointing forward, away from the thumb
 
-Pointing has neither problem. There is no behind-the-ball or in-front-of-the-ball
-case to disambiguate, because "toward my finger" is the same rule from every side;
-the 180° flip that made the old absolute scheme unpredictable existed only because
-the aim ran away from the touch.
+The behind case is why this exists. Aiming purely by pointing put the thumb on the
+forward path, hiding the table the player was reading — unusable on a phone.
+Holding from behind now keeps the whole shot visible.
 
-Sensitivity is handled by `INPUT.minAimRadius`. Angular gain is 1/distance, so a
-cursor allowed right against the ball would swing the aim through tens of degrees
-per pixel. Holding it out to a minimum radius caps that without changing the
-heading the player asked for, and a 55 ms exponential filter removes the rest of
-the tremor. Measured: a 2 px move beside the ball turns the shot 1.6°.
+Steering is one-dimensional and identical in both cases: horizontal thumb travel
+rotates the needle, right clockwise. Because screen-up is `-Z` and screen-right is
+`+X`, the on-screen angle `atan2(z, x)` increases clockwise, so rightward travel
+simply adds. Rotation measures *travel*, not position, so gain is uniform
+(`INPUT.rotateGainPerPx`, ~0.43°/px) and the thumb need not be anywhere in
+particular. Vertical travel is left free — which is what lets power be a hold
+rather than a pull, so the two axes never compete.
+
+Power charges over `PLAYER.chargeTime` from `PLAYER.minPower` to full, and drives
+launch speed between `launchSpeedMin` and `launchSpeedMax`.
+
+The aim beam is a **ribbon mesh**, not a line: GPU line width is clamped to 1 px on
+essentially every platform, so `LineBasicMaterial.linewidth` is a no-op and real
+thickness has to be geometry. Its width scales with charge and a bright wavefront
+fills it from the ball outward, so the wind-up is legible without a separate meter.
 
 The emergency dash is a **double tap**, not a flick. Sharing the aim gesture meant
 any quick, decisive shot was silently reinterpreted as a dash; separating them means

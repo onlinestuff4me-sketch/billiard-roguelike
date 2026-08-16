@@ -5,28 +5,26 @@
  *     ▲                                              │
  *     └──────────────────────────────────────────────┘
  *
- * THE AIM IS A VIRTUAL CURSOR: YOU POINT AT THINGS.
+ * A COMPASS NEEDLE: ACQUIRED CONTEXTUALLY, THEN STEERED.
  *
- * Touch anywhere and the ball aims *at* your finger. Drag and the heading
- * follows. That is the entire control.
+ * The aim persists between shots — 12 o'clock on the first, and afterwards
+ * whichever way the ball was last travelling. Touching refines that heading
+ * rather than replacing it:
  *
- * Two earlier schemes were tried and both asked too much of the player. Pulling
- * back like a slingshot inverted the gesture — you aimed away from your target
- * — and bundled a power axis into the same drag, so every stroke answered two
- * questions when only one of them was ever interesting. A relative stick fixed
- * the inversion but made placement meaningless, which is its own kind of
- * confusion: tapping directly at a target did nothing.
+ *   Touch IN FRONT of the heading  → the line snaps to run ball → thumb.
+ *   Touch BEHIND the heading       → the line keeps pointing forward, away
+ *                                    from the thumb.
  *
- * Pointing has neither problem. There is no behind-the-ball or in-front-of-the-
- * ball case to disambiguate, because "toward my finger" is the same rule from
- * every side; the 180° flip that made the old absolute scheme unpredictable
- * only existed because the aim ran *away* from the touch.
+ * The second case is the reason this exists. Aiming purely by pointing put the
+ * thumb directly on the forward path, covering the stretch of table the player
+ * was trying to read — unusable on a phone. Touching behind the ball now means
+ * "hold it from here and keep looking ahead", and the whole shot stays visible.
  *
- * Sensitivity is handled by INPUT.minAimRadius. Angular gain is 1/distance, so
- * a cursor allowed right against the ball would swing the aim through tens of
- * degrees per pixel. Holding the cursor out to a minimum radius caps that
- * without changing the heading the player asked for, and a short exponential
- * filter takes out the remaining tremor.
+ * From there, steering is one-dimensional and identical in both cases: thumb
+ * right rotates the needle clockwise, thumb left counter-clockwise. Because
+ * rotation is *travel*, not position, gain is uniform everywhere on screen and
+ * the thumb never has to be anywhere in particular. Vertical travel is free,
+ * which is what lets power be a hold rather than a pull.
  *
  * The manager knows nothing about the player beyond an anchor position; it
  * emits normalised aim payloads and the game decides what they mean.
@@ -66,15 +64,20 @@ export class InputManager {
     this.startTime = 0;
     this.holdTime = 0;
 
-    /** Smoothed heading, kept between frames so tremor cannot reach the aim. */
+    /**
+     * The persistent heading. Starts at 12 o'clock (screen-up is -Z) and is
+     * re-seeded to the ball's travel direction whenever a launch settles, so
+     * the needle always begins where the last shot left you looking.
+     */
     this._dirX = 0;
     this._dirZ = -1;
+    /** Un-smoothed steering target; _dir eases toward it. */
+    this._targetX = 0;
+    this._targetZ = -1;
     this._lastAimTime = 0;
-    this._hasHeading = false;
-
-    /** Floating stick origin, in client pixels. Trails the finger past R. */
-    this._anchorX = 0;
-    this._anchorY = 0;
+    this._hasHeading = true;
+    /** Last x used for rotation, so steering measures travel, not position. */
+    this._lastRotX = 0;
 
     /** Double-tap bookkeeping. */
     this._lastTapTime = -Infinity;
@@ -164,76 +167,95 @@ export class InputManager {
     return this.handlers.getAnchor?.() || { x: 0, z: 0 };
   }
 
+  /** Seed the persistent heading (the game calls this when the ball settles). */
+  setHeading(x, z) {
+    const len = Math.hypot(x, z);
+    if (len < 1e-6) return;
+    this._dirX = x / len;
+    this._dirZ = z / len;
+  }
+
+  get heading() {
+    return { x: this._dirX, z: this._dirZ };
+  }
+
   /**
-   * Recompute the aim from the virtual cursor.
+   * Acquire a bearing from where the thumb landed.
+   *
+   * Screen-right is +X and screen-down is +Z, so "in front" is simply a
+   * positive dot product against the heading the needle already carries.
+   */
+  _acquire() {
+    const ball = this._anchor();
+    const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
+    const vx = finger.x - ball.x;
+    const vz = finger.z - ball.z;
+    const dist = Math.hypot(vx, vz);
+    // Too close to the ball to mean anything: keep the needle where it is.
+    if (dist < INPUT.minAimRadius) return;
+
+    const dot = (vx / dist) * this._dirX + (vz / dist) * this._dirZ;
+    if (dot > INPUT.frontDot) {
+      // In front: the line runs from the ball out to the thumb.
+      this._dirX = vx / dist;
+      this._dirZ = vz / dist;
+    }
+    // Behind: the needle is left alone, so the line keeps pointing forward and
+    // away from the thumb. This is what keeps the forward path unobscured —
+    // hold the ball from below and the whole shot stays visible.
+  }
+
+  /**
+   * Recompute the aim.
    * @param {number} now performance.now() timestamp
    */
   _updateAim(now) {
     const aim = this.aim;
-    const ball = this._anchor();
-    const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
+    const dt = Math.max(0, (now - this._lastAimTime) / 1000);
 
-    aim.hold = (now - this.startTime) / 1000;
-    aim.distPx = Math.hypot(this.currentX - this.startX, this.currentY - this.startY);
-
-    // The cursor is simply where your finger is, and the ball points AT it.
-    let cx = finger.x - ball.x;
-    let cz = finger.z - ball.z;
-    let dist = Math.hypot(cx, cz);
-
-    if (dist > 1e-4) {
-      // Hold the cursor out to a minimum radius. Gain is 1/distance, so a
-      // cursor allowed right up against the ball would swing the aim through
-      // tens of degrees for a pixel of movement — the old twitchiness. Pushing
-      // it out preserves the heading you asked for and caps the sensitivity.
-      if (dist < INPUT.minAimRadius) {
-        const k = INPUT.minAimRadius / dist;
-        cx *= k;
-        cz *= k;
-        dist = INPUT.minAimRadius;
-      }
-
-      const inv = 1 / dist;
-      const sign = INPUT.invertAim ? -1 : 1;
-      const targetX = cx * inv * sign;
-      const targetZ = cz * inv * sign;
-
-      if (!this._hasHeading) {
-        this._dirX = targetX;
-        this._dirZ = targetZ;
-        this._hasHeading = true;
-      } else {
-        // Blend the unit vectors rather than the angles: no wraparound seam.
-        const dt = Math.max(0, (now - this._lastAimTime) / 1000);
-        const alpha = 1 - Math.exp(-dt / INPUT.aimSmoothing);
-        this._dirX += (targetX - this._dirX) * alpha;
-        this._dirZ += (targetZ - this._dirZ) * alpha;
-        const len = Math.hypot(this._dirX, this._dirZ);
-        if (len > 1e-6) {
-          this._dirX /= len;
-          this._dirZ /= len;
-        } else {
-          this._dirX = targetX;
-          this._dirZ = targetZ;
-        }
-      }
+    // --- steering: horizontal thumb travel rotates the needle -----------
+    // Screen-up is -Z and screen-right is +X, so the on-screen angle
+    // atan2(z, x) *increases* clockwise. Rightward travel therefore adds.
+    const dxPx = this.currentX - this._lastRotX;
+    this._lastRotX = this.currentX;
+    if (dxPx !== 0) {
+      const theta = dxPx * INPUT.rotateGainPerPx;
+      const c = Math.cos(theta);
+      const s = Math.sin(theta);
+      const nx = this._dirX * c - this._dirZ * s;
+      const nz = this._dirX * s + this._dirZ * c;
+      this._targetX = nx;
+      this._targetZ = nz;
     }
-    // A finger exactly on the ball gives no direction at all, so the last good
-    // heading is held rather than allowed to spin.
+
+    // Ease toward the target so tremor never reaches the drawn line.
+    const alpha = 1 - Math.exp(-dt / INPUT.aimSmoothing);
+    this._dirX += (this._targetX - this._dirX) * alpha;
+    this._dirZ += (this._targetZ - this._dirZ) * alpha;
+    const len = Math.hypot(this._dirX, this._dirZ) || 1;
+    this._dirX /= len;
+    this._dirZ /= len;
 
     this._lastAimTime = now;
+
+    // --- power: hold to charge -----------------------------------------
+    const hold = (now - this.startTime) / 1000;
+    const t = Math.min(hold / PLAYER.chargeTime, 1);
+    aim.power = PLAYER.minPower + (1 - PLAYER.minPower) * t;
+    aim.charge = t;
+
+    aim.hold = hold;
+    aim.distPx = Math.hypot(this.currentX - this.startX, this.currentY - this.startY);
     aim.dirX = this._dirX;
     aim.dirZ = this._dirZ;
-    aim.pullLength = dist;
-
-    // No power: every launch is the same speed, so the gesture means one thing.
-    aim.power = 1;
-    aim.valid = true;
+    aim.pullLength = 0;
     aim.pullX = 0;
     aim.pullZ = 0;
-    aim.worldX = finger.x;
-    aim.worldZ = finger.z;
+    aim.valid = true;
 
+    const world = this.screenToWorld(this.currentX, this.currentY, this._world);
+    aim.worldX = world.x;
+    aim.worldZ = world.z;
     return aim;
   }
 
@@ -261,10 +283,12 @@ export class InputManager {
     this.holdTime = 0;
     this.state = STATE.AIMING;
 
-    // Snap to the touch: wherever you put your finger is immediately where the
-    // ball is pointing, with no swing in from the previous shot's heading.
-    this._hasHeading = false;
+    // Acquire from the touch, then steer from there.
+    this._lastRotX = event.clientX;
     this._lastAimTime = this.startTime;
+    this._acquire();
+    this._targetX = this._dirX;
+    this._targetZ = this._dirZ;
     this._updateAim(this.startTime);
 
     this.handlers.onAimStart?.(this.aim);

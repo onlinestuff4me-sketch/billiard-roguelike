@@ -84,15 +84,21 @@ export const PLAYER = {
   radius: 0.62,
   maxHp: 100,
   /**
-   * ONE launch speed. Power is deliberately not part of the gesture.
+   * HOLD TO CHARGE.
    *
-   * Charging a shot meant every stroke asked two questions at once — how hard
-   * and which way — and the answer to "how hard" was almost always "as hard as
-   * possible". Removing it costs nothing and leaves the aim as the only thing
-   * you are actually deciding, which is where all the interest lives: angles,
-   * banks and chains.
+   * Power is back, but it no longer competes with the aim for the same axis:
+   * rotation is horizontal thumb travel, power is simply how long you hold.
+   * The two are independent, so a shot can be lined up and wound up at once.
+   *
+   * It starts at minPower rather than zero — a shot fired the instant you
+   * release is still a real shot, never a dud.
    */
   launchSpeed: 40,
+  launchSpeedMin: 24,
+  launchSpeedMax: 56,
+  /** Seconds of hold (real time) to wind from minPower to full. */
+  chargeTime: 0.85,
+  minPower: 0.32,
   /** Velocity damping (per second, multiplicative) in each state. */
   dragLaunched: 0.26,
   dragIdle: 2.6,
@@ -204,6 +210,17 @@ export const TRAJECTORY = {
    * Showing where *you* end up is what makes a collision legible in advance.
    */
   tangentLength: 4.6,
+  /**
+   * The main aim beam is a ribbon mesh, not a line.
+   *
+   * GPU line width is capped at 1px on virtually every platform, so a
+   * "thicker line" has to be geometry. Width also doubles as the power read:
+   * the beam swells as the shot charges, and a bright wavefront fills it from
+   * the ball outward, so the wind-up is legible without looking at a meter.
+   */
+  beamSlices: 48,
+  beamWidth: 0.45,
+  beamWidthMax: 1.25,
   dashLength: 0.42,
   dashGap: 0.3
 };
@@ -495,25 +512,33 @@ export const INPUT = {
    * buys finer control exactly when you want it: on a long, committed shot.
    */
   /**
-   * POINT WHERE YOU TOUCH.
+   * A PERSISTENT HEADING, ACQUIRED CONTEXTUALLY, THEN STEERED.
    *
-   * The aim is a virtual cursor: touching puts it under your finger and the
-   * ball points *at* it. No inversion, no pull-back, no power — the gesture
-   * carries exactly one meaning, which is the angle.
+   * The aim is a compass needle the game remembers between shots: 12 o'clock
+   * on the very first shot, and afterwards whichever way the ball was last
+   * travelling. Touching does not replace it wholesale; it refines it.
+   *
+   *   Touch IN FRONT of the heading  → the line snaps to run ball → thumb.
+   *   Touch BEHIND the heading       → the line keeps pointing forward, away
+   *                                    from the thumb.
+   *
+   * That second case is the point. Aiming by pointing put the thumb on top of
+   * the forward path, covering the exact stretch of table you were trying to
+   * read. Touching behind lets you hold the ball from below and still see
+   * everything ahead of it.
+   *
+   * From there the control is one-dimensional and identical in both cases:
+   * thumb right rotates the needle clockwise, thumb left counter-clockwise.
    */
-  invertAim: false,
-
+  /** Radians of rotation per pixel of horizontal thumb travel (~0.43°/px). */
+  rotateGainPerPx: 0.0075,
   /**
-   * Minimum cursor distance from the ball, in world units.
-   *
-   * This is the sensitivity control. Angular gain is 1/distance, so a cursor
-   * allowed right up against the ball would swing the aim wildly for a pixel
-   * of movement. Holding it out to at least this radius fixes the worst case:
-   * at 6 units, one unit of finger travel turns the shot ~9.5°, and touching
-   * near the ball simply pushes the cursor out along the same heading rather
-   * than becoming twitchy.
+   * Dot-product threshold separating "in front" from "behind". Exactly 0 is a
+   * clean hemisphere split, which is the only version that needs no explaining.
    */
-  minAimRadius: 6.0,
+  frontDot: 0,
+  /** Touches closer than this to the ball give no usable bearing; heading holds. */
+  minAimRadius: 1.2,
   /**
    * Exponential smoothing time constant (seconds) applied to the aim heading.
    * Long enough to swallow finger tremor, short enough to feel direct.
@@ -546,7 +571,7 @@ export const TUTORIAL = {
    * should be able to work out what to do without being told twice.
    */
   lessons: {
-    1: { title: 'Point And Launch', sub: 'Touch anywhere to aim · release to fire' },
+    1: { title: 'Aim And Launch', sub: 'Hold to charge · slide to turn · release to fire' },
     2: { title: 'Hit Two In One Shot', sub: 'Enemies you strike become cannonballs' },
     3: { title: 'Use The Rails', sub: 'Bank off a wall to reach what you cannot' },
     4: { title: 'Mind The Shooters', sub: 'Violet enemies fire back · close the gap fast' },
