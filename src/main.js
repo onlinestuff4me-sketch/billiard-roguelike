@@ -923,6 +923,10 @@ function advanceRoom() {
   player.placeAt(rooms.layout.spawn.x, rooms.layout.spawn.z);
   player.addFocus(player.focusMax);
   game.state = 'playing';
+  // Every room opens facing 12 o'clock. Carrying the last room's heading over
+  // meant arriving already pointed at a wall for no reason the player chose,
+  // and a fixed start is one less thing to re-read on entry.
+  input.setHeading(0, -1);
   showRoomBanner();
 }
 
@@ -954,6 +958,7 @@ function startRun() {
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
   player.respawn(rooms.layout.spawn.x, rooms.layout.spawn.z);
+  input.setHeading(0, -1);
   showRoomBanner();
 }
 
