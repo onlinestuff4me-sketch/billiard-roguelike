@@ -942,8 +942,6 @@ function refreshPrediction() {
 const input = new InputManager(stage, {
   camera,
   isEnabled: () => game.running && player.alive && game.state !== 'modal',
-  // Aiming rotates about the cue ball, so the anchor is the ball itself.
-  getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
     const hasFocus = player.startAim();
     if (hasFocus) {
