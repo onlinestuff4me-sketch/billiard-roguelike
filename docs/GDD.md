@@ -320,21 +320,25 @@ all three with a single vector.
 | Input | Action |
 | --- | --- |
 | **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
-| **Touch anywhere** | The ball aims **at your finger**. Drag to adjust |
-| **Release** | Launch. Every shot is the same speed |
+| **Touch in front of the aim** | The line snaps to run from the ball out to your thumb |
+| **Touch behind the aim** | The line keeps pointing forward, away from your thumb |
+| **Slide right / left** | Rotates the aim clockwise / counter-clockwise (~0.43°/px) |
+| **Hold** | Charges the shot, from 32% to full over 0.85 s |
+| **Release** | Launch at the charged speed |
 
-That is the whole control. Power was removed on purpose: a charge meter asked
-"how hard?" on every stroke when the answer was always "as hard as possible",
-and it bundled a second decision into a gesture that only ever had one
-interesting one. The angle is the game — banks, cuts and chains — so the angle
-is all the gesture means.
+The aim is a compass needle the game remembers between shots — 12 o'clock on
+the first, and afterwards whichever way the ball was last travelling. Touching
+refines that heading rather than replacing it.
 
-Pointing also removes the ambiguity that made earlier schemes unpredictable.
-"Toward my finger" reads the same from every side of the ball, so there is no
-behind-vs-in-front case to learn and no 180° flip at a boundary. Sensitivity is
-capped by holding the aim cursor at least `INPUT.minAimRadius` (6 u) from the
-ball: touching right beside it pushes the cursor out along the same heading
-instead of turning twitchy.
+The behind case is the important one. Aiming purely by pointing put the thumb
+directly on the forward path, covering the stretch of table you were trying to
+read — unusable on a phone. Touching behind the ball now means "hold it from
+here and keep looking ahead", and the whole shot stays visible.
+
+Steering is then one-dimensional and identical from either side, and because it
+measures *travel* rather than position, sensitivity is uniform everywhere on
+screen. Vertical movement is left free, which is what lets power be a hold
+instead of a pull: the two axes never compete.
 
 ---
 

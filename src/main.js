@@ -727,8 +727,18 @@ game.on = {
   },
 
   playerLaunch(event) {
-    audio.slingshot(event.power);
-    fx.burst(event.x, event.z, 8, PALETTE.player, event.speed * 0.25, 0.7);
+    // The release is the payoff for the wind-up, so it scales with it: a
+    // fully-charged shot gets a bigger burst, a ring, a camera punch and a
+    // brief freeze, while a quick tap still snaps cleanly without ceremony.
+    const p = event.power ?? 1;
+    audio.slingshot(p);
+    fx.burst(event.x, event.z, 8 + Math.round(p * 16), PALETTE.player, event.speed * 0.3, 0.7);
+    fx.shockwave(event.x, event.z, PALETTE.player, 1.8 + p * 3.4, 0.22 + p * 0.16);
+    engine.shake(event.speed * p * 1.3);
+    if (p > 0.75) {
+      engine.zoomPunch();
+      engine.hitStop(TIME.hitStop * 0.7);
+    }
     game.launchHits = 0;
     game.pyreBonus = 0;
     boons.onLaunch(event);
@@ -1106,6 +1116,13 @@ function frame(now) {
       // Frozen (hit-stop): keep presentation alive, skip simulation.
       player.update(0, rawDt, game, aiming && engine.inBulletTime);
     }
+    // While the ball is travelling under its own steam, the compass needle
+    // follows it. When it settles the needle is simply left where the ball was
+    // last heading, which is the default the next shot starts from.
+    if (!aiming && player.speed > PLAYER.settleSpeed) {
+      input.setHeading(player.vx, player.vz);
+    }
+
     // Re-derive the aim now that the ball has finished moving, so a held thumb
     // keeps pointing at the ball rather than at where it was a frame ago.
     if (aiming) {

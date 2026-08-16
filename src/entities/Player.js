@@ -165,6 +165,38 @@ class AimRenderer {
     this.group.visible = false;
     this.group.renderOrder = 3;
 
+    // 0. The beam — a ribbon mesh under the hairline core.
+    //    Real thickness needs geometry: GPU line width is clamped to 1px on
+    //    essentially every platform, so LineBasicMaterial.linewidth is a no-op.
+    const SLICES = TRAJECTORY.beamSlices;
+    this.beamPositions = new Float32Array(SLICES * 2 * 3);
+    this.beamColors = new Float32Array(SLICES * 2 * 3);
+    const beamIdx = new Uint16Array((SLICES - 1) * 6);
+    for (let i = 0; i < SLICES - 1; i++) {
+      const o = i * 6;
+      const v = i * 2;
+      beamIdx[o] = v;
+      beamIdx[o + 1] = v + 1;
+      beamIdx[o + 2] = v + 2;
+      beamIdx[o + 3] = v + 1;
+      beamIdx[o + 4] = v + 3;
+      beamIdx[o + 5] = v + 2;
+    }
+    this.beamGeo = new THREE.BufferGeometry();
+    this.beamGeo.setAttribute('position', new THREE.BufferAttribute(this.beamPositions, 3));
+    this.beamGeo.setAttribute('color', new THREE.BufferAttribute(this.beamColors, 3));
+    this.beamGeo.setIndex(new THREE.BufferAttribute(beamIdx, 1));
+    this.beamMat = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.beam = new THREE.Mesh(this.beamGeo, this.beamMat);
+    this.beam.frustumCulled = false;
+    this.group.add(this.beam);
+
     // 1. Primary path.
     this.primaryPositions = new Float32Array(6);
     this.primaryGeo = new THREE.BufferGeometry();
@@ -281,12 +313,67 @@ class AimRenderer {
    * @param {object} player
    * @param {number} power 0..1
    */
-  show(prediction, player, power) {
+  show(prediction, player, power, charge = 1) {
     this.group.visible = true;
     const y = 0.12;
     const segments = prediction.segments;
 
-    // --- primary path ---
+    // --- the beam ---
+    if (segments.length > 0) {
+      const s = segments[0];
+      const dx = s.bx - s.ax;
+      const dz = s.bz - s.az;
+      const L = Math.hypot(dx, dz) || 1;
+      const ux = dx / L;
+      const uz = dz / L;
+      // Perpendicular in the XZ plane.
+      const px = -uz;
+      const pz = ux;
+
+      const SLICES = TRAJECTORY.beamSlices;
+      const wBase =
+        TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power;
+      const hue = new THREE.Color(prediction.hit ? PALETTE.carom : PALETTE.aim);
+      const t = performance.now() / 1000;
+
+      for (let i = 0; i < SLICES; i++) {
+        const f = i / (SLICES - 1);
+        // Taper to a point so the beam reads as a direction, not a rectangle.
+        const w = wBase * (1 - 0.2 * f) * 0.5;
+        const cx = s.ax + ux * L * f;
+        const cz = s.az + uz * L * f;
+        const o = i * 6;
+        this.beamPositions[o] = cx + px * w;
+        this.beamPositions[o + 1] = y;
+        this.beamPositions[o + 2] = cz + pz * w;
+        this.beamPositions[o + 3] = cx - px * w;
+        this.beamPositions[o + 4] = y;
+        this.beamPositions[o + 5] = cz - pz * w;
+
+        // A charged wavefront fills the beam from the ball outward, with a
+        // travelling ripple behind it: the wind-up is the animation.
+        // Brightness carries the charge state, but never far enough to make the
+        // beam hard to see: the unfilled section stays legible, and the ripple
+        // rides on top of a high floor rather than dimming the line.
+        const filled = f <= charge ? 1 : 0.45;
+        const ripple = 0.86 + 0.14 * Math.sin((f * 5 - t * 3.4) * Math.PI * 2);
+        const edge = charge < 1 && Math.abs(f - charge) < 0.06 ? 2.1 : 1;
+        const g = filled * ripple * edge;
+        this.beamColors[o] = hue.r * g;
+        this.beamColors[o + 1] = hue.g * g;
+        this.beamColors[o + 2] = hue.b * g;
+        this.beamColors[o + 3] = this.beamColors[o];
+        this.beamColors[o + 4] = this.beamColors[o + 1];
+        this.beamColors[o + 5] = this.beamColors[o + 2];
+      }
+      this.beamGeo.attributes.position.needsUpdate = true;
+      this.beamGeo.attributes.color.needsUpdate = true;
+      this.beam.visible = true;
+    } else {
+      this.beam.visible = false;
+    }
+
+    // --- primary path (hairline core over the beam) ---
     if (segments.length > 0) {
       const s = segments[0];
       this.primaryPositions.set([s.ax, y, s.az, s.bx, y, s.bz]);
@@ -385,6 +472,8 @@ class AimRenderer {
   }
 
   dispose() {
+    this.beamGeo.dispose();
+    this.beamMat.dispose();
     this.primaryGeo.dispose();
     this.primaryMat.dispose();
     this.dashGeo.dispose();
@@ -450,6 +539,7 @@ export class Player {
     this.aimPull = { x: 0, z: 0 };
     this.aimDir = { x: 0, z: -1 };
     this.aimPower = 0;
+    this.aimCharge = 1;
     this.prediction = null;
 
     this._buildMesh();
@@ -542,6 +632,7 @@ export class Player {
     this.aimDir.x = aim.dirX;
     this.aimDir.z = aim.dirZ;
     this.aimPower = aim.power;
+    this.aimCharge = aim.charge ?? 1;
   }
 
   cancelAim() {
@@ -558,9 +649,11 @@ export class Player {
    * @returns {{speed:number, dirX:number, dirZ:number}}
    */
   launch(aim, game) {
-    // One speed, every time: the gesture decides the angle and nothing else.
-    const power = 1;
-    const speed = PLAYER.launchSpeed * this.stats.launchSpeedMult;
+    // Power is how long the shot was held, not how far anything was dragged.
+    const power = aim.power ?? 1;
+    const speed =
+      (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * power) *
+      this.stats.launchSpeedMult;
     this.vx = aim.dirX * speed;
     this.vz = aim.dirZ * speed;
     this.state = PLAYER_STATE.LAUNCHED;
@@ -743,10 +836,10 @@ export class Player {
     this.halo.scale.setScalar(armed ? 1.15 : 1);
   }
 
-  /** Draw the three aim layers from a fresh prediction. */
+  /** Draw the aim layers from a fresh prediction. */
   showTrajectory(prediction) {
     this.prediction = prediction;
-    this.aimRenderer.show(prediction, this, this.aimPower);
+    this.aimRenderer.show(prediction, this, this.aimPower, this.aimCharge);
   }
 
   hideTrajectory() {
