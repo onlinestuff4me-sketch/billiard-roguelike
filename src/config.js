@@ -84,19 +84,15 @@ export const PLAYER = {
   radius: 0.62,
   maxHp: 100,
   /**
-   * Slingshot geometry, measured in WORLD units from the ball to the finger.
+   * ONE launch speed. Power is deliberately not part of the gesture.
    *
-   * Aiming is anchored at the ball (see InputManager): the further out you
-   * drag, the longer the lever arm and the finer the angular control. maxPull
-   * is therefore a comfortable thumb reach rather than a screen-pixel budget.
+   * Charging a shot meant every stroke asked two questions at once — how hard
+   * and which way — and the answer to "how hard" was almost always "as hard as
+   * possible". Removing it costs nothing and leaves the aim as the only thing
+   * you are actually deciding, which is where all the interest lives: angles,
+   * banks and chains.
    */
-  maxPull: 8.0,
-  /** Inside this radius the pull is too short to fire — release cancels. */
-  minPull: 1.1,
-  launchSpeedMin: 14,
-  launchSpeedMax: 46,
-  /** Exponent applied to normalised pull. 1.0 = linear, i.e. predictable. */
-  pullCurve: 1.0,
+  launchSpeed: 40,
   /** Velocity damping (per second, multiplicative) in each state. */
   dragLaunched: 0.26,
   dragIdle: 2.6,
@@ -280,14 +276,20 @@ export const ENEMY = {
  * ROOMS — hybrid generation (handcrafted geometry + procedural threat)
  * ------------------------------------------------------------------ */
 export const ROOM = {
-  /** Threat budget = base + perLevel * (level - 1), capped. */
-  baseBudget: 6,
-  budgetPerLevel: 2.6,
+  /**
+   * Threat budget = base + perLevel * (level - 1), capped.
+   *
+   * The opening is deliberately thin. Room 1 is two Solids on an empty table:
+   * enough to show that hitting things is the point, few enough that nothing
+   * else competes for attention. Everything else arrives one idea at a time.
+   */
+  baseBudget: 4,
+  budgetPerLevel: 2.2,
   maxBudget: 46,
   /** Waves per room ramp with depth. */
-  waveCountByLevel: [1, 1, 2, 2, 2, 3],
-  /** Level at which each archetype unlocks. */
-  unlock: { solid: 1, stripe: 2, heavy: 3 },
+  waveCountByLevel: [1, 1, 1, 1, 2, 2, 2, 3],
+  /** Level at which each archetype unlocks — one new enemy at a time. */
+  unlock: { solid: 1, stripe: 4, heavy: 6 },
   /** Selection weights per archetype, scaled by level in the director. */
   weight: { solid: 1.0, stripe: 0.65, heavy: 0.4 },
   /** Enemies never spawn within this radius of the player. */
@@ -300,8 +302,8 @@ export const ROOM = {
     pyreChance: 0.4,
     hazardChance: 0.35,
     maxPerRoom: 3,
-    /** First level that can roll injectors. */
-    minLevel: 2
+    /** First level that can roll injectors — after the core loop has landed. */
+    minLevel: 7
   },
   /** Exit doors. */
   door: {
@@ -492,23 +494,26 @@ export const INPUT = {
    * the ball, the lever arm is your distance from it, so pulling further out
    * buys finer control exactly when you want it: on a long, committed shot.
    */
-  /** Slingshot semantics: pull away from the target, release to fire opposite. */
-  invertAim: true,
+  /**
+   * POINT WHERE YOU TOUCH.
+   *
+   * The aim is a virtual cursor: touching puts it under your finger and the
+   * ball points *at* it. No inversion, no pull-back, no power — the gesture
+   * carries exactly one meaning, which is the angle.
+   */
+  invertAim: false,
 
   /**
-   * FLOATING STICK RADIUS, as a fraction of stage height.
+   * Minimum cursor distance from the ball, in world units.
    *
-   * This one number sets the sensitivity of the whole game. Angular gain is
-   * 1/radius radians per pixel of finger travel, so a larger radius is a
-   * longer lever and a steadier aim.
-   *
-   * Frame-by-frame measurement of Endless Madness put its angular gain near
-   * 0.8°/px at a 402px-wide analysis scale, implying a pivot radius of roughly
-   * 18% of the screen. 0.16 of stage height lands in the same neighbourhood.
+   * This is the sensitivity control. Angular gain is 1/distance, so a cursor
+   * allowed right up against the ball would swing the aim wildly for a pixel
+   * of movement. Holding it out to at least this radius fixes the worst case:
+   * at 6 units, one unit of finger travel turns the shot ~9.5°, and touching
+   * near the ball simply pushes the cursor out along the same heading rather
+   * than becoming twitchy.
    */
-  stickRadiusFraction: 0.16,
-  /** Below this fraction of stage height the stick is centred: heading holds. */
-  stickDeadzoneFraction: 0.018,
+  minAimRadius: 6.0,
   /**
    * Exponential smoothing time constant (seconds) applied to the aim heading.
    * Long enough to swallow finger tremor, short enough to feel direct.
@@ -530,6 +535,34 @@ export const INPUT = {
 /* ------------------------------------------------------------------ *
  * PROGRESSION — meta pacing
  * ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ * ONBOARDING — one idea per room, stated plainly, then rewarded
+ * ------------------------------------------------------------------ */
+export const TUTORIAL = {
+  /**
+   * The opening rooms teach rather than test. Each states its goal in the
+   * banner in the imperative, and the table is kept sparse enough that the
+   * lesson is the only thing happening — a player who has never seen the game
+   * should be able to work out what to do without being told twice.
+   */
+  lessons: {
+    1: { title: 'Point And Launch', sub: 'Touch anywhere to aim · release to fire' },
+    2: { title: 'Hit Two In One Shot', sub: 'Enemies you strike become cannonballs' },
+    3: { title: 'Use The Rails', sub: 'Bank off a wall to reach what you cannot' },
+    4: { title: 'Mind The Shooters', sub: 'Violet enemies fire back · close the gap fast' },
+    5: { title: 'Shields Face Forward', sub: 'Hit the heavies from behind, or bank into them' }
+  },
+  /**
+   * Multi-hit praise, indexed by hits landed in a single launch.
+   *
+   * Chaining is the whole game, so it gets the loudest feedback in it: a
+   * callout, a shockwave, a zoom punch and Focus back. Reinforcing the good
+   * play teaches the mechanic far better than any tooltip does.
+   */
+  praise: ['', '', 'DOUBLE!', 'TRIPLE!', 'QUAD!', 'RAMPAGE!', 'UNREAL!'],
+  praiseFocus: 0.55
+};
+
 export const PROGRESSION = {
   startRoom: 1,
   /** Rooms between guaranteed heal offers. */

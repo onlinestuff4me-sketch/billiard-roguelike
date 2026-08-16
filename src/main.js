@@ -34,6 +34,7 @@ import {
   FEEL,
   BOONS,
   INJECTOR,
+  TUTORIAL,
   PROGRESSION
 } from './config.js';
 import { Engine } from './core/Engine.js';
@@ -619,9 +620,21 @@ game.on = {
     });
     game.launchHits += 1;
 
+    // Chaining is the point of the game, so it gets the loudest feedback in it.
+    // Every extra body in one launch escalates the callout, pays Focus back and
+    // punches the camera — the mechanic teaches itself by being celebrated.
+    if (game.launchHits >= 2) {
+      const praise = TUTORIAL.praise[Math.min(game.launchHits, TUTORIAL.praise.length - 1)];
+      fx.floatText(p.x, p.z - 2.4, praise, 'crit');
+      fx.shockwave(x, z, PALETTE.carom, 5.5 + game.launchHits * 0.6, 0.4);
+      engine.zoomPunch();
+      audio.chainNote(game.launchHits);
+      p.addFocus(TUTORIAL.praiseFocus);
+    }
+
     engine.hitStop(result.backstab ? TIME.hitStopCrit : TIME.hitStop);
     engine.shake(speed * enemy.mass * 0.9);
-    audio.impact(clamp(speed / PLAYER.launchSpeedMax, 0, 1));
+    audio.impact(clamp(speed / PLAYER.launchSpeed, 0, 1));
     fx.burst(x, z, 10, ENEMY_COLOR[enemy.type], speed * 0.45);
 
     if (result.backstab) {
@@ -691,7 +704,7 @@ game.on = {
   /* --- player events ------------------------------------------------- */
   playerRebound(event) {
     const { player: p, x, z, speed, kind } = event;
-    audio.rebound(clamp(speed / PLAYER.launchSpeedMax, 0, 1));
+    audio.rebound(clamp(speed / PLAYER.launchSpeed, 0, 1));
     engine.shake(speed * 0.4);
 
     if (kind === 'bumper') {
@@ -900,7 +913,18 @@ function advanceRoom() {
   player.placeAt(rooms.layout.spawn.x, rooms.layout.spawn.z);
   player.addFocus(player.focusMax);
   game.state = 'playing';
-  hud.showBanner(`Room ${game.level}`, rooms.layout.name, 1.5);
+  showRoomBanner();
+}
+
+/**
+ * Lead with the lesson while there is still one to teach, and only fall back to
+ * the layout name once the player is past the tutorial rooms — by then the
+ * table's shape is the interesting thing about a new room.
+ */
+function showRoomBanner() {
+  const lesson = TUTORIAL.lessons[game.level];
+  if (lesson) hud.showBanner(lesson.title, lesson.sub, 2.6);
+  else hud.showBanner(`Room ${game.level}`, rooms.layout.name, 1.5);
 }
 
 function startRun() {
@@ -920,7 +944,7 @@ function startRun() {
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
   player.respawn(rooms.layout.spawn.x, rooms.layout.spawn.z);
-  hud.showBanner('Break', rooms.layout.name, 1.6);
+  showRoomBanner();
 }
 
 /* ------------------------------------------------------------------ *
@@ -942,6 +966,8 @@ function refreshPrediction() {
 const input = new InputManager(stage, {
   camera,
   isEnabled: () => game.running && player.alive && game.state !== 'modal',
+  // The ball is what the cursor aims from.
+  getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
     const hasFocus = player.startAim();
     if (hasFocus) {

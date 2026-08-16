@@ -1,43 +1,35 @@
 /**
  * InputManager.js — one-thumb pointer state machine.
  *
- *   IDLE ──pointerdown──► AIMING ──pointerup, pull >= minPull──► RELEASE (launch)
- *     ▲                     │                                       │
- *     │                     └── pointerup, pull < minPull ──► CANCEL │
- *     │                                                             │
- *     └──────────── double tap (two taps < 260 ms) ──► DASH ◄────────┘
+ *   IDLE ──pointerdown──► AIMING ──pointerup──► RELEASE (launch)
+ *     ▲                                              │
+ *     └──────────────────────────────────────────────┘
  *
- * AIMING IS A FLOATING STICK WITH A TRAILING ANCHOR.
+ * THE AIM IS A VIRTUAL CURSOR: YOU POINT AT THINGS.
  *
- * Frame-by-frame analysis of Endless Madness shows the pattern plainly: an
- * anchor marker appears wherever the thumb lands, a line is drawn from it to
- * the finger, and the aim follows *that displacement vector*. The ball's
- * position is not an input at all.
+ * Touch anywhere and the ball aims *at* your finger. Drag and the heading
+ * follows. That is the entire control.
  *
- * That is what makes placement stop mattering. An absolute scheme — aim along
- * finger→ball — has to answer "what if the thumb is in front of the ball
- * instead of behind it?", and every answer is a rule the player has to learn,
- * with a 180° flip waiting at the boundary. A relative stick never asks the
- * question: touching down moves nothing, and only movement from your own
- * starting point steers. Behind, in front and on top of the ball all behave
- * identically.
+ * Two earlier schemes were tried and both asked too much of the player. Pulling
+ * back like a slingshot inverted the gesture — you aimed away from your target
+ * — and bundled a power axis into the same drag, so every stroke answered two
+ * questions when only one of them was ever interesting. A relative stick fixed
+ * the inversion but made placement meaningless, which is its own kind of
+ * confusion: tapping directly at a target did nothing.
  *
- * Two properties fall out of the geometry:
+ * Pointing has neither problem. There is no behind-the-ball or in-front-of-the-
+ * ball case to disambiguate, because "toward my finger" is the same rule from
+ * every side; the 180° flip that made the old absolute scheme unpredictable
+ * only existed because the aim ran *away* from the touch.
  *
- *   Gain is 1/R rad per pixel, fixed. An absolute anchor has a lever arm that
- *   collapses to zero as the thumb nears the ball, which is why small movements
- *   used to swing the aim wildly. Here R never changes, so sensitivity is the
- *   same everywhere on screen. Measured gain in Endless Madness was ~0.8°/px,
- *   implying a pivot near 18% of screen width; INPUT.stickRadiusFraction sets
- *   ours in the same range.
+ * Sensitivity is handled by INPUT.minAimRadius. Angular gain is 1/distance, so
+ * a cursor allowed right against the ball would swing the aim through tens of
+ * degrees per pixel. Holding the cursor out to a minimum radius caps that
+ * without changing the heading the player asked for, and a short exponential
+ * filter takes out the remaining tremor.
  *
- *   The anchor trails. Past R it is dragged along behind the finger, so the
- *   heading eases toward the direction you are *travelling* rather than
- *   snapping to where you are. That is a low-pass filter built out of geometry,
- *   before the explicit smoothing term is applied at all.
- *
- * The manager knows nothing about the player; it emits normalised aim payloads
- * and the game decides what they mean.
+ * The manager knows nothing about the player beyond an anchor position; it
+ * emits normalised aim payloads and the game decides what they mean.
  */
 
 import { INPUT, PLAYER, ARENA, RENDER } from '../config.js';
@@ -51,6 +43,7 @@ export class InputManager {
   /**
    * @param {HTMLElement} element the stage element that receives pointer events
    * @param {object} handlers
+   * @param {() => {x:number,z:number}} handlers.getAnchor ball position to aim from
    * @param {() => void} [handlers.onAimStart]
    * @param {(aim: object) => void} [handlers.onAimUpdate]
    * @param {() => void} [handlers.onAimCancel]
@@ -166,57 +159,44 @@ export class InputManager {
     return out;
   }
 
-  /** Stick radius in CSS pixels, scaled to whatever stage this device gives us. */
-  get stickRadiusPx() {
-    const h = this.element.clientHeight || 900;
-    return h * INPUT.stickRadiusFraction;
-  }
-
-  get stickDeadzonePx() {
-    const h = this.element.clientHeight || 900;
-    return h * INPUT.stickDeadzoneFraction;
+  /** Anchor the aim rotates about — the cue ball. */
+  _anchor() {
+    return this.handlers.getAnchor?.() || { x: 0, z: 0 };
   }
 
   /**
-   * Recompute the aim from the floating stick.
+   * Recompute the aim from the virtual cursor.
    * @param {number} now performance.now() timestamp
    */
   _updateAim(now) {
     const aim = this.aim;
-    const R = this.stickRadiusPx;
-    const dz = this.stickDeadzonePx;
-
-    let dx = this.currentX - this._anchorX;
-    let dy = this.currentY - this._anchorY;
-    let d = Math.hypot(dx, dy);
-
-    // THE TRAILING ANCHOR.
-    //
-    // Push past the radius and the anchor is dragged along behind the finger,
-    // never letting the stick exceed R. This is what makes a long gesture keep
-    // working without ever letting the gain go coarse, and it is also a free
-    // low-pass filter: the anchor only moves as much as it has to, so the
-    // heading eases toward the direction you are travelling instead of
-    // snapping to wherever your thumb happens to be.
-    if (d > R && d > 1e-6) {
-      const k = (d - R) / d;
-      this._anchorX += dx * k;
-      this._anchorY += dy * k;
-      dx = this.currentX - this._anchorX;
-      dy = this.currentY - this._anchorY;
-      d = Math.hypot(dx, dy);
-    }
+    const ball = this._anchor();
+    const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
 
     aim.hold = (now - this.startTime) / 1000;
     aim.distPx = Math.hypot(this.currentX - this.startX, this.currentY - this.startY);
-    aim.pullLength = d;
 
-    if (d > dz) {
-      // Screen-right is +X and screen-down is +Z (the camera's up is (0,0,-1)).
-      const inv = 1 / d;
+    // The cursor is simply where your finger is, and the ball points AT it.
+    let cx = finger.x - ball.x;
+    let cz = finger.z - ball.z;
+    let dist = Math.hypot(cx, cz);
+
+    if (dist > 1e-4) {
+      // Hold the cursor out to a minimum radius. Gain is 1/distance, so a
+      // cursor allowed right up against the ball would swing the aim through
+      // tens of degrees for a pixel of movement — the old twitchiness. Pushing
+      // it out preserves the heading you asked for and caps the sensitivity.
+      if (dist < INPUT.minAimRadius) {
+        const k = INPUT.minAimRadius / dist;
+        cx *= k;
+        cz *= k;
+        dist = INPUT.minAimRadius;
+      }
+
+      const inv = 1 / dist;
       const sign = INPUT.invertAim ? -1 : 1;
-      const targetX = dx * inv * sign;
-      const targetZ = dy * inv * sign;
+      const targetX = cx * inv * sign;
+      const targetZ = cz * inv * sign;
 
       if (!this._hasHeading) {
         this._dirX = targetX;
@@ -238,29 +218,21 @@ export class InputManager {
         }
       }
     }
-    // Inside the dead zone the direction is degenerate, so the last good
-    // heading is held: the aim parks instead of spinning under your thumb.
+    // A finger exactly on the ball gives no direction at all, so the last good
+    // heading is held rather than allowed to spin.
 
     this._lastAimTime = now;
-
     aim.dirX = this._dirX;
     aim.dirZ = this._dirZ;
+    aim.pullLength = dist;
 
-    // Power is the stick's deflection, so distance and direction stay the two
-    // independent axes of one polar gesture.
-    const raw = Math.min(Math.max((d - dz) / Math.max(R - dz, 1e-4), 0), 1);
-    aim.power = Math.pow(raw, PLAYER.pullCurve);
-    aim.valid = d >= dz;
-
-    // The drawn band is the shot, not the gesture: it always reads in world
-    // units along the launch heading regardless of where the thumb is.
-    const pull = aim.power * PLAYER.maxPull;
-    aim.pullX = this._dirX * pull;
-    aim.pullZ = this._dirZ * pull;
-
-    const world = this.screenToWorld(this.currentX, this.currentY, this._world);
-    aim.worldX = world.x;
-    aim.worldZ = world.z;
+    // No power: every launch is the same speed, so the gesture means one thing.
+    aim.power = 1;
+    aim.valid = true;
+    aim.pullX = 0;
+    aim.pullZ = 0;
+    aim.worldX = finger.x;
+    aim.worldZ = finger.z;
 
     return aim;
   }
@@ -289,14 +261,9 @@ export class InputManager {
     this.holdTime = 0;
     this.state = STATE.AIMING;
 
-    // The stick is BORN WHERE YOU TOUCH, and the heading is deliberately left
-    // alone. Touching down therefore cannot move the aim at all — which is the
-    // whole reason placement stops mattering. There is no "behind the ball" or
-    // "in front of the ball" case to disambiguate, because the ball is not part
-    // of the calculation; only your own movement from your own starting point
-    // is. Put your thumb wherever it is comfortable and drag.
-    this._anchorX = event.clientX;
-    this._anchorY = event.clientY;
+    // Snap to the touch: wherever you put your finger is immediately where the
+    // ball is pointing, with no swing in from the previous shot's heading.
+    this._hasHeading = false;
     this._lastAimTime = this.startTime;
     this._updateAim(this.startTime);
 
@@ -323,28 +290,9 @@ export class InputManager {
     const aim = this._updateAim(now);
     this._release(event.pointerId);
 
-    // --- tap / double tap ---------------------------------------------
-    if (aim.distPx <= INPUT.tapMaxTravelPx) {
-      const sinceLast = now - this._lastTapTime;
-      const travel = Math.hypot(this.currentX - this._lastTapX, this.currentY - this._lastTapY);
-      if (sinceLast <= INPUT.doubleTapMs && travel <= INPUT.doubleTapMaxTravelPx) {
-        this._lastTapTime = -Infinity;
-        // Dash travels *toward* the tapped point, which is the direction the
-        // player is already looking at — the opposite of the slingshot.
-        this.handlers.onFlick?.({
-          ...aim,
-          dirX: -aim.dirX,
-          dirZ: -aim.dirZ
-        });
-        return;
-      }
-      this._lastTapTime = now;
-      this._lastTapX = this.currentX;
-      this._lastTapY = this.currentY;
-      this.handlers.onAimCancel?.();
-      return;
-    }
-
+    // Every release fires, tap or drag alike. A tap that silently did nothing
+    // was the single most confusing thing about the old control: it looked
+    // identical to a shot that had simply failed. One gesture, one outcome.
     if (aim.valid) this.handlers.onRelease?.(aim);
     else this.handlers.onAimCancel?.();
   }

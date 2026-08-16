@@ -378,14 +378,10 @@ class AimRenderer {
       this.tangent.visible = false;
     }
 
-    // --- pull band ---
-    const px = player.x - player.aimPull.x;
-    const pz = player.z - player.aimPull.z;
-    this.pullPositions.set([player.x, y, player.z, px, y, pz]);
-    this.pullGeo.attributes.position.needsUpdate = true;
-    this.anchor.position.set(px, y, pz);
-    const scale = 0.7 + power * 0.9;
-    this.anchor.scale.setScalar(scale);
+    // The pull band belonged to the slingshot. There is no draw any more, so
+    // there is nothing to draw: the aim line alone carries the whole gesture.
+    this.pull.visible = false;
+    this.anchor.visible = false;
   }
 
   dispose() {
@@ -562,10 +558,9 @@ export class Player {
    * @returns {{speed:number, dirX:number, dirZ:number}}
    */
   launch(aim, game) {
-    const power = aim.power;
-    const speed =
-      (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * power) *
-      this.stats.launchSpeedMult;
+    // One speed, every time: the gesture decides the angle and nothing else.
+    const power = 1;
+    const speed = PLAYER.launchSpeed * this.stats.launchSpeedMult;
     this.vx = aim.dirX * speed;
     this.vz = aim.dirZ * speed;
     this.state = PLAYER_STATE.LAUNCHED;
@@ -714,7 +709,7 @@ export class Player {
     // --- presentation ---
     const speed = this.speed;
     if (speed > PLAYER.trailMinSpeed) {
-      this.trail.push(this.x, this.z, Math.min(1, speed / PLAYER.launchSpeedMax + 0.25));
+      this.trail.push(this.x, this.z, Math.min(1, speed / PLAYER.launchSpeed + 0.25));
     }
     this.trail.decay(Math.max(dt, rawDt * 0.25));
     this.trail.rebuild();
@@ -727,7 +722,7 @@ export class Player {
 
     // Velocity-aligned squash sells momentum without any animation data.
     if (speed > 1) {
-      const stretch = 1 + Math.min(speed / PLAYER.launchSpeedMax, 1) * 0.35;
+      const stretch = 1 + Math.min(speed / PLAYER.launchSpeed, 1) * 0.35;
       const squash = 1 / Math.sqrt(stretch);
       this.body.scale.set(squash, squash, squash);
       this.group.rotation.y = Math.atan2(this.vx, this.vz);
