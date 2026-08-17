@@ -25,20 +25,22 @@ export const STEPS = [
     on: 'launch'
   },
   {
-    id: 'power',
+    id: 'aimdrag',
     label: 'Step 2 of 4',
-    say: 'Pull further back for a harder shot',
+    say: 'Drag to aim, release to fire',
     on: 'launch',
-    when: (e) => e.power >= 0.75,
-    done: 'Full power'
+    // Only a shot whose heading actually moved proves the lesson landed. Firing
+    // straight again would satisfy a naive gate without teaching anything.
+    when: (e) => e.turned >= 18,
+    done: 'Nice line'
   },
   {
     id: 'chain',
     label: 'Step 3 of 4',
-    say: 'Now hit two enemies in one shot',
+    say: 'Hit two in one shot — chains multiply your score',
     on: 'hits',
     when: (e) => e.count >= 2,
-    done: 'Chained!'
+    done: 'Chain ×1.4'
   },
   {
     id: 'exit',
