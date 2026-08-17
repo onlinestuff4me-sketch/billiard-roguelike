@@ -4,8 +4,8 @@ A complete description of how the pointer and touch system works, why it works
 that way, and how to rebuild it from scratch. Written to be implementable
 without reading the source.
 
-**One-line summary:** the aim is a persistent heading, and dragging rotates it by
-exactly the angle your thumb sweeps *around the ball*.
+**One-line summary:** the thumb is the butt of a cue whose axis runs through the
+ball — direction is `ball − thumb`, and how far back you pull is the power.
 
 ---
 
@@ -71,11 +71,18 @@ not turn the line in an arc. The hand and the screen are describing different
 things, and it reads as "unintuitive" even though every individual property —
 uniform gain, no snap, thumb off the line — is satisfied.
 
-### 2.4 Cue rotation — what shipped
+### 2.4 Cue rotation about the ball
 
-**The line tracks the thumb's rotation about the ball, 1:1.** This is the model
-8 Ball Pool uses. It satisfies all four constraints, and the two properties that
-make it feel good are consequences of the geometry rather than tuned constants.
+The line rotated by the angle the thumb swept *around* the ball, delta-only.
+Correct on every constraint above, and still the wrong feel: nothing on screen
+corresponded to a cue. The thumb was a steering wheel, not a stick, so the
+mental model stayed abstract and re-aiming meant winding rather than placing.
+
+### 2.5 The cue through the ball — what shipped
+
+**The thumb is the butt of a cue whose axis runs through the ball.** Direction
+is `ball − thumb`; the draw is the power. This satisfies all four constraints
+*and* supplies the missing thing: a physical object the player is holding.
 
 ---
 
@@ -83,7 +90,7 @@ make it feel good are consequences of the geometry rather than tuned constants.
 
 ### 3.1 Coordinate conventions
 
-The game is top-down with an orthographic camera whose `up` is `(0, 0, −1)`:
+Top-down orthographic camera with `up = (0, 0, −1)`:
 
 | screen | world |
 | --- | --- |
@@ -91,137 +98,65 @@ The game is top-down with an orthographic camera whose `up` is `(0, 0, −1)`:
 | down | `+Z` |
 | up | `−Z` |
 
-Therefore the on-screen angle `atan2(z, x)`:
+So `atan2(z, x)` is `−90°` pointing **up** (12 o'clock) and **increases
+clockwise** on screen. 12 o'clock as a vector is `(0, −1)`.
 
-- is `−90°` pointing **up** (12 o'clock)
-- **increases clockwise** on screen
-
-12 o'clock as a direction vector is `(0, −1)`.
-
-### 3.2 State
-
-The input layer owns four pieces of state that persist between shots:
+### 3.2 The whole algorithm
 
 ```
-heading      unit vector, the aim actually drawn        init (0, −1)
-target       unit vector, the un-smoothed steering goal init (0, −1)
-lastBearing  radians or null, thumb bearing last frame  init null
-lastTime     timestamp for the smoothing step
+cue():
+    v    := ballPos − thumbPos        // thumb → through the ball → outward
+    draw := |v|
+    return v, draw
+
+on pointer down:                      // placing a stick, not nudging one
+    if draw > minAimRadius:
+        heading := target := normalize(v)      // snap, no easing
+
+every frame while held:
+    if draw > minAimRadius:
+        target := normalize(v)
+    heading := normalize(lerp(heading, target, 1 − exp(−dt / aimSmoothing)))
+
+    t     := clamp((draw − minDraw) / (maxDraw − minDraw), 0, 1)
+    power := minPower + (1 − minPower) · t
+
+on pointer up:
+    fire along heading at lerp(launchSpeedMin, launchSpeedMax, power)
 ```
 
-`heading` is what the game reads. `target` exists only so the heading can be
-eased toward it; without the split, tremor reaches the drawn line directly.
+That is the entire control. It is *absolute* — no accumulated state, no deltas —
+which is what makes re-aiming feel like lifting the stick and setting it down
+somewhere else.
 
-### 3.3 The algorithm
+### 3.3 Why this direction, and not its opposite
 
-**On pointer down** — nothing about the aim changes. This is the single most
-important line in the spec.
+`ball − thumb`, not `thumb − ball`. The consequences are worth stating because
+they are the whole design:
 
-```
-target   := heading
-lastBearing := bearing()          // may be null
-lastTime := now
-```
+- **The thumb is behind the shot by construction.** It can never sit on the
+  stretch of table the ball will cross, which is what killed every
+  point-at-the-target scheme on a phone.
+- **Sliding the butt right swings the tip left**, exactly as a real cue does.
+  Thumb below the ball fires up; slide right and the shot goes up-and-left.
+- **Drawing straight back adds power without touching the angle**, because
+  moving along the axis changes `draw` and leaves `normalize(v)` unchanged.
+  Measured: a 2 u → 9.5 u draw moves the angle **0.00°**.
 
-**Every frame while held** (and on every pointermove):
+### 3.4 Sensitivity
 
-```
-b := bearing()                    // thumb bearing about the ball, or null
+Angular gain is `1/draw`. A real cue bounds sensitivity the same way, and it
+bounds it in the right place: a committed shot is drawn well back, so the lever
+arm is longest exactly when accuracy matters most. Inside `minAimRadius` the
+axis is degenerate, so the last good heading is held rather than allowed to spin.
 
-if b is not null:
-    if lastBearing is not null:
-        d := b − lastBearing
-        while d >  π: d −= 2π     // shortest way round
-        while d < −π: d += 2π
-        target := rotate(target, d)
-    lastBearing := b
-else:
-    lastBearing := null           // forget, do not hold
+### 3.5 Heading between shots
 
-dt    := now − lastTime
-alpha := 1 − exp(−dt / smoothing)
-heading := normalize(lerp(heading, target, alpha))
-lastTime := now
-```
-
-where
-
-```
-bearing():
-    v := fingerWorldPos − ballWorldPos
-    if |v| < minAimRadius: return null
-    return atan2(v.z, v.x)
-
-rotate((x, z), d):
-    return (x·cos d − z·sin d,  x·sin d + z·cos d)
-```
-
-> **Implementation trap.** `rotate` must use temporaries. Writing
-> `target.x = target.x·c − target.z·s` before computing `target.z` corrupts the
-> second component with the already-updated first. This bug produces an aim that
-> spirals or collapses and is easy to miss because small rotations still look
-> approximately right.
-
-**On pointer up** — fire. Every release launches, including a tap that never
-moved. A gesture that silently does nothing is indistinguishable from a shot
-that failed.
-
-### 3.4 Why only the delta
-
-Applying the *absolute* bearing would be scheme 2.2 and would snap the line onto
-your thumb. Applying only the *change* means:
-
-- touching down cannot move the line, so placement is irrelevant
-- the thumb may sit anywhere comfortable, including below the ball
-- your hand and the line rotate together, which is constraint 3
-
-### 3.5 Why precision scales with reach — for free
-
-Angular gain is `1/r` radians per unit of finger movement, where `r` is the
-thumb's distance from the ball. The same movement subtends a smaller angle
-further out, so **sliding away from the ball buys fine control** with no code.
-
-Measured in the shipped build, 60 px of thumb travel turns the shot:
-
-| thumb distance | rotation |
-| --- | --- |
-| close to the ball | 42° |
-| at reach | 13° |
-
-This is the property that makes the reference game feel good, and it is why
-scheme 2.3's *uniform* gain — which sounds better on paper — feels worse.
-
-### 3.6 The dead radius
-
-Near the ball the bearing is undefined (`atan2` of ~zero) and wildly noisy.
-Inside `minAimRadius`, rotation **suspends** and `lastBearing` is set to `null`
-rather than held.
-
-Dropping it rather than holding it matters: it lets the thumb cross over the ball
-and resume steering on the far side without the accumulated bearing difference
-snapping the line around.
-
-### 3.7 Heading between shots
-
-- **While the ball travels under its own power** and the player is not aiming,
-  the heading follows the ball's velocity direction. When the ball settles, the
-  heading is therefore left pointing the way the ball was last going.
-- **On entering any room, and on starting a run**, the heading resets to 12
-  o'clock `(0, −1)`. Carrying a heading across a room boundary meant arriving
-  already pointed at a wall for no reason the player chose.
-
-### 3.8 Power is a separate axis
-
-Power is **hold duration**, not drag distance:
-
-```
-t     := clamp(holdSeconds / chargeTime, 0, 1)
-power := minPower + (1 − minPower) · t
-```
-
-It starts at `minPower`, not zero, so an instant release is still a real shot.
-Keeping power on the time axis is what leaves *all* of 2-D thumb movement
-available for the angle — the two never compete for the same gesture.
+- While the ball travels under its own power and the player is not aiming, the
+  heading follows its velocity, so it ends up pointing the way the ball last went.
+- **On entering any room and on starting a run, the heading resets to 12 o'clock.**
+- The stored heading only matters for what is drawn before the first touch —
+  once a thumb is down, the cue defines the line absolutely.
 
 ---
 
@@ -229,88 +164,82 @@ available for the angle — the two never compete for the same gesture.
 
 | name | value | meaning |
 | --- | --- | --- |
-| `INPUT.minAimRadius` | 1.8 world u | dead radius; below this the bearing is meaningless |
+| `INPUT.minAimRadius` | 0.7 u | below this the axis is degenerate; heading holds |
+| `INPUT.minDraw` | 1.6 u | draw at which power is at its floor |
+| `INPUT.maxDraw` | 9.5 u | draw at which the cue is fully loaded |
 | `INPUT.aimSmoothing` | 0.055 s | exponential time constant on the heading |
-| `PLAYER.chargeTime` | 0.85 s | hold time from `minPower` to full |
-| `PLAYER.minPower` | 0.32 | power floor on instant release |
+| `PLAYER.minPower` | 0.32 | power floor, so a short draw is still a real shot |
 | `PLAYER.launchSpeedMin/Max` | 24 / 56 u/s | speed range power maps onto |
 
-There is deliberately **no angular gain constant**. Gain is `1/r`, set by where
-the player puts their thumb. Introducing a gain multiplier would break the 1:1
-correspondence that constraint 3 requires.
+There is deliberately **no angular gain constant**. Gain is `1/draw`, set by how
+far back the player pulls.
 
 ---
 
 ## 5. Integration contract
 
-The input layer needs exactly one thing from the game and offers three:
-
 **Requires:** `getAnchor() → {x, z}`, the ball's world position.
 
-**Provides:**
-- `setHeading(x, z)` — seed the heading (used for velocity-following and the
-  per-room 12 o'clock reset)
-- `heading → {x, z}` — the authoritative aim
-- `refresh()` — re-derive the aim; the game calls this once per frame **after**
-  the physics step, so the bearing is measured against the ball's final position
+**Provides:** `setHeading(x, z)` (used for velocity-following and the per-room
+12 o'clock reset), `heading → {x, z}`, and `refresh()` — called once per frame
+**after** the physics step so the cue is measured against the ball's final
+position.
 
-Callbacks emitted: `onAimStart`, `onAimUpdate(aim)`, `onAimCancel`,
-`onRelease(aim)`. The `aim` payload carries `dirX/dirZ`, `power`, `charge`
-(0–1 fill fraction) and `hold`.
+Callbacks: `onAimStart`, `onAimUpdate(aim)`, `onAimCancel`, `onRelease(aim)`.
+The `aim` payload carries `dirX/dirZ`, `power`, `charge` (0–1 draw fraction),
+`pullLength` (the draw in world units) and `cueX/cueZ` (the butt position, for
+drawing the shaft).
 
 > **Debugging trap.** `player.aimDir` is a *copy* refreshed only while aiming, so
-> between shots it is stale. Assert against `input.heading`, never `player.aimDir`
-> — mistaking the two turns correct behaviour into a phantom 180° failure.
+> between shots it is stale. Assert against `input.heading`, never
+> `player.aimDir` — mistaking the two turns correct behaviour into a phantom
+> 180° failure.
 
 ---
 
-## 6. Drawing the line
+## 6. Drawing it
 
-`LineBasicMaterial.linewidth` is **a no-op on essentially every GPU** — line
-width is clamped to 1 px. A thick aim line has to be geometry.
+`LineBasicMaterial.linewidth` is **a no-op on essentially every GPU** — width is
+clamped to 1 px. A thick line has to be geometry.
 
-The beam is a ribbon mesh: `beamSlices` (48) quads along the predicted path,
-with per-vertex colour and additive blending. Two things ride on it:
+The whole stick is drawn, which is what sells the metaphor:
 
-- **width** scales with charge, so the wind-up is visible on the line itself
-- **a bright wavefront** fills from the ball outward to the `charge` fraction,
-  with a travelling ripple behind it
-
-The beam is gold when the predicted path connects with a body and cyan when it
-does not, so hit-or-miss is readable without counting pixels.
+- **shaft** — a line from the ball back to the thumb, brightening with power
+- **ball** — the tip
+- **beam** — a ribbon mesh (`beamSlices` quads) along the predicted path, widening
+  with power, with a bright wavefront filling from the ball outward. Gold when
+  the predicted path connects with a body, cyan when it does not.
 
 ---
 
 ## 7. Verification
 
-These are the properties to test, with the numbers the shipped build produces.
-Drive them by dispatching pointer events at real screen coordinates.
+| property | expected |
+| --- | --- |
+| thumb below the ball | fires **−90°** (12 o'clock) |
+| thumb above the ball | fires **+90°** (6 o'clock) |
+| slide thumb right, from below | shot swings counter-clockwise, **−23.7°**, now up-and-left |
+| draw 2 u → 9.5 u straight back | angle moves **0.00°**, power **0.355 → 1.00** |
+| release at full draw | **55.5 u/s** |
+| heading at boot | exactly **−90°** |
 
-| property | how | expected |
-| --- | --- | --- |
-| touch never moves the line | touch down at 4 offsets around the ball | **0.00°** each |
-| 1:1 tracking | sweep the thumb along an arc about the ball | +60° → **+60.1°**, −60° → **−60.0°**, −90° → **−89.6°** |
-| side independence | same sweep from in front and from behind | agree to **0.0°** |
-| reach buys precision | 60 px travel at two radii | **42°** close, **13°** far |
-| charge | hold and sample | **0.32 → 1.00**, launching at 53.3 u/s |
-| room reset | read heading at boot | exactly **−90°** |
-
-**Two harness traps**, both of which produced false failures during development:
+**Three harness traps**, all of which produced false failures during development:
 
 1. **The stage is letterboxed.** On a 430×932 viewport the 9:16 stage is 430×764
-   at top offset 84. Touches outside `[84, 848]` land on the page, not the game,
-   and silently do nothing.
-2. **Hold the ball still during a sweep.** An enemy nudging the ball mid-gesture
-   changes the bearing and is scored as control error. Pinning the ball's
-   position each step turned an apparent −78.5° error into an exact −60.0°.
+   at top offset 84. Touches outside `[84, 848]` hit the page, not the game.
+2. **The first touch also starts the run**, which respawns the ball at the room
+   spawn point. Measuring on that touch reads the ball's *old* position — this
+   made a correct implementation look 180° wrong. Spend one touch booting.
+3. **Hold the ball still during a gesture.** An enemy nudging it changes the cue
+   axis and is scored as control error.
 
 ---
 
 ## 8. Known limitations
 
-- **The ball moving while aiming** shifts the bearing without the thumb moving,
-  producing a small spurious rotation. In practice the ball is settled whenever
-  aiming begins, so this is not currently observable.
-- **Turning the line a long way** takes a correspondingly long sweep, since there
-  is no gain multiplier. Lifting and re-dragging is the intended remedy — the
-  same as picking up a mouse — and works because touch-down never moves the line.
+- **Aiming along a screen edge.** To fire up, the thumb must be below the ball;
+  if the ball is against the bottom rail there is little room left. `minDraw` is
+  low enough that a short draw still works, but the shot is weak there. A future
+  option is to let the cue butt clamp to the stage edge and keep the angle.
+- **The ball moving while aiming** changes the axis without the thumb moving. In
+  practice the ball is settled whenever aiming begins, so it is not observable.

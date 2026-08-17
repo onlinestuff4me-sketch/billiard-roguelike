@@ -84,20 +84,16 @@ export const PLAYER = {
   radius: 0.62,
   maxHp: 100,
   /**
-   * HOLD TO CHARGE.
+   * DRAW TO LOAD.
    *
-   * Power is back, but it no longer competes with the aim for the same axis:
-   * rotation is horizontal thumb travel, power is simply how long you hold.
-   * The two are independent, so a shot can be lined up and wound up at once.
-   *
-   * It starts at minPower rather than zero — a shot fired the instant you
-   * release is still a real shot, never a dud.
+   * Power is the DRAW: how far the cue is pulled back along its own axis.
+   * Pulling straight away from the ball loads the shot without touching the
+   * angle, which is the motion a player already makes at a real table.
    */
   launchSpeed: 40,
   launchSpeedMin: 24,
   launchSpeedMax: 56,
-  /** Seconds of hold (real time) to wind from minPower to full. */
-  chargeTime: 0.85,
+  /** Power floor, so the shortest draw is still a real shot rather than a dud. */
   minPower: 0.32,
   /** Velocity damping (per second, multiplicative) in each state. */
   dragLaunched: 0.26,
@@ -512,26 +508,32 @@ export const INPUT = {
    * buys finer control exactly when you want it: on a long, committed shot.
    */
   /**
-   * TURN THE CUE: the line tracks your thumb's rotation about the ball, 1:1.
+   * YOUR THUMB IS THE BUTT OF A CUE THAT RUNS THROUGH THE BALL.
    *
-   * This is the 8 Ball Pool model. The aim carries a persistent heading, and
-   * dragging rotates it by exactly the angle your thumb sweeps *around the
-   * ball* — swing your thumb 30° clockwise about it and the line turns 30°
-   * clockwise. Nothing snaps when you touch down, so where you put your thumb
-   * never matters; only how you turn it does.
+   * Time freezes on touch and the line is drawn from your thumb, through the
+   * ball, and out the far side — the direction the ball will travel is simply
+   * `ball − thumb`. Put your thumb below the ball and the shot goes up. Slide
+   * it right and the far end swings left, exactly as a real cue does when you
+   * move the butt.
    *
-   * Two things fall out of that, and both are why the real game feels the way
-   * it does. Precision scales with reach: the same finger movement subtends a
-   * smaller angle further from the ball, so sliding out buys fine control for
-   * free. And you can hold the ball from below and still steer, which keeps
-   * your thumb off the forward path you are trying to read.
+   * Drawing *back along that axis* loads the shot: how far your thumb sits
+   * from the ball is the draw, and the draw is the power.
+   *
+   * The elegant part is that the metaphor solves the occlusion problem for
+   * free. The cue is always behind the ball relative to the shot, so your
+   * thumb is never on the stretch of table the shot will cross — you are
+   * looking down the cue at your own target.
+   *
+   * Sensitivity is bounded the same way a real cue bounds it: angular gain is
+   * 1/draw, and since a committed shot is drawn well back, the lever arm is
+   * long precisely when accuracy matters.
    */
-  /**
-   * Touches closer than this to the ball give no usable bearing — the angle
-   * under your thumb is undefined at the centre — so rotation is suspended
-   * inside it and resumes cleanly when the thumb comes back out.
-   */
-  minAimRadius: 1.8,
+  /** Below this the direction is degenerate; the last good heading is held. */
+  minAimRadius: 0.7,
+  /** Draw distance (thumb → ball, world units) mapping to minimum power. */
+  minDraw: 1.6,
+  /** Draw distance at which the cue is fully loaded. */
+  maxDraw: 9.5,
   /**
    * Exponential smoothing time constant (seconds) applied to the aim heading.
    * Long enough to swallow finger tremor, short enough to feel direct.
