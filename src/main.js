@@ -741,7 +741,7 @@ game.on = {
       engine.zoomPunch();
       engine.hitStop(TIME.hitStop * 0.7);
     }
-    onboarding.notify('launch', { power: p });
+    onboarding.notify('launch', { power: p, turned: game.lastTurn || 0 });
     game.launchHits = 0;
     game.pyreBonus = 0;
     boons.onLaunch(event);
@@ -982,6 +982,9 @@ function refreshPrediction() {
   player.showTrajectory(prediction);
 }
 
+/** Heading when the current hold began; used to measure how far it turned. */
+let aimStartDir = null;
+
 const input = new InputManager(stage, {
   camera,
   isEnabled: () =>
@@ -989,6 +992,9 @@ const input = new InputManager(stage, {
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
+    const h = input.heading;
+    aimStartDir = { x: h.x, z: h.z };
+    game.lastTurn = 0;
     const hasFocus = player.startAim();
     if (hasFocus) {
       engine.setBulletTime(true);
@@ -1006,6 +1012,11 @@ const input = new InputManager(stage, {
     player.cancelAim();
   },
   onRelease: (aim) => {
+    if (aimStartDir) {
+      const dot = clamp(aimStartDir.x * aim.dirX + aimStartDir.z * aim.dirZ, -1, 1);
+      game.lastTurn = (Math.acos(dot) * 180) / Math.PI;
+      aimStartDir = null;
+    }
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.launch(aim, game);
