@@ -732,6 +732,151 @@
       @media (prefers-reduced-motion: reduce) {
         #boot-veil .cue { animation: none; opacity: 0.9; }
       }
+
+      /* ---- main menu ---------------------------------------------- */
+      /* Dimmed, not opaque: the attract-mode game has to read through it. */
+      #boot-veil {
+        gap: 0;
+        background: radial-gradient(
+          ellipse at 50% 42%,
+          rgba(5, 7, 10, 0.62) 0%,
+          rgba(5, 7, 10, 0.86) 62%,
+          rgba(5, 7, 10, 0.95) 100%
+        );
+        backdrop-filter: blur(1.5px);
+      }
+      /* Fading to zero opacity leaves the overlay in the layout and the a11y
+         tree. Take it out of both once it is dismissed. */
+      #boot-veil.hidden {
+        visibility: hidden;
+        pointer-events: none;
+      }
+      .menu-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(10px, 2.2vmin, 16px);
+        width: min(88%, 340px);
+      }
+      /* display:flex above beats the [hidden] attribute's default display:none,
+         which silently stacked both panels. Restore it explicitly. */
+      .menu-inner[hidden] { display: none; }
+      /* Behind the menu the background should read as gameplay, not as a HUD:
+         hide the run furniture so only the table and the action show. */
+      #ui-layer.attract { opacity: 0; }
+      .menu-eyebrow {
+        margin: 0;
+        font-size: clamp(9px, 2.4vmin, 12px);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--amber);
+        white-space: nowrap;
+      }
+      .menu-title {
+        margin: 0 0 clamp(8px, 2vmin, 18px);
+        display: flex;
+        flex-direction: column;
+        line-height: 0.92;
+        text-align: center;
+      }
+      .menu-title .ln {
+        font-size: clamp(38px, 12vmin, 68px);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        text-transform: uppercase;
+        /* Neon sweep: a highlight travels the letterforms like light down a rail. */
+        background: linear-gradient(100deg,
+          var(--cyan) 0%, var(--bone) 34%, var(--cyan) 52%, #1a8ea3 78%, var(--cyan) 100%);
+        background-size: 260% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: menu-sweep 5.5s linear infinite;
+        filter: drop-shadow(0 0 22px rgba(53, 242, 255, 0.35));
+      }
+      .menu-title .ln:nth-child(2) { animation-delay: -2.75s; }
+      @keyframes menu-sweep {
+        from { background-position: 0% 0; }
+        to   { background-position: -260% 0; }
+      }
+      .menu-sub {
+        margin: 0 0 6px;
+        font-size: clamp(15px, 4.2vmin, 22px);
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--bone);
+      }
+      .menu-btn {
+        width: 100%;
+        padding: clamp(11px, 2.8vmin, 15px) 18px;
+        border-radius: 10px;
+        border: 1px solid rgba(53, 242, 255, 0.4);
+        background: rgba(11, 58, 46, 0.5);
+        color: var(--bone);
+        font-family: var(--font);
+        font-size: clamp(12px, 3vmin, 15px);
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        cursor: pointer;
+        pointer-events: auto;
+        transition: transform 0.12s ease, background 0.14s ease, border-color 0.14s ease;
+      }
+      .menu-btn:hover { background: rgba(53, 242, 255, 0.14); border-color: var(--cyan); }
+      .menu-btn:active { transform: scale(0.98); }
+      .menu-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+      .menu-btn.primary {
+        background: var(--cyan);
+        border-color: var(--cyan);
+        color: #04231f;
+        box-shadow: 0 0 26px rgba(53, 242, 255, 0.4);
+      }
+      .menu-btn.primary:hover { background: #7ff8ff; }
+      .menu-row { display: flex; gap: 10px; width: 100%; }
+      .menu-foot {
+        margin: 4px 0 0;
+        font-size: clamp(9px, 2.3vmin, 11px);
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      /* ---- tutorial coach strip ----------------------------------- */
+      #coach {
+        position: absolute;
+        left: 50%;
+        bottom: clamp(84px, 16vmin, 132px);
+        transform: translateX(-50%);
+        width: min(86%, 340px);
+        padding: 11px 16px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 179, 64, 0.5);
+        background: rgba(5, 7, 10, 0.82);
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+        pointer-events: none;
+      }
+      #coach.show { opacity: 1; }
+      #coach.done { border-color: rgba(46, 242, 196, 0.7); }
+      #coach .step {
+        font-size: clamp(8px, 2.2vmin, 10px);
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: var(--amber);
+        margin-bottom: 3px;
+      }
+      #coach.done .step { color: #2ef2c4; }
+      #coach .say {
+        font-size: clamp(13px, 3.4vmin, 17px);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        color: var(--bone);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .menu-title .ln { animation: none; }
+      }
     </style>
   </head>
   <body>
@@ -740,18 +885,25 @@
         <canvas id="stage-canvas"></canvas>
         <div id="ui-layer"></div>
         <div id="boot-veil">
-          <h2>Dark Velvet Cyber-Billiards</h2>
-          <h1>Billiard<br />Roguelike</h1>
-          <p>
-            Hold to enter bullet-time. Drag back to load the slingshot. Release to
-            break the rack.
-          </p>
-          <div class="legend">
-            <span><b>Hold + drag</b> — aim &amp; pull</span>
-            <span><b>Release</b> — kinetic launch</span>
-            <span><b>Quick flick</b> — emergency dash</span>
+          <div class="menu-inner" id="menu-main">
+            <p class="menu-eyebrow">Dark Velvet Cyber-Billiards</p>
+            <h1 class="menu-title" aria-label="Billiard Roguelike">
+              <span class="ln">Billiard</span><span class="ln">Roguelike</span>
+            </h1>
+            <button id="btn-play" class="menu-btn primary" type="button">Play</button>
+            <div class="menu-row">
+              <button id="btn-settings" class="menu-btn" type="button">Settings</button>
+              <button id="btn-mute" class="menu-btn" type="button" aria-pressed="false">Sound&nbsp;on</button>
+            </div>
           </div>
-          <div class="cue">Tap to break</div>
+
+          <div class="menu-inner" id="menu-settings" hidden>
+            <h2 class="menu-sub">Settings</h2>
+            <button id="set-mute" class="menu-btn" type="button">Sound: On</button>
+            <button id="set-tutorial" class="menu-btn" type="button">Replay tutorial</button>
+            <button id="set-back" class="menu-btn primary" type="button">Done</button>
+            <p class="menu-foot" id="set-tutorial-state"></p>
+          </div>
         </div>
       </div>
     </div>

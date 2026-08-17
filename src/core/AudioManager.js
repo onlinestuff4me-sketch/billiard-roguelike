@@ -189,6 +189,19 @@ export class AudioManager {
    * Glide the master filter and gain toward the current time scale. Called
    * every frame; only touches the graph when the scale actually moved.
    */
+  /**
+   * Mute is a master-gain gate rather than a suspended context: voices keep
+   * running, so unmuting is instant and never swallows the shot you just took.
+   */
+  setMuted(muted) {
+    this.muted = !!muted;
+    if (this.master) {
+      this.master.gain.cancelScheduledValues(this.now);
+      this.master.gain.setTargetAtTime(this.muted ? 0 : AUDIO.masterGain, this.now, 0.02);
+    }
+    return this.muted;
+  }
+
   setTimeDilation(scale) {
     if (!this.ready) return;
     if (Math.abs(scale - this._dilation) < 0.01) return;
@@ -198,7 +211,8 @@ export class AudioManager {
     const t = span > 0 ? Math.min(Math.max((scale - TIME.bullet) / span, 0), 1) : 1;
     // Exponential interpolation reads as linear to the ear.
     const cutoff = AUDIO.filterBullet * Math.pow(AUDIO.filterOpen / AUDIO.filterBullet, t);
-    const gain = AUDIO.masterGain * (AUDIO.bulletGain + (1 - AUDIO.bulletGain) * t);
+    const gain =
+      (this.muted ? 0 : AUDIO.masterGain) * (AUDIO.bulletGain + (1 - AUDIO.bulletGain) * t);
     const now = this.now;
     this.filter.frequency.cancelScheduledValues(now);
     this.filter.frequency.setTargetAtTime(cutoff, now, AUDIO.filterGlide);
