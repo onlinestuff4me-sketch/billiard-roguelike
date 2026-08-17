@@ -46,6 +46,7 @@ import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
 import { HUD } from './ui/HUD.js';
 import { BoonModal } from './ui/BoonModal.js';
+import { Onboarding } from './ui/Onboarding.js';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
@@ -630,6 +631,7 @@ game.on = {
       engine.zoomPunch();
       audio.chainNote(game.launchHits);
       p.addFocus(TUTORIAL.praiseFocus);
+      onboarding.notify('hits', { count: game.launchHits });
     }
 
     engine.hitStop(result.backstab ? TIME.hitStopCrit : TIME.hitStop);
@@ -739,6 +741,7 @@ game.on = {
       engine.zoomPunch();
       engine.hitStop(TIME.hitStop * 0.7);
     }
+    onboarding.notify('launch', { power: p });
     game.launchHits = 0;
     game.pyreBonus = 0;
     boons.onLaunch(event);
@@ -841,7 +844,8 @@ function handleRoomClear() {
   audio.roomClear();
   player.addFocus(FOCUS.onRoomClear);
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
-  hud.showBanner('Room Clear', 'Slingshot into an exit', 2.4);
+  onboarding.notify('roomClear');
+  hud.showBanner('Room Clear', 'Shoot into an exit', 2.4);
   hud.setDoors(
     rooms.doors.map((door) => ({
       x: door.x,
@@ -980,7 +984,8 @@ function refreshPrediction() {
 
 const input = new InputManager(stage, {
   camera,
-  isEnabled: () => game.running && player.alive && game.state !== 'modal',
+  isEnabled: () =>
+    game.running && player.alive && game.state !== 'modal' && !menuOpen,
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
@@ -1040,14 +1045,132 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', resi
  * Boot
  * ------------------------------------------------------------------ */
 
-function boot() {
-  bootVeil.classList.add('hidden');
-  audio.unlock();
-  game.running = true;
-  startRun();
+const onboarding = new Onboarding(uiLayer);
+const menuMain = document.getElementById('menu-main');
+const menuSettings = document.getElementById('menu-settings');
+const $ = (id) => document.getElementById(id);
+
+/**
+ * The menu runs the real game behind it rather than a video: attract mode is
+ * the actual simulation with input disabled and a bot taking shots, so the
+ * background can never drift out of sync with how the game currently looks.
+ */
+let menuOpen = true;
+let attractTimer = 0;
+
+let muted = false;
+try {
+  muted = localStorage.getItem('billiard-muted') === '1';
+} catch {
+  /* private mode */
 }
 
-bootVeil.addEventListener('pointerdown', boot, { once: true });
+function applyMute() {
+  audio.setMuted(muted);
+  $('btn-mute').textContent = muted ? 'Sound off' : 'Sound on';
+  $('btn-mute').setAttribute('aria-pressed', String(muted));
+  $('set-mute').textContent = muted ? 'Sound: Off' : 'Sound: On';
+  try {
+    localStorage.setItem('billiard-muted', muted ? '1' : '0');
+  } catch {
+    /* no-op */
+  }
+}
+
+function showTutorialState() {
+  $('set-tutorial-state').textContent = Onboarding.completed
+    ? 'Tutorial finished — it will not show again'
+    : 'Tutorial will play on your next run';
+}
+
+function openMenu() {
+  menuOpen = true;
+  input.cancel();
+  onboarding.stop();
+  bootVeil.classList.remove('hidden');
+  uiLayer.classList.add('attract');
+  menuMain.hidden = false;
+  menuSettings.hidden = true;
+  showTutorialState();
+}
+
+function play() {
+  menuOpen = false;
+  bootVeil.classList.add('hidden');
+  uiLayer.classList.remove('attract');
+  audio.unlock();
+  applyMute();
+  startRun();
+  if (Onboarding.completed) onboarding.stop();
+  else onboarding.start();
+}
+
+$('btn-play').addEventListener('click', play);
+$('btn-settings').addEventListener('click', () => {
+  menuMain.hidden = true;
+  menuSettings.hidden = false;
+  showTutorialState();
+});
+$('set-back').addEventListener('click', () => {
+  menuSettings.hidden = true;
+  menuMain.hidden = false;
+});
+$('btn-mute').addEventListener('click', () => {
+  muted = !muted;
+  audio.unlock();
+  applyMute();
+});
+$('set-mute').addEventListener('click', () => {
+  muted = !muted;
+  audio.unlock();
+  applyMute();
+});
+$('set-tutorial').addEventListener('click', () => {
+  Onboarding.reset();
+  showTutorialState();
+  $('set-tutorial').textContent = 'Tutorial reset';
+  setTimeout(() => {
+    $('set-tutorial').textContent = 'Replay tutorial';
+  }, 1400);
+});
+
+/**
+ * Attract mode. Keeps at least two bodies on the table so the room never
+ * actually clears — that would hand control to the door / reward flow, which
+ * has no business running behind a menu.
+ */
+function attract(rawDt) {
+  if (!menuOpen) return;
+  attractTimer -= rawDt;
+  const alive = game.enemies.filter((e) => e.alive);
+
+  if (alive.length <= 1) {
+    if (attractTimer > 0) return;
+    game.level = 2 + Math.floor(Math.random() * 6);
+    rooms.generate(game.level);
+    player.placeAt(rooms.layout.spawn.x, rooms.layout.spawn.z);
+    player.hp = player.maxHp;
+    hud.setDoors([]);
+    attractTimer = 0.9;
+    return;
+  }
+
+  if (attractTimer > 0 || player.state !== PLAYER_STATE.IDLE) return;
+  const target = alive[Math.floor(Math.random() * alive.length)];
+  const dx = target.x - player.x;
+  const dz = target.z - player.z;
+  const len = Math.hypot(dx, dz) || 1;
+  const dirX = dx / len;
+  const dirZ = dz / len;
+  input.setHeading(dirX, dirZ);
+  player.launch({ dirX, dirZ, power: 0.72 + Math.random() * 0.28 }, game);
+  attractTimer = 1.15 + Math.random() * 0.8;
+}
+
+applyMute();
+game.running = true;
+startRun();
+openMenu();
 window.addEventListener('blur', () => input.cancel());
 
 /* ------------------------------------------------------------------ *
@@ -1103,6 +1226,8 @@ function frame(now) {
   const { dt, rawDt } = engine.update(rawFrame);
   input.update(rawDt);
   audio.setTimeDilation(engine.timeScale);
+
+  attract(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 
