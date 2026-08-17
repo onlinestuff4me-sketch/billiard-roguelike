@@ -320,25 +320,23 @@ all three with a single vector.
 | Input | Action |
 | --- | --- |
 | **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
-| **Touch anywhere** | Nothing moves. The line stays where it was |
-| **Turn your thumb around the ball** | The line turns with it, 1:1 — sweep 30° clockwise, the line turns 30° clockwise |
-| **Hold** | Charges the shot, from 32% to full over 0.85 s |
-| **Release** | Launch at the charged speed |
+| **Touch below the ball** | A cue appears under your thumb, its line running through the ball and out the top. The shot fires up |
+| **Slide the thumb right** | The butt swings right, so the shot swings left — exactly as a real cue does |
+| **Pull straight back along the line** | Loads power. The angle does not move |
+| **Release** | Fire, at the drawn speed |
 
-This is how a cue works in 8 Ball Pool. The aim carries a heading the game
-remembers between shots — 12 o'clock on the first, thereafter the ball's last
-travel direction — and dragging rotates it by exactly the angle your thumb
-sweeps *around the ball*.
+You are holding a cue. Your thumb is the butt, the ball is the tip, and the shot
+runs out the far side: the direction is simply `ball − thumb`. Put your thumb
+below the ball and you fire up the table; pull down and to the right and you
+both swing the shot up-and-left and load it.
 
-Only the change is applied, never your thumb's absolute bearing, so touching
-down never moves the line and where you put your thumb is irrelevant. What
-matters is how you turn it.
+The metaphor also solves the problem that defeated every earlier scheme. The cue
+is always *behind* the ball relative to the shot, so your thumb is never sitting
+on the stretch of table the ball is about to cross — you are looking down the cue
+at your own target.
 
-Two things follow, and both are why the real game feels right. **Reach buys
-precision**: the same finger movement subtends a smaller angle further from the
-ball, so sliding out gives fine control for free — measured, 60 px of travel
-turns the shot 42° close in but only 13° at reach. And you can hold the ball
-from below and still steer, which keeps your thumb off the path you are reading.
+Sensitivity is bounded the way a real cue bounds it: turning gets finer the
+further back you draw, so the lever arm is longest exactly when the shot matters.
 
 ---
 

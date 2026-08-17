@@ -5,25 +5,26 @@
  *     ▲                                              │
  *     └──────────────────────────────────────────────┘
  *
- * TURN THE CUE: the line tracks your thumb's rotation about the ball, 1:1.
+ * YOUR THUMB IS THE BUTT OF A CUE THAT RUNS THROUGH THE BALL.
  *
- * This is the 8 Ball Pool model. The aim carries a persistent heading — 12
- * o'clock on the first shot, thereafter the ball's last travel direction — and
- * dragging rotates it by exactly the angle the thumb sweeps *around the ball*.
- * Swing 30° clockwise about it and the line turns 30° clockwise.
+ * Time freezes on touch and the line is drawn from the thumb, through the ball,
+ * and out the far side. The shot direction is simply `ball - thumb`. Put the
+ * thumb below the ball and the shot goes up; slide it right and the far end
+ * swings left, exactly as a real cue does when the butt is moved.
  *
- * Only the delta is ever applied, never the absolute bearing. Touching down
- * therefore moves nothing, and where the thumb sits is irrelevant; the line
- * follows how it turns. Earlier attempts failed on exactly this point — an
- * absolute scheme snapped the line to the thumb and put it on top of the
- * forward path, and a horizontal-travel-only scheme meant sweeping the thumb
- * in an arc did not turn the line in an arc, which is what made it feel wrong.
+ * Drawing back *along that axis* loads the shot: the distance from thumb to
+ * ball is the draw, and the draw is the power. Pulling straight away therefore
+ * adds power without touching the angle, which is the motion a player already
+ * makes at a table.
  *
- * Two properties fall out of the geometry, and both are why the real game
- * feels the way it does. Precision scales with reach: the same finger movement
- * subtends a smaller angle further from the ball, so sliding out buys fine
- * control for free. And the ball can be held from below and still steered,
- * which keeps the thumb off the path being read.
+ * The metaphor solves the occlusion problem for free, which is what defeated
+ * every earlier scheme. The cue is always behind the ball relative to the shot,
+ * so the thumb is never on the stretch of table the shot will cross — the
+ * player is looking down the cue at their own target.
+ *
+ * Sensitivity is bounded the way a real cue bounds it: angular gain is 1/draw,
+ * and a committed shot is drawn well back, so the lever arm is longest exactly
+ * when accuracy matters most. A short exponential filter removes tremor.
  *
  * The manager knows nothing about the player beyond an anchor position; it
  * emits normalised aim payloads and the game decides what they mean.
@@ -178,17 +179,14 @@ export class InputManager {
     return { x: this._dirX, z: this._dirZ };
   }
 
-  /**
-   * Bearing of the thumb around the ball, or null when it is too close to the
-   * centre for the angle to mean anything.
-   */
-  _bearing() {
+  /** The cue: thumb position, and the shot vector running through the ball. */
+  _cue() {
     const ball = this._anchor();
     const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
-    const vx = finger.x - ball.x;
-    const vz = finger.z - ball.z;
-    if (Math.hypot(vx, vz) < INPUT.minAimRadius) return null;
-    return Math.atan2(vz, vx);
+    // Thumb → ball, continued out the far side. This IS the shot direction.
+    const vx = ball.x - finger.x;
+    const vz = ball.z - finger.z;
+    return { finger, draw: Math.hypot(vx, vz), vx, vz };
   }
 
   /**
@@ -199,32 +197,19 @@ export class InputManager {
     const aim = this.aim;
     const dt = Math.max(0, (now - this._lastAimTime) / 1000);
 
-    // --- steering: the line tracks your thumb's rotation about the ball ---
-    // Turn your thumb 30° around the ball and the line turns 30° the same way.
-    // It is the delta that is applied, never the absolute bearing, so touching
-    // down never moves the line and where the thumb sits is irrelevant — only
-    // how it sweeps. Reach then buys precision on its own, because the same
-    // finger movement subtends a smaller angle further out.
-    const bearing = this._bearing();
-    if (bearing !== null) {
-      if (this._lastBearing !== null) {
-        let d = bearing - this._lastBearing;
-        // Shortest way round, so crossing ±π never spins the line the long way.
-        while (d > Math.PI) d -= Math.PI * 2;
-        while (d < -Math.PI) d += Math.PI * 2;
-        const c = Math.cos(d);
-        const s = Math.sin(d);
-        const tx = this._targetX;
-        const tz = this._targetZ;
-        this._targetX = tx * c - tz * s;
-        this._targetZ = tx * s + tz * c;
-      }
-      this._lastBearing = bearing;
-    } else {
-      // Inside the dead radius the bearing is meaningless. Forget it rather
-      // than hold it, so re-emerging on the far side does not snap the line.
-      this._lastBearing = null;
+    // --- the cue line: thumb → through the ball → outward -----------------
+    // The shot direction is just `ball − thumb`, so sliding the butt right
+    // swings the far end left, the way a real cue does. Nothing is
+    // accumulated: the line is wherever the cue currently points, which is
+    // what makes re-aiming feel like picking the stick up and putting it down.
+    const cue = this._cue();
+    if (cue.draw > INPUT.minAimRadius) {
+      const inv = 1 / cue.draw;
+      this._targetX = cue.vx * inv;
+      this._targetZ = cue.vz * inv;
     }
+    // Thumb effectively on top of the ball: no axis to speak of, so the last
+    // good heading is held rather than allowed to spin.
 
     // Ease toward the target so tremor never reaches the drawn line.
     const alpha = 1 - Math.exp(-dt / INPUT.aimSmoothing);
@@ -236,24 +221,28 @@ export class InputManager {
 
     this._lastAimTime = now;
 
-    // --- power: hold to charge -----------------------------------------
-    const hold = (now - this.startTime) / 1000;
-    const t = Math.min(hold / PLAYER.chargeTime, 1);
+    // --- power: the draw -------------------------------------------------
+    // How far the cue is pulled back along its own axis. Drawing straight away
+    // from the ball loads the shot without touching the angle at all, which is
+    // exactly the motion a player already makes at a real table.
+    const span = Math.max(INPUT.maxDraw - INPUT.minDraw, 1e-4);
+    const t = Math.min(Math.max((cue.draw - INPUT.minDraw) / span, 0), 1);
     aim.power = PLAYER.minPower + (1 - PLAYER.minPower) * t;
     aim.charge = t;
 
-    aim.hold = hold;
+    aim.hold = (now - this.startTime) / 1000;
     aim.distPx = Math.hypot(this.currentX - this.startX, this.currentY - this.startY);
     aim.dirX = this._dirX;
     aim.dirZ = this._dirZ;
-    aim.pullLength = 0;
+    aim.pullLength = cue.draw;
+    // Where the butt of the cue sits, so the shaft can be drawn behind the ball.
+    aim.cueX = cue.finger.x;
+    aim.cueZ = cue.finger.z;
     aim.pullX = 0;
     aim.pullZ = 0;
     aim.valid = true;
-
-    const world = this.screenToWorld(this.currentX, this.currentY, this._world);
-    aim.worldX = world.x;
-    aim.worldZ = world.z;
+    aim.worldX = cue.finger.x;
+    aim.worldZ = cue.finger.z;
     return aim;
   }
 
@@ -281,12 +270,18 @@ export class InputManager {
     this.holdTime = 0;
     this.state = STATE.AIMING;
 
-    // Nothing snaps: the line stays exactly where it was and the thumb starts
-    // turning it from here. Only the sweep matters, never the placement.
+    // Placing the cue defines the line at once — no easing in from the last
+    // shot's heading, because you are putting a stick down, not nudging one.
     this._lastAimTime = this.startTime;
-    this._targetX = this._dirX;
-    this._targetZ = this._dirZ;
-    this._lastBearing = this._bearing();
+    const cue = this._cue();
+    if (cue.draw > INPUT.minAimRadius) {
+      const inv = 1 / cue.draw;
+      this._dirX = this._targetX = cue.vx * inv;
+      this._dirZ = this._targetZ = cue.vz * inv;
+    } else {
+      this._targetX = this._dirX;
+      this._targetZ = this._dirZ;
+    }
     this._updateAim(this.startTime);
 
     this.handlers.onAimStart?.(this.aim);

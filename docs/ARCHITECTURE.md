@@ -221,31 +221,25 @@ A pointer state machine (`IDLE → AIMING`) over unified Pointer Events with a t
 fallback, emitting `onAimStart / onAimUpdate / onRelease / onAimCancel / onFlick`.
 It never touches the player directly — it is handed an anchor and returns aim data.
 
-**Turn the cue: the line tracks the thumb's rotation about the ball, 1:1.** This is
-the 8 Ball Pool model. The heading persists between shots — 12 o'clock on the
-first, thereafter the ball's last travel direction — and dragging rotates it.
+**The thumb is the butt of a cue whose axis runs through the ball.** The shot
+direction is `ball − thumb`, and the draw — how far the thumb sits from the ball —
+is the power. There is no accumulated state: the line is wherever the cue points.
 
-Two earlier attempts failed on this exact point. An absolute scheme snapped the
-line to the thumb, which put the thumb on the forward path and hid the table being
-read. A horizontal-travel-only scheme fixed the occlusion but meant sweeping the
-thumb in an arc did not turn the line in an arc, which is what made it feel wrong.
+Three earlier schemes failed, each on a different constraint. A slingshot derived
+the heading from a drag delta, a lever arm that starts at zero. Absolute pointing
+put the thumb directly on the forward path. Delta-rotation about the ball fixed
+both but corresponded to no physical object, so it read as abstract.
 
-Steering applies the **angular delta of the thumb about the ball**: each frame the
-bearing `atan2(fz - bz, fx - bx)` is taken, the shortest-way-round difference from
-last frame is computed, and the heading is rotated by it. Sweep the thumb 30°
-around the ball and the line turns 30°.
+The cue fixes occlusion structurally: it is always behind the ball relative to the
+shot, so the thumb cannot sit on the table the ball will cross. Angular gain is
+`1/draw`, so a committed shot is also the most precise one, and pulling straight
+back along the axis changes power without touching the angle — measured at 0.00°
+across a 2 u → 9.5 u draw.
 
-Only the delta is used, never the absolute bearing, so touching down moves nothing
-and placement is irrelevant. Inside `INPUT.minAimRadius` the bearing is undefined,
-so rotation suspends and the stored bearing is dropped — re-emerging on the far
-side then resumes cleanly instead of snapping.
+See `docs/AIMING.md` for the full spec, rationale and verification numbers.
 
-Precision scales with reach for free: the same finger movement subtends a smaller
-angle further out. Measured, 60 px of travel turns the shot 42° close to the ball
-and 13° at reach.
-
-Power charges over `PLAYER.chargeTime` from `PLAYER.minPower` to full, and drives
-launch speed between `launchSpeedMin` and `launchSpeedMax`.
+Power runs from `PLAYER.minPower` at `INPUT.minDraw` to full at `INPUT.maxDraw`,
+driving launch speed between `launchSpeedMin` and `launchSpeedMax`.
 
 The aim beam is a **ribbon mesh**, not a line: GPU line width is clamped to 1 px on
 essentially every platform, so `LineBasicMaterial.linewidth` is a no-op and real

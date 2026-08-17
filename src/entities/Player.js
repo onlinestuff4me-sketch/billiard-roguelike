@@ -465,10 +465,19 @@ class AimRenderer {
       this.tangent.visible = false;
     }
 
-    // The pull band belonged to the slingshot. There is no draw any more, so
-    // there is nothing to draw: the aim line alone carries the whole gesture.
-    this.pull.visible = false;
-    this.anchor.visible = false;
+    // --- the cue shaft, behind the ball ---
+    // Drawn from the ball back to the thumb, so the whole stick is visible:
+    // shaft behind, ball at the tip, predicted path ahead. Seeing the draw is
+    // what makes power legible without a meter — the further back the butt,
+    // the harder the shot.
+    const cue = player.aimCue;
+    this.pullPositions.set([player.x, y, player.z, cue.x, y, cue.z]);
+    this.pullGeo.attributes.position.needsUpdate = true;
+    this.pull.visible = true;
+    this.pullMat.opacity = 0.35 + 0.5 * power;
+    this.anchor.visible = true;
+    this.anchor.position.set(cue.x, y, cue.z);
+    this.anchor.scale.setScalar(0.7 + power * 0.9);
   }
 
   dispose() {
@@ -537,6 +546,7 @@ export class Player {
 
     // --- aim ---
     this.aimPull = { x: 0, z: 0 };
+    this.aimCue = { x: 0, z: 0 };
     this.aimDir = { x: 0, z: -1 };
     this.aimPower = 0;
     this.aimCharge = 1;
@@ -633,6 +643,9 @@ export class Player {
     this.aimDir.z = aim.dirZ;
     this.aimPower = aim.power;
     this.aimCharge = aim.charge ?? 1;
+    // Butt of the cue, so the shaft can be drawn behind the ball.
+    this.aimCue.x = aim.cueX ?? this.x;
+    this.aimCue.z = aim.cueZ ?? this.z;
   }
 
   cancelAim() {
