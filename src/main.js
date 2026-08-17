@@ -1137,6 +1137,31 @@ function frame(now) {
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();
       }
+    } else if (
+      game.state === 'playing' &&
+      player.alive &&
+      player.state === PLAYER_STATE.IDLE
+    ) {
+      // THE CUE AT REST.
+      //
+      // A room resets the heading to 12 o'clock, but that was invisible: no
+      // line is drawn until a thumb goes down, so the ball looked like it had
+      // no aim at all. Worse, the ball spawns low, so the first touch tends to
+      // land in the open space *above* it — which in the cue model correctly,
+      // but unhelpfully, fires downward.
+      //
+      // Showing the resting cue fixes both. The default is now something you
+      // can see and nudge rather than something you discover by firing.
+      const h = input.heading;
+      player.aimDir.x = h.x;
+      player.aimDir.z = h.z;
+      player.aimPower = 0;
+      player.aimCharge = 0;
+      player.aimCue.x = player.x - h.x * 3.4;
+      player.aimCue.z = player.z - h.z * 3.4;
+      refreshPrediction();
+    } else {
+      player.hideTrajectory();
     }
 
     hud.update(
@@ -1167,6 +1192,6 @@ requestAnimationFrame(frame);
 // Expose the context for console-side tuning during playtests. The UI handles
 // come too, so a reward screen can be summoned without clearing a room first.
 if (import.meta.env?.DEV) {
-  game.ui = { modal, hud, input };
+  game.ui = { modal, hud, input, advanceRoom, openBoonModal };
   window.__billiard = game;
 }
