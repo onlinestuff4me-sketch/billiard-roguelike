@@ -32,8 +32,15 @@ export const ARENA = {
 export const TIME = {
   /** Real-time scale. */
   normal: 1.0,
-  /** Bullet-time scale while aiming — 80% slow-mo. */
-  bullet: 0.2,
+  /**
+   * Aiming stops the world outright rather than slowing it.
+   *
+   * At 0.2 the table still crept while you lined a shot up, so a plan made at
+   * the start of an aim was subtly wrong by the end of it. A full stop makes
+   * the preview a promise: what you see is exactly the table you are shooting
+   * into. Focus still drains on real time, so it remains a resource.
+   */
+  bullet: 0,
   /** Seconds (real time) to blend into / out of bullet-time. */
   dilateIn: 0.07,
   dilateOut: 0.16,
@@ -83,6 +90,12 @@ export const FOCUS = {
 export const PLAYER = {
   radius: 0.62,
   maxHp: 100,
+  /**
+   * Where the ball starts, as a fraction of the table height measured up from
+   * the bottom rail. Low enough to keep the table ahead of you, high enough to
+   * leave room *behind* the ball for the cue — the draw needs somewhere to go.
+   */
+  spawnFromBottom: 0.3,
   /**
    * DRAW TO LOAD.
    *

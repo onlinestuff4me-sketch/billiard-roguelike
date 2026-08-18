@@ -20,33 +20,27 @@ const KEY = 'billiard-tutorial-done-v1';
 export const STEPS = [
   {
     id: 'aim',
-    label: 'Step 1 of 4',
-    say: 'Touch below the ball, then release to fire',
+    label: 'Step 1 of 3',
+    say: 'Drag down to aim',
+    // Satisfied by a real draw, so the cue is already in hand and the line is
+    // on screen before the next instruction arrives.
+    on: 'aiming',
+    when: (e) => e.draw >= 2.6,
+    done: 'That is your cue'
+  },
+  {
+    id: 'fire',
+    label: 'Step 2 of 3',
+    say: 'Release to shoot',
     on: 'launch'
   },
   {
-    id: 'aimdrag',
-    label: 'Step 2 of 4',
-    say: 'Drag to aim, release to fire',
-    on: 'launch',
-    // Only a shot whose heading actually moved proves the lesson landed. Firing
-    // straight again would satisfy a naive gate without teaching anything.
-    when: (e) => e.turned >= 18,
-    done: 'Nice line'
-  },
-  {
     id: 'chain',
-    label: 'Step 3 of 4',
-    say: 'Hit two in one shot — chains multiply your score',
+    label: 'Step 3 of 3',
+    say: 'Hit 2 in a row',
     on: 'hits',
     when: (e) => e.count >= 2,
-    done: 'Chain ×1.4'
-  },
-  {
-    id: 'exit',
-    label: 'Step 4 of 4',
-    say: 'Clear the room, then shoot into a door',
-    on: 'roomClear'
+    done: 'Chain \u00d71.4'
   }
 ];
 
@@ -65,6 +59,10 @@ export class Onboarding {
     this.index = -1;
     this.active = false;
     this._clearTimer = 0;
+    /** True while a completed step is showing its confirmation. */
+    this._confirming = false;
+    /** Events that arrived mid-confirmation, replayed against the next step. */
+    this._pending = [];
   }
 
   static get completed() {
@@ -95,12 +93,17 @@ export class Onboarding {
   start() {
     this.active = true;
     this.index = 0;
+    this._confirming = false;
+    this._pending.length = 0;
     this._show();
   }
 
   stop() {
     this.active = false;
     this.index = -1;
+    this._confirming = false;
+    this._pending.length = 0;
+    clearTimeout(this._clearTimer);
     this.el.classList.remove('show', 'done');
   }
 
@@ -128,29 +131,47 @@ export class Onboarding {
    * @param {object} [payload]
    */
   notify(name, payload = {}) {
+    if (!this.active) return;
+
+    // A player who drags and immediately releases would otherwise lose the
+    // release: it lands while step one is still showing its tick, and the next
+    // step appears already stale. Buffer anything that arrives mid-confirmation
+    // and replay it once the next step is actually on screen.
+    if (this._confirming) {
+      this._pending.push({ name, payload });
+      return;
+    }
+
     const step = this.current;
     if (!step || step.on !== name) return;
     if (step.when && !step.when(payload)) return;
 
-    // Confirm the step before moving on, so the player sees that the thing they
-    // just did was the thing being asked for.
+    // Confirm before moving on, so the player sees that what they just did was
+    // what was being asked of them.
     this.stepEl.textContent = step.done || 'Done';
     this.el.classList.add('done');
+    this._confirming = true;
 
     clearTimeout(this._clearTimer);
     this._clearTimer = setTimeout(() => {
+      this._confirming = false;
       this.index += 1;
+
       if (this.index >= STEPS.length) {
         this.active = false;
+        this._pending.length = 0;
         this.stepEl.textContent = 'Tutorial complete';
         this.sayEl.textContent = 'Go break some racks';
         Onboarding.markComplete();
         clearTimeout(this._clearTimer);
-        this._clearTimer = setTimeout(() => this.el.classList.remove('show', 'done'), 2200);
+        this._clearTimer = setTimeout(() => this.el.classList.remove('show', 'done'), 2000);
         return;
       }
+
       this._show();
-    }, 900);
+      const queued = this._pending.splice(0, this._pending.length);
+      for (const q of queued) this.notify(q.name, q.payload);
+    }, 620);
   }
 
   dispose() {
