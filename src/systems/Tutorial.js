@@ -46,6 +46,11 @@ const PAIR = 0.68;
 /** Where the racks sit relative to the ball, which spawns at z ≈ 6.4. */
 const CHAIN_Z = 0.5;
 const BANK_Z = 1.0;
+/**
+ * The shooter stands off at its own preferred range, so the encounter looks
+ * like the ones the player will meet in a real room rather than a special case.
+ */
+const SHOOTER_Z = -3.2;
 
 const EMPTY_ROOM = { id: 'lesson-open', name: 'Practice', obstacles: [], enemies: [] };
 
@@ -123,6 +128,24 @@ export const LESSONS = [
     cheer: 'Off the rail!',
     scold: 'No rail yet — bank it off a side wall first',
     nudge: 'Aim almost sideways — into the side wall, a little above the rack — and it will come back through them.'
+  },
+  {
+    id: 'shooter',
+    say: 'Kill the shooter',
+    hint: 'Violet enemies shoot back. Watch the barrel come up — that is your warning. Hit it before it lands one on you.',
+    goal: 1,
+    room: {
+      id: 'lesson-shooter',
+      name: 'Return Fire',
+      obstacles: [],
+      // Pinned so it holds the line it is teaching, but live: it tracks, winds
+      // up and fires exactly as one will in a real room.
+      enemies: [{ type: 'stripe', x: 0, z: SHOOTER_Z }]
+    },
+    hit: () => 'score',
+    shot: (s) => (s.hits === 0 ? 'reject' : null),
+    cheer: 'Down it goes',
+    scold: 'Still up — it is winding up again'
   }
 ];
 

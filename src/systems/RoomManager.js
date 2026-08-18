@@ -204,6 +204,10 @@ export class RoomManager {
     this.scriptedEnemies = (spec.enemies || []).map((slot) => {
       const enemy = new Enemy(this.enemyLayer, slot.type || 'solid', slot.x, slot.z, 1);
       enemy.frozen = slot.frozen !== false;
+      // Pinned in place, but still armed unless the lesson says otherwise —
+      // an encounter staged to teach you to read a shooter needs one that
+      // actually shoots.
+      enemy.disarmed = slot.disarmed === true;
       // A lesson's rack is placed, not spawned: skipping the telegraph means
       // the targets are solid from the first frame the card is on screen,
       // rather than briefly intangible while the player is already shooting.

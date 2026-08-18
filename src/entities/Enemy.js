@@ -24,6 +24,21 @@ export const ENEMY_STATE = {
 };
 
 /* Shared geometry — created once, reused by every instance. */
+/**
+ * Barrel length in world units, measured from the enemy's centre. The bullet is
+ * born at this point rather than at a bare radial offset, so it leaves the gun
+ * instead of appearing beside the body.
+ */
+export const GUN_LENGTH = 1.7;
+
+/** Discharge feel: how hard the shot shoves the shooter, and for how long. */
+const ENEMY_FIRE = {
+  recoil: 3.4,
+  flashTime: 0.16,
+  /** How far the barrel kicks back, in world units, at peak recoil. */
+  kick: 0.26
+};
+
 const GEO = {
   solid: null,
   stripe: null,
@@ -57,8 +72,14 @@ export class Enemy {
 
     this.parent = parent;
     this.type = type;
-    /** Set by scripted (tutorial) rooms: hold position instead of steering. */
+    /**
+     * Set by scripted (tutorial) rooms: hold position instead of steering.
+     * Holding still is not the same as being harmless — a frozen shooter still
+     * tracks, winds up and fires, it just does not walk. `disarmed` is the flag
+     * that actually silences a weapon.
+     */
     this.frozen = false;
+    this.disarmed = false;
     this.config = config;
 
     // --- physics body ---
@@ -84,6 +105,15 @@ export class Enemy {
     this.shotTimer = config.shotInterval ? config.shotInterval * (0.4 + Math.random() * 0.6) : 0;
     this.chargeTimer = 0;
     this.charging = false;
+    /**
+     * The bearing the wind-up was drawn along, locked when the charge starts.
+     * Firing used to re-aim on the release frame, so the tell pointed one way
+     * and the shot went another — which makes a readable wind-up worthless.
+     */
+    this.aimX = 0;
+    this.aimZ = 1;
+    /** Counts down after a shot: drives muzzle flash and barrel recoil. */
+    this.fireFlash = 0;
     this.strafeSign = Math.random() < 0.5 ? -1 : 1;
     this.flashTimer = 0;
     this.knockTimer = 0;
@@ -189,6 +219,58 @@ export class Enemy {
     this.telegraph.rotation.x = -Math.PI / 2;
     this.telegraph.position.y = 0.05;
     this.group.add(this.telegraph);
+
+    // Stripe: the gun.
+    //
+    // The body is a regular octagon, so rotating the group to face the player
+    // was a visual no-op — the enemy tracked you perfectly and looked like it
+    // was doing nothing, and the shot arrived from a silhouette that had never
+    // pointed anywhere. A barrel is the whole fix: it makes the facing visible,
+    // gives the wind-up somewhere to happen, and gives the bullet an origin.
+    if (this.type === 'stripe') {
+      this.gun = new THREE.Group();
+      this.gunMat = new THREE.MeshStandardMaterial({
+        color: PALETTE.stripe,
+        emissive: new THREE.Color(PALETTE.projectile),
+        emissiveIntensity: 0.18,
+        roughness: 0.35,
+        metalness: 0.5
+      });
+      const barrel = new THREE.Mesh(
+        geometry('stripeBarrel', () => {
+          const g = new THREE.CylinderGeometry(0.17, 0.21, 1.0, 10);
+          // Lay it along local +Z, which is "forward" for the whole group.
+          g.rotateX(Math.PI / 2);
+          g.translate(0, 0, 0.5);
+          return g;
+        }),
+        this.gunMat
+      );
+      this.gun.add(barrel);
+
+      // The muzzle glows as the shot builds, so the charge reads as energy
+      // arriving at the place the bullet will leave from.
+      this.muzzleMat = new THREE.MeshBasicMaterial({
+        color: PALETTE.projectile,
+        transparent: true,
+        opacity: 0.04,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      this.muzzle = new THREE.Mesh(
+        geometry('stripeMuzzle', () => new THREE.SphereGeometry(0.22, 10, 8)),
+        this.muzzleMat
+      );
+      this.muzzle.position.z = 1.0;
+      this.gun.add(this.muzzle);
+
+      // Above the body, not inside it. The camera looks straight down, so a
+      // barrel mounted at mid-height is occluded by the very silhouette it is
+      // supposed to give a direction to; sitting it proud of the top face makes
+      // the whole length readable from above.
+      this.gun.position.y = cfg.radius * 1.8;
+      this.group.add(this.gun);
+    }
 
     // Stripe: closing charge ring.
     if (this.type === 'stripe') {
@@ -310,6 +392,7 @@ export class Enemy {
     const player = game.player;
 
     if (this.flashTimer > 0) this.flashTimer -= dt;
+    if (this.fireFlash > 0) this.fireFlash -= dt;
     if (this.caromCooldown > 0) this.caromCooldown -= dt;
     if (this.knockTimer > 0) this.knockTimer -= dt;
 
@@ -343,7 +426,12 @@ export class Enemy {
         // A frozen enemy still collides, still gets knocked, still dies — it
         // just does not drive. The tutorial racks its targets in exact spots
         // and a lesson that walks away from its own diagram teaches nothing.
-        if (!this.frozen) this._steer(dt, game, dirX, dirZ, dist);
+        //
+        // It does still shoot, though. Being pinned in place is a staging
+        // decision; whether the thing is dangerous is a separate question, and
+        // a lesson about reading a shooter needs one that actually shoots.
+        if (this.frozen) this._holdFire(dt, game, dirX, dirZ);
+        else this._steer(dt, game, dirX, dirZ, dist);
         break;
 
       default:
@@ -397,18 +485,22 @@ export class Enemy {
 
       // Charge → fire.
       if (this.charging) {
+        // Plant to shoot. Strafing through your own wind-up means the body
+        // slides sideways while the shot leaves along a different line, so
+        // nothing about the moment reads as one action.
+        this.vx *= 0.82;
+        this.vz *= 0.82;
         this.chargeTimer -= dt;
         if (this.chargeTimer <= 0) {
           this.charging = false;
           this.shotTimer = cfg.shotInterval;
-          this._fire(game, dirX, dirZ);
+          // Fire along the bearing the wind-up was drawn on, not the one the
+          // player happens to be at on the release frame.
+          this._fire(game, this.aimX, this.aimZ);
         }
       } else {
         this.shotTimer -= dt;
-        if (this.shotTimer <= 0) {
-          this.charging = true;
-          this.chargeTimer = cfg.chargeTime;
-        }
+        if (this.shotTimer <= 0) this._beginCharge(game, dirX, dirZ);
       }
       return;
     }
@@ -430,13 +522,65 @@ export class Enemy {
     this.facingZ = Math.cos(angle);
   }
 
+  /**
+   * A pinned shooter: track and fire, never move. Everything a stripe does
+   * except walking, so a staged encounter behaves exactly like a live one.
+   */
+  _holdFire(dt, game, dirX, dirZ) {
+    const cfg = this.config;
+    if (!cfg.shotInterval) return;
+    this.facingX = dirX;
+    this.facingZ = dirZ;
+
+    if (this.charging) {
+      this.chargeTimer -= dt;
+      if (this.chargeTimer <= 0) {
+        this.charging = false;
+        this.shotTimer = cfg.shotInterval;
+        this._fire(game, this.aimX, this.aimZ);
+      }
+      return;
+    }
+    this.shotTimer -= dt;
+    if (this.shotTimer <= 0) this._beginCharge(game, dirX, dirZ);
+  }
+
+  /** Commit to a shot: lock the line now, and let the wind-up show it. */
+  _beginCharge(game, dirX, dirZ) {
+    if (this.disarmed) {
+      this.shotTimer = this.config.shotInterval;
+      return;
+    }
+    this.charging = true;
+    this.chargeTimer = this.config.chargeTime;
+    this.aimX = dirX;
+    this.aimZ = dirZ;
+    game.audio?.enemyCharge?.();
+  }
+
+  /** World-space tip of the barrel along a given bearing. */
+  muzzlePoint(dirX = this.facingX, dirZ = this.facingZ) {
+    const reach = GUN_LENGTH + this.config.shotRadius * 0.5;
+    return { x: this.x + dirX * reach, z: this.z + dirZ * reach };
+  }
+
   _fire(game, dirX, dirZ) {
     const cfg = this.config;
-    const spawnDist = this.radius + cfg.shotRadius + 0.1;
+    const tip = this.muzzlePoint(dirX, dirZ);
+
+    // Never fire a bullet into the inside of a wall. The muzzle can end up
+    // buried when a shooter is standing against geometry, and a shot that dies
+    // on its first substep looks exactly like a shot that never happened.
+    if (game.physics?.pointBlocked?.(tip.x, tip.z, cfg.shotRadius)) {
+      this.shotTimer = cfg.shotInterval * 0.35;
+      this.fireFlash = 0;
+      return;
+    }
+
     const projectile = new Projectile(
       this.parent,
-      this.x + dirX * spawnDist,
-      this.z + dirZ * spawnDist,
+      tip.x,
+      tip.z,
       dirX * cfg.shotSpeed,
       dirZ * cfg.shotSpeed,
       cfg.shotDamage,
@@ -444,7 +588,21 @@ export class Enemy {
       cfg.shotLife
     );
     game.projectiles.push(projectile);
+
+    // Recoil: the body is shoved back down its own barrel. Small, but it is
+    // what makes the bullet look expelled rather than dropped. A pinned shooter
+    // keeps the barrel kick and skips the shove — three shots' worth of recoil
+    // walked a "stationary" enemy four units off the mark it was staged on.
+    if (!this.frozen) {
+      this.vx -= dirX * ENEMY_FIRE.recoil;
+      this.vz -= dirZ * ENEMY_FIRE.recoil;
+    }
+    this.fireFlash = ENEMY_FIRE.flashTime;
+
     game.audio?.enemyShot();
+    // The bullet had a death effect and an impact effect but no birth effect,
+    // so the loudest thing at the enemy was the charge ring *switching off*.
+    game.on?.enemyFired?.({ enemy: this, x: tip.x, z: tip.z, dirX, dirZ });
   }
 
   _updateMesh(dt, distToPlayer) {
@@ -503,6 +661,8 @@ export class Enemy {
       }
     }
 
+    if (this.gun) this._updateGun(dt);
+
     if (this.shieldMat) {
       // Brighten the shield when the player is actually in front of it.
       this.shieldMat.opacity = 0.55 + (distToPlayer < 12 ? 0.35 : 0.1);
@@ -534,6 +694,53 @@ export class Enemy {
     }
   }
 
+  /**
+   * The wind-up, told with the gun.
+   *
+   * Idle it sits low and dim. Charging, it levels off and the muzzle lights,
+   * so the tell points *somewhere* — the old concentric ring carried no aim
+   * information at all, which is the one thing you need from a wind-up. On the
+   * shot it kicks back and the muzzle blows out white, and critically the
+   * flash is brighter than the peak of the charge: the enemy used to get
+   * dimmer on the exact frame it fired.
+   */
+  _updateGun(dt) {
+    const cfg = this.config;
+    const firing = this.fireFlash > 0 ? this.fireFlash / ENEMY_FIRE.flashTime : 0;
+    const charge = this.charging ? 1 - this.chargeTimer / cfg.chargeTime : 0;
+
+    // While charging the gun points where the shot will actually go, so the
+    // barrel and the bullet cannot disagree.
+    if (this.charging || firing > 0) {
+      const angle = Math.atan2(this.aimX, this.aimZ);
+      this.gun.rotation.y = angle - this.group.rotation.y;
+    } else {
+      this.gun.rotation.y = 0;
+    }
+
+    // The camera looks straight down, so raising a barrel is nearly invisible —
+    // it only foreshortens. Extending it is what reads from above: the gun
+    // telescopes out of the body as the shot builds and is at full reach on the
+    // frame it fires, which is also the frame the muzzle point is measured at.
+    // Idle it is a short dark nub — just enough to show which way the thing is
+    // pointing. The wind-up runs it out to four times that protrusion and
+    // lights it, so "it is about to shoot" is a change in the silhouette and
+    // not only a change in colour.
+    const extend = Math.max(charge, firing);
+    this.gun.scale.z = (0.55 + 0.45 * extend) * GUN_LENGTH;
+    // A little tilt is kept purely so the barrel catches the light and reads as
+    // a solid object rather than a flat stripe.
+    this.gun.rotation.x = -0.16 * (1 - extend);
+    this.gun.position.z = -ENEMY_FIRE.kick * firing;
+    this.gun.position.y = cfg.radius * (1.8 + charge * 0.12);
+
+    this.gunMat.emissiveIntensity = 0.18 + charge * 2.2 + firing * 4.0;
+
+    const flare = 0.5 + charge * 0.9 + firing * 2.4;
+    this.muzzle.scale.setScalar(flare);
+    this.muzzleMat.opacity = Math.min(1, 0.04 + charge * 0.8 + firing * 0.96);
+  }
+
   dispose() {
     this.parent.remove(this.group);
     this.material.dispose();
@@ -561,6 +768,8 @@ export class Projectile {
     this.life = life;
     this.alive = true;
     this.drag = 0;
+    /** Held at the muzzle for one frame so the shot is seen to leave the gun. */
+    this.spawnFrame = true;
 
     this.material = new THREE.MeshBasicMaterial({ color: PALETTE.projectile });
     this.mesh = new THREE.Mesh(

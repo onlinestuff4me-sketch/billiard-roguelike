@@ -50,6 +50,20 @@ export function unlockedTypes(level) {
   return Object.keys(ROOM.unlock).filter((type) => level >= ROOM.unlock[type]);
 }
 
+/** Is a body of this radius intersecting any of the layout's geometry? */
+function insideGeometry(layout, x, z, radius) {
+  for (const c of layout.obstacles || []) {
+    if (c.type === 'circle') {
+      if (Math.hypot(x - c.x, z - c.z) < radius + c.radius) return true;
+    } else {
+      const cx = Math.min(Math.max(x, c.x - c.hw), c.x + c.hw);
+      const cz = Math.min(Math.max(z, c.z - c.hh), c.z + c.hh);
+      if (Math.hypot(x - cx, z - cz) < radius) return true;
+    }
+  }
+  return false;
+}
+
 function clampX(x, radius) {
   const limit = ARENA.halfW - radius - 0.2;
   return Math.min(Math.max(x, -limit), limit);
@@ -99,11 +113,21 @@ export function assignAnchors(rng, composition, layout) {
     const anchor = candidates[index % candidates.length] || { x: 0, z: -10 };
     // Jitter so repeat anchors never stack exactly.
     const spread = index >= candidates.length ? 1.6 : 0.5;
-    return {
-      type,
-      x: clampX(anchor.x + (rng() - 0.5) * spread, ENEMY[type].radius),
-      z: clampZ(anchor.z + (rng() - 0.5) * spread, ENEMY[type].radius)
-    };
+    const radius = ENEMY[type].radius;
+
+    // Re-jitter off any anchor that would drop a body inside the table's own
+    // geometry. A shooter buried in a pillar fires into the inside of it and
+    // its bullets die on their first substep, which looks like a gun that does
+    // not work rather than a spawn that went wrong.
+    let x = clampX(anchor.x + (rng() - 0.5) * spread, radius);
+    let z = clampZ(anchor.z + (rng() - 0.5) * spread, radius);
+    for (let attempt = 0; attempt < 12 && insideGeometry(layout, x, z, radius + 0.35); attempt++) {
+      const angle = rng() * Math.PI * 2;
+      const push = 1.2 + attempt * 0.6;
+      x = clampX(anchor.x + Math.cos(angle) * push, radius);
+      z = clampZ(anchor.z + Math.sin(angle) * push, radius);
+    }
+    return { type, x, z };
   });
 }
 

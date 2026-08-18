@@ -724,6 +724,21 @@ game.on = {
     player.addFocus(FOCUS.onWallSplat);
   },
 
+  /**
+   * The discharge. Until now a shot had a death effect and an impact effect but
+   * nothing at all at the muzzle, so the brightest moment near the enemy was
+   * its charge ring switching off — the table got dimmer at the exact instant
+   * it fired, and the bullet read as having appeared rather than been shot.
+   */
+  enemyFired({ x, z, dirX, dirZ }) {
+    fx.burst(x, z, 9, PALETTE.projectile, 9, 0.34);
+    fx.shockwave(x, z, PALETTE.projectile, 1.5, 0.16);
+    // A short spit of sparks down the barrel line, so the shot has a direction
+    // even in the frame before the bullet has travelled anywhere.
+    fx.burst(x + dirX * 0.5, z + dirZ * 0.5, 5, PALETTE.spark, 13, 0.22);
+    engine.shake(1.6);
+  },
+
   enemyRebound({ enemy, x, z, speed }) {
     if (speed < 6) return;
     fx.burst(x, z, 3, ENEMY_COLOR[enemy.type], speed * 0.25, 0.6);
@@ -808,6 +823,13 @@ game.on = {
 
   projectileHit({ projectile, player: p }) {
     fx.burst(projectile.x, projectile.z, 8, PALETTE.projectile, 7, 0.7);
+    // A lesson shows you the shot; it does not charge you for it. The impact
+    // still lands and still reads, but a tutorial you can lose is not one.
+    if (game.tutorialGuard) {
+      hud.flashDamage();
+      engine.shake(6);
+      return;
+    }
     p.takeDamage(projectile.damage, game, projectile);
   },
 
