@@ -924,7 +924,7 @@ function advanceRoom() {
   hud.setDoors([]);
 
   rooms.generate(game.level);
-  player.placeAt(rooms.layout.spawn.x, rooms.layout.spawn.z);
+  player.placeAt(rooms.layout.spawn.x, spawnZ());
   player.addFocus(player.focusMax);
   game.state = 'playing';
   // Every room opens facing 12 o'clock. Carrying the last room's heading over
@@ -939,6 +939,11 @@ function advanceRoom() {
  * the layout name once the player is past the tutorial rooms — by then the
  * table's shape is the interesting thing about a new room.
  */
+/** Spawn height: PLAYER.spawnFromBottom of the table, measured up from the bottom. */
+function spawnZ() {
+  return ARENA.halfH - ARENA.height * PLAYER.spawnFromBottom;
+}
+
 function showRoomBanner() {
   const lesson = TUTORIAL.lessons[game.level];
   if (lesson) hud.showBanner(lesson.title, lesson.sub, 2.6);
@@ -961,7 +966,7 @@ function startRun() {
 
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
-  player.respawn(rooms.layout.spawn.x, rooms.layout.spawn.z);
+  player.respawn(rooms.layout.spawn.x, spawnZ());
   input.setHeading(0, -1);
   showRoomBanner();
 }
@@ -1159,7 +1164,7 @@ function attract(rawDt) {
     if (attractTimer > 0) return;
     game.level = 2 + Math.floor(Math.random() * 6);
     rooms.generate(game.level);
-    player.placeAt(rooms.layout.spawn.x, rooms.layout.spawn.z);
+    player.placeAt(rooms.layout.spawn.x, spawnZ());
     player.hp = player.maxHp;
     hud.setDoors([]);
     attractTimer = 0.9;
@@ -1272,6 +1277,7 @@ function frame(now) {
         player.updateAim(aim);
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();
+        onboarding.notify('aiming', { draw: aim.pullLength || 0 });
       }
     } else if (
       game.state === 'playing' &&
