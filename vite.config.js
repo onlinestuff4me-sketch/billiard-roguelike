@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 /**
@@ -23,6 +24,15 @@ export default defineConfig({
     target: 'es2020',
     outDir: 'dist',
     sourcemap: true,
-    chunkSizeWarningLimit: 1200
+    chunkSizeWarningLimit: 1200,
+    // Two pages: the game at / and the desktop table editor at /tool. The
+    // editor imports layouts.json and the threat director directly from src,
+    // so there is exactly one definition of a table and of what spawns on it.
+    rollupOptions: {
+      input: {
+        main: resolve(import.meta.dirname, 'index.html'),
+        tool: resolve(import.meta.dirname, 'tool/index.html')
+      }
+    }
   }
 });

@@ -46,6 +46,7 @@ import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
 import { HUD } from './ui/HUD.js';
 import { BoonModal } from './ui/BoonModal.js';
+import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
@@ -608,6 +609,12 @@ game.dealDamage = dealDamage;
  */
 game.forceKill = (enemy) => {
   if (!enemy || !enemy.alive) return;
+  // Force means force: a target still inside its spawn telegraph shrugs damage
+  // off, which would make a lesson's kill silently fail to happen.
+  if (enemy.state === ENEMY_STATE.SPAWNING) {
+    enemy.state = ENEMY_STATE.ACTIVE;
+    enemy.spawnTimer = 0;
+  }
   const result = enemy.takeDamage(enemy.hp + 1);
   if (result.killed) killEnemy(enemy);
 };

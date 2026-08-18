@@ -24,19 +24,20 @@ import { Enemy, ENEMY_STATE } from '../entities/Enemy.js';
 import layoutData from '../data/layouts.json';
 
 /* ------------------------------------------------------------------ *
- * Seeded RNG — mulberry32
+ * The procedural half lives in ThreatDirector.js — pure, scene-free and
+ * shared with the level tool at /tool, so the tool can never disagree with
+ * the rules it is a tool for. Re-exported here because callers have always
+ * reached for makeRng through RoomManager.
  * ------------------------------------------------------------------ */
 
-export function makeRng(seed) {
-  let a = seed >>> 0;
-  return function rng() {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import {
+  makeRng,
+  roomSeed,
+  budgetFor as directorBudgetFor,
+  buildWaves as directorBuildWaves
+} from './ThreatDirector.js';
+
+export { makeRng };
 
 const pick = (rng, list) => list[Math.floor(rng() * list.length) % list.length];
 
@@ -125,7 +126,7 @@ export class RoomManager {
     this.teardown();
     this.scripted = false;
     this.level = level;
-    this.rng = makeRng((this.runSeed ^ Math.imul(level, 0x9e3779b1)) >>> 0);
+    this.rng = makeRng(roomSeed(this.runSeed, level));
     const rng = this.rng;
 
     // --- 1. handcrafted geometry -------------------------------------
@@ -220,104 +221,16 @@ export class RoomManager {
   }
 
   budgetFor(level) {
-    return Math.min(
-      ROOM.baseBudget + ROOM.budgetPerLevel * (level - 1),
-      ROOM.maxBudget
-    );
+    return directorBudgetFor(level);
   }
 
   /**
    * The Threat Director: spend a budget across waves, drawing archetypes by
-   * weight subject to unlock gates, and bind each to a validated anchor.
+   * weight subject to unlock gates, and bind each to a validated anchor — or
+   * take the layout's own authored waves when it has them.
    */
   buildWaves(rng, level) {
-    const budget = this.budgetFor(level);
-    const waveCount =
-      ROOM.waveCountByLevel[Math.min(level, ROOM.waveCountByLevel.length) - 1] || 1;
-
-    // Later waves get a slightly larger share so rooms escalate.
-    const shares = [];
-    let total = 0;
-    for (let i = 0; i < waveCount; i++) {
-      const share = 1 + i * 0.35;
-      shares.push(share);
-      total += share;
-    }
-
-    const unlocked = Object.keys(ROOM.unlock).filter((type) => level >= ROOM.unlock[type]);
-    const tags = this.layout.tags || [];
-
-    const waves = [];
-    for (let w = 0; w < waveCount; w++) {
-      let remaining = Math.max(2, Math.round((budget * shares[w]) / total));
-      const composition = [];
-      let guard = 0;
-      while (remaining > 0 && guard++ < 64) {
-        const affordable = unlocked.filter((type) => ENEMY[type].cost <= remaining);
-        if (!affordable.length) break;
-        const type = this.weightedType(rng, affordable, tags, level);
-        composition.push(type);
-        remaining -= ENEMY[type].cost;
-      }
-      waves.push(this.assignAnchors(rng, composition));
-    }
-    return waves;
-  }
-
-  weightedType(rng, types, tags, level) {
-    const weights = types.map((type) => {
-      let w = ROOM.weight[type] ?? 1;
-      // Layout tags bias composition toward what the geometry teaches.
-      if (tags.includes('shooter') && type === 'stripe') w *= 1.8;
-      if (tags.includes('tank') && type === 'heavy') w *= 1.8;
-      if (tags.includes('dense') && type === 'solid') w *= 1.5;
-      if (tags.includes('pinball') && type === 'solid') w *= 1.3;
-      // Heavies become more common with depth.
-      if (type === 'heavy') w *= 1 + (level - ROOM.unlock.heavy) * 0.08;
-      return Math.max(w, 0.01);
-    });
-    const total = weights.reduce((a, b) => a + b, 0);
-    let roll = rng() * total;
-    for (let i = 0; i < types.length; i++) {
-      roll -= weights[i];
-      if (roll <= 0) return types[i];
-    }
-    return types[types.length - 1];
-  }
-
-  /** Bind a composition to anchors that are clear of the player and geometry. */
-  assignAnchors(rng, composition) {
-    const spawnPoint = this.layout.spawn;
-    const candidates = this.layout.anchors
-      .filter((a) => Math.hypot(a.x - spawnPoint.x, a.z - spawnPoint.z) >= ROOM.safeSpawnRadius)
-      .slice();
-
-    // Fisher-Yates with the seeded RNG so anchor order is reproducible.
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-    }
-
-    return composition.map((type, index) => {
-      const anchor = candidates[index % candidates.length] || { x: 0, z: -10 };
-      // Jitter so repeat anchors never stack exactly.
-      const spread = index >= candidates.length ? 1.6 : 0.5;
-      return {
-        type,
-        x: this.clampX(anchor.x + (rng() - 0.5) * spread, ENEMY[type].radius),
-        z: this.clampZ(anchor.z + (rng() - 0.5) * spread, ENEMY[type].radius)
-      };
-    });
-  }
-
-  clampX(x, radius) {
-    const limit = ARENA.halfW - radius - 0.2;
-    return Math.min(Math.max(x, -limit), limit);
-  }
-
-  clampZ(z, radius) {
-    const limit = ARENA.halfH - radius - 0.2;
-    return Math.min(Math.max(z, -limit), limit);
+    return directorBuildWaves(this.layout, level, rng);
   }
 
   /* ---------------------------------------------------------------- *
