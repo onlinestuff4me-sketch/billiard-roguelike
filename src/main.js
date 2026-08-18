@@ -46,7 +46,7 @@ import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
 import { HUD } from './ui/HUD.js';
 import { BoonModal } from './ui/BoonModal.js';
-import { Onboarding } from './ui/Onboarding.js';
+import { Tutorial } from './systems/Tutorial.js';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
 
@@ -582,6 +582,13 @@ function killEnemy(enemy) {
  */
 function dealDamage(enemy, amount, opts = {}) {
   if (!enemy || !enemy.alive) return { dealt: 0, killed: false };
+  // While a lesson is running the tutorial director owns every life in the
+  // room. A rep resolves only when the thing being taught actually happened,
+  // so a half-finished attempt can never delete the target you still need to
+  // practise on — which is what makes a lesson unfailable.
+  if (game.tutorialGuard && !game.tutorialGuard(enemy, amount, opts)) {
+    return { dealt: 0, killed: false, blocked: true };
+  }
   const result = enemy.takeDamage(amount, {
     ...opts,
     backstabBonus: player.stats.backstabBonus
@@ -593,6 +600,18 @@ function dealDamage(enemy, amount, opts = {}) {
   return result;
 }
 game.dealDamage = dealDamage;
+
+/**
+ * Kill outright, bypassing the damage funnel — and therefore bypassing the
+ * tutorial guard above. The lesson director is the only thing allowed to use
+ * it, because it is the only thing that knows whether a rep counted.
+ */
+game.forceKill = (enemy) => {
+  if (!enemy || !enemy.alive) return;
+  const result = enemy.takeDamage(enemy.hp + 1);
+  if (result.killed) killEnemy(enemy);
+};
+game.tutorialGuard = null;
 
 /**
  * final = base × speedRatio × chain × damageMult × bankBonus × firstHitBonus
@@ -620,6 +639,7 @@ game.on = {
       silent: true
     });
     game.launchHits += 1;
+    tutorial.notify('hit', { enemy, banked, index: game.launchHits });
 
     // Chaining is the point of the game, so it gets the loudest feedback in it.
     // Every extra body in one launch escalates the callout, pays Focus back and
@@ -631,7 +651,6 @@ game.on = {
       engine.zoomPunch();
       audio.chainNote(game.launchHits);
       p.addFocus(TUTORIAL.praiseFocus);
-      onboarding.notify('hits', { count: game.launchHits });
     }
 
     engine.hitStop(result.backstab ? TIME.hitStopCrit : TIME.hitStop);
@@ -741,7 +760,7 @@ game.on = {
       engine.zoomPunch();
       engine.hitStop(TIME.hitStop * 0.7);
     }
-    onboarding.notify('launch', { power: p, turned: game.lastTurn || 0 });
+    tutorial.notify('launch', { power: p, turned: game.lastTurn || 0 });
     game.launchHits = 0;
     game.pyreBonus = 0;
     boons.onLaunch(event);
@@ -754,6 +773,9 @@ game.on = {
   },
 
   playerTouched({ player: p, enemy }) {
+    // Lessons are practice, not a fight: a target you are still learning to
+    // hit does not get to chip away at you while you work it out.
+    if (game.tutorialGuard) return;
     if (p.touchTimer > 0) return;
     if (p.takeDamage(enemy.config.contactDamage, game, enemy)) {
       p.touchTimer = PLAYER.touchInterval;
@@ -844,7 +866,6 @@ function handleRoomClear() {
   audio.roomClear();
   player.addFocus(FOCUS.onRoomClear);
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
-  onboarding.notify('roomClear');
   hud.showBanner('Room Clear', 'Shoot into an exit', 2.4);
   hud.setDoors(
     rooms.doors.map((door) => ({
@@ -950,7 +971,8 @@ function showRoomBanner() {
   else hud.showBanner(`Room ${game.level}`, rooms.layout.name, 1.5);
 }
 
-function startRun() {
+/** Everything a fresh start clears, minus the room itself. */
+function resetRunState() {
   boons.reset();
   boons.recompute();
   hud.setBuild(boons.owned);
@@ -963,7 +985,13 @@ function startRun() {
   game.hazardAccum = 0;
   game.state = 'playing';
   hud.setDoors([]);
+}
 
+function startRun() {
+  resetRunState();
+  // Leaving the tutorial (or never entering it) hands the room back to the
+  // normal rules, including the ones that can hurt you.
+  game.tutorialGuard = null;
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
   player.respawn(rooms.layout.spawn.x, spawnZ());
@@ -1061,7 +1089,17 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', resi
  * Boot
  * ------------------------------------------------------------------ */
 
-const onboarding = new Onboarding(uiLayer);
+const tutorial = new Tutorial({
+  layer: uiLayer,
+  game,
+  player,
+  rooms,
+  input,
+  fx,
+  spawnZ,
+  resetRun: resetRunState,
+  finish: () => startRun()
+});
 const menuMain = document.getElementById('menu-main');
 const menuSettings = document.getElementById('menu-settings');
 const $ = (id) => document.getElementById(id);
@@ -1094,7 +1132,7 @@ function applyMute() {
 }
 
 function showTutorialState() {
-  $('set-tutorial-state').textContent = Onboarding.completed
+  $('set-tutorial-state').textContent = Tutorial.completed
     ? 'Tutorial finished — it will not show again'
     : 'Tutorial will play on your next run';
 }
@@ -1102,7 +1140,7 @@ function showTutorialState() {
 function openMenu() {
   menuOpen = true;
   input.cancel();
-  onboarding.stop();
+  tutorial.stop();
   bootVeil.classList.remove('hidden');
   uiLayer.classList.add('attract');
   menuMain.hidden = false;
@@ -1116,9 +1154,10 @@ function play() {
   uiLayer.classList.remove('attract');
   audio.unlock();
   applyMute();
-  startRun();
-  if (Onboarding.completed) onboarding.stop();
-  else onboarding.start();
+  input.cancel();
+  // A first-time player gets the lesson rooms; everyone else gets the game.
+  if (Tutorial.completed) startRun();
+  else tutorial.start();
 }
 
 $('btn-play').addEventListener('click', play);
@@ -1142,7 +1181,7 @@ $('set-mute').addEventListener('click', () => {
   applyMute();
 });
 $('set-tutorial').addEventListener('click', () => {
-  Onboarding.reset();
+  Tutorial.reset();
   showTutorialState();
   $('set-tutorial').textContent = 'Tutorial reset';
   setTimeout(() => {
@@ -1244,6 +1283,7 @@ function frame(now) {
   audio.setTimeDilation(engine.timeScale);
 
   attract(rawDt);
+  tutorial.update(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 
@@ -1277,7 +1317,7 @@ function frame(now) {
         player.updateAim(aim);
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();
-        onboarding.notify('aiming', { draw: aim.pullLength || 0 });
+        tutorial.notify('aiming', { draw: aim.pullLength || 0 });
       }
     } else if (
       game.state === 'playing' &&
@@ -1334,6 +1374,6 @@ requestAnimationFrame(frame);
 // Expose the context for console-side tuning during playtests. The UI handles
 // come too, so a reward screen can be summoned without clearing a room first.
 if (import.meta.env?.DEV) {
-  game.ui = { modal, hud, input, advanceRoom, openBoonModal };
+  game.ui = { modal, hud, input, advanceRoom, openBoonModal, tutorial, rooms, player };
   window.__billiard = game;
 }

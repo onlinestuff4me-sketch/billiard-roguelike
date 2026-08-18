@@ -57,6 +57,8 @@ export class Enemy {
 
     this.parent = parent;
     this.type = type;
+    /** Set by scripted (tutorial) rooms: hold position instead of steering. */
+    this.frozen = false;
     this.config = config;
 
     // --- physics body ---
@@ -338,7 +340,10 @@ export class Enemy {
         break;
 
       case ENEMY_STATE.ACTIVE:
-        this._steer(dt, game, dirX, dirZ, dist);
+        // A frozen enemy still collides, still gets knocked, still dies — it
+        // just does not drive. The tutorial racks its targets in exact spots
+        // and a lesson that walks away from its own diagram teaches nothing.
+        if (!this.frozen) this._steer(dt, game, dirX, dirZ, dist);
         break;
 
       default:
