@@ -1125,6 +1125,7 @@ const tutorial = new Tutorial({
   rooms,
   input,
   fx,
+  hud,
   spawnZ,
   resetRun: resetRunState,
   finish: () => startRun()

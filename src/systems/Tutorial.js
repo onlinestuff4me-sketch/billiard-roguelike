@@ -44,6 +44,7 @@ const KEY = 'billiard-tutorial-done-v1';
 const PAIR = 0.68;
 
 /** Where the racks sit relative to the ball, which spawns at z ≈ 6.4. */
+const SOLO_Z = 0.5;
 const CHAIN_Z = 0.5;
 const BANK_Z = 1.0;
 /**
@@ -52,43 +53,63 @@ const BANK_Z = 1.0;
  */
 const SHOOTER_Z = -3.2;
 
-const EMPTY_ROOM = { id: 'lesson-open', name: 'Practice', obstacles: [], enemies: [] };
+/**
+ * The bank solution, precomputed.
+ *
+ * From the spawn at (0, 6.4) the ball runs to the right rail at x = 8.38
+ * (the wall inset by its own radius) and returns to x = 0 at z = 1.0, where the
+ * rack is. Total lateral travel 16.76 over 5.4 of depth, so the line sits at
+ * atan(16.76 / 5.4) = 72.1 degrees off vertical. The cue rests on exactly this
+ * heading, so the lesson opens with the whole two-leg path drawn on the table.
+ */
+const BANK_AIM = { x: 0.9517, z: -0.307 };
+
+/** Straight up the middle — the default the ball starts every room on. */
+const UP = { x: 0, z: -1 };
 
 /**
- * Each lesson: what it says, the room it says it in, and the single rule that
- * decides whether what just happened counts.
+ * Each lesson: what it says, the room it says it in, the heading the cue rests
+ * on, and the single rule that decides whether what just happened counts.
  *
  * A rule returns 'score' (that was the thing — take it), 'reject' (that was an
  * attempt at the thing and it was not it — say so), or nothing at all (not
  * related; stay quiet). `hit` judges one strike as it lands; `shot` judges a
- * whole launch once the ball has stopped, because some lessons are about the
- * shot as a whole rather than any one contact in it.
+ * whole launch once the rep is over, because some lessons are about the shot as
+ * a whole rather than any one contact in it.
+ *
+ * The first three rooms hold perfectly still. A lesson is hard enough to read
+ * without the diagram walking away while you study it, and there is nothing to
+ * learn from dodging before you can reliably hit. Movement — and the reason you
+ * are given a way to stop it — arrives once aiming is solved.
  */
 export const LESSONS = [
   {
     id: 'aim',
-    say: 'Drag down to aim',
-    hint: 'Your thumb is the butt of the cue. Drag away from the orb and the line swings with you.',
+    say: 'Hit the enemy',
+    hint: 'Your thumb is the butt of the cue. Drag back from the orb to aim, and let go to fire.',
     goal: 1,
-    room: EMPTY_ROOM,
-    // A real draw, so the cue is already in hand when the next line arrives.
-    aim: (draw) => draw >= 2.6,
-    cheer: 'That is your cue'
-  },
-  {
-    id: 'fire',
-    say: 'Release to shoot',
-    hint: 'Let go and the orb fires along the line. The further back you drag, the harder it goes.',
-    goal: 1,
-    room: EMPTY_ROOM,
-    launch: () => true,
-    cheer: 'Clean strike'
+    aim: UP,
+    room: {
+      id: 'lesson-aim',
+      name: 'First Contact',
+      obstacles: [],
+      enemies: [{ type: 'solid', x: 0, z: SOLO_Z }]
+    },
+    // One target, dead ahead of the resting cue. The lesson is over when the
+    // player has actually hit something — not when they have dragged far
+    // enough, which is what the instruction used to disappear on.
+    hit: () => 'score',
+    shot: (s) => (s.hits === 0 ? 'reject' : null),
+    cheer: 'That is the whole game',
+    scold: 'Missed — pull straight back from the orb and let go',
+    nudge: 'Put your thumb below the orb and drag straight down. The line points where it will go.'
   },
   {
     id: 'chain',
     say: 'Hit 2 in a row',
-    hint: 'Two hits in one shot pays a chain bonus. These two are racked tight — split them straight up the middle.',
+    hint: 'Two hits in one shot pays a chain bonus. These two are racked tight and the cue is already lined up — just pull back and let go.',
     goal: 1,
+    aim: UP,
     room: {
       id: 'lesson-chain',
       name: 'The Split',
@@ -106,14 +127,15 @@ export const LESSONS = [
     shot: (s) => (s.hits > 0 && s.hits < 2 ? 'reject' : null),
     cheer: 'Chain ×1.4',
     scold: 'One at a time does nothing — split them down the middle',
-    nudge: 'Keep the line dead straight up the middle — the preview will show it clipping both.'
+    nudge: 'Keep the line dead straight up the middle. The preview shows it clipping both.'
   },
   {
     id: 'bank',
     say: 'Bank off a wall',
-    hint: 'Only hits that come off a rail count. Cut it hard into the side wall and let it come back.',
+    hint: 'Only hits that come off a rail count. The cue is already on the line — follow it into the side wall and it comes back through them.',
     goal: 2,
     showCount: true,
+    aim: BANK_AIM,
     room: {
       id: 'lesson-bank',
       name: 'Off The Rail',
@@ -127,13 +149,40 @@ export const LESSONS = [
     hit: (h) => (h.banked ? 'score' : 'reject'),
     cheer: 'Off the rail!',
     scold: 'No rail yet — bank it off a side wall first',
-    nudge: 'Aim almost sideways — into the side wall, a little above the rack — and it will come back through them.'
+    nudge: 'Drag down and to the LEFT, so the cue swings the line up and right into the wall.'
+  },
+  {
+    id: 'freeze',
+    say: 'Hold to stop time',
+    hint: 'These ones move. Put your thumb down and the table stops dead — take as long as you like to line the shot up.',
+    goal: 3,
+    showCount: true,
+    aim: UP,
+    room: {
+      id: 'lesson-freeze',
+      name: 'Dead Stop',
+      obstacles: [],
+      // Live, so the freeze has something to be worth doing.
+      // Started well up-table so there is a visible approach to stop, rather
+      // than three bodies already on top of the ball when the card appears.
+      enemies: [
+        { type: 'solid', x: -5.0, z: -8.0, frozen: false },
+        { type: 'solid', x: 5.0, z: -8.0, frozen: false },
+        { type: 'solid', x: 0, z: -12.0, frozen: false }
+      ]
+    },
+    hit: () => 'score',
+    shot: (s) => (s.hits === 0 ? 'reject' : null),
+    cheer: 'Nice — time is yours',
+    scold: 'Miss. Hold your thumb down and look before you fire',
+    nudge: 'While your thumb is down nothing on the table moves at all. Line it up properly, then release.'
   },
   {
     id: 'shooter',
     say: 'Kill the shooter',
-    hint: 'Violet enemies shoot back. Watch the barrel come up — that is your warning. Hit it before it lands one on you.',
+    hint: 'Violet enemies shoot back. Watch the barrel run out and light up — that is your warning. Hit it before it lands one on you.',
     goal: 1,
+    aim: UP,
     room: {
       id: 'lesson-shooter',
       name: 'Return Fire',
@@ -267,6 +316,7 @@ export class Tutorial {
     // The menu hands over mid-attract-shot, so nothing about the previous ball
     // is carried in: the first lesson racks its own table immediately.
     this._launched = false;
+    this.hud?.hideBanner?.();
     this._enter(0);
   }
 
@@ -317,10 +367,28 @@ export class Tutorial {
     if (!lesson) return;
     this._needsRoom = false;
     this._roomKey = lesson.room.id;
+    // A lesson card is the only thing that should be talking. The boot run
+    // raises a room banner behind the menu, and it was still fading across the
+    // first lesson — two sets of instructions at once, one of them stale.
+    this.hud?.hideBanner?.();
     this.rooms.loadScripted(lesson.room);
     this.player.respawn(0, this.spawnZ());
     this.player.focus = this.player.focusMax;
-    this.input.setHeading(0, -1);
+    this._restAim();
+  }
+
+  /**
+   * Park the cue on the line the lesson is about.
+   *
+   * The resting cue is drawn, and the trajectory preview follows it, so a
+   * lesson opens with its own solution already on the table — including the
+   * bank, whose two legs are visible before the player has touched anything.
+   * They still have to reproduce it; they just are not being asked to guess
+   * what "bank off a wall" is supposed to look like.
+   */
+  _restAim() {
+    const aim = this.lesson?.aim;
+    this.input.setHeading(aim ? aim.x : 0, aim ? aim.z : -1);
   }
 
   /* ---------------------------------------------------------------- *
@@ -456,7 +524,7 @@ export class Tutorial {
   _homeBall() {
     this.player.placeAt(0, this.spawnZ());
     this.player.focus = this.player.focusMax;
-    this.input.setHeading(0, -1);
+    this._restAim();
   }
 
   /**
@@ -466,7 +534,7 @@ export class Tutorial {
    */
   _reRack() {
     for (const enemy of this.rooms.scriptedEnemies) {
-      if (!enemy.alive) continue;
+      if (!enemy.alive || !enemy.frozen) continue;
       if (Math.abs(enemy.x - enemy.homeX) < 0.02 && Math.abs(enemy.z - enemy.homeZ) < 0.02) {
         continue;
       }
