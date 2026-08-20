@@ -65,7 +65,14 @@ The geometry is drawn around the spawn, so a rep that began elsewhere would be
 aiming at a diagram that no longer applies.
 
 **Success is loud, then the table resets.** A completed lesson detonates what it
-killed, holds a beat, restores the table, and only then shows the next card.
+killed, holds a beat, then swaps card and table on the *same frame*. Deferring
+the build left the next instruction over an empty table for ~2s, and a shot
+fired into that gap was judged against a lesson that had never been playable.
+
+**Feedback lives outside the card.** The status line is absolutely positioned
+below it, so the card's height does not depend on whether anything is being
+said. Reserving a line for it made the card permanently taller and grew it again
+under a two-line scold — over the very ball the lesson was about.
 
 ## The lessons
 
@@ -74,8 +81,8 @@ killed, holds a beat, restores the table, and only then shows the next card.
 | 1 | Aim and shoot at the red ball | one red ball straight ahead | the cue ball hits it |
 | 2 | Hit the red ball into the goal | one red ball, red glowing goal bar on the top wall | the red ball enters the goal |
 | 3 | Hit one ball into the other ball | two red balls in line up-table | the struck ball caroms into the second |
-| 4 | Hit 2 in a row | two red balls in a column on the cue's line | one shot strikes both |
-| 5 | Hit 3 in a row | three red balls in a column 20° **off** the cue's line | one shot strikes all three |
+| 4 | Hit 2 in a row | two red balls in a column on the cue's line | one shot clears the rack |
+| 5 | Hit 3 in a row | three red balls in a column 20° **off** vertical | one shot clears the rack |
 
 Lessons 1–5 are all frozen tables. Nothing on any of them moves until the player
 shoots.
@@ -93,16 +100,25 @@ and only an *enemy* entering it counts — the cue ball passing through does not
 the `carom` event, which fires when a knocked enemy strikes another enemy;
 striking both with the cue ball directly does not count.
 
-**4 and 5 — Chaining.** Two strikes, then three, in a single launch. This is the
+**4 and 5 — Chaining.** Two, then three, cleared in a single launch. This is the
 scoring mechanic, so it is the last thing taught and the only one repeated. It
 works because the cue ball passes through anything it *kills* — so chain targets
 must be mortal, unlike the goal and carom targets.
 
-**5 is also the graduation.** Every earlier rack sits on the cue's resting line,
-so the whole tutorial can otherwise be beaten with five identical straight
-drags. This one is offset 20°, so the player turns the cue once before the game
-asks them to. It is also the only lesson that shows the Focus gauge and lets it
-drain, so the meter that limits thinking time is met while nothing can hurt you.
+Judged on the rack being **cleared**, not on cue contacts. Counting contacts
+rejected a shot that destroyed both targets — the cue ball killing the first and
+the first cannoning into the second — while the HUD was printing `×1.4 2 CHAIN`
+for the same shot. The coach must never contradict the scoreboard.
+
+**5 is also the graduation.** Every earlier rack sits straight ahead, so the
+whole tutorial could otherwise be beaten with five identical straight drags.
+This one is offset 20°, so the player leaves having seen that "up the middle" is
+not the only line there is. The cue still rests on the answer, as every lesson
+does — the rack being off-centre is the lesson, not a hunt for it.
+
+The Focus gauge is *not* introduced here. It was, briefly, and that broke goal 1:
+a resource meter arriving under the hardest rack is a second idea. Focus stays
+hidden and pinned for the whole tutorial and is met in room 1.
 
 ## The handoff
 
@@ -111,7 +127,8 @@ rather than a hard cut:
 
 - The room counter reads `––` during lessons (`game.level` is 0) so that `01`
   appearing *is* the boundary.
-- The Focus gauge fades in during lesson 5 rather than popping in mid-fight.
+- The Focus gauge fades rather than pops when it appears (`transition` on
+  `.hud-focus`), so its arrival in room 1 is not a hard cut.
 - Contact damage is suppressed for `TUTORIAL.graceSeconds` at the start of room
   1, so the banner explaining that enemies now move is readable. Before this, a
   standing player lost 63% of their hull in the first four seconds.
