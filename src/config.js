@@ -612,7 +612,11 @@ export const TUTORIAL = {
    * callout, a shockwave, a zoom punch and Focus back. Reinforcing the good
    * play teaches the mechanic far better than any tooltip does.
    */
-  praise: ['', '', 'DOUBLE!', 'TRIPLE!', 'QUAD!', 'RAMPAGE!', 'UNREAL!'],
+  /**
+   * Multi-hit callouts used to be adjectives — DOUBLE!, RAMPAGE! — alongside a
+   * separate "x1.8" float. Two texts, neither of which said what had been
+   * earned. There is now one phrase, built in `hitCallout`: "3 HITS  x1.8".
+   */
   praiseFocus: 0.55
 };
 

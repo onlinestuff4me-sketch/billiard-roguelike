@@ -474,10 +474,21 @@ class AimRenderer {
     this.pullPositions.set([player.x, y, player.z, cue.x, y, cue.z]);
     this.pullGeo.attributes.position.needsUpdate = true;
     this.pull.visible = true;
-    this.pullMat.opacity = 0.35 + 0.5 * power;
     this.anchor.visible = true;
     this.anchor.position.set(cue.x, y, cue.z);
-    this.anchor.scale.setScalar(0.7 + power * 0.9);
+
+    // MAXED OUT. Power is draw distance and nothing announced when the draw ran
+    // out, so the top of the range was invisible: players stopped pulling at
+    // whatever felt far enough, which on the three-ball lesson was reliably too
+    // little. At full power the whole cue goes gold and pulses, so "pull back
+    // further" has somewhere to arrive.
+    const maxed = power >= 0.985;
+    const beat = maxed ? 0.75 + 0.25 * Math.sin(performance.now() / 60) : 0;
+
+    this.pullMat.color.setHex(maxed ? PALETTE.carom : PALETTE.aim);
+    this.pullMat.opacity = maxed ? 0.85 + 0.15 * beat : 0.35 + 0.5 * power;
+    this.anchorMat.color.setHex(maxed ? PALETTE.carom : PALETTE.player);
+    this.anchor.scale.setScalar((0.7 + power * 0.9) * (maxed ? 1.35 + 0.25 * beat : 1));
   }
 
   dispose() {

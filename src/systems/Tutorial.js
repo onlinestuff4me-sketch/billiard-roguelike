@@ -33,178 +33,132 @@
  */
 
 import { PLAYER_STATE } from '../entities/Player.js';
+import lessonData from '../data/lessons.json';
 
 const KEY = 'billiard-tutorial-done-v1';
 
 
-/** Straight up the middle — the heading most lessons rest on. */
-const UP = { x: 0, z: -1 };
-
 /**
- * Lesson 5's rack is 20 degrees off vertical. Every lesson rests the cue on its
- * own solution (see docs/TUTORIAL.md), so this one rests here — the beam used
- * to point at empty felt while the scold told the player to "keep it straight",
- * which was the exact opposite of the correction they needed.
- */
-const OFF_AXIS = { x: 0.342, z: -0.940 };
-
-/**
- * Each lesson: what it says, the table it says it on, and the single rule that
- * decides whether what just happened counts.
+ * What each lesson ASKS FOR, and how it is judged. Geometry lives in
+ * src/data/lessons.json so the level tool at /tool can edit it visually; these
+ * are keyed to it by id and merged at load.
  *
- * A rule returns 'score' (that was the thing — take it), 'reject' (that was an
- * attempt and it was not it — say so), or nothing at all (unrelated; stay
- * quiet). `hit` judges one cue strike as it lands, `carom` judges one ball
- * striking another, `usesGoal` is polled while the table settles, and `shot`
- * judges a whole launch once the rep is over. `rest` is the heading the cue
- * parks on — NOT a rule. It was once called `aim`, which collided with an old
- * draw-distance predicate of the same name: the object got called as a
- * function, threw every frame the player was aiming, and killed the rest of
- * the frame including the render. The table simply stopped updating under
- * their thumb.
- *
- * Every table here is frozen. See docs/TUTORIAL.md — nothing moves until the
- * player shoots, and a lesson contains only what it is teaching.
+ * A rule returns 'score' (that was the thing — take it), 'reject' (an attempt
+ * that was not it — say so), or nothing (unrelated; stay quiet). `hit` judges a
+ * cue strike, `pass` judges one ball striking another, `usesGoal` is polled
+ * while the table settles, `clearsRack` scores the whole rack going down in one
+ * launch, and `shot` judges the launch once the rep is over.
  */
-export const LESSONS = [
-  {
-    id: 'aim',
-    say: 'Aim and shoot at the red ball',
-    hint: 'Thumb just below the blue ball. Drag down, then let go.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-aim',
-      name: 'First Contact',
-      obstacles: [],
-      enemies: [{ type: 'solid', x: 0, z: -1.0 }]
-    },
+const RULES = {
+  aim: {
+    say: 'Aim and shoot the red ball',
+    hint: 'Thumb below the blue ball. Drag down, then let go.',
     hit: () => 'score',
     shot: (s) => (s.hits === 0 ? 'reject' : null),
     facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
-    cheer: 'That is the whole game',
-    scold: 'Missed — pull straight back from the blue ball and let go',
-    nudge: 'Put your thumb below the blue ball and drag straight down. The line shows where it will go.'
+    cheer: '1 HIT — now make them count',
+    whiff: 'Missed — drag straight down from the blue ball and release',
+    nudge: 'Put your thumb below the blue ball and pull down. The line shows where it goes.'
   },
-  {
-    id: 'goal',
-    say: 'Hit the red ball into the goal',
-    hint: 'Same shot, harder. Drive the red one all the way into the bar.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-goal',
-      name: 'Into The Goal',
-      obstacles: [],
-      enemies: [{ type: 'solid', x: 0, z: -2.0, invulnerable: true }],
-      // Wide, so a straight shot up the middle is comfortably enough. Set in
-      // from the top rail so a ball can come to rest inside it.
-      // Clear of the card. Note the camera shows 34.8 world units of height,
-      // not the arena's 32 — RENDER.viewPadding adds 1.4 either side — so
-      // anything positioned by eye against a 32-unit assumption sits ~1 unit
-      // lower than intended.
-      goal: { x: 0, z: -11.8, hw: 5.2, hh: 1.1 }
-    },
-    // Scored by the zone, not by contact: what matters is where the ball ended
-    // up, so nothing is decided until the table stops moving.
+
+  goal: {
+    say: 'Knock it into the goal',
+    hint: 'The red bar is the goal. Drive the red ball all the way in.',
     usesGoal: true,
     cheer: 'In the goal',
-    scold: 'Not in — line the red ball up with the bar and drive it straight through',
-    nudge: 'Hit the red ball dead centre and it carries straight on into the bar.'
+    scold: 'Short — hit it harder, straight down the middle',
+    whiff: 'Missed the ball entirely — line up on it first',
+    nudge: 'Hit it dead centre at full draw and it carries straight in.'
   },
-  {
-    id: 'carom',
-    say: 'Hit one ball into the other ball',
-    hint: 'Hit the near one square in the back so it runs on into the far one.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-carom',
-      name: 'The Cannonball',
-      obstacles: [],
-      // Both survive contact: the near one has to live long enough to carry on
-      // into the far one, and the far one has to be there when it arrives.
-      enemies: [
-        { type: 'solid', x: 0, z: 1.4, invulnerable: true },
-        { type: 'solid', x: 0, z: -3.0, invulnerable: true }
-      ]
-    },
-    // A cue strike on both does not count — the second ball has to be hit by
-    // the first, which is the whole idea being taught.
-    carom: () => 'score',
-    shot: (s) => 'reject',
-    cheer: 'Carom!',
-    scold: 'Not quite — drive the near ball on into the far one',
-    whiff: 'Missed — hit the near ball square in the back',
-    nudge: 'Hit the near ball square in the back so it carries straight on up the table.'
+
+  'pass-straight': {
+    say: 'Hit one ball into the other',
+    hint: 'Strike the near ball and it carries on into the far one.',
+    pass: () => 'score',
+    shot: () => 'reject',
+    cheer: '2 HITS  \u00d71.4',
+    scold: 'The near ball has to reach the far one — more power',
+    whiff: 'Missed — take the near ball head on',
+    nudge: 'Straight up the middle at full draw.'
   },
-  {
-    id: 'chain2',
-    say: 'Hit 2 in a row',
-    hint: 'Both sit on your line. Drag right back to carry through the first.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-chain2',
-      name: 'The Split',
-      obstacles: [],
-      // A column, not a split. The cue ball passes through each body it
-      // destroys, so "in a row" is literally a row — and it reads as the same
-      // shot as the three-ball lesson that follows.
-      // Close in. The ball only passes through what it KILLS, and damage falls
-      // off with impact speed — racked further up the table a soft shot leaves
-      // the first ball on 1hp, bounces off it and the lesson silently becomes
-      // unwinnable for anyone not pulling back all the way.
-      enemies: [
-        { type: 'solid', x: 0, z: 3.2 },
-        { type: 'solid', x: 0, z: 0.6 }
-      ]
-    },
-    // Judged on the rack being CLEARED in one launch, not on cue contacts.
-    // Counting contacts meant a shot that destroyed both — the cue ball killing
-    // the first and the first cannoning into the second — was rejected while
-    // the HUD was simultaneously printing "x1.4  2 CHAIN" for it. The coach
-    // must never contradict the scoreboard.
+
+  'pass-angled': {
+    say: 'Same shot, on an angle',
+    hint: 'The second ball is off to the side. Clip the first one so it turns.',
+    pass: () => 'score',
+    shot: () => 'reject',
+    cheer: '2 HITS  \u00d71.4 — on an angle',
+    scold: 'It went the wrong way — strike the first ball on its far side',
+    whiff: 'Missed — the white ghost circle shows where you will make contact',
+    nudge: 'Line the ghost circle up so the yellow cone points at the second ball.'
+  },
+
+  'pass-three': {
+    say: 'Now run it through three',
+    hint: 'One into two, two into three. This is the whole game.',
+    pass: (p) => (p.depth >= 2 ? 'score' : null),
+    shot: () => 'reject',
+    cheer: '3 HITS  \u00d71.8',
+    scold: 'It stopped short — the second ball has to reach the third',
+    whiff: 'Missed — start with the near ball',
+    nudge: 'Full draw. Each ball needs enough left to pass it on.'
+  },
+
+  power: {
+    say: 'Pull back further',
+    hint: 'Draw right back for full power and your ball smashes through all three.',
     clearsRack: true,
-    cheer: 'Chain ×1.4',
-    scold: 'One left — drive right through the first one',
-    whiff: 'Missed both — line the shot straight up through them',
-    nudge: 'Pull further back. It needs enough on it to carry through the first.'
+    cheer: '3 HITS  \u00d71.8 — all yours',
+    scold: 'Not enough on it — drag your thumb further from the ball',
+    whiff: 'Missed the line — straight up the middle',
+    nudge: 'Keep dragging until the cue glows gold. That is full power.'
   },
-  {
-    id: 'chain3',
-    say: 'Hit 3 in a row',
-    hint: 'These three sit right of centre. Your line is on them — full power.',
-    goal: 1,
-    // The graduation rack: the first one that is not straight ahead. The cue
-    // still rests on the answer, so the shot is available without hunting for
-    // it — but the player leaves having seen that "up the middle" is not the
-    // only line there is.
-    rest: OFF_AXIS,
-    room: {
-      id: 'lesson-chain3',
-      name: 'The Run',
-      obstacles: [],
-      // A column straight up the cue's resting line. The ball passes through
-      // each one it destroys, so a single full-power shot runs the whole rack.
-      // Kept below the card band even on short screens, where the stage is
-      // shorter in absolute pixels but the card is not.
-      // Collinear with the spawn along a line 20 degrees off vertical: the ball
-      // holds its heading through anything it destroys, so one straight shot
-      // down this line takes all three — but the player has to find the line.
-      enemies: [
-        { type: 'solid', x: 1.37, z: 2.64 },
-        { type: 'solid', x: 2.39, z: -0.18 },
-        { type: 'solid', x: 3.42, z: -3.00 }
-      ]
-    },
-    clearsRack: true,
-    cheer: 'Chain ×1.8',
-    scold: 'Not all three — the line has to run through every one',
-    whiff: 'Missed everything — follow the line the cue is already on',
-    nudge: 'The three are off to the right. Keep the cue on the line it starts on and pull right back.'
+
+  'bank-1': {
+    say: 'Bounce off a wall first',
+    hint: 'The wall blocks you. Go off the side rail and come back in.',
+    hit: (h) => (h.banked ? 'score' : 'reject'),
+    cheer: 'Off the rail',
+    scold: 'No rail yet — aim into the side wall, not at the ball',
+    whiff: 'Missed — the dashed line shows where the bounce goes',
+    nudge: 'Aim well out to the side. The dashed preview is the return path.'
+  },
+
+  'bank-2': {
+    say: 'Again, other side',
+    hint: 'Same idea, mirrored. Off the rail, then into the ball.',
+    hit: (h) => (h.banked ? 'score' : 'reject'),
+    cheer: 'You have got it',
+    scold: 'Straight at it does not count — rail first',
+    whiff: 'Missed — follow the dashed line',
+    nudge: 'Aim out to the left this time and let it come back.'
+  },
+
+  'bank-two-rails': {
+    say: 'Two bounces, then hit',
+    hint: 'Tucked away. Touch two walls before you reach it — more bounces, more points.',
+    hit: (h) => (h.bounces >= 2 ? 'score' : 'reject'),
+    cheer: 'Two rails. Big points.',
+    scold: 'Only one bounce — go the long way round',
+    whiff: 'Missed — trace the dashed line before you let go',
+    nudge: 'Take it off the top wall first, then the side.'
   }
-];
+};
+
+/** Geometry from the data file, married to the rule of the same id. */
+export const LESSONS = lessonData.lessons.map((table) => ({
+  ...RULES[table.id],
+  id: table.id,
+  goal: 1,
+  rest: table.rest || { x: 0, z: -1 },
+  room: {
+    id: `lesson-${table.id}`,
+    name: table.name,
+    obstacles: table.obstacles || [],
+    enemies: table.enemies || [],
+    goal: table.goal || null
+  }
+}));
 
 /**
  * How long a rep is given before it is called and the table is reset.
@@ -287,6 +241,7 @@ export class Tutorial {
     this._shotTimer = 0;
     this._shotLesson = -1;
     this._hits = 0;
+    this._passes = 0;
     this._struck = new Set();
     this._rejected = false;
     this._statusTimer = 0;
@@ -503,15 +458,20 @@ export class Tutorial {
       this._shotTimer = SHOT_LIMIT;
       this._shotLesson = this.index;
       this._hits = 0;
+      this._passes = 0;
       this._struck.clear();
       this._rejected = false;
       return;
     }
 
-    if (name === 'carom') {
-      if (!lesson.carom) return;
-      const verdict = lesson.carom(payload);
-      if (verdict === 'score') this._score(this.rooms.scriptedEnemies.filter((e) => e.alive));
+    // One ball striking another. `depth` counts how far the shot was handed
+    // along in this launch: 1 is the first ball reaching a second, 2 is that
+    // second ball reaching a third.
+    if (name === 'pass') {
+      this._passes += 1;
+      if (!lesson.pass) return;
+      const verdict = lesson.pass({ ...payload, depth: this._passes });
+      if (verdict === 'score') this._score();
       else if (verdict === 'reject') this._rejected = true;
       return;
     }

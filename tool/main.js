@@ -18,6 +18,7 @@
  */
 
 import sourceDoc from '../src/data/layouts.json';
+import lessonDoc from '../src/data/lessons.json';
 import { ARENA, ENEMY, ROOM } from '../src/config.js';
 import { makeRng, roomSeed, buildWaves, budgetFor, waveCountFor } from '../src/systems/ThreatDirector.js';
 
@@ -29,6 +30,15 @@ const TYPE_COLOR = { solid: '#ff3d6e', stripe: '#a05cff', heavy: '#ffb340' };
 const TYPE_LABEL = { solid: 'Solid', stripe: 'Stripe', heavy: 'Eight-Ball' };
 /** The cue ball's own radius — the safe-spawn ring is drawn around its spawn. */
 const PLAYER_RADIUS = 0.62;
+/** Where the ball actually starts: ARENA.halfH - height * PLAYER.spawnFromBottom. */
+const BALL_SPAWN_Z = 6.4;
+/**
+ * The instruction card covers this band of the table. Racks placed inside it
+ * are invisible to the player, which is the single easiest mistake to make when
+ * authoring a lesson — so the editor draws it.
+ */
+const CARD_TOP_Z = -10.1;
+const CARD_BOTTOM_Z = -5.4;
 
 /* ------------------------------------------------------------------ *
  * State
@@ -36,7 +46,19 @@ const PLAYER_RADIUS = 0.62;
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
 
+/**
+ * Two documents, one editor. Rooms are the procedural pool; Lessons are the
+ * tutorial's authored tables (src/data/lessons.json), which have a `rest`
+ * heading and an optional goal bar instead of anchors and waves.
+ */
+const DOCS = {
+  rooms: { source: sourceDoc, file: 'layouts.json', key: 'layouts', label: 'Tables' },
+  lessons: { source: lessonDoc, file: 'lessons.json', key: 'lessons', label: 'Lessons' }
+};
+
 const state = {
+  mode: 'rooms',
+  docs: { rooms: clone(sourceDoc), lessons: clone(lessonDoc) },
   doc: clone(sourceDoc),
   layout: 0,
   wave: 0,
@@ -66,12 +88,17 @@ function refreshHistory() {
 }
 
 const $ = (id) => document.getElementById(id);
-const layout = () => state.doc.layouts[state.layout];
+const isLessons = () => state.mode === 'lessons';
+const docKey = () => DOCS[state.mode].key;
+const records = () => state.doc[docKey()] || [];
+const layout = () => records()[state.layout] || {};
 const round = (v) => Math.round(v * 1000) / 1000;
 
 /** Where a lesson-free room's enemies live: authored waves, else the last roll. */
 function waves() {
   const l = layout();
+  // A lesson has one flat, always-authored set of balls — no waves, no rolls.
+  if (isLessons()) return [l.enemies || (l.enemies = [])];
   if (l.waves && l.waves.length) return l.waves;
   return state.rolled || [];
 }
@@ -163,15 +190,64 @@ function draw() {
   const l = layout();
 
   // --- safe spawn ring: the director will not place anything inside it ---
-  ctx.strokeStyle = 'rgba(255, 179, 64, 0.28)';
-  ctx.setLineDash([4, 6]);
-  ctx.beginPath();
-  ctx.arc(sx(l.spawn.x), sy(l.spawn.z), ROOM.safeSpawnRadius * scale, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  if (!isLessons() && l.spawn) {
+    ctx.strokeStyle = 'rgba(255, 179, 64, 0.28)';
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.arc(sx(l.spawn.x), sy(l.spawn.z), ROOM.safeSpawnRadius * scale, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // --- the band the instruction card covers, which nothing should sit under ---
+  if (isLessons()) {
+    ctx.fillStyle = 'rgba(255, 179, 64, 0.07)';
+    ctx.fillRect(0, sy(CARD_TOP_Z), w, (CARD_BOTTOM_Z - CARD_TOP_Z) * scale);
+    ctx.strokeStyle = 'rgba(255, 179, 64, 0.3)';
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(sy(CARD_BOTTOM_Z)) + 0.5);
+    ctx.lineTo(w, Math.round(sy(CARD_BOTTOM_Z)) + 0.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255, 179, 64, 0.55)';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillText('INSTRUCTION CARD', 8, sy(CARD_TOP_Z) + 14);
+  }
+
+  // --- the goal bar (lessons only) ---
+  if (l.goal) {
+    const on = isSel('goal', 0);
+    ctx.fillStyle = 'rgba(255, 61, 110, 0.28)';
+    ctx.strokeStyle = '#ff3d6e';
+    ctx.lineWidth = on ? 3 : 1.8;
+    ctx.beginPath();
+    ctx.rect(sx(l.goal.x - l.goal.hw), sy(l.goal.z - l.goal.hh),
+             l.goal.hw * 2 * scale, l.goal.hh * 2 * scale);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 61, 110, 0.9)';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillText('GOAL', sx(l.goal.x - l.goal.hw) + 6, sy(l.goal.z - l.goal.hh) + 14);
+    if (on) drawSelection({ type: 'box', x: l.goal.x, z: l.goal.z, hw: l.goal.hw, hh: l.goal.hh });
+  }
+
+  // --- the resting cue: the line the lesson opens on ---
+  if (isLessons() && l.rest) {
+    const px = l.spawn ? l.spawn.x : 0;
+    const pz = BALL_SPAWN_Z;
+    ctx.strokeStyle = 'rgba(255, 226, 122, 0.75)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([7, 5]);
+    ctx.beginPath();
+    ctx.moveTo(sx(px), sy(pz));
+    ctx.lineTo(sx(px + l.rest.x * 40), sy(pz + l.rest.z * 40));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 
   // --- obstacles ---
-  l.obstacles.forEach((o, i) => {
+  (l.obstacles || []).forEach((o, i) => {
     const on = isSel('obstacle', i);
     const bumper = o.kind === 'bumper';
     ctx.fillStyle = bumper ? 'rgba(46, 242, 196, 0.22)' : 'rgba(29, 111, 122, 0.30)';
@@ -186,10 +262,11 @@ function draw() {
   });
 
   // --- anchors: candidate spawn points for the director ---
-  if (state.showAnchors) {
-    l.anchors.forEach((a, i) => {
+  if (state.showAnchors && !isLessons()) {
+    (l.anchors || []).forEach((a, i) => {
       const on = isSel('anchor', i);
-      const dead = Math.hypot(a.x - l.spawn.x, a.z - l.spawn.z) < ROOM.safeSpawnRadius;
+      const sp0 = l.spawn || { x: 0, z: 11 };
+      const dead = Math.hypot(a.x - sp0.x, a.z - sp0.z) < ROOM.safeSpawnRadius;
       ctx.strokeStyle = dead ? 'rgba(255, 90, 61, 0.6)' : 'rgba(234, 246, 255, 0.5)';
       ctx.lineWidth = on ? 2.5 : 1.2;
       ctx.beginPath();
@@ -233,15 +310,20 @@ function draw() {
   });
 
   // --- player spawn ---
+  // In a lesson the ball always starts at the same place — the racks are drawn
+  // around it — so it is shown where it will actually be, not where the layout
+  // record says.
+  const spawnX = isLessons() ? 0 : (l.spawn ? l.spawn.x : 0);
+  const spawnZ = isLessons() ? BALL_SPAWN_Z : (l.spawn ? l.spawn.z : 11);
   const on = isSel('spawn', 0);
   ctx.fillStyle = 'rgba(53, 242, 255, 0.35)';
   ctx.strokeStyle = '#35f2ff';
   ctx.lineWidth = on ? 3 : 1.8;
   ctx.beginPath();
-  ctx.arc(sx(l.spawn.x), sy(l.spawn.z), PLAYER_RADIUS * scale, 0, Math.PI * 2);
+  ctx.arc(sx(spawnX), sy(spawnZ), PLAYER_RADIUS * scale, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  if (on) drawRing(l.spawn.x, l.spawn.z, PLAYER_RADIUS * scale + 7);
+  if (on) drawRing(spawnX, spawnZ, PLAYER_RADIUS * scale + 7);
 }
 
 function drawRing(x, z, r) {
@@ -290,17 +372,21 @@ function pick(x, z) {
     if (Math.hypot(x - wave[i].x, z - wave[i].z) <= cfg.radius) return { group: 'enemy', index: i };
   }
 
-  if (Math.hypot(x - l.spawn.x, z - l.spawn.z) <= PLAYER_RADIUS + 0.2) return { group: 'spawn', index: 0 };
+  if (l.goal && Math.abs(x - l.goal.x) <= l.goal.hw && Math.abs(z - l.goal.z) <= l.goal.hh) {
+    return { group: 'goal', index: 0 };
+  }
+  const sp = l.spawn || { x: 0, z: 11 };
+  if (Math.hypot(x - sp.x, z - sp.z) <= PLAYER_RADIUS + 0.2) return { group: 'spawn', index: 0 };
 
   if (state.showAnchors) {
-    for (let i = l.anchors.length - 1; i >= 0; i--) {
+    for (let i = (l.anchors || []).length - 1; i >= 0; i--) {
       if (Math.hypot(x - l.anchors[i].x, z - l.anchors[i].z) * scale <= 10) {
         return { group: 'anchor', index: i };
       }
     }
   }
 
-  for (let i = l.obstacles.length - 1; i >= 0; i--) {
+  for (let i = (l.obstacles || []).length - 1; i >= 0; i--) {
     const o = l.obstacles[i];
     const hit = o.type === 'circle'
       ? Math.hypot(x - o.x, z - o.z) <= o.radius
@@ -325,9 +411,10 @@ function pick(x, z) {
 function target(sel, mutate = false) {
   const l = layout();
   if (!sel) return null;
-  if (sel.group === 'obstacle') return l.obstacles[sel.index];
-  if (sel.group === 'anchor') return l.anchors[sel.index];
-  if (sel.group === 'spawn') return l.spawn;
+  if (sel.group === 'obstacle') return (l.obstacles || [])[sel.index];
+  if (sel.group === 'anchor') return (l.anchors || [])[sel.index];
+  if (sel.group === 'spawn') return l.spawn || (l.spawn = { x: 0, z: 11 });
+  if (sel.group === 'goal') return l.goal;
   if (sel.group === 'enemy') {
     if (mutate) ensureAuthored();
     return (waves()[state.wave] || [])[sel.index];
@@ -406,16 +493,21 @@ function add(kind) {
     const o = kind === 'circle'
       ? { type: 'circle', x: 0, z: -2, radius: 1 }
       : { type: kind === 'bumper' ? 'circle' : 'box', x: 0, z: -2, ...(kind === 'bumper' ? { radius: 1, kind: 'bumper' } : { hw: 2, hh: 0.6 }) };
+    if (!l.obstacles) l.obstacles = [];
     l.obstacles.push(o);
     state.sel = { group: 'obstacle', index: l.obstacles.length - 1 };
+  } else if (kind === 'goal') {
+    l.goal = { x: 0, z: -11.8, hw: 5.2, hh: 1.1 };
+    state.sel = { group: 'goal', index: 0 };
   } else if (kind === 'anchor') {
+    if (!l.anchors) l.anchors = [];
     l.anchors.push({ x: 0, z: -6 });
     state.sel = { group: 'anchor', index: l.anchors.length - 1 };
   } else {
     // Placing an enemy is an authoring decision: it pins this table's waves.
     ensureAuthored();
-    const wave = l.waves[state.wave];
-    wave.push({ type: kind, x: 0, z: -6 });
+    const wave = isLessons() ? l.enemies : l.waves[state.wave];
+    wave.push({ type: kind, x: 0, z: -2 });
     state.sel = { group: 'enemy', index: wave.length - 1 };
   }
   renderAll();
@@ -428,6 +520,7 @@ function add(kind) {
  */
 function ensureAuthored() {
   const l = layout();
+  if (isLessons()) return;
   if (l.waves && l.waves.length) return;
   const base = state.rolled && state.rolled.length ? clone(state.rolled) : [[]];
   l.waves = base;
@@ -440,11 +533,12 @@ function removeSelected() {
   const l = layout();
   if (sel.group === 'spawn') return status('The player spawn cannot be removed.');
   snapshot();
-  if (sel.group === 'obstacle') l.obstacles.splice(sel.index, 1);
-  else if (sel.group === 'anchor') l.anchors.splice(sel.index, 1);
+  if (sel.group === 'obstacle') (l.obstacles || []).splice(sel.index, 1);
+  else if (sel.group === 'anchor') (l.anchors || []).splice(sel.index, 1);
+  else if (sel.group === 'goal') delete l.goal;
   else if (sel.group === 'enemy') {
     ensureAuthored();
-    l.waves[state.wave].splice(sel.index, 1);
+    (isLessons() ? l.enemies : l.waves[state.wave]).splice(sel.index, 1);
   }
   state.sel = null;
   renderAll();
@@ -457,9 +551,14 @@ function duplicateSelected() {
   snapshot();
   const copy = { ...clone(t), x: clampX(t.x + 1), z: clampZ(t.z + 1) };
   const l = layout();
-  if (sel.group === 'obstacle') { l.obstacles.push(copy); state.sel = { group: 'obstacle', index: l.obstacles.length - 1 }; }
-  else if (sel.group === 'anchor') { l.anchors.push(copy); state.sel = { group: 'anchor', index: l.anchors.length - 1 }; }
-  else { ensureAuthored(); l.waves[state.wave].push(copy); state.sel = { group: 'enemy', index: l.waves[state.wave].length - 1 }; }
+  if (sel.group === 'obstacle') { (l.obstacles ||= []).push(copy); state.sel = { group: 'obstacle', index: l.obstacles.length - 1 }; }
+  else if (sel.group === 'anchor') { (l.anchors ||= []).push(copy); state.sel = { group: 'anchor', index: l.anchors.length - 1 }; }
+  else {
+    ensureAuthored();
+    const wave = isLessons() ? l.enemies : l.waves[state.wave];
+    wave.push(copy);
+    state.sel = { group: 'enemy', index: wave.length - 1 };
+  }
   renderAll();
 }
 
@@ -472,15 +571,17 @@ function status(text) { $('status').textContent = text; }
 function renderLayoutList() {
   const host = $('layout-list');
   host.textContent = '';
-  state.doc.layouts.forEach((l, i) => {
+  records().forEach((l, i) => {
     const b = document.createElement('button');
     b.className = `layout-item${i === state.layout ? ' on' : ''}`;
     const n = (l.waves && l.waves.length)
       ? `${l.waves.reduce((s, w) => s + w.length, 0)} authored in ${l.waves.length} wave${l.waves.length > 1 ? 's' : ''}`
-      : `${l.anchors.length} anchors · rolled`;
+      : `${(l.anchors || []).length} anchors · rolled`;
     b.innerHTML = `<div class="nm"></div><div class="meta"></div>`;
     b.querySelector('.nm').textContent = l.name || l.id;
-    b.querySelector('.meta').textContent = `${l.obstacles.length} obstacles · ${n}`;
+    b.querySelector('.meta').textContent = isLessons()
+      ? `${(l.enemies || []).length} balls · ${(l.obstacles || []).length} obstacles${l.goal ? ' · goal' : ''}`
+      : `${l.obstacles.length} obstacles · ${n}`;
     b.addEventListener('click', () => {
       state.layout = i;
       state.wave = 0;
@@ -497,6 +598,15 @@ function renderLayoutList() {
 function renderWaveTabs() {
   const host = $('wave-tabs');
   host.textContent = '';
+
+  // A lesson has no wave queue — one authored set, always.
+  if (isLessons()) {
+    $('waves-title').textContent = 'Balls on the table';
+    $('wave-note').textContent =
+      'One authored set. Anything inside the amber band is hidden behind the instruction card.';
+    return;
+  }
+  $('waves-title').textContent = 'Waves';
   const ws = waves();
   ws.forEach((w, i) => {
     const b = document.createElement('button');
@@ -631,7 +741,8 @@ function renderInspector() {
 
   if (sel.group === 'anchor') {
     const l = layout();
-    const dead = Math.hypot(t.x - l.spawn.x, t.z - l.spawn.z) < ROOM.safeSpawnRadius;
+    const sp1 = l.spawn || { x: 0, z: 11 };
+    const dead = Math.hypot(t.x - sp1.x, t.z - sp1.z) < ROOM.safeSpawnRadius;
     const p = document.createElement('p');
     p.className = 'note';
     p.style.marginTop = '8px';
@@ -648,10 +759,18 @@ function renderTableFields() {
   $('f-name').value = l.name || '';
   $('f-id').value = l.id || '';
   $('f-tags').value = (l.tags || []).join(', ');
+  if (isLessons()) {
+    $('context-title').textContent = 'This lesson';
+    $('room-rule').textContent =
+      `Lesson ${state.layout + 1} of ${records().length}. The dashed gold line is where the cue rests when the lesson opens — it should point at the solution.`;
+    $('doc-note').textContent = `${records().length} lessons · arena ${ARENA.width}×${ARENA.height} units`;
+    return;
+  }
+  $('context-title').textContent = 'Which room uses this';
   $('room-rule').textContent = state.layout === 0
     ? 'Rooms 1 and 2 always use this table — the opening is deliberately an empty rack. Rooms 3+ draw any table at random.'
     : 'Rooms 3 and up draw any table from the pool at random, seeded by (run seed, room number).';
-  $('doc-note').textContent = `${state.doc.layouts.length} tables · arena ${ARENA.width}×${ARENA.height} units`;
+  $('doc-note').textContent = `${records().length} tables · arena ${ARENA.width}×${ARENA.height} units`;
 }
 
 function renderAll() {
@@ -696,15 +815,28 @@ $('f-tags').addEventListener('change', () => {
 
 $('btn-add-layout').addEventListener('click', () => {
   snapshot();
-  state.doc.layouts.push({
-    id: `table-${state.doc.layouts.length + 1}`,
+  if (isLessons()) {
+    records().push({
+      id: `lesson-${records().length + 1}`,
+      name: 'New Lesson',
+      rest: { x: 0, z: -1 },
+      obstacles: [],
+      enemies: [{ type: 'solid', x: 0, z: -1 }]
+    });
+    state.layout = records().length - 1;
+    state.sel = null;
+    renderAll();
+    return;
+  }
+  records().push({
+    id: `table-${records().length + 1}`,
     name: 'New Table',
     tags: [],
     obstacles: [],
     anchors: [{ x: -5, z: -8 }, { x: 5, z: -8 }, { x: 0, z: -11 }],
     spawn: { x: 0, z: 11 }
   });
-  state.layout = state.doc.layouts.length - 1;
+  state.layout = records().length - 1;
   state.wave = 0;
   state.sel = null;
   roll();
@@ -717,6 +849,14 @@ $('f-level').addEventListener('change', () => { state.level = Math.max(1, parseI
 $('f-seed').addEventListener('change', () => { state.seed = parseInt($('f-seed').value, 10) || 0; roll(); });
 
 function roll() {
+  // Lessons are fully authored — there is nothing to roll, and the director
+  // would read anchors and a spawn point that a lesson record does not have.
+  if (isLessons()) {
+    state.rolled = null;
+    $('roll-note').textContent = 'Lessons are hand-authored. The threat director does not run on them.';
+    renderAll();
+    return;
+  }
   const l = clone(layout());
   delete l.waves;                                  // ask for a fresh roll, not the pins
   state.rolled = buildWaves(l, state.level, makeRng(roomSeed(state.seed >>> 0, state.level)));
@@ -751,7 +891,7 @@ $('btn-undo').addEventListener('click', () => {
   if (!undo.length) return;
   redo.push(JSON.stringify(state.doc));
   state.doc = JSON.parse(undo.pop());
-  state.layout = Math.min(state.layout, state.doc.layouts.length - 1);
+  state.layout = Math.min(state.layout, records().length - 1);
   state.sel = null;
   renderAll();
 });
@@ -763,6 +903,38 @@ $('btn-redo').addEventListener('click', () => {
   renderAll();
 });
 
+/* --- modes --- */
+
+/**
+ * Lessons and rooms are different documents with different furniture: a lesson
+ * has a resting cue heading and may carry a goal bar; a room has anchors and
+ * rolled waves. Switching swaps the whole document, so an edit to one can never
+ * be exported into the other.
+ */
+function setMode(mode) {
+  if (state.mode === mode) return;
+  state.docs[state.mode] = state.doc;
+  state.mode = mode;
+  state.doc = state.docs[mode];
+  state.layout = 0;
+  state.wave = 0;
+  state.sel = null;
+  state.rolled = null;
+  undo.length = 0;
+  redo.length = 0;
+  $('mode-rooms').classList.toggle('on', mode === 'rooms');
+  $('mode-lessons').classList.toggle('on', mode === 'lessons');
+  $('list-title').textContent = DOCS[mode].label;
+  $('btn-add-layout').textContent = mode === 'lessons' ? '+ New lesson' : '+ New table';
+  $('btn-export').textContent = `Download ${DOCS[mode].file}`;
+  for (const el of document.querySelectorAll('[data-rooms-only]')) {
+    el.style.display = mode === 'lessons' ? 'none' : '';
+  }
+  renderAll();
+}
+$('mode-rooms').addEventListener('click', () => setMode('rooms'));
+$('mode-lessons').addEventListener('click', () => setMode('lessons'));
+
 /* --- import / export --- */
 const serialise = () => `${JSON.stringify(state.doc, null, 2)}\n`;
 
@@ -770,16 +942,16 @@ $('btn-export').addEventListener('click', () => {
   const blob = new Blob([serialise()], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'layouts.json';
+  a.download = DOCS[state.mode].file;
   a.click();
   URL.revokeObjectURL(a.href);
-  status('Downloaded. Replace src/data/layouts.json with it.');
+  status(`Downloaded. Replace src/data/${DOCS[state.mode].file} with it.`);
 });
 
 $('btn-copy').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(serialise());
-    status('Copied. Paste over src/data/layouts.json.');
+    status(`Copied. Paste over src/data/${DOCS[state.mode].file}.`);
   } catch {
     status('Clipboard blocked — use Download instead.');
   }
@@ -791,7 +963,7 @@ $('file').addEventListener('change', async () => {
   if (!f) return;
   try {
     const parsed = JSON.parse(await f.text());
-    if (!parsed || !Array.isArray(parsed.layouts)) throw new Error('no layouts array');
+    if (!parsed || !Array.isArray(parsed[docKey()])) throw new Error(`no ${docKey()} array`);
     snapshot();
     state.doc = parsed;
     state.layout = 0;
