@@ -1,0 +1,120 @@
+# Tutorial design
+
+The contract for `src/systems/Tutorial.js`. Read this before changing a lesson.
+If a change conflicts with a goal below, the goal wins.
+
+## The four goals
+
+These are absolute. Every one of them has been broken at least once by a change
+that seemed locally reasonable, so each is written as a rule with the failure it
+prevents.
+
+### 1. Teach one lesson at a time
+
+A lesson introduces exactly one idea. Not one idea plus the thing that makes it
+work, not one idea plus a complication that arrives while you are practising it.
+
+*Broken by:* a "hold to stop time" lesson that also introduced chasing enemies,
+so a player who missed was learning to dodge and to freeze and to aim at once.
+
+### 2. Keep the message on screen until the lesson is complete
+
+The instruction is visible for the entire lesson and disappears only when the
+task has been done. Feedback goes on a separate status line underneath; it never
+replaces the instruction.
+
+*Broken by:* a lesson whose completion condition was drag distance, so the text
+changed as soon as the player pulled back — before they had aimed at anything,
+hit anything, or fired.
+
+### 3. Only what the lesson needs is on the table
+
+No spare enemies, no decorative geometry, no obstacle that is not the subject of
+the lesson. If the player can see it, it is part of what they are being taught.
+
+*Broken by:* running lessons over normal generated rooms, which could contain
+anything and often did not contain the shot being described.
+
+### 4. Progress only on success
+
+The next table loads only when the current lesson has actually been completed.
+Nothing advances on a timer, a retry count, or "close enough". A lesson cannot
+be failed either — a wrong attempt costs a re-rack, never the lesson — so the
+only way out is through.
+
+*Broken by:* the original caption track, which advanced on whatever the player
+happened to do next.
+
+## Rules that follow from the goals
+
+**Everything is frozen while aiming.** `TIME.bullet` is `0`, so time stops dead
+the moment a thumb goes down. Movement is a consequence of the shot, never
+something happening *to* the player while they aim.
+
+**Lesson enemies do not drive.** They are `frozen`: no AI steering, full physics.
+They are billiard balls. A rack that walks away from its own diagram teaches
+nothing.
+
+**The cue rests on the lesson's own solution.** Each lesson sets a resting
+heading, so the answer is drawn on the table before the player touches anything.
+They still have to reproduce it.
+
+**Every rep starts from the same place.** After a shot resolves, the ball returns
+to its spawn and surviving targets are re-racked to their authored coordinates.
+The geometry is drawn around the spawn, so a rep that began elsewhere would be
+aiming at a diagram that no longer applies.
+
+**Success is loud, then the table resets.** A completed lesson detonates what it
+killed, holds a beat, restores the table, and only then shows the next card.
+
+## The lessons
+
+| # | Card | Table | Complete when |
+|---|------|-------|---------------|
+| 1 | Aim and shoot at the red ball | one red ball straight ahead | the cue ball hits it |
+| 2 | Hit the red ball into the goal | one red ball, red glowing goal bar on the top wall | the red ball enters the goal |
+| 3 | Hit one ball into the other ball | two red balls in line up-table | the struck ball caroms into the second |
+| 4 | Hit 2 in a row | two red balls racked tight astride the line | one shot strikes both |
+| 5 | Hit 3 in a row | three red balls in the cue's path | one shot strikes all three |
+
+Lessons 1–5 are all frozen tables. Nothing on any of them moves until the player
+shoots.
+
+### Notes per lesson
+
+**1 — Aim and shoot.** The whole game in one action. Aiming and firing are taught
+together because separately neither has a visible result.
+
+**2 — The goal.** Teaches that enemies are objects you move, not just things you
+delete. The goal bar is authored on the room (`goal` in the scripted room spec)
+and only an *enemy* entering it counts — the cue ball passing through does not.
+
+**3 — The carom.** Teaches that a struck ball is itself ammunition. Detected on
+the `carom` event, which fires when a knocked enemy strikes another enemy;
+striking both with the cue ball directly does not count.
+
+**4 and 5 — Chaining.** Two strikes, then three, in a single launch. This is the
+scoring mechanic, so it is the last thing taught and the only one repeated.
+
+## What is deliberately not in the tutorial
+
+- **Moving enemies.** They break goal 1 — see the failure noted above. The first
+  live enemy the player meets is in room 1 of a real run.
+- **Shooters.** Same reason. The Stripe's wind-up is readable on its own terms
+  now (a barrel that runs out and lights up); it does not need a lesson before
+  the player has learned to aim.
+- **Doors, rewards, waves, injectors.** `RoomManager.loadScripted()` builds a
+  room with none of them, and `RoomManager.update()` returns immediately for a
+  scripted room so no wave or door logic can run.
+
+## Implementation map
+
+| Concern | Where |
+|---|---|
+| Lesson list and rules | `LESSONS` in `src/systems/Tutorial.js` |
+| Room building, re-rack, ball homing | `Tutorial._buildRoom` / `_reRack` / `_homeBall` |
+| Scripted tables (no waves/doors/injectors) | `RoomManager.loadScripted` |
+| Goal bar geometry and hit test | `RoomManager.loadScripted` + `Tutorial._checkGoal` |
+| Unfailability | `game.tutorialGuard` in `src/main.js` — blocks all damage in a lesson room; `game.forceKill` is the director's only way to remove a target |
+| Card markup and styling | `#coach` in `index.html` |
+| Completion flag | `billiard-tutorial-done-v1` in localStorage; reset from Settings |

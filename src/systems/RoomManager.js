@@ -105,6 +105,8 @@ export class RoomManager {
     /** True while an authored (tutorial) room is loaded: no waves, no doors. */
     this.scripted = false;
     this.scriptedEnemies = [];
+    /** Optional lit target zone for a lesson: `{x, z, hw, hh}`. */
+    this.goal = null;
 
     this.group = new THREE.Group();
     this.group.name = 'room';
@@ -200,14 +202,30 @@ export class RoomManager {
     this.waveDelay = WAVE_GAP;
     this.cleared = false;
     this.game.physics.setColliders(this.colliders);
+    this.scriptedSpec = spec;
 
-    this.scriptedEnemies = (spec.enemies || []).map((slot) => {
+    // The goal: a lit bar an enemy has to be knocked into. It is not a
+    // collider — the cue ball and the targets pass straight through it — because
+    // the lesson is about where a struck ball ends up, and a wall you can bounce
+    // off would teach the opposite.
+    this.goal = spec.goal ? { ...spec.goal, scored: false } : null;
+    if (this.goal) this.buildGoalMesh(this.goal);
+
+    this.scriptedEnemies = this.spawnScripted(spec.enemies || []);
+
+    return this.layout;
+  }
+
+  /** Instantiate one authored rack. */
+  spawnScripted(list) {
+    return list.map((slot) => {
       const enemy = new Enemy(this.enemyLayer, slot.type || 'solid', slot.x, slot.z, 1);
       enemy.frozen = slot.frozen !== false;
       // Pinned in place, but still armed unless the lesson says otherwise —
       // an encounter staged to teach you to read a shooter needs one that
       // actually shoots.
       enemy.disarmed = slot.disarmed === true;
+      enemy.invulnerable = slot.invulnerable === true;
       // A lesson's rack is placed, not spawned: skipping the telegraph means
       // the targets are solid from the first frame the card is on screen,
       // rather than briefly intangible while the player is already shooting.
@@ -220,8 +238,69 @@ export class RoomManager {
       this.game.enemies.push(enemy);
       return enemy;
     });
+  }
 
-    return this.layout;
+  /**
+   * Rebuild the authored rack from scratch, replacing anything that died.
+   *
+   * A lesson has to be repeatable from an identical table, and chain targets
+   * are destroyed on contact like any other body — so restoring only the
+   * survivors would leave the player practising a two-ball split with one ball.
+   */
+  reRackScripted() {
+    const spec = this.scriptedSpec;
+    if (!spec) return;
+    for (const enemy of this.scriptedEnemies) {
+      enemy.alive = false;
+      enemy.dispose();
+      const i = this.game.enemies.indexOf(enemy);
+      if (i >= 0) this.game.enemies.splice(i, 1);
+    }
+    if (this.goal) this.goal.scored = false;
+    this.scriptedEnemies = this.spawnScripted(spec.enemies || []);
+  }
+
+  /** The lit bar for a goal lesson. Drawn on the felt, never collided with. */
+  buildGoalMesh(goal) {
+    const group = new THREE.Group();
+    const color = PALETTE.solid;
+
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(goal.hw * 2, 0.12, goal.hh * 2),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.32,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+    );
+    slab.position.set(goal.x, 0.06, goal.z);
+    group.add(slab);
+
+    const rim = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-goal.hw, 0, -goal.hh),
+        new THREE.Vector3(goal.hw, 0, -goal.hh),
+        new THREE.Vector3(goal.hw, 0, goal.hh),
+        new THREE.Vector3(-goal.hw, 0, goal.hh)
+      ]),
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.95 })
+    );
+    rim.position.set(goal.x, 0.09, goal.z);
+    group.add(rim);
+
+    this.group.add(group);
+    goal.meshes = group;
+    goal.material = slab.material;
+    return group;
+  }
+
+  /** Is this body inside the goal? */
+  inGoal(x, z, radius = 0) {
+    const g = this.goal;
+    if (!g) return false;
+    return Math.abs(x - g.x) < g.hw + radius && Math.abs(z - g.z) < g.hh + radius;
   }
 
   budgetFor(level) {
@@ -650,6 +729,7 @@ export class RoomManager {
     this.colliders = [];
     this.doors = [];
     this.scriptedEnemies = [];
+    this.goal = null;
     this.game.physics.setColliders([]);
   }
 

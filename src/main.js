@@ -583,13 +583,16 @@ function killEnemy(enemy) {
  */
 function dealDamage(enemy, amount, opts = {}) {
   if (!enemy || !enemy.alive) return { dealt: 0, killed: false };
-  // While a lesson is running the tutorial director owns every life in the
-  // room. A rep resolves only when the thing being taught actually happened,
-  // so a half-finished attempt can never delete the target you still need to
-  // practise on — which is what makes a lesson unfailable.
-  if (game.tutorialGuard && !game.tutorialGuard(enemy, amount, opts)) {
-    return { dealt: 0, killed: false, blocked: true };
-  }
+  // A lesson target that must survive being hit — the ball you knock into the
+  // goal, the ball you cannon into another — is flagged invulnerable.
+  //
+  // Note this is per-body and NOT a blanket block on the whole lesson room. The
+  // cue ball only passes through something it has killed (PhysicsSystem), so
+  // making every target unkillable meant the ball bounced off each one instead
+  // of piercing it, and the chain lessons quietly taught different physics from
+  // the game they were introducing. Chain targets die normally; a failed rep
+  // re-racks the whole set instead.
+  if (enemy.invulnerable) return { dealt: 0, killed: false, blocked: true };
   const result = enemy.takeDamage(amount, {
     ...opts,
     backstabBonus: player.stats.backstabBonus
@@ -681,6 +684,7 @@ game.on = {
 
   /* --- the carom ----------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
+    tutorial.notify('carom', { striker, target, x, z, speed });
     const mult = chainStep();
     const scale = clamp(speed / PLAYER.referenceSpeed, 0.4, 2.0);
     const damage = PHYSICS.caromDamage * scale * mult * player.stats.damageMult;
@@ -1126,6 +1130,7 @@ const tutorial = new Tutorial({
   input,
   fx,
   hud,
+  engine,
   spawnZ,
   resetRun: resetRunState,
   finish: () => startRun()

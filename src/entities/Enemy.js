@@ -80,6 +80,11 @@ export class Enemy {
      */
     this.frozen = false;
     this.disarmed = false;
+    /**
+     * Cannot be damaged. Used by lessons whose target has to survive being hit
+     * — you cannot knock a ball into a goal if the knock destroys it.
+     */
+    this.invulnerable = false;
     this.config = config;
 
     // --- physics body ---
