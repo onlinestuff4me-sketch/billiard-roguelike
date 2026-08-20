@@ -1,5 +1,5 @@
 /**
- * Tutorial.js — four lessons, each on a table built for that lesson alone.
+ * Tutorial.js — five lessons, each on a table built for that lesson alone.
  *
  * The old version was a caption track: three lines of text that advanced when
  * the player happened to do the right thing in a normal, randomly generated
@@ -37,8 +37,16 @@ import { PLAYER_STATE } from '../entities/Player.js';
 const KEY = 'billiard-tutorial-done-v1';
 
 
-/** Straight up the middle — the heading every lesson rests on. */
+/** Straight up the middle — the heading most lessons rest on. */
 const UP = { x: 0, z: -1 };
+
+/**
+ * Lesson 5's rack is 20 degrees off vertical. Every lesson rests the cue on its
+ * own solution (see docs/TUTORIAL.md), so this one rests here — the beam used
+ * to point at empty felt while the scold told the player to "keep it straight",
+ * which was the exact opposite of the correction they needed.
+ */
+const OFF_AXIS = { x: 0.342, z: -0.940 };
 
 /**
  * Each lesson: what it says, the table it says it on, and the single rule that
@@ -73,6 +81,7 @@ export const LESSONS = [
     },
     hit: () => 'score',
     shot: (s) => (s.hits === 0 ? 'reject' : null),
+    facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
     cheer: 'That is the whole game',
     scold: 'Missed — pull straight back from the blue ball and let go',
     nudge: 'Put your thumb below the blue ball and drag straight down. The line shows where it will go.'
@@ -90,7 +99,11 @@ export const LESSONS = [
       enemies: [{ type: 'solid', x: 0, z: -2.0, invulnerable: true }],
       // Wide, so a straight shot up the middle is comfortably enough. Set in
       // from the top rail so a ball can come to rest inside it.
-      goal: { x: 0, z: -11.0, hw: 5.2, hh: 1.2 }
+      // Clear of the card. Note the camera shows 34.8 world units of height,
+      // not the arena's 32 — RENDER.viewPadding adds 1.4 either side — so
+      // anything positioned by eye against a 32-unit assumption sits ~1 unit
+      // lower than intended.
+      goal: { x: 0, z: -11.8, hw: 5.2, hh: 1.1 }
     },
     // Scored by the zone, not by contact: what matters is where the ball ended
     // up, so nothing is decided until the table stops moving.
@@ -119,9 +132,10 @@ export const LESSONS = [
     // A cue strike on both does not count — the second ball has to be hit by
     // the first, which is the whole idea being taught.
     carom: () => 'score',
-    shot: (s) => (s.hits > 0 ? 'reject' : null),
+    shot: (s) => 'reject',
     cheer: 'Carom!',
-    scold: 'That was you hitting it — drive the near ball into the far one',
+    scold: 'Not quite — drive the near ball on into the far one',
+    whiff: 'Missed — hit the near ball square in the back',
     nudge: 'Hit the near ball square in the back so it carries straight on up the table.'
   },
   {
@@ -146,25 +160,27 @@ export const LESSONS = [
         { type: 'solid', x: 0, z: 0.6 }
       ]
     },
-    hit: (h) => (h.index >= 2 ? 'score' : null),
-    killsStruck: true,
-    shot: (s) => (s.hits > 0 && s.hits < 2 ? 'reject' : null),
+    // Judged on the rack being CLEARED in one launch, not on cue contacts.
+    // Counting contacts meant a shot that destroyed both — the cue ball killing
+    // the first and the first cannoning into the second — was rejected while
+    // the HUD was simultaneously printing "x1.4  2 CHAIN" for it. The coach
+    // must never contradict the scoreboard.
+    clearsRack: true,
     cheer: 'Chain ×1.4',
-    scold: 'Only one — keep the line straight and drive through both',
-    nudge: 'Fire straight up the middle at full power. The ball carries on through the first.'
+    scold: 'One left — drive right through the first one',
+    whiff: 'Missed both — line the shot straight up through them',
+    nudge: 'Pull further back. It needs enough on it to carry through the first.'
   },
   {
     id: 'chain3',
     say: 'Hit 3 in a row',
     hint: 'Longer chains pay more. One shot, all three — you will have to turn a little.',
     goal: 1,
-    rest: UP,
-    // The graduation lesson. Every rack before this one sits on the cue's
-    // resting line, so the whole tutorial can be beaten with five identical
-    // straight drags; this one is offset, so the player has to turn the cue
-    // once before the game asks them to. It also un-hides the Focus gauge and
-    // lets it drain, while they still cannot fail.
-    showsFocus: true,
+    // The graduation rack: the first one that is not straight ahead. The cue
+    // still rests on the answer, so the shot is available without hunting for
+    // it — but the player leaves having seen that "up the middle" is not the
+    // only line there is.
+    rest: OFF_AXIS,
     room: {
       id: 'lesson-chain3',
       name: 'The Run',
@@ -177,17 +193,16 @@ export const LESSONS = [
       // holds its heading through anything it destroys, so one straight shot
       // down this line takes all three — but the player has to find the line.
       enemies: [
-        { type: 'solid', x: 1.54, z: 2.17 },
-        { type: 'solid', x: 2.57, z: -0.65 },
-        { type: 'solid', x: 3.59, z: -3.47 }
+        { type: 'solid', x: 1.37, z: 2.64 },
+        { type: 'solid', x: 2.39, z: -0.18 },
+        { type: 'solid', x: 3.42, z: -3.00 }
       ]
     },
-    hit: (h) => (h.index >= 3 ? 'score' : null),
-    killsStruck: true,
-    shot: (s) => (s.hits > 0 && s.hits < 3 ? 'reject' : null),
+    clearsRack: true,
     cheer: 'Chain ×1.8',
-    scold: 'Only part of the run — keep it straight and take all three',
-    nudge: 'Fire straight up the middle at full power. The line threads all three.'
+    scold: 'Not all three — the line has to run through every one',
+    whiff: 'Missed everything — follow the line the cue is already on',
+    nudge: 'The three are off to the right. Keep the cue on the line it starts on and pull right back.'
   }
 ];
 
@@ -245,6 +260,7 @@ export class Tutorial {
     this._roomKey = null;
     this._needsRoom = false;
     this._launched = false;
+    this._wrongWay = false;
     this._shotTimer = 0;
     this._shotLesson = -1;
     this._hits = 0;
@@ -373,7 +389,7 @@ export class Tutorial {
   _buildRoom() {
     const lesson = this.lesson;
     if (!lesson) return;
-    this.layer.classList.toggle('coaching', !lesson.showsFocus);
+    this.layer.classList.add('coaching');
     this._needsRoom = false;
     this._roomKey = lesson.room.id;
     // A lesson card is the only thing that should be talking. The boot run
@@ -422,8 +438,7 @@ export class Tutorial {
     // lesson, which lets the gauge drain for real. Otherwise the player leaves
     // the tutorial having never seen the meter that limits how long they can
     // think, and meets it for the first time while something is hitting them.
-    if (this.lesson?.showsFocus) this.layer.classList.remove('coaching');
-    else this.player.focus = this.player.focusMax;
+    this.player.focus = this.player.focusMax;
 
     // The goal lesson is decided by where a ball came to rest, so it is polled
     // rather than driven by an event.
@@ -469,6 +484,11 @@ export class Tutorial {
     if (this._cheerTimer > 0) return;
 
     if (name === 'launch') {
+      // The cue model fires along (ball - thumb), so the instinctive first move
+      // — putting a thumb on the thing the card names — fires directly AWAY
+      // from it. That used to pass anyway, off the bottom rail, teaching the
+      // opposite of the control it was introducing.
+      this._wrongWay = !!lesson.facing && this._awayFromRack(payload);
       this._launched = true;
       this._shotTimer = SHOT_LIMIT;
       this._shotLesson = this.index;
@@ -488,6 +508,12 @@ export class Tutorial {
 
     if (name === 'hit') {
       this._hits += 1;
+      // Fired away from the rack and connected anyway, off a rail. It does not
+      // count: the whole point of the first lesson is which way the orb goes.
+      if (this._wrongWay) {
+        this._rejected = true;
+        return;
+      }
       if (payload.enemy) this._struck.add(payload.enemy);
       if (!lesson.hit) return;
       const verdict = lesson.hit(payload);
@@ -497,6 +523,16 @@ export class Tutorial {
         this._rejected = true;
       }
     }
+  }
+
+  /** Was this shot fired more than 90 degrees away from the rack? */
+  _awayFromRack({ dirX = 0, dirZ = 0 }) {
+    const rack = this.rooms.scriptedEnemies.filter((e) => e.alive);
+    if (!rack.length) return false;
+    const cx = rack.reduce((a, e) => a + e.x, 0) / rack.length - this.player.x;
+    const cz = rack.reduce((a, e) => a + e.z, 0) / rack.length - this.player.z;
+    const len = Math.hypot(cx, cz) || 1;
+    return (dirX * cx + dirZ * cz) / len < 0;
   }
 
   /** Has a target been driven into the lit bar? */
@@ -523,17 +559,32 @@ export class Tutorial {
 
     if (stillIts && lesson.usesGoal && this.done < lesson.goal) this._rejected = true;
 
+    // Did this launch clear the rack? Bodies destroyed, however they were
+    // destroyed — by the cue ball or by each other. That is what the player
+    // watched happen and what the chain counter in the HUD already agrees with.
+    if (stillIts && lesson.clearsRack) {
+      const rack = this.rooms.scriptedEnemies;
+      const down = rack.filter((e) => !e.alive).length;
+      if (down >= rack.length && rack.length) this._score();
+      else this._rejected = true;
+    }
+
     if (stillIts && lesson.shot) {
       const verdict = lesson.shot({ hits: this._hits });
-      if (verdict === 'score') {
-        this._score(lesson.killsStruck ? [...this._struck] : []);
-      } else if (verdict === 'reject') {
-        this._rejected = true;
-      }
+      if (verdict === 'score') this._score();
+      else if (verdict === 'reject') this._rejected = true;
     }
 
     if (stillIts && this._rejected) {
-      this._setStatus(lesson.scold || 'Not quite — go again', 'bad');
+      // A shot that touched nothing is a different mistake from a shot that
+      // touched some of it, and saying nothing at all — which is what a whiff
+      // used to get — is indistinguishable from the game being broken.
+      const line = this._wrongWay
+        ? lesson.facing
+        : this._hits === 0 && lesson.whiff
+          ? lesson.whiff
+          : lesson.scold || 'Not quite — go again';
+      this._setStatus(line, 'bad');
       this._misses += 1;
       // Nothing here can be failed, but something you cannot fail and cannot
       // do either is just a wall. After a couple of honest attempts the hint
@@ -543,6 +594,7 @@ export class Tutorial {
       }
     }
     this._rejected = false;
+    this._wrongWay = false;
 
     this._homeBall();
     this._reRack();
@@ -635,7 +687,7 @@ export class Tutorial {
       this._outro = true;
       this.el.classList.add('done');
       this.stepEl.textContent = 'Tutorial complete';
-      this.sayEl.textContent = 'These ones move — and they hit back';
+      this.sayEl.textContent = 'Next ones move — and they hit back';
       this.hintEl.textContent = '';
       this.countEl.hidden = true;
       this._setStatus('', null);

@@ -788,7 +788,12 @@ game.on = {
       engine.zoomPunch();
       engine.hitStop(TIME.hitStop * 0.7);
     }
-    tutorial.notify('launch', { power: p, turned: game.lastTurn || 0 });
+    tutorial.notify('launch', {
+      power: p,
+      turned: game.lastTurn || 0,
+      dirX: event.dirX ?? 0,
+      dirZ: event.dirZ ?? 0
+    });
     game.launchHits = 0;
     game.pyreBonus = 0;
     boons.onLaunch(event);
