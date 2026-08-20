@@ -64,6 +64,11 @@ export class InputManager {
     this.startTime = 0;
     this.holdTime = 0;
 
+    /** Last tap, for double-tap dash detection. */
+    this._lastTapTime = -Infinity;
+    this._lastTapX = 0;
+    this._lastTapY = 0;
+
     /**
      * The persistent heading. Starts at 12 o'clock (screen-up is -Z) and is
      * re-seeded to the ball's travel direction whenever a launch settles, so
@@ -307,9 +312,34 @@ export class InputManager {
     const aim = this._updateAim(now);
     this._release(event.pointerId);
 
-    // Every release fires, tap or drag alike. A tap that silently did nothing
-    // was the single most confusing thing about the old control: it looked
-    // identical to a shot that had simply failed. One gesture, one outcome.
+    // THE DASH. A second tap in the same spot, inside doubleTapMs, is the
+    // emergency reposition. It was configured but never wired: nothing here
+    // measured travel or tap spacing, so onFlick could not fire and the dash
+    // was unreachable from the game.
+    //
+    // The dash consumes only the SECOND tap. The first still fires, because a
+    // gesture that silently does nothing is the single most confusing thing a
+    // control can do — it looks identical to a shot that failed.
+    const travel = Math.hypot(this.currentX - this.startX, this.currentY - this.startY);
+    const isTap = travel <= INPUT.tapMaxTravelPx;
+
+    if (isTap) {
+      const gap = now - this._lastTapTime;
+      const drift = Math.hypot(this.currentX - this._lastTapX, this.currentY - this._lastTapY);
+      if (gap <= INPUT.doubleTapMs && drift <= INPUT.doubleTapMaxTravelPx) {
+        // Consumed, so a triple tap is one dash and not two.
+        this._lastTapTime = -Infinity;
+        this.handlers.onFlick?.(aim);
+        return;
+      }
+      this._lastTapTime = now;
+      this._lastTapX = this.currentX;
+      this._lastTapY = this.currentY;
+    } else {
+      this._lastTapTime = -Infinity;
+    }
+
+    // Every release fires, tap or drag alike.
     if (aim.valid) this.handlers.onRelease?.(aim);
     else this.handlers.onAimCancel?.();
   }

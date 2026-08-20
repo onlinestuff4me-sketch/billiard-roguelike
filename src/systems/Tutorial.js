@@ -70,7 +70,7 @@ export const LESSONS = [
   {
     id: 'aim',
     say: 'Aim and shoot at the red ball',
-    hint: 'Drag back from the blue ball to aim. Let go to fire.',
+    hint: 'Thumb just below the blue ball. Drag down, then let go.',
     goal: 1,
     rest: UP,
     room: {
@@ -89,7 +89,7 @@ export const LESSONS = [
   {
     id: 'goal',
     say: 'Hit the red ball into the goal',
-    hint: 'Red bar takes red balls. Knock it in — do not go in yourself.',
+    hint: 'Same shot, harder. Drive the red one all the way into the bar.',
     goal: 1,
     rest: UP,
     room: {
@@ -115,7 +115,7 @@ export const LESSONS = [
   {
     id: 'carom',
     say: 'Hit one ball into the other ball',
-    hint: 'A ball you hit becomes a cannonball. Drive the near one into the far one.',
+    hint: 'Hit the near one square in the back so it runs on into the far one.',
     goal: 1,
     rest: UP,
     room: {
@@ -141,7 +141,7 @@ export const LESSONS = [
   {
     id: 'chain2',
     say: 'Hit 2 in a row',
-    hint: 'Two hits in one shot pays a bonus. Fire straight through both.',
+    hint: 'Both sit on your line. Drag right back to carry through the first.',
     goal: 1,
     rest: UP,
     room: {
@@ -174,7 +174,7 @@ export const LESSONS = [
   {
     id: 'chain3',
     say: 'Hit 3 in a row',
-    hint: 'Longer chains pay more. One shot, all three — you will have to turn a little.',
+    hint: 'These three sit right of centre. Your line is on them — full power.',
     goal: 1,
     // The graduation rack: the first one that is not straight ahead. The cue
     // still rests on the answer, so the shot is available without hunting for
@@ -217,10 +217,6 @@ export const LESSONS = [
  */
 const SHOT_LIMIT = 3.2;
 
-/** How long a completed lesson holds its congratulation before moving on. */
-const CHEER_HOLD = 1.0;
-/** How long the closing card stays up before the real run begins. */
-const OUTRO_HOLD = 1.9;
 /** How long a status line stays lit. */
 const STATUS_HOLD = 2.2;
 
@@ -243,15 +239,42 @@ export class Tutorial {
     const el = document.createElement('div');
     el.id = 'coach';
     el.innerHTML =
+      '<button class="skip" type="button">Skip</button>' +
       '<div class="step"></div><div class="say"></div><div class="hint"></div>' +
-      '<div class="count" hidden></div><div class="status"></div>';
+      '<div class="count" hidden></div>' +
+      '<button class="next" type="button" hidden></button>' +
+      '<div class="status"></div>';
     this.el = el;
     this.stepEl = el.querySelector('.step');
     this.sayEl = el.querySelector('.say');
     this.hintEl = el.querySelector('.hint');
     this.countEl = el.querySelector('.count');
     this.statusEl = el.querySelector('.status');
+    this.nextEl = el.querySelector('.next');
+    this.skipEl = el.querySelector('.skip');
     this.layer.appendChild(el);
+
+    // Bound to pointerdown, not click, and the event stops here.
+    //
+    // The stage takes a pointer capture on its own pointerdown and calls
+    // preventDefault, so a bubbling press on one of these never becomes a
+    // click — the button looked live and did nothing. Stopping propagation
+    // also keeps the press from starting an aim underneath the card.
+    const act = (el, fn) => {
+      el.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        fn();
+      });
+    };
+    // A lesson holds its celebration until the player says go. Auto-advancing
+    // after a fixed beat meant the reward for finishing was briefer than the
+    // telling-off for missing.
+    act(this.nextEl, () => this._advance());
+    // And there is always a way out. A tutorial that cannot be left is a wall,
+    // not a tutorial — the more so because it cannot be failed, so a player who
+    // has not found the gesture has no other exit.
+    act(this.skipEl, () => this._finish());
 
     this.active = false;
     this.index = -1;
@@ -266,9 +289,9 @@ export class Tutorial {
     this._hits = 0;
     this._struck = new Set();
     this._rejected = false;
-    this._cheerTimer = 0;
     this._statusTimer = 0;
-    this._outro = false;
+    /** True once a lesson is finished and the Next button is showing. */
+    this._awaitingNext = false;
     this._misses = 0;
   }
 
@@ -318,7 +341,9 @@ export class Tutorial {
     // the visible moment the tutorial ends and the run begins.
     this.game.level = 0;
     this.active = true;
-    this._outro = false;
+    this._awaitingNext = false;
+    this.nextEl.hidden = true;
+    this.skipEl.hidden = false;
     this.game.state = 'playing';
     // The single switch that makes a lesson unfailable: while it is set,
     // nothing in the room can be hurt except by this director.
@@ -334,7 +359,7 @@ export class Tutorial {
   stop() {
     this.active = false;
     this.index = -1;
-    this._outro = false;
+    this._awaitingNext = false;
     this._needsRoom = false;
     this._roomKey = null;
     this.game.tutorialGuard = null;
@@ -362,7 +387,6 @@ export class Tutorial {
     this._hits = 0;
     this._struck.clear();
     this._rejected = false;
-    this._cheerTimer = 0;
     this._misses = 0;
 
     const lesson = this.lesson;
@@ -428,11 +452,7 @@ export class Tutorial {
       if (this._statusTimer <= 0) this.statusEl.classList.remove('show');
     }
 
-    if (this._outro) {
-      this._cheerTimer -= rawDt;
-      if (this._cheerTimer <= 0) this._finish();
-      return;
-    }
+    if (this._awaitingNext) return;
 
     // Bullet time is a teaching aid, not a resource — right up until the last
     // lesson, which lets the gauge drain for real. Otherwise the player leaves
@@ -442,7 +462,7 @@ export class Tutorial {
 
     // The goal lesson is decided by where a ball came to rest, so it is polled
     // rather than driven by an event.
-    if (this._launched && this.lesson?.usesGoal && this._cheerTimer <= 0) this._checkGoal();
+    if (this._launched && this.lesson?.usesGoal) this._checkGoal();
 
     if (this._launched && !this.input.isAiming) {
       // Only while the world is running. Aiming stops time completely, but this
@@ -459,10 +479,6 @@ export class Tutorial {
       }
     }
 
-    if (this._cheerTimer > 0) {
-      this._cheerTimer -= rawDt;
-      if (this._cheerTimer <= 0) this._advance();
-    }
   }
 
   /* ---------------------------------------------------------------- *
@@ -475,13 +491,7 @@ export class Tutorial {
    */
   notify(name, payload = {}) {
     const lesson = this.lesson;
-    if (!lesson || this._outro) return;
-
-    // Nothing that happens during the congratulation counts. Actions used to be
-    // queued here and replayed against the NEXT lesson, which meant a single tap
-    // during the beat arrived as a phantom failed attempt on a lesson the player
-    // had not seen yet — and counted toward the two-miss hint escalation.
-    if (this._cheerTimer > 0) return;
+    if (!lesson || this._awaitingNext) return;
 
     if (name === 'launch') {
       // The cue model fires along (ball - thumb), so the instinctive first move
@@ -555,7 +565,7 @@ export class Tutorial {
    */
   _resolveShot() {
     const lesson = LESSONS[this._shotLesson];
-    const stillIts = lesson && this._shotLesson === this.index && this._cheerTimer <= 0;
+    const stillIts = lesson && this._shotLesson === this.index && !this._awaitingNext;
 
     if (stillIts && lesson.usesGoal && this.done < lesson.goal) this._rejected = true;
 
@@ -608,12 +618,16 @@ export class Tutorial {
       if (enemy.alive) this.game.forceKill(enemy);
     }
     if (!at) return;
-    this.fx.shockwave(at.x, at.z, 0xff3d6e, 9, 0.5);
-    this.fx.shockwave(at.x, at.z, 0xfff6d8, 5, 0.34);
-    this.fx.burst(at.x, at.z, 34, 0xff3d6e, 17, 1.5);
-    this.fx.burst(at.x, at.z, 18, 0xfff6d8, 22, 1.0);
-    this.engine?.shake?.(16);
+    this.fx.shockwave(at.x, at.z, 0xff3d6e, 11, 0.55);
+    this.fx.shockwave(at.x, at.z, 0xfff6d8, 6.5, 0.38);
+    this.fx.shockwave(at.x, at.z, 0x2ef2c4, 16, 0.7);
+    this.fx.burst(at.x, at.z, 44, 0xff3d6e, 19, 1.6);
+    this.fx.burst(at.x, at.z, 26, 0xfff6d8, 26, 1.1);
+    this.fx.burst(at.x, at.z, 16, 0x2ef2c4, 13, 1.8);
+    this.fx.floatText?.(at.x, at.z, this.lesson?.cheer || 'CLEARED', 'crit');
+    this.engine?.shake?.(20);
     this.engine?.zoomPunch?.();
+    this.game.audio?.roomClear?.();
   }
 
   /**
@@ -666,32 +680,49 @@ export class Tutorial {
       if (enemy && enemy.alive) this.game.forceKill(enemy);
     }
 
-    this._setStatus(lesson.cheer || 'Yes', 'good');
-
     if (this.done >= lesson.goal) {
+      // No status line on completion: the float text says the same words twice
+      // as big, and the card's own done-state says it a third time. The small
+      // line under the card is for corrections.
+      this._setStatus('', null);
       // Finishing a lesson should feel like finishing something. Everything
       // still standing on the table goes up with it, so the reset that follows
       // reads as a reward rather than as the room being taken away.
       this._detonate(kills);
-      this._render();
-      this.el.classList.add('done');
-      this._cheerTimer = CHEER_HOLD;
+      this._complete();
       return;
     }
 
+    this._setStatus(lesson.cheer || 'Yes', 'good');
     this._render();
   }
 
-  _advance() {
-    if (this.index + 1 >= LESSONS.length) {
-      this._outro = true;
-      this.el.classList.add('done');
+  /** The lesson is done. Celebrate, and hand the player the trigger. */
+  _complete() {
+    this._awaitingNext = true;
+    this._launched = false;
+    this.el.classList.add('done');
+
+    const last = this.index + 1 >= LESSONS.length;
+    if (last) {
       this.stepEl.textContent = 'Tutorial complete';
-      this.sayEl.textContent = 'Next ones move — and they hit back';
-      this.hintEl.textContent = '';
+      this.sayEl.textContent = 'You know enough to play';
+      this.hintEl.textContent = 'Next ones move — and they hit back.';
       this.countEl.hidden = true;
-      this._setStatus('', null);
-      this._cheerTimer = OUTRO_HOLD;
+    } else {
+      this._render();
+    }
+    this.skipEl.hidden = true;
+    this.nextEl.hidden = false;
+    this.nextEl.textContent = last ? 'Start playing \u2192' : 'Next lesson \u2192';
+  }
+
+  _advance() {
+    this._awaitingNext = false;
+    this.nextEl.hidden = true;
+    this.skipEl.hidden = false;
+    if (this.index + 1 >= LESSONS.length) {
+      this._finish();
       return;
     }
     this.el.classList.remove('done');

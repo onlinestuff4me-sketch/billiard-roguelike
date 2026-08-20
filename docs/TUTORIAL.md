@@ -64,6 +64,21 @@ to its spawn and surviving targets are re-racked to their authored coordinates.
 The geometry is drawn around the spawn, so a rep that began elsewhere would be
 aiming at a diagram that no longer applies.
 
+**The player decides when to move on.** A finished lesson detonates, holds its
+celebration, and shows a **Next lesson** button. It does not advance on a timer:
+the reward for finishing used to last 1.0s while the telling-off for missing
+lasted 2.2s, so the game was more emphatic about failure than success.
+
+**There is always a way out.** A **Skip** control sits on every lesson card.
+The tutorial cannot be failed, so a player who has not found a gesture has no
+other exit — without this it is a wall, not a tutorial. Skipping marks the
+tutorial complete and starts a normal run.
+
+**Card buttons take `pointerdown`, not `click`, and stop propagation.** The
+stage captures the pointer on its own `pointerdown` and calls `preventDefault`,
+so a bubbling press never becomes a click — a button wired to `click` looks
+live and does nothing.
+
 **Success is loud, then the table resets.** A completed lesson detonates what it
 killed, holds a beat, then swaps card and table on the *same frame*. Deferring
 the build left the next instruction over an empty table for ~2s, and a shot
