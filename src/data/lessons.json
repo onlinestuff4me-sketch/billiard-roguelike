@@ -91,8 +91,8 @@
       "id": "pass-three",
       "name": "The Relay",
       "rest": {
-        "x": 0.061,
-        "z": -0.9981
+        "x": 0,
+        "z": -1
       },
       "obstacles": [],
       "enemies": [
@@ -110,8 +110,8 @@
         },
         {
           "type": "solid",
-          "x": 0.9,
-          "z": -0.8,
+          "x": 0.85,
+          "z": -0.4,
           "invulnerable": true
         }
       ]

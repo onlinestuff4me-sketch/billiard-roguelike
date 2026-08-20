@@ -96,10 +96,14 @@ const RULES = {
   'pass-three': {
     say: 'Now run it through three',
     hint: 'One into two, two into three. This is the whole game.',
-    pass: (p) => (p.depth >= 2 ? 'score' : null),
-    shot: () => 'reject',
+    // Judged on what the player watched happen: they struck ONE ball and all
+    // three ended up somewhere else. Requiring two registered carom events was
+    // too brittle — the last hand-off arrives near PHYSICS.caromMinSpeed, so
+    // the same shot scored about half the time depending on frame timing, and
+    // the stopped cue ball would then trickle into the last ball and muddy it.
+    relay: true,
     cheer: '3 HITS  \u00d71.8',
-    scold: 'It stopped short — the second ball has to reach the third',
+    scold: 'It stopped short — the first ball has to run all the way down the line',
     whiff: 'Missed — start with the near ball',
     nudge: 'Full draw. Each ball needs enough left to pass it on.'
   },
@@ -538,6 +542,20 @@ export class Tutorial {
     // Did this launch clear the rack? Bodies destroyed, however they were
     // destroyed — by the cue ball or by each other. That is what the player
     // watched happen and what the chain counter in the HUD already agrees with.
+    if (stillIts && lesson.relay) {
+      const rack = this.rooms.scriptedEnemies;
+      const moved = rack.filter(
+        (e) => Math.hypot(e.x - e.homeX, e.z - e.homeZ) > 0.6
+      ).length;
+      // At least one ball-to-ball hand-off, and every ball ended up somewhere
+      // else. Counting cue strikes instead was wrong: a cue ball that stops
+      // dead on the first ball still creeps forward afterwards and taps another
+      // one, which is not the player doing anything — but it made the strike
+      // count 2 and rejected a shot that had visibly worked.
+      if (this._passes >= 1 && rack.length && moved >= rack.length) this._score();
+      else this._rejected = true;
+    }
+
     if (stillIts && lesson.clearsRack) {
       const rack = this.rooms.scriptedEnemies;
       const down = rack.filter((e) => !e.alive).length;
