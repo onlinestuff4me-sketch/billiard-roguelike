@@ -877,7 +877,7 @@
         bottom: auto;
         transform: translate(-50%, 0) scale(0.94);
         width: min(94%, 452px);
-        padding: 9px 14px 11px;
+        padding: 6px 14px 8px;
         border-radius: 16px;
         border: 2px solid rgba(255, 179, 64, 0.55);
         background: rgba(5, 7, 10, 0.88);
@@ -903,7 +903,7 @@
         letter-spacing: 0.3em;
         text-transform: uppercase;
         color: var(--amber);
-        margin-bottom: 10px;
+        margin-bottom: 4px;
       }
       #coach.done .step { color: #2ef2c4; }
       #coach .say {
@@ -949,14 +949,24 @@
         letter-spacing: 0.12em;
         color: rgba(234, 246, 255, 0.75);
       }
+      /* Below the card, not inside it. Reserving a line for feedback that is
+         absent most of the time made the card permanently taller — and taller
+         again when a two-line scold appeared, which is exactly when it grew
+         over the ball the lesson was about. Hung underneath, the card's height
+         no longer depends on whether anything is being said. */
       #coach .status {
-        margin-top: 5px;
-        min-height: 1.2em;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
         font-size: clamp(11.5px, 3.0vmin, 15px);
         font-weight: 700;
         opacity: 0;
         transition: opacity 0.18s ease;
         text-wrap: balance;
+        text-shadow:
+          0 0 10px rgba(5, 7, 10, 0.95),
+          0 1px 3px rgba(5, 7, 10, 0.95);
       }
       #coach .status.show { opacity: 1; }
       #coach .status.good { color: #2ef2c4; }
