@@ -343,6 +343,12 @@ export class Tutorial {
     this._struck.clear();
     this._rejected = false;
     this._misses = 0;
+    // Entering a lesson means one is running, so nothing may still be waiting
+    // on a Next press. Only start() and the Next handler cleared this, which
+    // held for the live flow but left _enter unable to restart a lesson — it
+    // would build the table and then ignore every event on it.
+    this._awaitingNext = false;
+    this.nextEl.hidden = true;
 
     const lesson = this.lesson;
     if (!lesson) return;
