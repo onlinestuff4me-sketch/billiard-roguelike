@@ -15,17 +15,18 @@
  *                   holding only what the lesson is about. Targets are frozen so
  *                   the rack you are shown is the rack you shoot at.
  *
- *   UNFAILABLE      nothing in a lesson room can be damaged by the player. The
- *                   director is the only thing that kills, and it only kills on
- *                   a rep that satisfies the lesson. Contact damage is off. So
- *                   "hit two at once" cannot decay into "one left, now what",
- *                   and a wrong shot costs a re-rack, never the lesson.
+ *   UNFAILABLE      the player cannot be hurt: contact and projectile damage
+ *                   are off while a lesson runs. Targets that must survive
+ *                   being hit are flagged `invulnerable` per body; the rest die
+ *                   normally, exactly as they do in play, and a partial attempt
+ *                   rebuilds the whole rack. So "hit two at once" cannot decay
+ *                   into "one left, now what", and a wrong shot costs a re-rack
+ *                   rather than the lesson.
  *
- *   BUILDS UP       lesson N assumes N-1. The bank lesson reuses the split from
- *                   the chain lesson and adds one rule on top: the rail comes
- *                   first. Hits without a rail are called out, not silently
- *                   ignored, and there is a visible counter so "how much longer"
- *                   always has an answer.
+ *   BUILDS UP       lesson N assumes N-1. Three in a row reuses two in a row and
+ *                   moves the rack off the cue's resting line, so the last
+ *                   thing the tutorial asks for is the first thing it has not
+ *                   already drawn the answer to.
  *
  *   ALWAYS ON       the card stays up for the whole lesson. Only the status line
  *                   under it changes, so feedback never costs you the instruction.
@@ -79,7 +80,7 @@ export const LESSONS = [
   {
     id: 'goal',
     say: 'Hit the red ball into the goal',
-    hint: 'Knock the red ball into the red bar. Not yourself.',
+    hint: 'Red bar takes red balls. Knock it in — do not go in yourself.',
     goal: 1,
     rest: UP,
     room: {
@@ -136,9 +137,13 @@ export const LESSONS = [
       // A column, not a split. The cue ball passes through each body it
       // destroys, so "in a row" is literally a row — and it reads as the same
       // shot as the three-ball lesson that follows.
+      // Close in. The ball only passes through what it KILLS, and damage falls
+      // off with impact speed — racked further up the table a soft shot leaves
+      // the first ball on 1hp, bounces off it and the lesson silently becomes
+      // unwinnable for anyone not pulling back all the way.
       enemies: [
-        { type: 'solid', x: 0, z: 1.0 },
-        { type: 'solid', x: 0, z: -2.0 }
+        { type: 'solid', x: 0, z: 3.2 },
+        { type: 'solid', x: 0, z: 0.6 }
       ]
     },
     hit: (h) => (h.index >= 2 ? 'score' : null),
@@ -151,9 +156,15 @@ export const LESSONS = [
   {
     id: 'chain3',
     say: 'Hit 3 in a row',
-    hint: 'Longer chains pay more. One shot, all three.',
+    hint: 'Longer chains pay more. One shot, all three — you will have to turn a little.',
     goal: 1,
     rest: UP,
+    // The graduation lesson. Every rack before this one sits on the cue's
+    // resting line, so the whole tutorial can be beaten with five identical
+    // straight drags; this one is offset, so the player has to turn the cue
+    // once before the game asks them to. It also un-hides the Focus gauge and
+    // lets it drain, while they still cannot fail.
+    showsFocus: true,
     room: {
       id: 'lesson-chain3',
       name: 'The Run',
@@ -162,10 +173,13 @@ export const LESSONS = [
       // each one it destroys, so a single full-power shot runs the whole rack.
       // Kept below the card band even on short screens, where the stage is
       // shorter in absolute pixels but the card is not.
+      // Collinear with the spawn along a line 20 degrees off vertical: the ball
+      // holds its heading through anything it destroys, so one straight shot
+      // down this line takes all three — but the player has to find the line.
       enemies: [
-        { type: 'solid', x: 0, z: 2.4 },
-        { type: 'solid', x: 0, z: -0.2 },
-        { type: 'solid', x: 0, z: -2.8 }
+        { type: 'solid', x: 1.54, z: 2.17 },
+        { type: 'solid', x: 2.57, z: -0.65 },
+        { type: 'solid', x: 3.59, z: -3.47 }
       ]
     },
     hit: (h) => (h.index >= 3 ? 'score' : null),
@@ -286,6 +300,9 @@ export class Tutorial {
 
   start() {
     this.resetRun();
+    // Not a room. The HUD renders level 0 as dashes, so "01" appearing later is
+    // the visible moment the tutorial ends and the run begins.
+    this.game.level = 0;
     this.active = true;
     this._outro = false;
     this.game.state = 'playing';
@@ -310,6 +327,13 @@ export class Tutorial {
     this.game.tutorialGuard = null;
     this.layer.classList.remove('coaching');
     this.el.classList.remove('show', 'done');
+    // Emptied rather than left holding the last lesson's text: the card stays
+    // in the DOM for a possible replay, and is otherwise one class toggle away
+    // from reappearing over live play.
+    this.stepEl.textContent = '';
+    this.sayEl.textContent = '';
+    this.hintEl.textContent = '';
+    this._setStatus('', null);
   }
 
   _finish() {
@@ -346,6 +370,7 @@ export class Tutorial {
   _buildRoom() {
     const lesson = this.lesson;
     if (!lesson) return;
+    this.layer.classList.toggle('coaching', !lesson.showsFocus);
     this._needsRoom = false;
     this._roomKey = lesson.room.id;
     // A lesson card is the only thing that should be talking. The boot run
@@ -390,10 +415,12 @@ export class Tutorial {
       return;
     }
 
-    // Bullet time is a teaching aid here, not a resource. A beginner lining up
-    // their first shot should not be hurried by a bar they have not been told
-    // about yet.
-    this.player.focus = this.player.focusMax;
+    // Bullet time is a teaching aid, not a resource — right up until the last
+    // lesson, which lets the gauge drain for real. Otherwise the player leaves
+    // the tutorial having never seen the meter that limits how long they can
+    // think, and meets it for the first time while something is hitting them.
+    if (this.lesson?.showsFocus) this.layer.classList.remove('coaching');
+    else this.player.focus = this.player.focusMax;
 
     // The goal lesson is decided by where a ball came to rest, so it is polled
     // rather than driven by an event.
@@ -444,7 +471,6 @@ export class Tutorial {
       this._hits = 0;
       this._struck.clear();
       this._rejected = false;
-      if (lesson.launch && lesson.launch(payload)) this._score();
       return;
     }
 
@@ -605,7 +631,7 @@ export class Tutorial {
       this._outro = true;
       this.el.classList.add('done');
       this.stepEl.textContent = 'Tutorial complete';
-      this.sayEl.textContent = 'Go break some racks';
+      this.sayEl.textContent = 'These ones move — and they hit back';
       this.hintEl.textContent = '';
       this.countEl.hidden = true;
       this._setStatus('', null);

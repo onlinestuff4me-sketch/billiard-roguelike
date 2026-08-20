@@ -244,7 +244,11 @@ export class HUD {
     // --- room / wave / layout ---
     if (s.level !== cache.level) {
       cache.level = s.level;
-      this.roomNumber.textContent = String(s.level).padStart(2, '0');
+      // Level 0 is the tutorial. It reads as dashes so that "01" appearing is
+      // the moment the run starts — the counter used to say 01 throughout the
+      // tutorial AND in the first real room, so no number ever changed and
+      // nothing on screen marked the handoff.
+      this.roomNumber.textContent = s.level > 0 ? String(s.level).padStart(2, '0') : '\u2013\u2013';
     }
     const waveLabel = s.waveCount > 1 ? `Wave ${s.waveIndex + 1}/${s.waveCount}` : '';
     if (waveLabel !== cache.wave) {

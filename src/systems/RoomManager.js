@@ -730,6 +730,8 @@ export class RoomManager {
     this.doors = [];
     this.scriptedEnemies = [];
     this.goal = null;
+    // A live re-rack handle pointing at a room that no longer exists.
+    this.scriptedSpec = null;
     this.game.physics.setColliders([]);
   }
 

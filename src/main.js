@@ -526,6 +526,8 @@ const game = {
   pyreBonus: 0,
   hazardAccum: 0,
   deathTimer: 0,
+  /** Contact damage is suppressed while this runs — see TUTORIAL.graceSeconds. */
+  graceTimer: 0,
   on: {}
 };
 
@@ -802,6 +804,10 @@ game.on = {
     // Lessons are practice, not a fight: a target you are still learning to
     // hit does not get to chip away at you while you work it out.
     if (game.tutorialGuard) return;
+    // The tutorial's targets could not touch you, so the hull bar has never
+    // moved once. Its first movement should not be a 63% drop taken while
+    // standing still reading the banner that explains enemies move.
+    if (game.graceTimer > 0) return;
     if (p.touchTimer > 0) return;
     if (p.takeDamage(enemy.config.contactDamage, game, enemy)) {
       p.touchTimer = PLAYER.touchInterval;
@@ -1017,11 +1023,13 @@ function resetRunState() {
   game.pyreBonus = 0;
   game.hazardAccum = 0;
   game.state = 'playing';
+  game.graceTimer = 0;
   hud.setDoors([]);
 }
 
 function startRun() {
   resetRunState();
+  game.graceTimer = TUTORIAL.graceSeconds;
   // Leaving the tutorial (or never entering it) hands the room back to the
   // normal rules, including the ones that can hurt you.
   game.tutorialGuard = null;
@@ -1298,6 +1306,8 @@ function simulate(dt, rawDt, aiming) {
   boons.update(dt, game);
   sweepEntities();
 
+  if (game.graceTimer > 0) game.graceTimer -= dt;
+
   if (game.chain.timer > 0) {
     game.chain.timer -= dt;
     if (game.chain.timer <= 0) game.chain.count = 0;
@@ -1340,7 +1350,15 @@ function frame(now) {
     // While the ball is travelling under its own steam, the compass needle
     // follows it. When it settles the needle is simply left where the ball was
     // last heading, which is the default the next shot starts from.
-    if (!aiming && player.speed > PLAYER.settleSpeed) {
+    // Only while the ball is travelling under its OWN steam. Being body-checked
+    // also clears settleSpeed, and that silently swung the resting cue to point
+    // wherever the player had just been shoved — the one heading that is
+    // supposed to be a fixed, re-readable default.
+    if (
+      !aiming &&
+      player.state === PLAYER_STATE.LAUNCHED &&
+      player.speed > PLAYER.settleSpeed
+    ) {
       input.setHeading(player.vx, player.vz);
     }
 

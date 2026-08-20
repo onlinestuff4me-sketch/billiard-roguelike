@@ -74,8 +74,8 @@ killed, holds a beat, restores the table, and only then shows the next card.
 | 1 | Aim and shoot at the red ball | one red ball straight ahead | the cue ball hits it |
 | 2 | Hit the red ball into the goal | one red ball, red glowing goal bar on the top wall | the red ball enters the goal |
 | 3 | Hit one ball into the other ball | two red balls in line up-table | the struck ball caroms into the second |
-| 4 | Hit 2 in a row | two red balls racked tight astride the line | one shot strikes both |
-| 5 | Hit 3 in a row | three red balls in the cue's path | one shot strikes all three |
+| 4 | Hit 2 in a row | two red balls in a column on the cue's line | one shot strikes both |
+| 5 | Hit 3 in a row | three red balls in a column 20° **off** the cue's line | one shot strikes all three |
 
 Lessons 1–5 are all frozen tables. Nothing on any of them moves until the player
 shoots.
@@ -94,7 +94,32 @@ the `carom` event, which fires when a knocked enemy strikes another enemy;
 striking both with the cue ball directly does not count.
 
 **4 and 5 — Chaining.** Two strikes, then three, in a single launch. This is the
-scoring mechanic, so it is the last thing taught and the only one repeated.
+scoring mechanic, so it is the last thing taught and the only one repeated. It
+works because the cue ball passes through anything it *kills* — so chain targets
+must be mortal, unlike the goal and carom targets.
+
+**5 is also the graduation.** Every earlier rack sits on the cue's resting line,
+so the whole tutorial can otherwise be beaten with five identical straight
+drags. This one is offset 20°, so the player turns the cue once before the game
+asks them to. It is also the only lesson that shows the Focus gauge and lets it
+drain, so the meter that limits thinking time is met while nothing can hurt you.
+
+## The handoff
+
+The tutorial ends and room 1 begins. Three things make that a visible event
+rather than a hard cut:
+
+- The room counter reads `––` during lessons (`game.level` is 0) so that `01`
+  appearing *is* the boundary.
+- The Focus gauge fades in during lesson 5 rather than popping in mid-fight.
+- Contact damage is suppressed for `TUTORIAL.graceSeconds` at the start of room
+  1, so the banner explaining that enemies now move is readable. Before this, a
+  standing player lost 63% of their hull in the first four seconds.
+
+Room banners (`TUTORIAL.lessons` in `src/config.js`) run *after* the tutorial, so
+each may only introduce something the tutorial did not. Rooms 1–3 used to repeat
+lessons the player had just finished, and room 1's said "hold to charge", which
+has never been true — power is draw distance alone.
 
 ## What is deliberately not in the tutorial
 
@@ -115,6 +140,6 @@ scoring mechanic, so it is the last thing taught and the only one repeated.
 | Room building, re-rack, ball homing | `Tutorial._buildRoom` / `_reRack` / `_homeBall` |
 | Scripted tables (no waves/doors/injectors) | `RoomManager.loadScripted` |
 | Goal bar geometry and hit test | `RoomManager.loadScripted` + `Tutorial._checkGoal` |
-| Unfailability | `game.tutorialGuard` in `src/main.js` — blocks all damage in a lesson room; `game.forceKill` is the director's only way to remove a target |
+| Unfailability | `game.tutorialGuard` in `src/main.js` — blocks contact and projectile damage **to the player**. Targets are killed normally; the ones that must survive a hit carry `invulnerable` per body, and a partial attempt calls `RoomManager.reRackScripted` |
 | Card markup and styling | `#coach` in `index.html` |
 | Completion flag | `billiard-tutorial-done-v1` in localStorage; reset from Settings |

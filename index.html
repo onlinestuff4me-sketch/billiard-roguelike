@@ -303,12 +303,15 @@
         100% { transform: scale(1); }
       }
 
-      /* A lesson tops Focus up every frame, so the gauge is a dial that never
-         moves — noise on a table that is supposed to hold only the lesson. */
+      /* Early lessons top Focus up every frame, so the gauge would be a dial
+         that never moves — noise on a table meant to hold only the lesson. The
+         last lesson drops the `coaching` class so the gauge fades in and drains
+         for real while the player still cannot lose. */
       #ui-layer.coaching .hud-focus { opacity: 0; pointer-events: none; }
 
       /* Radial focus gauge */
       .hud-focus {
+        transition: opacity 0.45s ease;
         position: absolute;
         bottom: calc(var(--hud-pad) + 2px);
         left: 50%;
@@ -350,6 +353,11 @@
       }
 
       /* Banner */
+      /* Long banner subs ran edge to edge and wrapped badly, clipping letters
+         at both margins. */
+      .hud-banner { padding-inline: 20px; }
+      .banner-sub { max-width: 88%; margin-inline: auto; }
+
       .hud-banner {
         position: absolute;
         top: 34%;
