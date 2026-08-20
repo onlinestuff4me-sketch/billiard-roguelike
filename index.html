@@ -956,7 +956,11 @@
          no longer depends on whether anything is being said. */
       #coach .status {
         position: absolute;
-        top: calc(100% + 6px);
+        /* Tight to the card. At 6px the status BOX (full card width, though the
+           text inside it is centred and stops well short) grazed the far ball's
+           top edge by 0.2px on a 344px-wide screen when a scold wrapped to two
+           lines. Nothing was actually covered, but that is luck, not margin. */
+        top: calc(100% + 2px);
         left: 0;
         right: 0;
         font-size: clamp(11.5px, 3.0vmin, 15px);
