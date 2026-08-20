@@ -853,19 +853,23 @@
       #coach {
         position: absolute;
         left: 50%;
-        /* Anchored to the FOOT of the stage, not floated over it.
-           The card is up for the whole lesson, so anywhere across the table is
-           somewhere the player cannot see. Everything a lesson stages sits
-           between the top rail and the ball's spawn at 70% of the height — the
-           strip underneath is the only real estate that is never in play. */
-        /* The ball spawns 30% up from the bottom rail, so the card lives in the
-           ~200px beneath it and is sized to fit there. Anything taller starts
-           covering the thing the lesson is about. */
-        bottom: 1.4%;
-        top: auto;
+        /* THE VERTICAL BUDGET. The card is up for the whole lesson, so where it
+           sits is a layout problem with only one answer.
+             0-10%   HUD band
+             12-20%  goal bar (lesson 2)
+             21-34%  this card
+             38-57%  the racks
+             ~70%    the ball's spawn
+             70-100% where the thumb goes
+           The foot of the screen looks free and is not: the cue model puts the
+           thumb below the ball, so a card down there hides the ball, the cue
+           and the player's own hand at once. It lives in the band above the
+           racks instead, and is capped so it can never grow into them. */
+        top: 21%;
+        bottom: auto;
         transform: translate(-50%, 0) scale(0.94);
         width: min(94%, 452px);
-        padding: 10px 16px 12px;
+        padding: 9px 14px 11px;
         border-radius: 16px;
         border: 2px solid rgba(255, 179, 64, 0.55);
         background: rgba(5, 7, 10, 0.88);
@@ -876,11 +880,16 @@
         pointer-events: none;
         z-index: 40;
       }
-      #coach.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      /* Grows DOWNWARD from its anchor. This was still translate(-50%, -50%)
+         from when the card was vertically centred, so it rendered half its own
+         height above where it was placed — and got taller upward into whatever
+         was above it. That is what put it over the goal bar. */
+      #coach.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
       #coach.done {
         border-color: rgba(46, 242, 196, 0.85);
         box-shadow: 0 0 52px rgba(46, 242, 196, 0.3);
       }
+      #coach .say { text-wrap: balance; }
       #coach .step {
         font-size: clamp(10px, 2.8vmin, 13px);
         letter-spacing: 0.3em;
@@ -890,7 +899,7 @@
       }
       #coach.done .step { color: #2ef2c4; }
       #coach .say {
-        font-size: clamp(21px, 6.0vmin, 32px);
+        font-size: clamp(19px, 5.2vmin, 28px);
         font-weight: 800;
         line-height: 1.08;
         letter-spacing: -0.01em;
@@ -899,9 +908,9 @@
         text-shadow: 0 0 26px rgba(234, 246, 255, 0.28);
       }
       #coach .hint {
-        margin-top: 7px;
-        font-size: clamp(11.5px, 3.0vmin, 14px);
-        line-height: 1.3;
+        margin-top: 5px;
+        font-size: clamp(11px, 2.7vmin, 13px);
+        line-height: 1.25;
         color: rgba(234, 246, 255, 0.7);
         text-wrap: balance;
       }
@@ -933,9 +942,9 @@
         color: rgba(234, 246, 255, 0.75);
       }
       #coach .status {
-        margin-top: 7px;
-        min-height: 1.25em;
-        font-size: clamp(12.5px, 3.4vmin, 16px);
+        margin-top: 5px;
+        min-height: 1.2em;
+        font-size: clamp(11.5px, 3.0vmin, 15px);
         font-weight: 700;
         opacity: 0;
         transition: opacity 0.18s ease;

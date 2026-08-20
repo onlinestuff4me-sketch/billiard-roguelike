@@ -40,22 +40,19 @@ const KEY = 'billiard-tutorial-done-v1';
 const UP = { x: 0, z: -1 };
 
 /**
- * Two solids (radius 0.62 each) sitting this far either side of the centre line
- * are just clear of one another. A ball fired up the middle wedges between them
- * and splits the pair — the widest capture window two targets can offer, and the
- * most recognisable shot in billiards.
- */
-const PAIR = 0.68;
-
-/**
  * Each lesson: what it says, the table it says it on, and the single rule that
  * decides whether what just happened counts.
  *
  * A rule returns 'score' (that was the thing — take it), 'reject' (that was an
  * attempt and it was not it — say so), or nothing at all (unrelated; stay
  * quiet). `hit` judges one cue strike as it lands, `carom` judges one ball
- * striking another, `goal` is polled while the table settles, and `shot` judges
- * a whole launch once the rep is over.
+ * striking another, `usesGoal` is polled while the table settles, and `shot`
+ * judges a whole launch once the rep is over. `rest` is the heading the cue
+ * parks on — NOT a rule. It was once called `aim`, which collided with an old
+ * draw-distance predicate of the same name: the object got called as a
+ * function, threw every frame the player was aiming, and killed the rest of
+ * the frame including the render. The table simply stopped updating under
+ * their thumb.
  *
  * Every table here is frozen. See docs/TUTORIAL.md — nothing moves until the
  * player shoots, and a lesson contains only what it is teaching.
@@ -64,9 +61,9 @@ export const LESSONS = [
   {
     id: 'aim',
     say: 'Aim and shoot at the red ball',
-    hint: 'Your thumb is the butt of the cue. Drag back from the blue ball to aim, then let go.',
+    hint: 'Drag back from the blue ball to aim. Let go to fire.',
     goal: 1,
-    aim: UP,
+    rest: UP,
     room: {
       id: 'lesson-aim',
       name: 'First Contact',
@@ -82,9 +79,9 @@ export const LESSONS = [
   {
     id: 'goal',
     say: 'Hit the red ball into the goal',
-    hint: 'The red bar at the top is the goal. Do not go in yourself — knock the red ball into it.',
+    hint: 'Knock the red ball into the red bar. Not yourself.',
     goal: 1,
-    aim: UP,
+    rest: UP,
     room: {
       id: 'lesson-goal',
       name: 'Into The Goal',
@@ -92,7 +89,7 @@ export const LESSONS = [
       enemies: [{ type: 'solid', x: 0, z: -2.0, invulnerable: true }],
       // Wide, so a straight shot up the middle is comfortably enough. Set in
       // from the top rail so a ball can come to rest inside it.
-      goal: { x: 0, z: -13.4, hw: 5.2, hh: 1.5 }
+      goal: { x: 0, z: -11.0, hw: 5.2, hh: 1.2 }
     },
     // Scored by the zone, not by contact: what matters is where the ball ended
     // up, so nothing is decided until the table stops moving.
@@ -104,9 +101,9 @@ export const LESSONS = [
   {
     id: 'carom',
     say: 'Hit one ball into the other ball',
-    hint: 'A ball you hit becomes a cannonball. Strike the near one so it runs on into the far one.',
+    hint: 'A ball you hit becomes a cannonball. Drive the near one into the far one.',
     goal: 1,
-    aim: UP,
+    rest: UP,
     room: {
       id: 'lesson-carom',
       name: 'The Cannonball',
@@ -114,8 +111,8 @@ export const LESSONS = [
       // Both survive contact: the near one has to live long enough to carry on
       // into the far one, and the far one has to be there when it arrives.
       enemies: [
-        { type: 'solid', x: 0, z: -1.5, invulnerable: true },
-        { type: 'solid', x: 0, z: -6.0, invulnerable: true }
+        { type: 'solid', x: 0, z: 0.8, invulnerable: true },
+        { type: 'solid', x: 0, z: -3.8, invulnerable: true }
       ]
     },
     // A cue strike on both does not count — the second ball has to be hit by
@@ -129,41 +126,46 @@ export const LESSONS = [
   {
     id: 'chain2',
     say: 'Hit 2 in a row',
-    hint: 'Two hits in one shot pays a chain bonus. These two are racked tight and the cue is already lined up.',
+    hint: 'Two hits in one shot pays a bonus. Fire straight through both.',
     goal: 1,
-    aim: UP,
+    rest: UP,
     room: {
       id: 'lesson-chain2',
       name: 'The Split',
       obstacles: [],
+      // A column, not a split. The cue ball passes through each body it
+      // destroys, so "in a row" is literally a row — and it reads as the same
+      // shot as the three-ball lesson that follows.
       enemies: [
-        { type: 'solid', x: -PAIR, z: 0.5 },
-        { type: 'solid', x: PAIR, z: 0.5 }
+        { type: 'solid', x: 0, z: 1.0 },
+        { type: 'solid', x: 0, z: -2.0 }
       ]
     },
     hit: (h) => (h.index >= 2 ? 'score' : null),
     killsStruck: true,
     shot: (s) => (s.hits > 0 && s.hits < 2 ? 'reject' : null),
     cheer: 'Chain ×1.4',
-    scold: 'One at a time does nothing — split them down the middle',
-    nudge: 'Keep the line dead straight up the middle. The preview shows it clipping both.'
+    scold: 'Only one — keep the line straight and drive through both',
+    nudge: 'Fire straight up the middle at full power. The ball carries on through the first.'
   },
   {
     id: 'chain3',
     say: 'Hit 3 in a row',
-    hint: 'Longer chains pay more. Three sit in the cue\u2019s path — take all of them in one shot.',
+    hint: 'Longer chains pay more. One shot, all three.',
     goal: 1,
-    aim: UP,
+    rest: UP,
     room: {
       id: 'lesson-chain3',
       name: 'The Run',
       obstacles: [],
       // A column straight up the cue's resting line. The ball passes through
       // each one it destroys, so a single full-power shot runs the whole rack.
+      // Kept below the card band even on short screens, where the stage is
+      // shorter in absolute pixels but the card is not.
       enemies: [
-        { type: 'solid', x: 0, z: 1.5 },
-        { type: 'solid', x: 0, z: -1.5 },
-        { type: 'solid', x: 0, z: -4.5 }
+        { type: 'solid', x: 0, z: 2.4 },
+        { type: 'solid', x: 0, z: -0.2 },
+        { type: 'solid', x: 0, z: -2.8 }
       ]
     },
     hit: (h) => (h.index >= 3 ? 'score' : null),
@@ -366,8 +368,8 @@ export class Tutorial {
    * what "bank off a wall" is supposed to look like.
    */
   _restAim() {
-    const aim = this.lesson?.aim;
-    this.input.setHeading(aim ? aim.x : 0, aim ? aim.z : -1);
+    const rest = this.lesson?.rest;
+    this.input.setHeading(rest ? rest.x : 0, rest ? rest.z : -1);
   }
 
   /* ---------------------------------------------------------------- *
@@ -432,11 +434,6 @@ export class Tutorial {
     // never score against the lesson the player is already leaving.
     if (this._cheerTimer > 0) {
       if (name === 'aiming' || name === 'launch') this._pending.push({ name, payload });
-      return;
-    }
-
-    if (name === 'aiming') {
-      if (lesson.aim && lesson.aim(payload.draw ?? 0)) this._score();
       return;
     }
 
