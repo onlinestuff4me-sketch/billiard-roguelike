@@ -112,8 +112,8 @@ export const LESSONS = [
       // Both survive contact: the near one has to live long enough to carry on
       // into the far one, and the far one has to be there when it arrives.
       enemies: [
-        { type: 'solid', x: 0, z: 0.8, invulnerable: true },
-        { type: 'solid', x: 0, z: -3.8, invulnerable: true }
+        { type: 'solid', x: 0, z: 1.4, invulnerable: true },
+        { type: 'solid', x: 0, z: -3.0, invulnerable: true }
       ]
     },
     // A cue strike on both does not count — the second ball has to be hit by
@@ -254,8 +254,6 @@ export class Tutorial {
     this._statusTimer = 0;
     this._outro = false;
     this._misses = 0;
-    /** Actions that arrived while a lesson was taking its bow. */
-    this._pending = [];
   }
 
   /* ---------------------------------------------------------------- *
@@ -323,7 +321,6 @@ export class Tutorial {
     this._outro = false;
     this._needsRoom = false;
     this._roomKey = null;
-    this._pending.length = 0;
     this.game.tutorialGuard = null;
     this.layer.classList.remove('coaching');
     this.el.classList.remove('show', 'done');
@@ -361,10 +358,16 @@ export class Tutorial {
     this._render();
     this._setStatus('', null);
 
+    // The card and the table change on the SAME frame. Deferring the build
+    // until the previous shot resolved left the next lesson's instruction
+    // sitting over a completely empty table for ~2 seconds — and, worse, a shot
+    // taken into that gap was judged against a lesson that had not been
+    // playable for a single frame, so lesson 2 could open already scolding you
+    // with a miss on the board. The old shot is over; it does not get to finish.
+    this._launched = false;
     this._needsRoom = lesson.room.id !== this._roomKey;
-    // A new table is racked at once unless a shot is still being judged, in
-    // which case the rep that is finishing gets to finish first.
-    if (this._needsRoom && !this._launched) this._buildRoom();
+    if (this._needsRoom) this._buildRoom();
+    else this._homeBall();
   }
 
   _buildRoom() {
@@ -426,9 +429,15 @@ export class Tutorial {
     // rather than driven by an event.
     if (this._launched && this.lesson?.usesGoal && this._cheerTimer <= 0) this._checkGoal();
 
-    if (this._launched) {
+    if (this._launched && !this.input.isAiming) {
+      // Only while the world is running. Aiming stops time completely, but this
+      // clock used to keep draining through it — so holding an aim for three
+      // seconds after a shot cancelled that shot mid-gesture: the ball teleported
+      // from mid-flight back to spawn and the player was told they had missed,
+      // with their thumb still down. Taking three seconds over a shot is
+      // entirely ordinary, and bullet time exists to invite exactly that.
       this._shotTimer -= rawDt;
-      const settled = this.player.state === PLAYER_STATE.IDLE && !this.input.isAiming;
+      const settled = this.player.state === PLAYER_STATE.IDLE;
       if (settled || this._shotTimer <= 0) {
         this._launched = false;
         this._resolveShot();
@@ -453,16 +462,11 @@ export class Tutorial {
     const lesson = this.lesson;
     if (!lesson || this._outro) return;
 
-    // A lesson takes a beat to congratulate you, and a player who drags and
-    // releases in one motion would otherwise lose the release inside it — they
-    // would meet "Release to shoot" having just released. So the two actions a
-    // lesson can be waiting on are held and replayed against the next lesson
-    // once it is actually on screen. Hits are not: a stray extra contact must
-    // never score against the lesson the player is already leaving.
-    if (this._cheerTimer > 0) {
-      if (name === 'aiming' || name === 'launch') this._pending.push({ name, payload });
-      return;
-    }
+    // Nothing that happens during the congratulation counts. Actions used to be
+    // queued here and replayed against the NEXT lesson, which meant a single tap
+    // during the beat arrived as a phantom failed attempt on a lesson the player
+    // had not seen yet — and counted toward the two-miss hint escalation.
+    if (this._cheerTimer > 0) return;
 
     if (name === 'launch') {
       this._launched = true;
@@ -640,8 +644,6 @@ export class Tutorial {
     }
     this.el.classList.remove('done');
     this._enter(this.index + 1);
-    const queued = this._pending.splice(0, this._pending.length);
-    for (const q of queued) this.notify(q.name, q.payload);
   }
 
   /* ---------------------------------------------------------------- *

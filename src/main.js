@@ -1370,7 +1370,6 @@ function frame(now) {
         player.updateAim(aim);
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();
-        tutorial.notify('aiming', { draw: aim.pullLength || 0 });
       }
     } else if (
       game.state === 'playing' &&
