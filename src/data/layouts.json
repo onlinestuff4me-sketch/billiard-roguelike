@@ -1,0 +1,489 @@
+{
+  "$schema": "./layouts.schema.md",
+  "note": "Authored table geometry. Read by the game (RoomManager) and by the level tool at /tool. Coordinates are world units: x in [-9,9], z in [-16,16], -z is up-screen.",
+  "layouts": [
+    {
+      "id": "open-arena",
+      "name": "Open Arena",
+      "tags": [
+        "dense",
+        "carom"
+      ],
+      "obstacles": [],
+      "anchors": [
+        {
+          "x": -6,
+          "z": -11
+        },
+        {
+          "x": 0,
+          "z": -12.5
+        },
+        {
+          "x": 6,
+          "z": -11
+        },
+        {
+          "x": -6.5,
+          "z": -6
+        },
+        {
+          "x": 0,
+          "z": -6.5
+        },
+        {
+          "x": 6.5,
+          "z": -6
+        },
+        {
+          "x": -5,
+          "z": -1
+        },
+        {
+          "x": 5,
+          "z": -1
+        },
+        {
+          "x": 0,
+          "z": 1.5
+        },
+        {
+          "x": -7,
+          "z": 3
+        },
+        {
+          "x": 7,
+          "z": 3
+        }
+      ],
+      "spawn": {
+        "x": 0,
+        "z": 10.5
+      }
+    },
+    {
+      "id": "split-pillar",
+      "name": "Split Central Pillar",
+      "tags": [
+        "flank",
+        "shooter"
+      ],
+      "obstacles": [
+        {
+          "type": "box",
+          "x": 0,
+          "z": -3,
+          "hw": 1.7,
+          "hh": 6.2
+        }
+      ],
+      "anchors": [
+        {
+          "x": -6.4,
+          "z": -12
+        },
+        {
+          "x": 6.4,
+          "z": -12
+        },
+        {
+          "x": -6.6,
+          "z": -7
+        },
+        {
+          "x": 6.6,
+          "z": -7
+        },
+        {
+          "x": -6.6,
+          "z": -1
+        },
+        {
+          "x": 6.6,
+          "z": -1
+        },
+        {
+          "x": 0,
+          "z": -13.5
+        },
+        {
+          "x": -4.5,
+          "z": 4
+        },
+        {
+          "x": 4.5,
+          "z": 4
+        },
+        {
+          "x": 0,
+          "z": 5
+        }
+      ],
+      "spawn": {
+        "x": 0,
+        "z": 11
+      }
+    },
+    {
+      "id": "triangle-rack",
+      "name": "Triangle Bumper Grid",
+      "tags": [
+        "pinball",
+        "dense"
+      ],
+      "obstacles": [
+        {
+          "type": "circle",
+          "x": 0,
+          "z": -8.4,
+          "radius": 0.95,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": -1.9,
+          "z": -5.6,
+          "radius": 0.95,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": 1.9,
+          "z": -5.6,
+          "radius": 0.95,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": -3.8,
+          "z": -2.8,
+          "radius": 0.95,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": 0,
+          "z": -2.8,
+          "radius": 0.95,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": 3.8,
+          "z": -2.8,
+          "radius": 0.95,
+          "kind": "bumper"
+        }
+      ],
+      "anchors": [
+        {
+          "x": -6.8,
+          "z": -12
+        },
+        {
+          "x": 0,
+          "z": -12.6
+        },
+        {
+          "x": 6.8,
+          "z": -12
+        },
+        {
+          "x": -7,
+          "z": -6
+        },
+        {
+          "x": 7,
+          "z": -6
+        },
+        {
+          "x": -7,
+          "z": 0
+        },
+        {
+          "x": 7,
+          "z": 0
+        },
+        {
+          "x": -3.5,
+          "z": 3.5
+        },
+        {
+          "x": 3.5,
+          "z": 3.5
+        },
+        {
+          "x": 0,
+          "z": 1
+        }
+      ],
+      "spawn": {
+        "x": 0,
+        "z": 11.5
+      }
+    },
+    {
+      "id": "choke-corridor",
+      "name": "Choke Corridor",
+      "tags": [
+        "precision",
+        "tank"
+      ],
+      "obstacles": [
+        {
+          "type": "box",
+          "x": -6.4,
+          "z": -4.5,
+          "hw": 2.6,
+          "hh": 0.95
+        },
+        {
+          "type": "box",
+          "x": 6.4,
+          "z": -4.5,
+          "hw": 2.6,
+          "hh": 0.95
+        },
+        {
+          "type": "box",
+          "x": -6.4,
+          "z": -10.5,
+          "hw": 2.6,
+          "hh": 0.95
+        },
+        {
+          "type": "box",
+          "x": 6.4,
+          "z": -10.5,
+          "hw": 2.6,
+          "hh": 0.95
+        }
+      ],
+      "anchors": [
+        {
+          "x": 0,
+          "z": -13.5
+        },
+        {
+          "x": -4,
+          "z": -13
+        },
+        {
+          "x": 4,
+          "z": -13
+        },
+        {
+          "x": 0,
+          "z": -7.5
+        },
+        {
+          "x": -2.6,
+          "z": -7.5
+        },
+        {
+          "x": 2.6,
+          "z": -7.5
+        },
+        {
+          "x": -6.5,
+          "z": -1
+        },
+        {
+          "x": 6.5,
+          "z": -1
+        },
+        {
+          "x": 0,
+          "z": -1
+        },
+        {
+          "x": 0,
+          "z": 4
+        }
+      ],
+      "spawn": {
+        "x": 0,
+        "z": 11.5
+      }
+    },
+    {
+      "id": "pinball-pillars",
+      "name": "Pinball Pillars",
+      "tags": [
+        "pinball",
+        "chaos"
+      ],
+      "obstacles": [
+        {
+          "type": "circle",
+          "x": -4.6,
+          "z": -11,
+          "radius": 1.15
+        },
+        {
+          "type": "circle",
+          "x": 4.6,
+          "z": -11,
+          "radius": 1.15
+        },
+        {
+          "type": "circle",
+          "x": 0,
+          "z": -6.5,
+          "radius": 1.4,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": -5.8,
+          "z": -2,
+          "radius": 1.05,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": 5.8,
+          "z": -2,
+          "radius": 1.05,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": 0,
+          "z": 2.5,
+          "radius": 1.15
+        }
+      ],
+      "anchors": [
+        {
+          "x": 0,
+          "z": -13.2
+        },
+        {
+          "x": -7,
+          "z": -13
+        },
+        {
+          "x": 7,
+          "z": -13
+        },
+        {
+          "x": -7.2,
+          "z": -7
+        },
+        {
+          "x": 7.2,
+          "z": -7
+        },
+        {
+          "x": -2.4,
+          "z": -3
+        },
+        {
+          "x": 2.4,
+          "z": -3
+        },
+        {
+          "x": -7,
+          "z": 2
+        },
+        {
+          "x": 7,
+          "z": 2
+        },
+        {
+          "x": 0,
+          "z": 6
+        }
+      ],
+      "spawn": {
+        "x": 0,
+        "z": 12
+      }
+    },
+    {
+      "id": "diamond-bank",
+      "name": "Diamond Bank",
+      "tags": [
+        "bank",
+        "precision"
+      ],
+      "obstacles": [
+        {
+          "type": "box",
+          "x": 0,
+          "z": -11,
+          "hw": 2.2,
+          "hh": 0.85
+        },
+        {
+          "type": "box",
+          "x": -5.2,
+          "z": -6,
+          "hw": 0.85,
+          "hh": 2.2
+        },
+        {
+          "type": "box",
+          "x": 5.2,
+          "z": -6,
+          "hw": 0.85,
+          "hh": 2.2
+        },
+        {
+          "type": "box",
+          "x": 0,
+          "z": -1,
+          "hw": 2.2,
+          "hh": 0.85
+        }
+      ],
+      "anchors": [
+        {
+          "x": -7,
+          "z": -13
+        },
+        {
+          "x": 7,
+          "z": -13
+        },
+        {
+          "x": 0,
+          "z": -14
+        },
+        {
+          "x": -7.2,
+          "z": -8
+        },
+        {
+          "x": 7.2,
+          "z": -8
+        },
+        {
+          "x": 0,
+          "z": -6
+        },
+        {
+          "x": -7,
+          "z": -2
+        },
+        {
+          "x": 7,
+          "z": -2
+        },
+        {
+          "x": -4,
+          "z": 3
+        },
+        {
+          "x": 4,
+          "z": 3
+        }
+      ],
+      "spawn": {
+        "x": 0,
+        "z": 11
+      }
+    }
+  ]
+}

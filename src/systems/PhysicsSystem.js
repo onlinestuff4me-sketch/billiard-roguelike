@@ -200,6 +200,28 @@ export class PhysicsSystem {
     this._hit = { nx: 0, nz: 0, depth: 0, collider: null };
   }
 
+  /**
+   * Is this point inside (or within `radius` of) any static geometry?
+   *
+   * Used before a muzzle spawns a bullet: a shooter standing against a wall
+   * would otherwise plant its projectile inside the wall, where it dies on the
+   * first substep. On screen that is indistinguishable from the gun failing to
+   * go off at all.
+   */
+  pointBlocked(x, z, radius = 0) {
+    if (Math.abs(x) > ARENA.halfW - radius || Math.abs(z) > ARENA.halfH - radius) return true;
+    for (const c of this.colliders) {
+      if (c.type === 'circle') {
+        if (Math.hypot(x - c.x, z - c.z) < radius + c.radius) return true;
+      } else {
+        const cx = Math.min(Math.max(x, c.x - c.hw), c.x + c.hw);
+        const cz = Math.min(Math.max(z, c.z - c.hh), c.z + c.hh);
+        if (Math.hypot(x - cx, z - cz) < radius) return true;
+      }
+    }
+    return false;
+  }
+
   setColliders(colliders) {
     this.colliders = colliders || [];
   }
@@ -220,6 +242,12 @@ export class PhysicsSystem {
     );
     const h = dt / steps;
     for (let i = 0; i < steps; i++) this.substep(h, game);
+
+    // Clear the muzzle hold once per *frame*, not once per substep — otherwise
+    // a bullet born this frame still travels the remaining substeps and is
+    // rendered clear of the barrel it supposedly just left.
+    const projectiles = game.projectiles || [];
+    for (let i = 0; i < projectiles.length; i++) projectiles[i].spawnFrame = false;
   }
 
   substep(h, game) {
@@ -262,6 +290,12 @@ export class PhysicsSystem {
     for (let i = 0; i < projectiles.length; i++) {
       const p = projectiles[i];
       if (!p.alive) continue;
+      // A projectile used to be integrated on the very frame it was created,
+      // so its first *rendered* position was already a step down-range — at 26
+      // units/sec that is a unit clear of the muzzle before anyone sees it, and
+      // the bullet looks like it appeared in mid-air rather than left the gun.
+      // It gets one frame standing at the muzzle.
+      if (p.spawnFrame) continue;
       this.integrate(p, h);
       this.resolveProjectile(p, player, game);
     }

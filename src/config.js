@@ -267,9 +267,18 @@ export const ENEMY = {
     contactDamage: 6,
     preferredRange: 9.5,
     rangeTolerance: 2.0,
-    shotInterval: 3.0,
-    chargeTime: 0.75,
-    shotSpeed: 15,
+    shotInterval: 2.4,
+    /**
+     * The wind-up. Long enough to read the barrel coming up and get out of the
+     * line, short enough that it does not feel like the enemy is posing.
+     */
+    chargeTime: 0.7,
+    /**
+     * At 15 an incoming shot was 2.7x slower than your own ball, which read as
+     * a drifting bubble rather than a threat. 26 still leaves a real dodge
+     * window at the 9.5-unit stand-off — about 0.33s — while looking fired.
+     */
+    shotSpeed: 26,
     shotDamage: 12,
     shotRadius: 0.26,
     shotLife: 3.2,

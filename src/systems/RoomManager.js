@@ -19,23 +19,25 @@
  */
 
 import * as THREE from 'three';
-import { ARENA, ROOM, INJECTOR, PALETTE, ENEMY, PROGRESSION } from '../config.js';
-import { Enemy } from '../entities/Enemy.js';
+import { ARENA, ROOM, INJECTOR, PALETTE, ENEMY, PROGRESSION, PHYSICS } from '../config.js';
+import { Enemy, ENEMY_STATE } from '../entities/Enemy.js';
+import layoutData from '../data/layouts.json';
 
 /* ------------------------------------------------------------------ *
- * Seeded RNG — mulberry32
+ * The procedural half lives in ThreatDirector.js — pure, scene-free and
+ * shared with the level tool at /tool, so the tool can never disagree with
+ * the rules it is a tool for. Re-exported here because callers have always
+ * reached for makeRng through RoomManager.
  * ------------------------------------------------------------------ */
 
-export function makeRng(seed) {
-  let a = seed >>> 0;
-  return function rng() {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import {
+  makeRng,
+  roomSeed,
+  budgetFor as directorBudgetFor,
+  buildWaves as directorBuildWaves
+} from './ThreatDirector.js';
+
+export { makeRng };
 
 const pick = (rng, list) => list[Math.floor(rng() * list.length) % list.length];
 
@@ -46,147 +48,12 @@ const pick = (rng, list) => list[Math.floor(rng() * list.length) % list.length];
  * placement, open corners, and at least two viable two-rail routes.
  * ------------------------------------------------------------------ */
 
-export const LAYOUTS = [
-  {
-    id: 'open-arena',
-    name: 'Open Arena',
-    tags: ['dense', 'carom'],
-    obstacles: [],
-    anchors: [
-      { x: -6, z: -11 },
-      { x: 0, z: -12.5 },
-      { x: 6, z: -11 },
-      { x: -6.5, z: -6 },
-      { x: 0, z: -6.5 },
-      { x: 6.5, z: -6 },
-      { x: -5, z: -1 },
-      { x: 5, z: -1 },
-      { x: 0, z: 1.5 },
-      { x: -7, z: 3 },
-      { x: 7, z: 3 }
-    ],
-    spawn: { x: 0, z: 10.5 }
-  },
-  {
-    id: 'split-pillar',
-    name: 'Split Central Pillar',
-    tags: ['flank', 'shooter'],
-    obstacles: [{ type: 'box', x: 0, z: -3, hw: 1.7, hh: 6.2 }],
-    anchors: [
-      { x: -6.4, z: -12 },
-      { x: 6.4, z: -12 },
-      { x: -6.6, z: -7 },
-      { x: 6.6, z: -7 },
-      { x: -6.6, z: -1 },
-      { x: 6.6, z: -1 },
-      { x: 0, z: -13.5 },
-      { x: -4.5, z: 4 },
-      { x: 4.5, z: 4 },
-      { x: 0, z: 5 }
-    ],
-    spawn: { x: 0, z: 11 }
-  },
-  {
-    id: 'triangle-rack',
-    name: 'Triangle Bumper Grid',
-    tags: ['pinball', 'dense'],
-    obstacles: [
-      { type: 'circle', x: 0, z: -8.4, radius: 0.95, kind: 'bumper' },
-      { type: 'circle', x: -1.9, z: -5.6, radius: 0.95, kind: 'bumper' },
-      { type: 'circle', x: 1.9, z: -5.6, radius: 0.95, kind: 'bumper' },
-      { type: 'circle', x: -3.8, z: -2.8, radius: 0.95, kind: 'bumper' },
-      { type: 'circle', x: 0, z: -2.8, radius: 0.95, kind: 'bumper' },
-      { type: 'circle', x: 3.8, z: -2.8, radius: 0.95, kind: 'bumper' }
-    ],
-    anchors: [
-      { x: -6.8, z: -12 },
-      { x: 0, z: -12.6 },
-      { x: 6.8, z: -12 },
-      { x: -7, z: -6 },
-      { x: 7, z: -6 },
-      { x: -7, z: 0 },
-      { x: 7, z: 0 },
-      { x: -3.5, z: 3.5 },
-      { x: 3.5, z: 3.5 },
-      { x: 0, z: 1 }
-    ],
-    spawn: { x: 0, z: 11.5 }
-  },
-  {
-    id: 'choke-corridor',
-    name: 'Choke Corridor',
-    tags: ['precision', 'tank'],
-    obstacles: [
-      { type: 'box', x: -6.4, z: -4.5, hw: 2.6, hh: 0.95 },
-      { type: 'box', x: 6.4, z: -4.5, hw: 2.6, hh: 0.95 },
-      { type: 'box', x: -6.4, z: -10.5, hw: 2.6, hh: 0.95 },
-      { type: 'box', x: 6.4, z: -10.5, hw: 2.6, hh: 0.95 }
-    ],
-    anchors: [
-      { x: 0, z: -13.5 },
-      { x: -4, z: -13 },
-      { x: 4, z: -13 },
-      { x: 0, z: -7.5 },
-      { x: -2.6, z: -7.5 },
-      { x: 2.6, z: -7.5 },
-      { x: -6.5, z: -1 },
-      { x: 6.5, z: -1 },
-      { x: 0, z: -1 },
-      { x: 0, z: 4 }
-    ],
-    spawn: { x: 0, z: 11.5 }
-  },
-  {
-    id: 'pinball-pillars',
-    name: 'Pinball Pillars',
-    tags: ['pinball', 'chaos'],
-    obstacles: [
-      { type: 'circle', x: -4.6, z: -11, radius: 1.15 },
-      { type: 'circle', x: 4.6, z: -11, radius: 1.15 },
-      { type: 'circle', x: 0, z: -6.5, radius: 1.4, kind: 'bumper' },
-      { type: 'circle', x: -5.8, z: -2, radius: 1.05, kind: 'bumper' },
-      { type: 'circle', x: 5.8, z: -2, radius: 1.05, kind: 'bumper' },
-      { type: 'circle', x: 0, z: 2.5, radius: 1.15 }
-    ],
-    anchors: [
-      { x: 0, z: -13.2 },
-      { x: -7, z: -13 },
-      { x: 7, z: -13 },
-      { x: -7.2, z: -7 },
-      { x: 7.2, z: -7 },
-      { x: -2.4, z: -3 },
-      { x: 2.4, z: -3 },
-      { x: -7, z: 2 },
-      { x: 7, z: 2 },
-      { x: 0, z: 6 }
-    ],
-    spawn: { x: 0, z: 12 }
-  },
-  {
-    id: 'diamond-bank',
-    name: 'Diamond Bank',
-    tags: ['bank', 'precision'],
-    obstacles: [
-      { type: 'box', x: 0, z: -11, hw: 2.2, hh: 0.85 },
-      { type: 'box', x: -5.2, z: -6, hw: 0.85, hh: 2.2 },
-      { type: 'box', x: 5.2, z: -6, hw: 0.85, hh: 2.2 },
-      { type: 'box', x: 0, z: -1, hw: 2.2, hh: 0.85 }
-    ],
-    anchors: [
-      { x: -7, z: -13 },
-      { x: 7, z: -13 },
-      { x: 0, z: -14 },
-      { x: -7.2, z: -8 },
-      { x: 7.2, z: -8 },
-      { x: 0, z: -6 },
-      { x: -7, z: -2 },
-      { x: 7, z: -2 },
-      { x: -4, z: 3 },
-      { x: 4, z: 3 }
-    ],
-    spawn: { x: 0, z: 11 }
-  }
-];
+/**
+ * Table geometry now lives in `src/data/layouts.json` so the game and the level
+ * tool at /tool read exactly the same source. Editing a layout in one place can
+ * never leave the other stale.
+ */
+export const LAYOUTS = layoutData.layouts;
 
 /* ------------------------------------------------------------------ *
  * Door reward table
@@ -235,6 +102,9 @@ export class RoomManager {
     this.waveDelay = WAVE_GAP;
     this.cleared = false;
     this.doors = [];
+    /** True while an authored (tutorial) room is loaded: no waves, no doors. */
+    this.scripted = false;
+    this.scriptedEnemies = [];
 
     this.group = new THREE.Group();
     this.group.name = 'room';
@@ -254,8 +124,9 @@ export class RoomManager {
    */
   generate(level) {
     this.teardown();
+    this.scripted = false;
     this.level = level;
-    this.rng = makeRng((this.runSeed ^ Math.imul(level, 0x9e3779b1)) >>> 0);
+    this.rng = makeRng(roomSeed(this.runSeed, level));
     const rng = this.rng;
 
     // --- 1. handcrafted geometry -------------------------------------
@@ -289,105 +160,81 @@ export class RoomManager {
     };
   }
 
+  /* ---------------------------------------------------------------- *
+   * Authored rooms (the tutorial)
+   * ---------------------------------------------------------------- */
+
+  /**
+   * Load a room exactly as written: given geometry, given enemies, no threat
+   * budget, no waves, no doors, no injectors.
+   *
+   * A lesson has to be able to promise that the table contains the thing it is
+   * teaching and nothing else. Rolling any part of it — an extra spawn, a
+   * bumper in the corner — would break that promise on some seeds and not on
+   * others, which is the worst way for a tutorial to be wrong.
+   *
+   * @param {{id?:string, name?:string, obstacles?:Array,
+   *          enemies?:Array<{type?:string,x:number,z:number}>,
+   *          spawn?:{x:number,z:number}}} spec
+   */
+  loadScripted(spec) {
+    this.teardown();
+    this.scripted = true;
+    this.level = 0;
+    this.layout = {
+      id: spec.id || 'scripted',
+      name: spec.name || 'Practice',
+      tags: ['scripted'],
+      obstacles: spec.obstacles || [],
+      anchors: [],
+      spawn: spec.spawn || { x: 0, z: 11 }
+    };
+    this.colliders = this.layout.obstacles.map((o) => ({
+      ...o,
+      kind: o.kind || 'obstacle'
+    }));
+    this.buildLayoutMeshes();
+
+    this.waves = [];
+    this.waveIndex = 0;
+    this.waveDelay = WAVE_GAP;
+    this.cleared = false;
+    this.game.physics.setColliders(this.colliders);
+
+    this.scriptedEnemies = (spec.enemies || []).map((slot) => {
+      const enemy = new Enemy(this.enemyLayer, slot.type || 'solid', slot.x, slot.z, 1);
+      enemy.frozen = slot.frozen !== false;
+      // Pinned in place, but still armed unless the lesson says otherwise —
+      // an encounter staged to teach you to read a shooter needs one that
+      // actually shoots.
+      enemy.disarmed = slot.disarmed === true;
+      // A lesson's rack is placed, not spawned: skipping the telegraph means
+      // the targets are solid from the first frame the card is on screen,
+      // rather than briefly intangible while the player is already shooting.
+      enemy.state = ENEMY_STATE.ACTIVE;
+      enemy.spawnTimer = 0;
+      enemy.drag = PHYSICS.enemyDrag;
+      // Remembered so a lesson can re-rack after a shot that scattered them.
+      enemy.homeX = slot.x;
+      enemy.homeZ = slot.z;
+      this.game.enemies.push(enemy);
+      return enemy;
+    });
+
+    return this.layout;
+  }
+
   budgetFor(level) {
-    return Math.min(
-      ROOM.baseBudget + ROOM.budgetPerLevel * (level - 1),
-      ROOM.maxBudget
-    );
+    return directorBudgetFor(level);
   }
 
   /**
    * The Threat Director: spend a budget across waves, drawing archetypes by
-   * weight subject to unlock gates, and bind each to a validated anchor.
+   * weight subject to unlock gates, and bind each to a validated anchor — or
+   * take the layout's own authored waves when it has them.
    */
   buildWaves(rng, level) {
-    const budget = this.budgetFor(level);
-    const waveCount =
-      ROOM.waveCountByLevel[Math.min(level, ROOM.waveCountByLevel.length) - 1] || 1;
-
-    // Later waves get a slightly larger share so rooms escalate.
-    const shares = [];
-    let total = 0;
-    for (let i = 0; i < waveCount; i++) {
-      const share = 1 + i * 0.35;
-      shares.push(share);
-      total += share;
-    }
-
-    const unlocked = Object.keys(ROOM.unlock).filter((type) => level >= ROOM.unlock[type]);
-    const tags = this.layout.tags || [];
-
-    const waves = [];
-    for (let w = 0; w < waveCount; w++) {
-      let remaining = Math.max(2, Math.round((budget * shares[w]) / total));
-      const composition = [];
-      let guard = 0;
-      while (remaining > 0 && guard++ < 64) {
-        const affordable = unlocked.filter((type) => ENEMY[type].cost <= remaining);
-        if (!affordable.length) break;
-        const type = this.weightedType(rng, affordable, tags, level);
-        composition.push(type);
-        remaining -= ENEMY[type].cost;
-      }
-      waves.push(this.assignAnchors(rng, composition));
-    }
-    return waves;
-  }
-
-  weightedType(rng, types, tags, level) {
-    const weights = types.map((type) => {
-      let w = ROOM.weight[type] ?? 1;
-      // Layout tags bias composition toward what the geometry teaches.
-      if (tags.includes('shooter') && type === 'stripe') w *= 1.8;
-      if (tags.includes('tank') && type === 'heavy') w *= 1.8;
-      if (tags.includes('dense') && type === 'solid') w *= 1.5;
-      if (tags.includes('pinball') && type === 'solid') w *= 1.3;
-      // Heavies become more common with depth.
-      if (type === 'heavy') w *= 1 + (level - ROOM.unlock.heavy) * 0.08;
-      return Math.max(w, 0.01);
-    });
-    const total = weights.reduce((a, b) => a + b, 0);
-    let roll = rng() * total;
-    for (let i = 0; i < types.length; i++) {
-      roll -= weights[i];
-      if (roll <= 0) return types[i];
-    }
-    return types[types.length - 1];
-  }
-
-  /** Bind a composition to anchors that are clear of the player and geometry. */
-  assignAnchors(rng, composition) {
-    const spawnPoint = this.layout.spawn;
-    const candidates = this.layout.anchors
-      .filter((a) => Math.hypot(a.x - spawnPoint.x, a.z - spawnPoint.z) >= ROOM.safeSpawnRadius)
-      .slice();
-
-    // Fisher-Yates with the seeded RNG so anchor order is reproducible.
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
-    }
-
-    return composition.map((type, index) => {
-      const anchor = candidates[index % candidates.length] || { x: 0, z: -10 };
-      // Jitter so repeat anchors never stack exactly.
-      const spread = index >= candidates.length ? 1.6 : 0.5;
-      return {
-        type,
-        x: this.clampX(anchor.x + (rng() - 0.5) * spread, ENEMY[type].radius),
-        z: this.clampZ(anchor.z + (rng() - 0.5) * spread, ENEMY[type].radius)
-      };
-    });
-  }
-
-  clampX(x, radius) {
-    const limit = ARENA.halfW - radius - 0.2;
-    return Math.min(Math.max(x, -limit), limit);
-  }
-
-  clampZ(z, radius) {
-    const limit = ARENA.halfH - radius - 0.2;
-    return Math.min(Math.max(z, -limit), limit);
+    return directorBuildWaves(this.layout, level, rng);
   }
 
   /* ---------------------------------------------------------------- *
@@ -725,6 +572,10 @@ export class RoomManager {
    * ---------------------------------------------------------------- */
 
   update(dt, game) {
+    // An authored room has no wave queue and no exits — whatever is driving it
+    // decides when it is over.
+    if (this.scripted) return;
+
     const alive = game.enemies.length;
 
     if (!this.cleared) {
@@ -798,6 +649,7 @@ export class RoomManager {
 
     this.colliders = [];
     this.doors = [];
+    this.scriptedEnemies = [];
     this.game.physics.setColliders([]);
   }
 

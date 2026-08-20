@@ -849,10 +849,13 @@
       #coach {
         position: absolute;
         left: 50%;
-        top: 38%;
+        /* High enough that the card never sits on top of the rack a lesson is
+           asking you to shoot at — it stays up for the whole lesson, so it has
+           to share the table rather than cover it. */
+        top: 21%;
         transform: translate(-50%, -50%) scale(0.94);
-        width: min(90%, 420px);
-        padding: 22px 20px;
+        width: min(92%, 440px);
+        padding: 20px 18px;
         border-radius: 16px;
         border: 2px solid rgba(255, 179, 64, 0.55);
         background: rgba(5, 7, 10, 0.88);
@@ -885,6 +888,52 @@
         text-wrap: balance;
         text-shadow: 0 0 26px rgba(234, 246, 255, 0.28);
       }
+      #coach .hint {
+        margin-top: 10px;
+        font-size: clamp(13px, 3.4vmin, 16px);
+        line-height: 1.35;
+        color: rgba(234, 246, 255, 0.7);
+        text-wrap: balance;
+      }
+      #coach .hint:empty { display: none; }
+      #coach .count {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      #coach .count[hidden] { display: none; }
+      #coach .pip {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 179, 64, 0.55);
+      }
+      #coach .pip.on {
+        background: #2ef2c4;
+        border-color: #2ef2c4;
+        box-shadow: 0 0 12px rgba(46, 242, 196, 0.8);
+      }
+      #coach .tally {
+        margin-left: 6px;
+        font-size: clamp(12px, 3vmin, 15px);
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: rgba(234, 246, 255, 0.75);
+      }
+      #coach .status {
+        margin-top: 12px;
+        min-height: 1.3em;
+        font-size: clamp(14px, 3.9vmin, 19px);
+        font-weight: 700;
+        opacity: 0;
+        transition: opacity 0.18s ease;
+        text-wrap: balance;
+      }
+      #coach .status.show { opacity: 1; }
+      #coach .status.good { color: #2ef2c4; }
+      #coach .status.bad { color: var(--amber); }
       @media (prefers-reduced-motion: reduce) {
         .menu-title .ln { animation: none; }
       }
