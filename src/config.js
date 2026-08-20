@@ -582,18 +582,29 @@ export const INPUT = {
  * ------------------------------------------------------------------ */
 export const TUTORIAL = {
   /**
-   * The opening rooms teach rather than test. Each states its goal in the
-   * banner in the imperative, and the table is kept sparse enough that the
-   * lesson is the only thing happening — a player who has never seen the game
-   * should be able to work out what to do without being told twice.
+   * Room banners. These run AFTER the tutorial (see docs/TUTORIAL.md), so each
+   * one may only introduce something the tutorial did not.
+   *
+   * Rooms 1-3 used to repeat lessons the player had just done — and room 1's
+   * banner said "hold to charge", which has never been true: power is draw
+   * distance alone. The first thing the game said contradicted the last thing
+   * the tutorial said, on the only control that matters. Every entry below is
+   * now keyed to the room where that thing genuinely first appears.
    */
   lessons: {
-    1: { title: 'Aim And Launch', sub: 'Hold to charge · slide to turn · release to fire' },
-    2: { title: 'Hit Two In One Shot', sub: 'Enemies you strike become cannonballs' },
-    3: { title: 'Use The Rails', sub: 'Bank off a wall to reach what you cannot' },
+    1: { title: 'They Move Now', sub: 'And they hurt on contact · keep your distance' },
+    3: { title: 'Bumpers', sub: 'Cyan pillars: free speed and a refunded bounce' },
     4: { title: 'Mind The Shooters', sub: 'Violet enemies fire back · close the gap fast' },
-    5: { title: 'Shields Face Forward', sub: 'Hit the heavies from behind, or bank into them' }
+    5: { title: 'More Coming', sub: 'Clear the table twice' },
+    6: { title: 'Shields Face Forward', sub: 'Hit the heavies from behind, or bank into them' }
   },
+  /**
+   * Contact damage is suppressed for this long at the start of room 1, so the
+   * opening banner can be read. Measured before this existed: a standing player
+   * lost 63 of 100 hull in the first four seconds, most of it while the banner
+   * telling them what had changed was still on screen.
+   */
+  graceSeconds: 3.0,
   /**
    * Multi-hit praise, indexed by hits landed in a single launch.
    *

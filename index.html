@@ -303,8 +303,15 @@
         100% { transform: scale(1); }
       }
 
+      /* Early lessons top Focus up every frame, so the gauge would be a dial
+         that never moves — noise on a table meant to hold only the lesson. The
+         last lesson drops the `coaching` class so the gauge fades in and drains
+         for real while the player still cannot lose. */
+      #ui-layer.coaching .hud-focus { opacity: 0; pointer-events: none; }
+
       /* Radial focus gauge */
       .hud-focus {
+        transition: opacity 0.45s ease;
         position: absolute;
         bottom: calc(var(--hud-pad) + 2px);
         left: 50%;
@@ -346,6 +353,11 @@
       }
 
       /* Banner */
+      /* Long banner subs ran edge to edge and wrapped badly, clipping letters
+         at both margins. */
+      .hud-banner { padding-inline: 20px; }
+      .banner-sub { max-width: 88%; margin-inline: auto; }
+
       .hud-banner {
         position: absolute;
         top: 34%;
@@ -849,13 +861,23 @@
       #coach {
         position: absolute;
         left: 50%;
-        /* High enough that the card never sits on top of the rack a lesson is
-           asking you to shoot at — it stays up for the whole lesson, so it has
-           to share the table rather than cover it. */
+        /* THE VERTICAL BUDGET. The card is up for the whole lesson, so where it
+           sits is a layout problem with only one answer.
+             0-10%   HUD band
+             12-20%  goal bar (lesson 2)
+             21-34%  this card
+             38-57%  the racks
+             ~70%    the ball's spawn
+             70-100% where the thumb goes
+           The foot of the screen looks free and is not: the cue model puts the
+           thumb below the ball, so a card down there hides the ball, the cue
+           and the player's own hand at once. It lives in the band above the
+           racks instead, and is capped so it can never grow into them. */
         top: 21%;
-        transform: translate(-50%, -50%) scale(0.94);
-        width: min(92%, 440px);
-        padding: 20px 18px;
+        bottom: auto;
+        transform: translate(-50%, 0) scale(0.94);
+        width: min(94%, 452px);
+        padding: 6px 14px 8px;
         border-radius: 16px;
         border: 2px solid rgba(255, 179, 64, 0.55);
         background: rgba(5, 7, 10, 0.88);
@@ -866,21 +888,26 @@
         pointer-events: none;
         z-index: 40;
       }
-      #coach.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      /* Grows DOWNWARD from its anchor. This was still translate(-50%, -50%)
+         from when the card was vertically centred, so it rendered half its own
+         height above where it was placed — and got taller upward into whatever
+         was above it. That is what put it over the goal bar. */
+      #coach.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
       #coach.done {
         border-color: rgba(46, 242, 196, 0.85);
         box-shadow: 0 0 52px rgba(46, 242, 196, 0.3);
       }
+      #coach .say { text-wrap: balance; }
       #coach .step {
         font-size: clamp(10px, 2.8vmin, 13px);
         letter-spacing: 0.3em;
         text-transform: uppercase;
         color: var(--amber);
-        margin-bottom: 10px;
+        margin-bottom: 4px;
       }
       #coach.done .step { color: #2ef2c4; }
       #coach .say {
-        font-size: clamp(26px, 7.6vmin, 42px);
+        font-size: clamp(19px, 5.2vmin, 28px);
         font-weight: 800;
         line-height: 1.08;
         letter-spacing: -0.01em;
@@ -889,9 +916,9 @@
         text-shadow: 0 0 26px rgba(234, 246, 255, 0.28);
       }
       #coach .hint {
-        margin-top: 10px;
-        font-size: clamp(13px, 3.4vmin, 16px);
-        line-height: 1.35;
+        margin-top: 5px;
+        font-size: clamp(11px, 2.7vmin, 13px);
+        line-height: 1.25;
         color: rgba(234, 246, 255, 0.7);
         text-wrap: balance;
       }
@@ -901,7 +928,7 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
-        margin-top: 14px;
+        margin-top: 9px;
       }
       #coach .count[hidden] { display: none; }
       #coach .pip {
@@ -922,14 +949,28 @@
         letter-spacing: 0.12em;
         color: rgba(234, 246, 255, 0.75);
       }
+      /* Below the card, not inside it. Reserving a line for feedback that is
+         absent most of the time made the card permanently taller — and taller
+         again when a two-line scold appeared, which is exactly when it grew
+         over the ball the lesson was about. Hung underneath, the card's height
+         no longer depends on whether anything is being said. */
       #coach .status {
-        margin-top: 12px;
-        min-height: 1.3em;
-        font-size: clamp(14px, 3.9vmin, 19px);
+        position: absolute;
+        /* Tight to the card. At 6px the status BOX (full card width, though the
+           text inside it is centred and stops well short) grazed the far ball's
+           top edge by 0.2px on a 344px-wide screen when a scold wrapped to two
+           lines. Nothing was actually covered, but that is luck, not margin. */
+        top: calc(100% + 2px);
+        left: 0;
+        right: 0;
+        font-size: clamp(11.5px, 3.0vmin, 15px);
         font-weight: 700;
         opacity: 0;
         transition: opacity 0.18s ease;
         text-wrap: balance;
+        text-shadow:
+          0 0 10px rgba(5, 7, 10, 0.95),
+          0 1px 3px rgba(5, 7, 10, 0.95);
       }
       #coach .status.show { opacity: 1; }
       #coach .status.good { color: #2ef2c4; }

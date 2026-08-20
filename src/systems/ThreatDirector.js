@@ -12,7 +12,7 @@
  * eventually disagree with them, and it will be the tool that looks right.
  */
 
-import { ARENA, ROOM, ENEMY } from '../config.js';
+import { ARENA, ROOM, ENEMY, PLAYER } from '../config.js';
 
 /* ------------------------------------------------------------------ *
  * Seeded RNG — mulberry32
@@ -98,7 +98,15 @@ export function weightedType(rng, types, tags, level) {
 
 /** Bind a composition to the layout's anchors, never inside the safe radius. */
 export function assignAnchors(rng, composition, layout) {
-  const spawnPoint = layout.spawn;
+  // Where the ball ACTUALLY starts. `layout.spawn.z` is not it: the room takes
+  // the x from the layout and the z from PLAYER.spawnFromBottom, so the guard
+  // was measuring its safe radius from a point 4.1 units behind the player.
+  // 19% of room-1 seeds put an enemy inside the radius that way, halving the
+  // opening breathing room to about a second.
+  const spawnPoint = {
+    x: layout.spawn.x,
+    z: ARENA.halfH - ARENA.height * PLAYER.spawnFromBottom
+  };
   const candidates = layout.anchors
     .filter((a) => Math.hypot(a.x - spawnPoint.x, a.z - spawnPoint.z) >= ROOM.safeSpawnRadius)
     .slice();

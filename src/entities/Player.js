@@ -679,7 +679,15 @@ export class Player {
     this.prediction = null;
     this.aimRenderer.hide();
 
-    game?.on?.playerLaunch?.({ player: this, x: this.x, z: this.z, speed, power });
+    game?.on?.playerLaunch?.({
+      player: this,
+      x: this.x,
+      z: this.z,
+      speed,
+      power,
+      dirX: aim.dirX,
+      dirZ: aim.dirZ
+    });
     return { speed, dirX: aim.dirX, dirZ: aim.dirZ };
   }
 

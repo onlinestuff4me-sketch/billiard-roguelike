@@ -526,6 +526,8 @@ const game = {
   pyreBonus: 0,
   hazardAccum: 0,
   deathTimer: 0,
+  /** Contact damage is suppressed while this runs — see TUTORIAL.graceSeconds. */
+  graceTimer: 0,
   on: {}
 };
 
@@ -583,13 +585,16 @@ function killEnemy(enemy) {
  */
 function dealDamage(enemy, amount, opts = {}) {
   if (!enemy || !enemy.alive) return { dealt: 0, killed: false };
-  // While a lesson is running the tutorial director owns every life in the
-  // room. A rep resolves only when the thing being taught actually happened,
-  // so a half-finished attempt can never delete the target you still need to
-  // practise on — which is what makes a lesson unfailable.
-  if (game.tutorialGuard && !game.tutorialGuard(enemy, amount, opts)) {
-    return { dealt: 0, killed: false, blocked: true };
-  }
+  // A lesson target that must survive being hit — the ball you knock into the
+  // goal, the ball you cannon into another — is flagged invulnerable.
+  //
+  // Note this is per-body and NOT a blanket block on the whole lesson room. The
+  // cue ball only passes through something it has killed (PhysicsSystem), so
+  // making every target unkillable meant the ball bounced off each one instead
+  // of piercing it, and the chain lessons quietly taught different physics from
+  // the game they were introducing. Chain targets die normally; a failed rep
+  // re-racks the whole set instead.
+  if (enemy.invulnerable) return { dealt: 0, killed: false, blocked: true };
   const result = enemy.takeDamage(amount, {
     ...opts,
     backstabBonus: player.stats.backstabBonus
@@ -681,6 +686,7 @@ game.on = {
 
   /* --- the carom ----------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
+    tutorial.notify('carom', { striker, target, x, z, speed });
     const mult = chainStep();
     const scale = clamp(speed / PLAYER.referenceSpeed, 0.4, 2.0);
     const damage = PHYSICS.caromDamage * scale * mult * player.stats.damageMult;
@@ -782,7 +788,12 @@ game.on = {
       engine.zoomPunch();
       engine.hitStop(TIME.hitStop * 0.7);
     }
-    tutorial.notify('launch', { power: p, turned: game.lastTurn || 0 });
+    tutorial.notify('launch', {
+      power: p,
+      turned: game.lastTurn || 0,
+      dirX: event.dirX ?? 0,
+      dirZ: event.dirZ ?? 0
+    });
     game.launchHits = 0;
     game.pyreBonus = 0;
     boons.onLaunch(event);
@@ -798,6 +809,10 @@ game.on = {
     // Lessons are practice, not a fight: a target you are still learning to
     // hit does not get to chip away at you while you work it out.
     if (game.tutorialGuard) return;
+    // The tutorial's targets could not touch you, so the hull bar has never
+    // moved once. Its first movement should not be a 63% drop taken while
+    // standing still reading the banner that explains enemies move.
+    if (game.graceTimer > 0) return;
     if (p.touchTimer > 0) return;
     if (p.takeDamage(enemy.config.contactDamage, game, enemy)) {
       p.touchTimer = PLAYER.touchInterval;
@@ -1013,11 +1028,13 @@ function resetRunState() {
   game.pyreBonus = 0;
   game.hazardAccum = 0;
   game.state = 'playing';
+  game.graceTimer = 0;
   hud.setDoors([]);
 }
 
 function startRun() {
   resetRunState();
+  game.graceTimer = TUTORIAL.graceSeconds;
   // Leaving the tutorial (or never entering it) hands the room back to the
   // normal rules, including the ones that can hurt you.
   game.tutorialGuard = null;
@@ -1126,6 +1143,7 @@ const tutorial = new Tutorial({
   input,
   fx,
   hud,
+  engine,
   spawnZ,
   resetRun: resetRunState,
   finish: () => startRun()
@@ -1293,6 +1311,8 @@ function simulate(dt, rawDt, aiming) {
   boons.update(dt, game);
   sweepEntities();
 
+  if (game.graceTimer > 0) game.graceTimer -= dt;
+
   if (game.chain.timer > 0) {
     game.chain.timer -= dt;
     if (game.chain.timer <= 0) game.chain.count = 0;
@@ -1335,7 +1355,15 @@ function frame(now) {
     // While the ball is travelling under its own steam, the compass needle
     // follows it. When it settles the needle is simply left where the ball was
     // last heading, which is the default the next shot starts from.
-    if (!aiming && player.speed > PLAYER.settleSpeed) {
+    // Only while the ball is travelling under its OWN steam. Being body-checked
+    // also clears settleSpeed, and that silently swung the resting cue to point
+    // wherever the player had just been shoved — the one heading that is
+    // supposed to be a fixed, re-readable default.
+    if (
+      !aiming &&
+      player.state === PLAYER_STATE.LAUNCHED &&
+      player.speed > PLAYER.settleSpeed
+    ) {
       input.setHeading(player.vx, player.vz);
     }
 
@@ -1347,7 +1375,6 @@ function frame(now) {
         player.updateAim(aim);
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();
-        tutorial.notify('aiming', { draw: aim.pullLength || 0 });
       }
     } else if (
       game.state === 'playing' &&
