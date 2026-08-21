@@ -33,178 +33,136 @@
  */
 
 import { PLAYER_STATE } from '../entities/Player.js';
+import lessonData from '../data/lessons.json';
 
 const KEY = 'billiard-tutorial-done-v1';
 
 
-/** Straight up the middle — the heading most lessons rest on. */
-const UP = { x: 0, z: -1 };
-
 /**
- * Lesson 5's rack is 20 degrees off vertical. Every lesson rests the cue on its
- * own solution (see docs/TUTORIAL.md), so this one rests here — the beam used
- * to point at empty felt while the scold told the player to "keep it straight",
- * which was the exact opposite of the correction they needed.
- */
-const OFF_AXIS = { x: 0.342, z: -0.940 };
-
-/**
- * Each lesson: what it says, the table it says it on, and the single rule that
- * decides whether what just happened counts.
+ * What each lesson ASKS FOR, and how it is judged. Geometry lives in
+ * src/data/lessons.json so the level tool at /tool can edit it visually; these
+ * are keyed to it by id and merged at load.
  *
- * A rule returns 'score' (that was the thing — take it), 'reject' (that was an
- * attempt and it was not it — say so), or nothing at all (unrelated; stay
- * quiet). `hit` judges one cue strike as it lands, `carom` judges one ball
- * striking another, `usesGoal` is polled while the table settles, and `shot`
- * judges a whole launch once the rep is over. `rest` is the heading the cue
- * parks on — NOT a rule. It was once called `aim`, which collided with an old
- * draw-distance predicate of the same name: the object got called as a
- * function, threw every frame the player was aiming, and killed the rest of
- * the frame including the render. The table simply stopped updating under
- * their thumb.
- *
- * Every table here is frozen. See docs/TUTORIAL.md — nothing moves until the
- * player shoots, and a lesson contains only what it is teaching.
+ * A rule returns 'score' (that was the thing — take it), 'reject' (an attempt
+ * that was not it — say so), or nothing (unrelated; stay quiet). `hit` judges a
+ * cue strike, `pass` judges one ball striking another, `usesGoal` is polled
+ * while the table settles, `clearsRack` scores the whole rack going down in one
+ * launch, and `shot` judges the launch once the rep is over.
  */
-export const LESSONS = [
-  {
-    id: 'aim',
-    say: 'Aim and shoot at the red ball',
-    hint: 'Drag back from the blue ball to aim. Let go to fire.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-aim',
-      name: 'First Contact',
-      obstacles: [],
-      enemies: [{ type: 'solid', x: 0, z: -1.0 }]
-    },
+const RULES = {
+  aim: {
+    say: 'Aim and shoot the red ball',
+    hint: 'Thumb below the blue ball. Drag down, then let go.',
     hit: () => 'score',
     shot: (s) => (s.hits === 0 ? 'reject' : null),
     facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
-    cheer: 'That is the whole game',
-    scold: 'Missed — pull straight back from the blue ball and let go',
-    nudge: 'Put your thumb below the blue ball and drag straight down. The line shows where it will go.'
+    cheer: '1 HIT — now make them count',
+    whiff: 'Missed — drag straight down from the blue ball and release',
+    nudge: 'Put your thumb below the blue ball and pull down. The line shows where it goes.'
   },
-  {
-    id: 'goal',
-    say: 'Hit the red ball into the goal',
-    hint: 'Red bar takes red balls. Knock it in — do not go in yourself.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-goal',
-      name: 'Into The Goal',
-      obstacles: [],
-      enemies: [{ type: 'solid', x: 0, z: -2.0, invulnerable: true }],
-      // Wide, so a straight shot up the middle is comfortably enough. Set in
-      // from the top rail so a ball can come to rest inside it.
-      // Clear of the card. Note the camera shows 34.8 world units of height,
-      // not the arena's 32 — RENDER.viewPadding adds 1.4 either side — so
-      // anything positioned by eye against a 32-unit assumption sits ~1 unit
-      // lower than intended.
-      goal: { x: 0, z: -11.8, hw: 5.2, hh: 1.1 }
-    },
-    // Scored by the zone, not by contact: what matters is where the ball ended
-    // up, so nothing is decided until the table stops moving.
+
+  goal: {
+    say: 'Knock it into the goal',
+    hint: 'Drag right back for full power — the red ball has to reach the bar.',
     usesGoal: true,
     cheer: 'In the goal',
-    scold: 'Not in — line the red ball up with the bar and drive it straight through',
-    nudge: 'Hit the red ball dead centre and it carries straight on into the bar.'
+    scold: 'Short — hit it harder, straight down the middle',
+    whiff: 'Missed the ball entirely — line up on it first',
+    nudge: 'Hit it dead centre at full draw and it carries straight in.'
   },
-  {
-    id: 'carom',
-    say: 'Hit one ball into the other ball',
-    hint: 'A ball you hit becomes a cannonball. Drive the near one into the far one.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-carom',
-      name: 'The Cannonball',
-      obstacles: [],
-      // Both survive contact: the near one has to live long enough to carry on
-      // into the far one, and the far one has to be there when it arrives.
-      enemies: [
-        { type: 'solid', x: 0, z: 1.4, invulnerable: true },
-        { type: 'solid', x: 0, z: -3.0, invulnerable: true }
-      ]
-    },
-    // A cue strike on both does not count — the second ball has to be hit by
-    // the first, which is the whole idea being taught.
-    carom: () => 'score',
-    shot: (s) => 'reject',
-    cheer: 'Carom!',
-    scold: 'Not quite — drive the near ball on into the far one',
-    whiff: 'Missed — hit the near ball square in the back',
-    nudge: 'Hit the near ball square in the back so it carries straight on up the table.'
+
+  'pass-straight': {
+    say: 'Hit one ball into the other',
+    hint: 'Full power. Hit the near ball and it carries on into the far one.',
+    pass: () => 'score',
+    shot: () => 'reject',
+    cheer: '2 HITS  \u00d71.4',
+    scold: 'The near ball has to reach the far one — more power',
+    whiff: 'Missed — take the near ball head on',
+    nudge: 'Straight up the middle at full draw.'
   },
-  {
-    id: 'chain2',
-    say: 'Hit 2 in a row',
-    hint: 'Two hits in one shot pays a bonus. Fire straight through both.',
-    goal: 1,
-    rest: UP,
-    room: {
-      id: 'lesson-chain2',
-      name: 'The Split',
-      obstacles: [],
-      // A column, not a split. The cue ball passes through each body it
-      // destroys, so "in a row" is literally a row — and it reads as the same
-      // shot as the three-ball lesson that follows.
-      // Close in. The ball only passes through what it KILLS, and damage falls
-      // off with impact speed — racked further up the table a soft shot leaves
-      // the first ball on 1hp, bounces off it and the lesson silently becomes
-      // unwinnable for anyone not pulling back all the way.
-      enemies: [
-        { type: 'solid', x: 0, z: 3.2 },
-        { type: 'solid', x: 0, z: 0.6 }
-      ]
-    },
-    // Judged on the rack being CLEARED in one launch, not on cue contacts.
-    // Counting contacts meant a shot that destroyed both — the cue ball killing
-    // the first and the first cannoning into the second — was rejected while
-    // the HUD was simultaneously printing "x1.4  2 CHAIN" for it. The coach
-    // must never contradict the scoreboard.
+
+  'pass-angled': {
+    say: 'Same shot, on an angle',
+    hint: 'Full power. The second ball is off to the side — clip the first so it turns.',
+    pass: () => 'score',
+    shot: () => 'reject',
+    cheer: '2 HITS  \u00d71.4 — on an angle',
+    scold: 'It went the wrong way — strike the first ball on its far side',
+    whiff: 'Missed — the white ghost circle shows where you will make contact',
+    nudge: 'Line the ghost circle up so the yellow cone points at the second ball.'
+  },
+
+  'pass-three': {
+    say: 'Now run it through three',
+    hint: 'Pull all the way back. One into two, two into three — the whole game.',
+    // Judged on what the player watched happen: they struck ONE ball and all
+    // three ended up somewhere else. Requiring two registered carom events was
+    // too brittle — the last hand-off arrives near PHYSICS.caromMinSpeed, so
+    // the same shot scored about half the time depending on frame timing, and
+    // the stopped cue ball would then trickle into the last ball and muddy it.
+    relay: true,
+    cheer: '3 HITS  \u00d71.8',
+    scold: 'It stopped short — the first ball has to run all the way down the line',
+    whiff: 'Missed — start with the near ball',
+    nudge: 'Full draw. Each ball needs enough left to pass it on.'
+  },
+
+  power: {
+    say: 'Pull back further',
+    hint: 'Drag your thumb as far from the ball as it will go. Full power smashes through all three.',
     clearsRack: true,
-    cheer: 'Chain ×1.4',
-    scold: 'One left — drive right through the first one',
-    whiff: 'Missed both — line the shot straight up through them',
-    nudge: 'Pull further back. It needs enough on it to carry through the first.'
+    cheer: '3 HITS  \u00d71.8 — all yours',
+    scold: 'Not enough on it — drag your thumb further from the ball',
+    whiff: 'Missed the line — straight up the middle',
+    nudge: 'Keep dragging until the cue glows gold. That is full power.'
   },
-  {
-    id: 'chain3',
-    say: 'Hit 3 in a row',
-    hint: 'Longer chains pay more. One shot, all three — you will have to turn a little.',
-    goal: 1,
-    // The graduation rack: the first one that is not straight ahead. The cue
-    // still rests on the answer, so the shot is available without hunting for
-    // it — but the player leaves having seen that "up the middle" is not the
-    // only line there is.
-    rest: OFF_AXIS,
-    room: {
-      id: 'lesson-chain3',
-      name: 'The Run',
-      obstacles: [],
-      // A column straight up the cue's resting line. The ball passes through
-      // each one it destroys, so a single full-power shot runs the whole rack.
-      // Kept below the card band even on short screens, where the stage is
-      // shorter in absolute pixels but the card is not.
-      // Collinear with the spawn along a line 20 degrees off vertical: the ball
-      // holds its heading through anything it destroys, so one straight shot
-      // down this line takes all three — but the player has to find the line.
-      enemies: [
-        { type: 'solid', x: 1.37, z: 2.64 },
-        { type: 'solid', x: 2.39, z: -0.18 },
-        { type: 'solid', x: 3.42, z: -3.00 }
-      ]
-    },
-    clearsRack: true,
-    cheer: 'Chain ×1.8',
-    scold: 'Not all three — the line has to run through every one',
-    whiff: 'Missed everything — follow the line the cue is already on',
-    nudge: 'The three are off to the right. Keep the cue on the line it starts on and pull right back.'
+
+  'bank-1': {
+    say: 'Bounce off a wall first',
+    hint: 'Blocked. Full power off the side rail and it comes back in.',
+    hit: (h) => (h.banked ? 'score' : 'reject'),
+    cheer: 'Off the rail',
+    scold: 'No rail yet — aim into the side wall, not at the ball',
+    whiff: 'Missed — the dashed line shows where the bounce goes',
+    nudge: 'Aim well out to the side. The dashed preview is the return path.'
+  },
+
+  'bank-2': {
+    say: 'Again, other side',
+    hint: 'Same again, other side. Full power off the left rail.',
+    hit: (h) => (h.banked ? 'score' : 'reject'),
+    cheer: 'You have got it',
+    scold: 'Straight at it does not count — rail first',
+    whiff: 'Missed — follow the dashed line',
+    nudge: 'Aim out to the left this time and let it come back.'
+  },
+
+  'bank-two-rails': {
+    say: 'Two bounces, then hit',
+    hint: 'Full power. Touch two walls before you reach it — more bounces, more points.',
+    hit: (h) => (h.bounces >= 2 ? 'score' : 'reject'),
+    cheer: 'Two rails. Big points.',
+    scold: 'Only one bounce — go the long way round',
+    whiff: 'Missed — trace the dashed line before you let go',
+    nudge: 'Take it off the top wall first, then the side.'
   }
-];
+};
+
+/** Geometry from the data file, married to the rule of the same id. */
+export const LESSONS = lessonData.lessons.map((table) => ({
+  ...RULES[table.id],
+  id: table.id,
+  goal: 1,
+  rest: table.rest || { x: 0, z: -1 },
+  room: {
+    id: `lesson-${table.id}`,
+    name: table.name,
+    obstacles: table.obstacles || [],
+    enemies: table.enemies || [],
+    goal: table.goal || null
+  }
+}));
 
 /**
  * How long a rep is given before it is called and the table is reset.
@@ -216,13 +174,6 @@ export const LESSONS = [
  * attempt starts from the same place the rack was drawn around.
  */
 const SHOT_LIMIT = 3.2;
-
-/** How long a completed lesson holds its congratulation before moving on. */
-const CHEER_HOLD = 1.0;
-/** How long the closing card stays up before the real run begins. */
-const OUTRO_HOLD = 1.9;
-/** How long a status line stays lit. */
-const STATUS_HOLD = 2.2;
 
 export class Tutorial {
   /**
@@ -243,15 +194,42 @@ export class Tutorial {
     const el = document.createElement('div');
     el.id = 'coach';
     el.innerHTML =
+      '<button class="skip" type="button">Skip</button>' +
       '<div class="step"></div><div class="say"></div><div class="hint"></div>' +
-      '<div class="count" hidden></div><div class="status"></div>';
+      '<div class="count" hidden></div>' +
+      '<button class="next" type="button" hidden></button>' +
+      '<div class="status"></div>';
     this.el = el;
     this.stepEl = el.querySelector('.step');
     this.sayEl = el.querySelector('.say');
     this.hintEl = el.querySelector('.hint');
     this.countEl = el.querySelector('.count');
     this.statusEl = el.querySelector('.status');
+    this.nextEl = el.querySelector('.next');
+    this.skipEl = el.querySelector('.skip');
     this.layer.appendChild(el);
+
+    // Bound to pointerdown, not click, and the event stops here.
+    //
+    // The stage takes a pointer capture on its own pointerdown and calls
+    // preventDefault, so a bubbling press on one of these never becomes a
+    // click — the button looked live and did nothing. Stopping propagation
+    // also keeps the press from starting an aim underneath the card.
+    const act = (el, fn) => {
+      el.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        fn();
+      });
+    };
+    // A lesson holds its celebration until the player says go. Auto-advancing
+    // after a fixed beat meant the reward for finishing was briefer than the
+    // telling-off for missing.
+    act(this.nextEl, () => this._advance());
+    // And there is always a way out. A tutorial that cannot be left is a wall,
+    // not a tutorial — the more so because it cannot be failed, so a player who
+    // has not found the gesture has no other exit.
+    act(this.skipEl, () => this._finish());
 
     this.active = false;
     this.index = -1;
@@ -264,11 +242,11 @@ export class Tutorial {
     this._shotTimer = 0;
     this._shotLesson = -1;
     this._hits = 0;
+    this._passes = 0;
     this._struck = new Set();
     this._rejected = false;
-    this._cheerTimer = 0;
-    this._statusTimer = 0;
-    this._outro = false;
+    /** True once a lesson is finished and the Next button is showing. */
+    this._awaitingNext = false;
     this._misses = 0;
   }
 
@@ -318,7 +296,9 @@ export class Tutorial {
     // the visible moment the tutorial ends and the run begins.
     this.game.level = 0;
     this.active = true;
-    this._outro = false;
+    this._awaitingNext = false;
+    this.nextEl.hidden = true;
+    this.skipEl.hidden = false;
     this.game.state = 'playing';
     // The single switch that makes a lesson unfailable: while it is set,
     // nothing in the room can be hurt except by this director.
@@ -334,7 +314,7 @@ export class Tutorial {
   stop() {
     this.active = false;
     this.index = -1;
-    this._outro = false;
+    this._awaitingNext = false;
     this._needsRoom = false;
     this._roomKey = null;
     this.game.tutorialGuard = null;
@@ -362,8 +342,13 @@ export class Tutorial {
     this._hits = 0;
     this._struck.clear();
     this._rejected = false;
-    this._cheerTimer = 0;
     this._misses = 0;
+    // Entering a lesson means one is running, so nothing may still be waiting
+    // on a Next press. Only start() and the Next handler cleared this, which
+    // held for the live flow but left _enter unable to restart a lesson — it
+    // would build the table and then ignore every event on it.
+    this._awaitingNext = false;
+    this.nextEl.hidden = true;
 
     const lesson = this.lesson;
     if (!lesson) return;
@@ -423,16 +408,7 @@ export class Tutorial {
   update(rawDt) {
     if (!this.active) return;
 
-    if (this._statusTimer > 0) {
-      this._statusTimer -= rawDt;
-      if (this._statusTimer <= 0) this.statusEl.classList.remove('show');
-    }
-
-    if (this._outro) {
-      this._cheerTimer -= rawDt;
-      if (this._cheerTimer <= 0) this._finish();
-      return;
-    }
+    if (this._awaitingNext) return;
 
     // Bullet time is a teaching aid, not a resource — right up until the last
     // lesson, which lets the gauge drain for real. Otherwise the player leaves
@@ -442,7 +418,7 @@ export class Tutorial {
 
     // The goal lesson is decided by where a ball came to rest, so it is polled
     // rather than driven by an event.
-    if (this._launched && this.lesson?.usesGoal && this._cheerTimer <= 0) this._checkGoal();
+    if (this._launched && this.lesson?.usesGoal) this._checkGoal();
 
     if (this._launched && !this.input.isAiming) {
       // Only while the world is running. Aiming stops time completely, but this
@@ -459,10 +435,6 @@ export class Tutorial {
       }
     }
 
-    if (this._cheerTimer > 0) {
-      this._cheerTimer -= rawDt;
-      if (this._cheerTimer <= 0) this._advance();
-    }
   }
 
   /* ---------------------------------------------------------------- *
@@ -475,13 +447,7 @@ export class Tutorial {
    */
   notify(name, payload = {}) {
     const lesson = this.lesson;
-    if (!lesson || this._outro) return;
-
-    // Nothing that happens during the congratulation counts. Actions used to be
-    // queued here and replayed against the NEXT lesson, which meant a single tap
-    // during the beat arrived as a phantom failed attempt on a lesson the player
-    // had not seen yet — and counted toward the two-miss hint escalation.
-    if (this._cheerTimer > 0) return;
+    if (!lesson || this._awaitingNext) return;
 
     if (name === 'launch') {
       // The cue model fires along (ball - thumb), so the instinctive first move
@@ -489,19 +455,29 @@ export class Tutorial {
       // from it. That used to pass anyway, off the bottom rail, teaching the
       // opposite of the control it was introducing.
       this._wrongWay = !!lesson.facing && this._awayFromRack(payload);
+      // Taking the next shot is the only thing that clears the last one's
+      // feedback. It used to expire on a 2.2s timer, which is not long enough
+      // to read a sentence, look at the table and work out what it means — the
+      // advice was gone before it had been understood.
+      this._setStatus('', null);
       this._launched = true;
       this._shotTimer = SHOT_LIMIT;
       this._shotLesson = this.index;
       this._hits = 0;
+      this._passes = 0;
       this._struck.clear();
       this._rejected = false;
       return;
     }
 
-    if (name === 'carom') {
-      if (!lesson.carom) return;
-      const verdict = lesson.carom(payload);
-      if (verdict === 'score') this._score(this.rooms.scriptedEnemies.filter((e) => e.alive));
+    // One ball striking another. `depth` counts how far the shot was handed
+    // along in this launch: 1 is the first ball reaching a second, 2 is that
+    // second ball reaching a third.
+    if (name === 'pass') {
+      this._passes += 1;
+      if (!lesson.pass) return;
+      const verdict = lesson.pass({ ...payload, depth: this._passes });
+      if (verdict === 'score') this._score();
       else if (verdict === 'reject') this._rejected = true;
       return;
     }
@@ -555,13 +531,27 @@ export class Tutorial {
    */
   _resolveShot() {
     const lesson = LESSONS[this._shotLesson];
-    const stillIts = lesson && this._shotLesson === this.index && this._cheerTimer <= 0;
+    const stillIts = lesson && this._shotLesson === this.index && !this._awaitingNext;
 
     if (stillIts && lesson.usesGoal && this.done < lesson.goal) this._rejected = true;
 
     // Did this launch clear the rack? Bodies destroyed, however they were
     // destroyed — by the cue ball or by each other. That is what the player
     // watched happen and what the chain counter in the HUD already agrees with.
+    if (stillIts && lesson.relay) {
+      const rack = this.rooms.scriptedEnemies;
+      const moved = rack.filter(
+        (e) => Math.hypot(e.x - e.homeX, e.z - e.homeZ) > 0.6
+      ).length;
+      // At least one ball-to-ball hand-off, and every ball ended up somewhere
+      // else. Counting cue strikes instead was wrong: a cue ball that stops
+      // dead on the first ball still creeps forward afterwards and taps another
+      // one, which is not the player doing anything — but it made the strike
+      // count 2 and rejected a shot that had visibly worked.
+      if (this._passes >= 1 && rack.length && moved >= rack.length) this._score();
+      else this._rejected = true;
+    }
+
     if (stillIts && lesson.clearsRack) {
       const rack = this.rooms.scriptedEnemies;
       const down = rack.filter((e) => !e.alive).length;
@@ -608,12 +598,16 @@ export class Tutorial {
       if (enemy.alive) this.game.forceKill(enemy);
     }
     if (!at) return;
-    this.fx.shockwave(at.x, at.z, 0xff3d6e, 9, 0.5);
-    this.fx.shockwave(at.x, at.z, 0xfff6d8, 5, 0.34);
-    this.fx.burst(at.x, at.z, 34, 0xff3d6e, 17, 1.5);
-    this.fx.burst(at.x, at.z, 18, 0xfff6d8, 22, 1.0);
-    this.engine?.shake?.(16);
+    this.fx.shockwave(at.x, at.z, 0xff3d6e, 11, 0.55);
+    this.fx.shockwave(at.x, at.z, 0xfff6d8, 6.5, 0.38);
+    this.fx.shockwave(at.x, at.z, 0x2ef2c4, 16, 0.7);
+    this.fx.burst(at.x, at.z, 44, 0xff3d6e, 19, 1.6);
+    this.fx.burst(at.x, at.z, 26, 0xfff6d8, 26, 1.1);
+    this.fx.burst(at.x, at.z, 16, 0x2ef2c4, 13, 1.8);
+    this.fx.floatText?.(at.x, at.z, this.lesson?.cheer || 'CLEARED', 'crit');
+    this.engine?.shake?.(20);
     this.engine?.zoomPunch?.();
+    this.game.audio?.roomClear?.();
   }
 
   /**
@@ -666,32 +660,49 @@ export class Tutorial {
       if (enemy && enemy.alive) this.game.forceKill(enemy);
     }
 
-    this._setStatus(lesson.cheer || 'Yes', 'good');
-
     if (this.done >= lesson.goal) {
+      // No status line on completion: the float text says the same words twice
+      // as big, and the card's own done-state says it a third time. The small
+      // line under the card is for corrections.
+      this._setStatus('', null);
       // Finishing a lesson should feel like finishing something. Everything
       // still standing on the table goes up with it, so the reset that follows
       // reads as a reward rather than as the room being taken away.
       this._detonate(kills);
-      this._render();
-      this.el.classList.add('done');
-      this._cheerTimer = CHEER_HOLD;
+      this._complete();
       return;
     }
 
+    this._setStatus(lesson.cheer || 'Yes', 'good');
     this._render();
   }
 
-  _advance() {
-    if (this.index + 1 >= LESSONS.length) {
-      this._outro = true;
-      this.el.classList.add('done');
+  /** The lesson is done. Celebrate, and hand the player the trigger. */
+  _complete() {
+    this._awaitingNext = true;
+    this._launched = false;
+    this.el.classList.add('done');
+
+    const last = this.index + 1 >= LESSONS.length;
+    if (last) {
       this.stepEl.textContent = 'Tutorial complete';
-      this.sayEl.textContent = 'Next ones move — and they hit back';
-      this.hintEl.textContent = '';
+      this.sayEl.textContent = 'You know enough to play';
+      this.hintEl.textContent = 'Next ones move — and they hit back.';
       this.countEl.hidden = true;
-      this._setStatus('', null);
-      this._cheerTimer = OUTRO_HOLD;
+    } else {
+      this._render();
+    }
+    this.skipEl.hidden = true;
+    this.nextEl.hidden = false;
+    this.nextEl.textContent = last ? 'Start playing \u2192' : 'Next lesson \u2192';
+  }
+
+  _advance() {
+    this._awaitingNext = false;
+    this.nextEl.hidden = true;
+    this.skipEl.hidden = false;
+    if (this.index + 1 >= LESSONS.length) {
+      this._finish();
       return;
     }
     this.el.classList.remove('done');
@@ -733,12 +744,10 @@ export class Tutorial {
     this.statusEl.classList.remove('good', 'bad');
     if (!text) {
       this.statusEl.classList.remove('show');
-      this._statusTimer = 0;
       return;
     }
     if (tone) this.statusEl.classList.add(tone);
     this.statusEl.classList.add('show');
-    this._statusTimer = STATUS_HOLD;
   }
 
   dispose() {

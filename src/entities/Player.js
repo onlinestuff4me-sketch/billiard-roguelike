@@ -331,8 +331,12 @@ class AimRenderer {
       const pz = ux;
 
       const SLICES = TRAJECTORY.beamSlices;
+      // The last few percent of draw widen the beam disproportionately, so the
+      // top of the range is visible in the line itself and not only on the cue.
+      const over = power >= 0.985 ? 1 : 0;
       const wBase =
-        TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power;
+        (TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power) *
+        (1 + over * 0.45);
       const hue = new THREE.Color(prediction.hit ? PALETTE.carom : PALETTE.aim);
       const t = performance.now() / 1000;
 
@@ -474,10 +478,23 @@ class AimRenderer {
     this.pullPositions.set([player.x, y, player.z, cue.x, y, cue.z]);
     this.pullGeo.attributes.position.needsUpdate = true;
     this.pull.visible = true;
-    this.pullMat.opacity = 0.35 + 0.5 * power;
     this.anchor.visible = true;
     this.anchor.position.set(cue.x, y, cue.z);
-    this.anchor.scale.setScalar(0.7 + power * 0.9);
+
+    // MAXED OUT. Power is draw distance and nothing announced when the draw ran
+    // out, so the top of the range was invisible: players stopped pulling at
+    // whatever felt far enough, which on the three-ball lesson was reliably too
+    // little. At full power the whole cue goes gold and pulses, so "pull back
+    // further" has somewhere to arrive.
+    const maxed = power >= 0.985;
+    // Faster and deeper than a gentle throb — at full draw the cue should look
+    // like it is straining, not idling.
+    const beat = maxed ? 0.55 + 0.45 * Math.sin(performance.now() / 42) : 0;
+
+    this.pullMat.color.setHex(maxed ? PALETTE.carom : PALETTE.aim);
+    this.pullMat.opacity = maxed ? 0.85 + 0.15 * beat : 0.35 + 0.5 * power;
+    this.anchorMat.color.setHex(maxed ? PALETTE.carom : PALETTE.player);
+    this.anchor.scale.setScalar((0.7 + power * 0.9) * (maxed ? 1.6 + 0.5 * beat : 1));
   }
 
   dispose() {

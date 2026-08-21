@@ -563,6 +563,42 @@ function chainStep() {
   return mult;
 }
 
+/**
+ * The one scoring phrase in the game: what you just did, and what it paid.
+ * `3 HITS  ×1.8`.
+ */
+function hitCallout(count) {
+  const idx = clamp(count - 1, 0, CHAIN.multipliers.length - 1);
+  const mult = CHAIN.multipliers[idx];
+  return `${count} HITS  \u00d7${mult}`;
+}
+
+/**
+ * The moment the draw runs out.
+ *
+ * Full power was a state — a gold cue that pulses — with no event marking
+ * arrival, so there was nothing to feel and nothing to stop pulling at. Power
+ * is the hidden requirement in most of the tutorial, so the top of the range
+ * now announces itself once, loudly, the frame it is reached.
+ */
+let wasMaxed = false;
+
+function noteAimPower(aim) {
+  const maxed = (aim?.power ?? 0) >= 0.985;
+  if (maxed && !wasMaxed) {
+    const p = player;
+    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.carom, 3.4, 0.3);
+    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.carom, 13, 0.6);
+    fx.burst(p.x, p.z, 10, PALETTE.spark, 9, 0.45);
+    // Below the ball, not above it: above is where the beam is, and gold text
+    // on a gold beam is not a callout.
+    fx.floatText(p.x, p.z + 1.9, 'MAX POWER', 'crit');
+    engine.shake(5);
+    audio.bumper?.();
+  }
+  wasMaxed = maxed;
+}
+
 function chainMultiplier() {
   const idx = clamp(game.chain.count - 1, 0, CHAIN.multipliers.length - 1);
   return CHAIN.multipliers[idx];
@@ -651,14 +687,13 @@ game.on = {
       silent: true
     });
     game.launchHits += 1;
-    tutorial.notify('hit', { enemy, banked, index: game.launchHits });
+    tutorial.notify('hit', { enemy, banked, index: game.launchHits, bounces: p.bouncesUsed });
 
     // Chaining is the point of the game, so it gets the loudest feedback in it.
     // Every extra body in one launch escalates the callout, pays Focus back and
     // punches the camera — the mechanic teaches itself by being celebrated.
     if (game.launchHits >= 2) {
-      const praise = TUTORIAL.praise[Math.min(game.launchHits, TUTORIAL.praise.length - 1)];
-      fx.floatText(p.x, p.z - 2.4, praise, 'crit');
+      fx.floatText(p.x, p.z - 2.4, hitCallout(game.launchHits), 'crit');
       fx.shockwave(x, z, PALETTE.carom, 5.5 + game.launchHits * 0.6, 0.4);
       engine.zoomPunch();
       audio.chainNote(game.launchHits);
@@ -677,7 +712,7 @@ game.on = {
     } else if (result.shielded) {
       fx.floatText(x, z, 'SHIELDED', 'block');
     }
-    if (mult > 1) fx.floatText(p.x, p.z - 1.2, `×${mult}`, 'combo');
+
 
     p.addFocus(FOCUS.onChainHit);
     boons.onImpact({ player: p, enemy, x, z, speed, banked, result });
@@ -686,7 +721,7 @@ game.on = {
 
   /* --- the carom ----------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
-    tutorial.notify('carom', { striker, target, x, z, speed });
+    tutorial.notify('pass', { striker, target, x, z, speed });
     const mult = chainStep();
     const scale = clamp(speed / PLAYER.referenceSpeed, 0.4, 2.0);
     const damage = PHYSICS.caromDamage * scale * mult * player.stats.damageMult;
@@ -704,7 +739,9 @@ game.on = {
     engine.shake(speed * 2.6);
     engine.zoomPunch();
     audio.carom();
-    fx.floatText(x, z, 'CAROM!', 'carom');
+    // "CAROM" is a billiards term, not a score. What the player wants to know
+    // is what they just did and what it paid, so the callout says exactly that.
+    fx.floatText(x, z, hitCallout(game.chain.count), 'carom');
     fx.burst(x, z, 24, PALETTE.carom, speed * 0.7, 1.2);
     fx.shockwave(x, z, PALETTE.carom, 4.2, 0.45);
     player.addFocus(FOCUS.onCarom);
@@ -1081,16 +1118,19 @@ const input = new InputManager(stage, {
     }
   },
   onAimUpdate: (aim) => {
+    noteAimPower(aim);
     player.updateAim(aim);
     if (aim.valid) refreshPrediction();
     else player.hideTrajectory();
   },
   onAimCancel: () => {
+    wasMaxed = false;
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.cancelAim();
   },
   onRelease: (aim) => {
+    wasMaxed = false;
     if (aimStartDir) {
       const dot = clamp(aimStartDir.x * aim.dirX + aimStartDir.z * aim.dirZ, -1, 1);
       game.lastTurn = (Math.acos(dot) * 180) / Math.PI;
@@ -1372,6 +1412,7 @@ function frame(now) {
     if (aiming) {
       const aim = input.refresh();
       if (aim) {
+        noteAimPower(aim);
         player.updateAim(aim);
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();

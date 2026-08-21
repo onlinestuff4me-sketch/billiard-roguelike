@@ -65,6 +65,10 @@
       }
       .btn:hover { border-color: var(--rail); background: #121c26; }
       .btn.on { border-color: var(--cyan); color: var(--cyan); }
+      .modes { display: flex; gap: 0; }
+      .modes .btn:first-child { border-radius: 7px 0 0 7px; }
+      .modes .btn:last-child { border-radius: 0 7px 7px 0; margin-left: -1px; }
+      .goal-band { color: var(--solid); }
       .btn.primary { border-color: var(--amber); color: var(--amber); }
       .btn.danger:hover { border-color: var(--solid); color: var(--solid); }
       .btn:disabled { opacity: 0.4; cursor: default; }
@@ -195,6 +199,10 @@
   <body>
     <header>
       <h1>Table Editor</h1>
+      <div class="modes">
+        <button class="btn on" id="mode-rooms">Rooms</button>
+        <button class="btn" id="mode-lessons">Lessons</button>
+      </div>
       <span class="hint" id="doc-note"></span>
       <span class="grow"></span>
       <button class="btn" id="btn-undo" title="Ctrl+Z">Undo</button>
@@ -210,12 +218,12 @@
     <main>
       <aside class="left">
         <div class="group">
-          <h2>Tables</h2>
+          <h2 id="list-title">Tables</h2>
           <div id="layout-list"></div>
           <button class="btn" id="btn-add-layout" style="width: 100%">+ New table</button>
         </div>
         <div class="group">
-          <h2>Which room uses this</h2>
+          <h2 id="context-title">Which room uses this</h2>
           <p class="note" id="room-rule"></p>
         </div>
         <div class="group">
@@ -238,7 +246,8 @@
           <button class="btn" data-add="circle">+ Pillar</button>
           <button class="btn" data-add="bumper">+ Bumper</button>
           <span class="sep"></span>
-          <button class="btn" data-add="anchor">+ Anchor</button>
+          <button class="btn" data-add="anchor" data-rooms-only>+ Anchor</button>
+          <button class="btn" data-add="goal">+ Goal bar</button>
           <span class="sep"></span>
           <button class="btn" data-add="solid">+ Solid</button>
           <button class="btn" data-add="stripe">+ Stripe</button>
@@ -266,7 +275,7 @@
 
       <aside class="right">
         <div class="group">
-          <h2>Waves</h2>
+          <h2 id="waves-title">Waves</h2>
           <div class="waves" id="wave-tabs"></div>
           <p class="note" id="wave-note" style="margin-top: 8px"></p>
         </div>
@@ -274,7 +283,7 @@
           <h2>Selected</h2>
           <div id="inspector"><p class="note">Nothing selected. Click something on the table.</p></div>
         </div>
-        <div class="group">
+        <div class="group" data-rooms-only>
           <h2>Threat director</h2>
           <div class="rows">
             <label for="f-level">Room</label><input id="f-level" type="number" min="1" max="30" step="1" />
