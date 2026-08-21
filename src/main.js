@@ -573,6 +573,32 @@ function hitCallout(count) {
   return `${count} HITS  \u00d7${mult}`;
 }
 
+/**
+ * The moment the draw runs out.
+ *
+ * Full power was a state — a gold cue that pulses — with no event marking
+ * arrival, so there was nothing to feel and nothing to stop pulling at. Power
+ * is the hidden requirement in most of the tutorial, so the top of the range
+ * now announces itself once, loudly, the frame it is reached.
+ */
+let wasMaxed = false;
+
+function noteAimPower(aim) {
+  const maxed = (aim?.power ?? 0) >= 0.985;
+  if (maxed && !wasMaxed) {
+    const p = player;
+    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.carom, 3.4, 0.3);
+    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.carom, 13, 0.6);
+    fx.burst(p.x, p.z, 10, PALETTE.spark, 9, 0.45);
+    // Below the ball, not above it: above is where the beam is, and gold text
+    // on a gold beam is not a callout.
+    fx.floatText(p.x, p.z + 1.9, 'MAX POWER', 'crit');
+    engine.shake(5);
+    audio.bumper?.();
+  }
+  wasMaxed = maxed;
+}
+
 function chainMultiplier() {
   const idx = clamp(game.chain.count - 1, 0, CHAIN.multipliers.length - 1);
   return CHAIN.multipliers[idx];
@@ -1092,16 +1118,19 @@ const input = new InputManager(stage, {
     }
   },
   onAimUpdate: (aim) => {
+    noteAimPower(aim);
     player.updateAim(aim);
     if (aim.valid) refreshPrediction();
     else player.hideTrajectory();
   },
   onAimCancel: () => {
+    wasMaxed = false;
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.cancelAim();
   },
   onRelease: (aim) => {
+    wasMaxed = false;
     if (aimStartDir) {
       const dot = clamp(aimStartDir.x * aim.dirX + aimStartDir.z * aim.dirZ, -1, 1);
       game.lastTurn = (Math.acos(dot) * 180) / Math.PI;
@@ -1383,6 +1412,7 @@ function frame(now) {
     if (aiming) {
       const aim = input.refresh();
       if (aim) {
+        noteAimPower(aim);
         player.updateAim(aim);
         if (aim.valid) refreshPrediction();
         else player.hideTrajectory();

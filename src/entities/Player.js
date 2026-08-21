@@ -331,8 +331,12 @@ class AimRenderer {
       const pz = ux;
 
       const SLICES = TRAJECTORY.beamSlices;
+      // The last few percent of draw widen the beam disproportionately, so the
+      // top of the range is visible in the line itself and not only on the cue.
+      const over = power >= 0.985 ? 1 : 0;
       const wBase =
-        TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power;
+        (TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power) *
+        (1 + over * 0.45);
       const hue = new THREE.Color(prediction.hit ? PALETTE.carom : PALETTE.aim);
       const t = performance.now() / 1000;
 
@@ -483,12 +487,14 @@ class AimRenderer {
     // little. At full power the whole cue goes gold and pulses, so "pull back
     // further" has somewhere to arrive.
     const maxed = power >= 0.985;
-    const beat = maxed ? 0.75 + 0.25 * Math.sin(performance.now() / 60) : 0;
+    // Faster and deeper than a gentle throb — at full draw the cue should look
+    // like it is straining, not idling.
+    const beat = maxed ? 0.55 + 0.45 * Math.sin(performance.now() / 42) : 0;
 
     this.pullMat.color.setHex(maxed ? PALETTE.carom : PALETTE.aim);
     this.pullMat.opacity = maxed ? 0.85 + 0.15 * beat : 0.35 + 0.5 * power;
     this.anchorMat.color.setHex(maxed ? PALETTE.carom : PALETTE.player);
-    this.anchor.scale.setScalar((0.7 + power * 0.9) * (maxed ? 1.35 + 0.25 * beat : 1));
+    this.anchor.scale.setScalar((0.7 + power * 0.9) * (maxed ? 1.6 + 0.5 * beat : 1));
   }
 
   dispose() {
