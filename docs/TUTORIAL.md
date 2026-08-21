@@ -69,6 +69,16 @@ celebration, and shows a **Next lesson** button. It does not advance on a timer:
 the reward for finishing used to last 1.0s while the telling-off for missing
 lasted 2.2s, so the game was more emphatic about failure than success.
 
+**Feedback waits for the player, not a clock.** The status line stays up until
+the next shot is fired. On a timer it expired before it could be read, looked at
+against the table, and understood — the same failure as the instruction
+vanishing, just quieter.
+
+**Full power announces itself.** Draw distance is the only power control, and
+the end of its range used to be invisible, so players stopped pulling at
+whatever felt far enough. Reaching it now fires once: a burst at the cue butt, a
+MAX POWER callout, a wider beam and a camera kick.
+
 **There is always a way out.** A **Skip** control sits on every lesson card.
 The tutorial cannot be failed, so a player who has not found a gesture has no
 other exit — without this it is a wall, not a tutorial. Skipping marks the
@@ -91,49 +101,61 @@ under a two-line scold — over the very ball the lesson was about.
 
 ## The lessons
 
-| # | Card | Table | Complete when |
-|---|------|-------|---------------|
-| 1 | Aim and shoot at the red ball | one red ball straight ahead | the cue ball hits it |
-| 2 | Hit the red ball into the goal | one red ball, red glowing goal bar on the top wall | the red ball enters the goal |
-| 3 | Hit one ball into the other ball | two red balls in line up-table | the struck ball caroms into the second |
-| 4 | Hit 2 in a row | two red balls in a column on the cue's line | one shot clears the rack |
-| 5 | Hit 3 in a row | three red balls in a column 20° **off** vertical | one shot clears the rack |
+Geometry lives in `src/data/lessons.json` and is editable in the level tool at
+`/tool`. What each lesson asks for, and how it is judged, lives in `RULES` in
+`src/systems/Tutorial.js`, keyed by the same id and merged at load.
 
-Lessons 1–5 are all frozen tables. Nothing on any of them moves until the player
-shoots.
+| # | id | Card | Complete when |
+|---|----|------|---------------|
+| 1 | `aim` | Aim and shoot the red ball | the cue ball hits it |
+| 2 | `goal` | Knock it into the goal | the red ball enters the lit bar |
+| 3 | `pass-straight` | Hit one ball into the other | the struck ball reaches the second |
+| 4 | `pass-angled` | Same shot, on an angle | the struck ball is cut into a second off to the side |
+| 5 | `pass-three` | Now run it through three | one strike, and all three end up somewhere else |
+| 6 | `power` | Pull back further | one shot clears a rack of three |
+| 7 | `bank-1` | Bounce off a wall first | a rail is touched before the ball |
+| 8 | `bank-2` | Again, other side | as above, mirrored |
+| 9 | `bank-two-rails` | Two bounces, then hit | 2+ bounces before the ball |
 
-### Notes per lesson
+Every table is frozen. Nothing moves until the player shoots.
 
-**1 — Aim and shoot.** The whole game in one action. Aiming and firing are taught
-together because separately neither has a visible result.
+The sequence is deliberate: 3 and 4 give the *same instruction* on a different
+rack, so the player discovers for themselves that the shot can be angled. 5 is
+the game in one table — each contact sets up the next. 6 separates *power* from
+*aim* by keeping the shape and changing only the technique. 7–9 teach reading
+angles, and 8 exists only to repeat 7, because one success is not a skill.
 
-**2 — The goal.** Teaches that enemies are objects you move, not just things you
-delete. The goal bar is authored on the room (`goal` in the scripted room spec)
-and only an *enemy* entering it counts — the cue ball passing through does not.
+### Rules worth knowing
 
-**3 — The carom.** Teaches that a struck ball is itself ammunition. Detected on
-the `carom` event, which fires when a knocked enemy strikes another enemy;
-striking both with the cue ball directly does not count.
+**Judge the outcome, not the events.** Two lessons were rewritten after being
+judged on physics events that did not survive contact with real play:
 
-**4 and 5 — Chaining.** Two, then three, cleared in a single launch. This is the
-scoring mechanic, so it is the last thing taught and the only one repeated. It
-works because the cue ball passes through anything it *kills* — so chain targets
-must be mortal, unlike the goal and carom targets.
+- Chain lessons counted cue *contacts*, so a shot that destroyed both targets —
+  cue ball killing the first, the first cannoning into the second — was
+  rejected while the HUD printed `2 HITS ×1.4` for the same shot. They now
+  count the rack being cleared, however it was cleared. The coach must never
+  contradict the scoreboard.
+- The relay wanted two registered carom events, but the last hand-off arrives
+  near `PHYSICS.caromMinSpeed`, so the same shot scored about half the time
+  depending on frame timing. It now asks for one hand-off and every ball having
+  moved. Note also that a cue ball is *not* still after a stop shot — it creeps
+  forward and taps another ball seconds later, which is why strike counts are a
+  bad basis for anything.
 
-Judged on the rack being **cleared**, not on cue contacts. Counting contacts
-rejected a shot that destroyed both targets — the cue ball killing the first and
-the first cannoning into the second — while the HUD was printing `×1.4 2 CHAIN`
-for the same shot. The coach must never contradict the scoreboard.
+**Chain targets must be mortal; pass targets must not.** The cue ball only
+passes through a body it *kills*, so a rack meant to be run through has to be
+killable, and a ball meant to be knocked somewhere has to survive being hit
+(`invulnerable` per body).
 
-**5 is also the graduation.** Every earlier rack sits straight ahead, so the
-whole tutorial could otherwise be beaten with five identical straight drags.
-This one is offset 20°, so the player leaves having seen that "up the middle" is
-not the only line there is. The cue still rests on the answer, as every lesson
-does — the rack being off-centre is the lesson, not a hunt for it.
+**Every lesson is solvable from its own resting heading.** Verified by firing
+along each `rest` and checking the director scores it. Three were not, when
+first authored: one bank was geometrically impossible because its barrier
+blocked the *return* leg as well as the direct one.
 
-The Focus gauge is *not* introduced here. It was, briefly, and that broke goal 1:
-a resource meter arriving under the hardest rack is a second idea. Focus stays
-hidden and pinned for the whole tutorial and is met in room 1.
+**Say what the gesture is, including power.** Power is the hidden requirement in
+most of these — the goal shot must carry a ball the length of the table, the
+relay needs enough left after two hand-offs — so the hints name the draw, not
+just the line.
 
 ## The handoff
 
