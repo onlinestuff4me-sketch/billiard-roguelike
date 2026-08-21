@@ -63,7 +63,7 @@ const RULES = {
 
   goal: {
     say: 'Knock it into the goal',
-    hint: 'The red bar is the goal. Drive the red ball all the way in.',
+    hint: 'Drag right back for full power — the red ball has to reach the bar.',
     usesGoal: true,
     cheer: 'In the goal',
     scold: 'Short — hit it harder, straight down the middle',
@@ -73,7 +73,7 @@ const RULES = {
 
   'pass-straight': {
     say: 'Hit one ball into the other',
-    hint: 'Strike the near ball and it carries on into the far one.',
+    hint: 'Full power. Hit the near ball and it carries on into the far one.',
     pass: () => 'score',
     shot: () => 'reject',
     cheer: '2 HITS  \u00d71.4',
@@ -84,7 +84,7 @@ const RULES = {
 
   'pass-angled': {
     say: 'Same shot, on an angle',
-    hint: 'The second ball is off to the side. Clip the first one so it turns.',
+    hint: 'Full power. The second ball is off to the side — clip the first so it turns.',
     pass: () => 'score',
     shot: () => 'reject',
     cheer: '2 HITS  \u00d71.4 — on an angle',
@@ -95,7 +95,7 @@ const RULES = {
 
   'pass-three': {
     say: 'Now run it through three',
-    hint: 'One into two, two into three. This is the whole game.',
+    hint: 'Pull all the way back. One into two, two into three — the whole game.',
     // Judged on what the player watched happen: they struck ONE ball and all
     // three ended up somewhere else. Requiring two registered carom events was
     // too brittle — the last hand-off arrives near PHYSICS.caromMinSpeed, so
@@ -110,7 +110,7 @@ const RULES = {
 
   power: {
     say: 'Pull back further',
-    hint: 'Draw right back for full power and your ball smashes through all three.',
+    hint: 'Drag your thumb as far from the ball as it will go. Full power smashes through all three.',
     clearsRack: true,
     cheer: '3 HITS  \u00d71.8 — all yours',
     scold: 'Not enough on it — drag your thumb further from the ball',
@@ -120,7 +120,7 @@ const RULES = {
 
   'bank-1': {
     say: 'Bounce off a wall first',
-    hint: 'The wall blocks you. Go off the side rail and come back in.',
+    hint: 'Blocked. Full power off the side rail and it comes back in.',
     hit: (h) => (h.banked ? 'score' : 'reject'),
     cheer: 'Off the rail',
     scold: 'No rail yet — aim into the side wall, not at the ball',
@@ -130,7 +130,7 @@ const RULES = {
 
   'bank-2': {
     say: 'Again, other side',
-    hint: 'Same idea, mirrored. Off the rail, then into the ball.',
+    hint: 'Same again, other side. Full power off the left rail.',
     hit: (h) => (h.banked ? 'score' : 'reject'),
     cheer: 'You have got it',
     scold: 'Straight at it does not count — rail first',
@@ -140,7 +140,7 @@ const RULES = {
 
   'bank-two-rails': {
     say: 'Two bounces, then hit',
-    hint: 'Tucked away. Touch two walls before you reach it — more bounces, more points.',
+    hint: 'Full power. Touch two walls before you reach it — more bounces, more points.',
     hit: (h) => (h.bounces >= 2 ? 'score' : 'reject'),
     cheer: 'Two rails. Big points.',
     scold: 'Only one bounce — go the long way round',
@@ -174,9 +174,6 @@ export const LESSONS = lessonData.lessons.map((table) => ({
  * attempt starts from the same place the rack was drawn around.
  */
 const SHOT_LIMIT = 3.2;
-
-/** How long a status line stays lit. */
-const STATUS_HOLD = 2.2;
 
 export class Tutorial {
   /**
@@ -248,7 +245,6 @@ export class Tutorial {
     this._passes = 0;
     this._struck = new Set();
     this._rejected = false;
-    this._statusTimer = 0;
     /** True once a lesson is finished and the Next button is showing. */
     this._awaitingNext = false;
     this._misses = 0;
@@ -412,11 +408,6 @@ export class Tutorial {
   update(rawDt) {
     if (!this.active) return;
 
-    if (this._statusTimer > 0) {
-      this._statusTimer -= rawDt;
-      if (this._statusTimer <= 0) this.statusEl.classList.remove('show');
-    }
-
     if (this._awaitingNext) return;
 
     // Bullet time is a teaching aid, not a resource — right up until the last
@@ -464,6 +455,11 @@ export class Tutorial {
       // from it. That used to pass anyway, off the bottom rail, teaching the
       // opposite of the control it was introducing.
       this._wrongWay = !!lesson.facing && this._awayFromRack(payload);
+      // Taking the next shot is the only thing that clears the last one's
+      // feedback. It used to expire on a 2.2s timer, which is not long enough
+      // to read a sentence, look at the table and work out what it means — the
+      // advice was gone before it had been understood.
+      this._setStatus('', null);
       this._launched = true;
       this._shotTimer = SHOT_LIMIT;
       this._shotLesson = this.index;
@@ -748,12 +744,10 @@ export class Tutorial {
     this.statusEl.classList.remove('good', 'bad');
     if (!text) {
       this.statusEl.classList.remove('show');
-      this._statusTimer = 0;
       return;
     }
     if (tone) this.statusEl.classList.add(tone);
     this.statusEl.classList.add('show');
-    this._statusTimer = STATUS_HOLD;
   }
 
   dispose() {
