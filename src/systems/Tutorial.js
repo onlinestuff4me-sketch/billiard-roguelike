@@ -48,11 +48,23 @@ const KEY = 'billiard-tutorial-done-v1';
  * cue strike, `pass` judges one ball striking another, `usesGoal` is polled
  * while the table settles, `clearsRack` scores the whole rack going down in one
  * launch, and `shot` judges the launch once the rep is over.
+ *
+ * `say` and `hint` are MARKUP, not text. One idea per card is easier to hold
+ * when one word carries it, so the target is red (`<b>`) and the gesture is
+ * green (`<em>`) — the same two colours on every lesson, so the colour itself
+ * is readable before the sentence is. Never more than one of each per line:
+ * highlighting everything highlights nothing.
+ *
+ * `spot` names what the card is talking about, and the spotlight dims the rest
+ * of the table around it — 'player', 'goal', 'first' (the ball nearest the
+ * cue), 'rack' (all of them in one shape) or 'blocked' (the rack together with
+ * whatever is in the way of it).
  */
 const RULES = {
   aim: {
-    say: 'Aim and shoot the red ball',
-    hint: 'Thumb below the blue ball. Drag down, then let go.',
+    say: 'Aim and shoot the <b>red ball</b>',
+    hint: 'Thumb below the blue ball. <em>Drag down, then let go.</em>',
+    spot: 'first',
     hit: () => 'score',
     shot: (s) => (s.hits === 0 ? 'reject' : null),
     facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
@@ -62,8 +74,9 @@ const RULES = {
   },
 
   goal: {
-    say: 'Knock it into the goal',
-    hint: 'Drag right back for full power — the red ball has to reach the bar.',
+    say: 'Knock it into the <em>goal</em>',
+    hint: 'Drag <em>right back</em> — the <b>red ball</b> has to carry all the way to the bar.',
+    spot: 'goal',
     usesGoal: true,
     cheer: 'In the goal',
     scold: 'Short — hit it harder, straight down the middle',
@@ -72,8 +85,9 @@ const RULES = {
   },
 
   'pass-straight': {
-    say: 'Hit one ball into the other',
-    hint: 'Full power. Hit the near ball and it carries on into the far one.',
+    say: 'Hit one ball <em>into the other</em>',
+    hint: 'Full power straight up the middle. The <b>near ball</b> carries on into the far one.',
+    spot: 'rack',
     pass: () => 'score',
     shot: () => 'reject',
     cheer: '2 HITS  \u00d71.4',
@@ -83,8 +97,9 @@ const RULES = {
   },
 
   'pass-angled': {
-    say: 'Same shot, on an angle',
-    hint: 'Full power. The second ball is off to the side — clip the first so it turns.',
+    say: 'Same shot, <em>on an angle</em>',
+    hint: 'The far ball is off to the side. Clip the <b>near ball</b> so it turns into it.',
+    spot: 'rack',
     pass: () => 'score',
     shot: () => 'reject',
     cheer: '2 HITS  \u00d71.4 — on an angle',
@@ -94,8 +109,9 @@ const RULES = {
   },
 
   'pass-three': {
-    say: 'Now run it through three',
-    hint: 'Pull all the way back. One into two, two into three — the whole game.',
+    say: 'Now run it through <em>three</em>',
+    hint: 'Pull <em>all the way back</em>. One into two, two into three.',
+    spot: 'rack',
     // Judged on what the player watched happen: they struck ONE ball and all
     // three ended up somewhere else. Requiring two registered carom events was
     // too brittle — the last hand-off arrives near PHYSICS.caromMinSpeed, so
@@ -109,8 +125,9 @@ const RULES = {
   },
 
   power: {
-    say: 'Pull back further',
-    hint: 'Drag your thumb as far from the ball as it will go. Full power smashes through all three.',
+    say: 'Pull back <em>further</em>',
+    hint: 'Drag your thumb as far from the ball as it goes. <em>Full power</em> smashes through all three.',
+    spot: 'player',
     clearsRack: true,
     cheer: '3 HITS  \u00d71.8 — all yours',
     scold: 'Not enough on it — drag your thumb further from the ball',
@@ -119,8 +136,9 @@ const RULES = {
   },
 
   'bank-1': {
-    say: 'Bounce off a wall first',
-    hint: 'Blocked. Full power off the side rail and it comes back in.',
+    say: 'Bounce off a <em>wall</em> first',
+    hint: 'The <b>red ball</b> is blocked. Aim <em>out to the right</em> — the rail brings it back in.',
+    spot: 'blocked',
     hit: (h) => (h.banked ? 'score' : 'reject'),
     cheer: 'Off the rail',
     scold: 'No rail yet — aim into the side wall, not at the ball',
@@ -129,8 +147,9 @@ const RULES = {
   },
 
   'bank-2': {
-    say: 'Again, other side',
-    hint: 'Same again, other side. Full power off the left rail.',
+    say: 'Again, <em>other side</em>',
+    hint: 'Same shot mirrored. Aim <em>out to the left</em> and let the rail turn it.',
+    spot: 'blocked',
     hit: (h) => (h.banked ? 'score' : 'reject'),
     cheer: 'You have got it',
     scold: 'Straight at it does not count — rail first',
@@ -139,8 +158,9 @@ const RULES = {
   },
 
   'bank-two-rails': {
-    say: 'Two bounces, then hit',
-    hint: 'Full power. Touch two walls before you reach it — more bounces, more points.',
+    say: '<em>Two bounces</em>, then hit',
+    hint: 'Aim <em>hard right</em>. Two walls on the way round, then the <b>red ball</b>.',
+    spot: 'rack',
     hit: (h) => (h.bounces >= 2 ? 'score' : 'reject'),
     cheer: 'Two rails. Big points.',
     scold: 'Only one bounce — go the long way round',
@@ -190,6 +210,18 @@ export class Tutorial {
    */
   constructor(deps) {
     Object.assign(this, deps);
+
+    // THE SPOTLIGHT. A pop-up that names something on the table is only half
+    // an instruction — the player still has to find the thing it named. These
+    // two dim everything except a circle around it, so "knock it into the goal"
+    // points as well as tells. Both are driven from the same three CSS custom
+    // properties, written once a frame from the live camera.
+    this.spotEl = document.createElement('div');
+    this.spotEl.id = 'coach-spot';
+    this.ringEl = document.createElement('div');
+    this.ringEl.id = 'coach-ring';
+    this.layer.appendChild(this.spotEl);
+    this.layer.appendChild(this.ringEl);
 
     const el = document.createElement('div');
     el.id = 'coach';
@@ -319,6 +351,8 @@ export class Tutorial {
     this._roomKey = null;
     this.game.tutorialGuard = null;
     this.layer.classList.remove('coaching');
+    this.spotEl.classList.remove('show');
+    this.ringEl.classList.remove('show');
     this.el.classList.remove('show', 'done');
     // Emptied rather than left holding the last lesson's text: the card stays
     // in the DOM for a possible replay, and is otherwise one class toggle away
@@ -402,11 +436,145 @@ export class Tutorial {
   }
 
   /* ---------------------------------------------------------------- *
+   * Spotlight
+   * ---------------------------------------------------------------- */
+
+  /**
+   * What this lesson is talking about, as an AXIS-ALIGNED ELLIPSE in world
+   * space — centre plus a half-extent on each axis.
+   *
+   * Not a circle: the two things most worth pointing at are a goal bar three
+   * times wider than it is tall and a rack strung out in a line. A circle
+   * around either has to be big enough to contain the long axis, so it spills
+   * over half the table — and, for the goal, up under the card.
+   *
+   * A lesson names a SHAPE (`spot: 'goal'`) rather than coordinates, so the
+   * geometry stays in lessons.json alone: drag a rack somewhere else in /tool
+   * and the spotlight follows it, with nothing to keep in sync by hand.
+   *
+   * @returns {{x:number,z:number,rx:number,rz:number}|null}
+   */
+  _focus() {
+    const lesson = this.lesson;
+    if (!lesson?.spot) return null;
+    const balls = (this.rooms.scriptedEnemies || []).filter((e) => e.alive);
+
+    switch (lesson.spot) {
+      case 'player':
+        return { x: this.player.x, z: this.player.z, rx: 3.4, rz: 3.4 };
+
+      case 'goal': {
+        const g = lesson.room.goal;
+        if (!g) return null;
+        // Tighter above and below than at the sides: the bar sits just under
+        // the card, and a symmetric margin puts the ring behind it.
+        return { x: g.x, z: g.z, rx: g.hw + 1.4, rz: g.hh + 0.4 };
+      }
+
+      // The ball the shot starts with. Every rack in this file is aimed at from
+      // the spawn, so "nearest the cue" is the one the instruction means.
+      case 'first': {
+        let best = null;
+        let bestD = Infinity;
+        for (const ball of balls) {
+          const d = (ball.x - this.player.x) ** 2 + (ball.z - this.player.z) ** 2;
+          if (d < bestD) {
+            bestD = d;
+            best = ball;
+          }
+        }
+        return best ? { x: best.x, z: best.z, rx: 2.8, rz: 2.8 } : null;
+      }
+
+      // The whole rack, in one shape. Spotlighting each ball separately would
+      // be three holes in the felt and no sense of the line they make.
+      //
+      // 'blocked' takes in the barriers as well, because on a bank lesson the
+      // barrier is half the sentence: "the red ball is blocked" is unreadable
+      // when the thing doing the blocking has been dimmed into the felt.
+      case 'rack':
+      case 'blocked': {
+        if (!balls.length) return null;
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minZ = Infinity;
+        let maxZ = -Infinity;
+        const grow = (x, z, hw = 0, hh = 0) => {
+          minX = Math.min(minX, x - hw);
+          maxX = Math.max(maxX, x + hw);
+          minZ = Math.min(minZ, z - hh);
+          maxZ = Math.max(maxZ, z + hh);
+        };
+        for (const ball of balls) grow(ball.x, ball.z);
+        if (lesson.spot === 'blocked') {
+          for (const o of lesson.room.obstacles || []) grow(o.x, o.z, o.hw || 0, o.hh || 0);
+        }
+        const pad = 2.4;
+        return {
+          x: (minX + maxX) / 2,
+          z: (minZ + maxZ) / 2,
+          rx: (maxX - minX) / 2 + pad,
+          rz: (maxZ - minZ) / 2 + pad
+        };
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Project the focus circle onto the card layer.
+   *
+   * `#ui-layer` is `inset: 0` on the stage and the camera frustum is sized to
+   * that same stage, so world units map straight onto layer pixels with no
+   * bounding-rect arithmetic. Zoom and camera position are read live rather
+   * than assumed: the celebration punches one and shakes the other, and a
+   * spotlight that ignored either would slide off its target at the loudest
+   * moment of the lesson.
+   */
+  _updateSpot() {
+    const cam = this.engine?.camera;
+    // Dark felt is useful while the player is READING about the table, and
+    // squarely unhelpful while they are aiming across it — so the dim lifts the
+    // instant a thumb goes down and stays off until the rep has been called.
+    const off = this._awaitingNext || this._launched || this.input.isAiming;
+    const focus = off ? null : this._focus();
+    if (!focus || !cam || !this.layer.clientWidth) {
+      this.spotEl.classList.remove('show');
+      this.ringEl.classList.remove('show');
+      return;
+    }
+
+    const w = this.layer.clientWidth;
+    const h = this.layer.clientHeight;
+    const visX = (cam.right - cam.left) / cam.zoom;
+    const visZ = (cam.top - cam.bottom) / cam.zoom;
+    const px = ((focus.x - cam.position.x) / visX + 0.5) * w;
+    const py = ((focus.z - cam.position.z) / visZ + 0.5) * h;
+    const rx = (focus.rx / visX) * w;
+    const rz = (focus.rz / visZ) * h;
+
+    for (const node of [this.spotEl, this.ringEl]) {
+      node.style.setProperty('--spot-x', `${px.toFixed(1)}px`);
+      node.style.setProperty('--spot-y', `${py.toFixed(1)}px`);
+      node.style.setProperty('--spot-rx', `${rx.toFixed(1)}px`);
+      node.style.setProperty('--spot-ry', `${rz.toFixed(1)}px`);
+      node.classList.add('show');
+    }
+  }
+
+  /* ---------------------------------------------------------------- *
    * Frame
    * ---------------------------------------------------------------- */
 
   update(rawDt) {
     if (!this.active) return;
+
+    // Ahead of the early return below: the spotlight follows a camera that is
+    // still shaking and punching its zoom through the celebration, so it has to
+    // be re-projected on frames where nothing else about the lesson is running.
+    this._updateSpot();
 
     if (this._awaitingNext) return;
 
@@ -717,8 +885,11 @@ export class Tutorial {
     const lesson = this.lesson;
     if (!lesson) return;
     this.stepEl.textContent = `Lesson ${this.index + 1} of ${LESSONS.length}`;
-    this.sayEl.textContent = lesson.say;
-    this.hintEl.textContent = lesson.hint;
+    // innerHTML, deliberately: lesson copy carries <em>/<b> so the one word
+    // that matters is coloured. Nothing here is player-supplied — every string
+    // is a constant in RULES above — so there is nothing to escape.
+    this.sayEl.innerHTML = lesson.say;
+    this.hintEl.innerHTML = lesson.hint;
 
     if (lesson.showCount) {
       this.countEl.hidden = false;
@@ -752,6 +923,8 @@ export class Tutorial {
 
   dispose() {
     this.el.remove();
+    this.spotEl.remove();
+    this.ringEl.remove();
   }
 }
 

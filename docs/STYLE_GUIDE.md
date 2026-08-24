@@ -194,8 +194,16 @@ and motion first.
   - *Health bar* — top-left, segmented, drains with a lagging "damage ghost" fill.
   - *Radial Focus gauge* — bottom-centre ring around the thumb's resting zone; it
     depletes clockwise and pulses when it can no longer sustain an aim.
-  - *Room counter* — top-centre, `ROOM 07` with a depth ramp in colour.
-  - *Combo counter* — centre-right, scales up on each step and drifts back down.
+  - *Room counter* — top-centre, `ROOM 07` with a depth ramp in colour, with the
+    targets still standing (`3 LEFT` → `CLEAR`) directly underneath. The wave
+    line only ever appeared on multi-wave rooms, so most of the time nothing on
+    screen answered "how much of this is left" and the player had to count balls.
+  - *Combo counter* — centre-right, `×1.8` over `3 HITS`, scales up on each step
+    and drifts back down. It sits on a pill rather than bare on the felt, and
+    carries a thin bar draining the chain window: the window is the only thing in
+    the game on a hidden clock, and "why did my ×1.8 vanish" is a fair question
+    to be able to answer by looking. The wording matches the float text over the
+    ball exactly, so the two readouts of one event refer to each other.
 - **Boon modal** — three portrait cards, each stamped with its phase glyph and
   rarity border (Common: bone, Rare: cyan, Epic: magenta). The modal freezes time
   completely (timeScale 0) and is the only screen with a scrim.
