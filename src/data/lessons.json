@@ -89,7 +89,7 @@
     },
     {
       "id": "pass-three",
-      "name": "The Relay",
+      "name": "Straight Through",
       "rest": {
         "x": 0,
         "z": -1
@@ -99,19 +99,18 @@
         {
           "type": "solid",
           "x": 0,
-          "z": 3.6,
+          "z": 2.4
+        },
+        {
+          "type": "solid",
+          "x": 0,
+          "z": -0.2,
           "invulnerable": true
         },
         {
           "type": "solid",
-          "x": 0.45,
-          "z": 1.4,
-          "invulnerable": true
-        },
-        {
-          "type": "solid",
-          "x": 0.85,
-          "z": -0.4,
+          "x": 0,
+          "z": -2.8,
           "invulnerable": true
         }
       ]

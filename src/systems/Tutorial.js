@@ -119,19 +119,19 @@ const RULES = {
   },
 
   'pass-three': {
-    say: 'Now run it through <em>three</em>',
-    hint: 'Pull <em>all the way back</em>. One into two, two into three.',
+    say: 'Shatter it and <em>keep going</em>',
+    hint: '<em>Max power</em> breaks the first <b>ball</b> — your cue carries on through.',
     spot: 'rack',
-    // Judged on what the player watched happen: they struck ONE ball and all
-    // three ended up somewhere else. Requiring two registered carom events was
-    // too brittle — the last hand-off arrives near PHYSICS.caromMinSpeed, so
-    // the same shot scored about half the time depending on frame timing, and
-    // the stopped cue ball would then trickle into the last ball and muddy it.
-    relay: true,
-    cheer: '3 HITS  \u00d71.8',
-    scold: 'It stopped short — the first ball has to run all the way down the line',
-    whiff: 'Missed — start with the near ball',
-    nudge: 'Full draw. Each ball needs enough left to pass it on.'
+    // The old `relay` rule asked for one hand-off and every ball having moved.
+    // That was satisfiable without doing any of what the card described: at
+    // 0.70 power the first ball survived, was knocked into a wall, splatted
+    // there, and the lesson said well done. Judged properly now — see
+    // `shatterThrough` in _resolveShot.
+    shatterThrough: true,
+    cheer: 'SHATTERED  \u2014 3 HITS \u00d71.8',
+    scold: 'It survived — pull back further so the first ball breaks',
+    whiff: 'Missed — line the cue straight up at the near ball',
+    nudge: 'The first ball must SHATTER. Anything less and your cue stops there.'
   },
 
   power: {
@@ -301,6 +301,8 @@ export class Tutorial {
     this._hits = 0;
     this._passes = 0;
     this._struck = new Set();
+    /** Cue contacts this launch, in order, with whether each one killed. */
+    this._strikes = [];
     this._rejected = false;
     /** True once a lesson is finished and the Next button is showing. */
     this._awaitingNext = false;
@@ -729,6 +731,7 @@ export class Tutorial {
       this._hits = 0;
       this._passes = 0;
       this._struck.clear();
+      this._strikes.length = 0;
       this._rejected = false;
       return;
     }
@@ -746,6 +749,7 @@ export class Tutorial {
     }
 
     if (name === 'hit') {
+      this._strikes.push({ enemy: payload.enemy, killed: !!payload.killed });
       this._hits += 1;
       // Fired away from the rack and connected anyway, off a rail. It does not
       // count: the whole point of the first lesson is which way the orb goes.
@@ -812,6 +816,21 @@ export class Tutorial {
       // one, which is not the player doing anything — but it made the strike
       // count 2 and rejected a shot that had visibly worked.
       if (this._passes >= 1 && rack.length && moved >= rack.length) this._score();
+      else this._rejected = true;
+    }
+
+    // THE SHATTER. A max-power direct hit destroys a basic ball outright, and
+    // because the cue only passes through a body it KILLS, that is also what
+    // lets the shot carry on into the next one. Judged on the whole sequence:
+    // shatter on first contact, reach the second ball, hand off to the third.
+    // Anything looser passed at 0.70 power and taught nothing about power — the
+    // ball simply got knocked into a wall and splatted there instead.
+    if (stillIts && lesson.shatterThrough) {
+      const first = this._strikes[0];
+      const rack = this.rooms.scriptedEnemies;
+      const shattered = !!first && first.killed && first.enemy === rack[0];
+      const reachedSecond = this._strikes.some((k) => k.enemy === rack[1]);
+      if (shattered && reachedSecond && this._passes >= 1) this._score();
       else this._rejected = true;
     }
 
