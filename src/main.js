@@ -1454,8 +1454,11 @@ function frame(now) {
         waveIndex: rooms.waveIndex,
         waveCount: rooms.cleared ? 0 : rooms.waves.length,
         layout: rooms.layout ? rooms.layout.name : '',
+        enemies: game.enemies.length,
         chain: game.chain.count,
-        chainMult: chainMultiplier()
+        chainMult: chainMultiplier(),
+        chainTimer: game.chain.timer,
+        chainWindow: CHAIN.window
       },
       rawDt
     );

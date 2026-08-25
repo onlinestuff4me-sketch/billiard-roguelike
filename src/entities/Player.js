@@ -423,15 +423,18 @@ class AimRenderer {
       const cd = prediction.caromDir;
       const angle = Math.atan2(cd.z, cd.x);
       const L = TRAJECTORY.caromConeLength;
-      const spread = TRAJECTORY.caromConeAngle;
       const ox = h.body ? h.body.x : h.x;
       const oz = h.body ? h.body.z : h.z;
-      const lines = [];
-      for (const a of [angle - spread, angle, angle + spread]) {
-        lines.push(ox, y, oz, ox + Math.cos(a) * L, y, oz + Math.sin(a) * L);
-      }
-      this.conePositions.set(lines);
-      this.coneGeo.setDrawRange(0, 6);
+      // ONE line, not a fan of three.
+      //
+      // The fan was three lines at +/-6.9 degrees, and the config comment
+      // beside it admitted the reason was emphasis rather than uncertainty:
+      // the collision solver is deterministic, so this line is a promise. Three
+      // of them read as a hedge the game is not making, and under a thumb that
+      // is moving them live they are three times the noise in the one moment
+      // the player is trying to read cause and effect.
+      this.conePositions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
+      this.coneGeo.setDrawRange(0, 2);
       this.coneGeo.attributes.position.needsUpdate = true;
       this.cone.visible = true;
 

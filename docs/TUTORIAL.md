@@ -99,6 +99,24 @@ below it, so the card's height does not depend on whether anything is being
 said. Reserving a line for it made the card permanently taller and grew it again
 under a two-line scold — over the very ball the lesson was about.
 
+**The card points as well as tells.** Naming a thing is only half an
+instruction; the player still has to find it. Each lesson declares a `spot`, and
+`Tutorial._focus` turns it into an ellipse in world space that
+`Tutorial._updateSpot` projects onto the card layer — dimming the table around
+it and drawing a ring on it. An ellipse, not a circle, because the two things
+most worth pointing at are a goal bar three times wider than it is tall and a
+rack strung out in a line; a circle big enough to hold either spills over half
+the table and, for the goal, up behind the card.
+
+The dim lifts the moment a thumb goes down and stays off until the rep has been
+called. Darkening the felt helps while the player is *reading* about the table
+and hurts while they are aiming across it.
+
+**One word carries the sentence.** `say` and `hint` are markup: the target is
+red (`<b>`), the gesture is green (`<em>`), the same two colours on every
+lesson, so the colour is readable before the sentence is. Never more than one of
+each per line — highlighting everything highlights nothing.
+
 ## The lessons
 
 Geometry lives in `src/data/lessons.json` and is editable in the level tool at
@@ -116,6 +134,12 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 | 7 | `bank-1` | Bounce off a wall first | a rail is touched before the ball |
 | 8 | `bank-2` | Again, other side | as above, mirrored |
 | 9 | `bank-two-rails` | Two bounces, then hit | 2+ bounces before the ball |
+
+`spot` picks what the lesson's spotlight frames: `player`, `goal`, `first` (the
+ball nearest the cue), `rack` (all of them in one shape) or `blocked` (the rack
+together with whatever is in the way of it — a bank lesson's barrier is half its
+sentence, and "the red ball is blocked" is unreadable with the barrier dimmed
+into the felt).
 
 Every table is frozen. Nothing moves until the player shoots.
 
@@ -196,4 +220,5 @@ has never been true — power is draw distance alone.
 | Goal bar geometry and hit test | `RoomManager.loadScripted` + `Tutorial._checkGoal` |
 | Unfailability | `game.tutorialGuard` in `src/main.js` — blocks contact and projectile damage **to the player**. Targets are killed normally; the ones that must survive a hit carry `invulnerable` per body, and a partial attempt calls `RoomManager.reRackScripted` |
 | Card markup and styling | `#coach` in `index.html` |
+| Spotlight | `Tutorial._focus` / `_updateSpot`; `#coach-spot` and `#coach-ring` in `index.html` |
 | Completion flag | `billiard-tutorial-done-v1` in localStorage; reset from Settings |

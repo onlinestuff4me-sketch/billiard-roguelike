@@ -57,6 +57,11 @@ export class HUD {
     const roomBlock = el('div', 'hud-room', top);
     el('div', 'hud-label', roomBlock).textContent = 'Room';
     this.roomNumber = el('div', 'room-number', roomBlock);
+    // How the room is going, in the one place the player already looks for
+    // which room they are in. The wave line only ever appeared on multi-wave
+    // rooms, so most of the time nothing on screen answered "how much of this
+    // is left" — the player had to count the balls.
+    this.roomLeft = el('div', 'room-left', roomBlock);
     this.waveText = el('div', 'wave-text', roomBlock);
 
     const layoutBlock = el('div', 'hud-layout', top);
@@ -70,6 +75,11 @@ export class HUD {
     this.combo = el('div', 'hud-combo', this.root);
     this.comboMult = el('div', 'combo-mult', this.combo);
     this.comboCount = el('div', 'combo-count', this.combo);
+    // The chain window is the only thing in the game on a hidden clock: hit
+    // again before it runs out and the multiplier climbs. Draining it in front
+    // of the player turns "why did my ×1.8 vanish" into a visible deadline.
+    this.comboBar = el('div', 'combo-bar', this.combo);
+    this.comboFill = el('div', 'combo-fill', this.comboBar);
 
     /* ---------------- radial focus gauge ---------------- */
     const focusBlock = el('div', 'hud-focus', this.root);
@@ -128,6 +138,7 @@ export class HUD {
       level: -1,
       wave: '',
       chain: -1,
+      left: '',
       layout: '',
       buildKey: ''
     };
@@ -250,6 +261,15 @@ export class HUD {
       // nothing on screen marked the handoff.
       this.roomNumber.textContent = s.level > 0 ? String(s.level).padStart(2, '0') : '\u2013\u2013';
     }
+    // Dashes during the tutorial, alongside the dashed room number: lesson
+    // tables are re-racked rather than cleared, so a count there would tick
+    // down and back up again and mean nothing.
+    const leftLabel = s.level > 0 ? (s.enemies > 0 ? `${s.enemies} left` : 'Clear') : '';
+    if (leftLabel !== cache.left) {
+      cache.left = leftLabel;
+      this.roomLeft.textContent = leftLabel;
+      this.roomLeft.classList.toggle('clear', s.enemies === 0);
+    }
     const waveLabel = s.waveCount > 1 ? `Wave ${s.waveIndex + 1}/${s.waveCount}` : '';
     if (waveLabel !== cache.wave) {
       cache.wave = waveLabel;
@@ -265,8 +285,11 @@ export class HUD {
       cache.chain = s.chain;
       if (s.chain > 1) {
         this.combo.classList.add('visible');
-        this.comboMult.textContent = `×${s.chainMult.toFixed(1)}`;
-        this.comboCount.textContent = `${s.chain} chain`;
+        this.comboMult.textContent = `\u00d7${s.chainMult.toFixed(1)}`;
+        // The same words the float text uses over the ball. It said "3 chain"
+        // here and "3 HITS ×1.8" out on the table, so the two readouts of one
+        // event did not obviously refer to each other.
+        this.comboCount.textContent = `${s.chain} hits`;
         this.combo.classList.remove('pop');
         // Force a reflow so the pop animation can restart on every step.
         void this.combo.offsetWidth;
@@ -274,6 +297,10 @@ export class HUD {
       } else {
         this.combo.classList.remove('visible');
       }
+    }
+    if (s.chain > 1 && s.chainWindow > 0) {
+      const left = Math.max(0, Math.min(1, s.chainTimer / s.chainWindow));
+      this.comboFill.style.transform = `scaleX(${left.toFixed(3)})`;
     }
 
     this._updateDoorLabels();

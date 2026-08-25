@@ -188,6 +188,24 @@
         text-shadow: 0 0 16px rgba(53, 242, 255, 0.5);
       }
 
+      /* Room progress, directly under the room number. Cyan while there is
+         still work, mint the moment there is not — a state change you can see
+         without reading, from the corner of your eye, mid-shot. */
+      .room-left {
+        margin-top: 0.28em;
+        font-size: clamp(10px, 2.7vmin, 14px);
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(234, 246, 255, 0.85);
+        min-height: 1em;
+        transition: color 0.2s ease;
+      }
+      .room-left.clear {
+        color: #2ef2c4;
+        text-shadow: 0 0 14px rgba(46, 242, 196, 0.6);
+      }
+
       .wave-text {
         margin-top: 0.3em;
         font-size: clamp(8px, 2.1vmin, 11px);
@@ -266,11 +284,20 @@
       }
 
       /* Combo counter */
+      /* THE SCOREBOARD. This is the only running read on how well the shot is
+         going, and it used to be two lines of unbacked text over the felt —
+         legible against dark table, invisible against a bloom. It is a pill
+         now, with the chain's own countdown drawn under it. */
       .hud-combo {
         position: absolute;
         right: var(--hud-pad);
-        top: 42%;
+        top: 40%;
         text-align: right;
+        padding: 7px 12px 9px;
+        border-radius: 12px;
+        background: rgba(5, 7, 10, 0.62);
+        border: 1px solid rgba(53, 242, 255, 0.35);
+        box-shadow: 0 0 24px rgba(53, 242, 255, 0.18);
         opacity: 0;
         transition: opacity 0.18s ease;
       }
@@ -288,10 +315,29 @@
       }
 
       .combo-count {
-        font-size: clamp(9px, 2.4vmin, 13px);
-        letter-spacing: 0.24em;
+        font-size: clamp(10px, 2.7vmin, 14px);
+        font-weight: 700;
+        letter-spacing: 0.22em;
         text-transform: uppercase;
-        color: var(--muted);
+        color: rgba(234, 246, 255, 0.92);
+      }
+
+      /* The chain window, draining. Anchored right so it empties toward the
+         edge the numbers are already aligned to. */
+      .combo-bar {
+        margin-top: 6px;
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(234, 246, 255, 0.16);
+        overflow: hidden;
+      }
+      .combo-fill {
+        height: 100%;
+        border-radius: 2px;
+        background: var(--cyan);
+        transform-origin: right center;
+        transform: scaleX(1);
+        box-shadow: 0 0 10px rgba(53, 242, 255, 0.8);
       }
 
       .hud-combo.pop .combo-mult {
@@ -858,6 +904,62 @@
       /* Centred and large on purpose: the instruction is the most important
          thing on screen while it is up, and a small strip at the bottom was
          competing with the table for attention and losing. */
+      /* THE SPOTLIGHT.
+         A pop-up that names a thing on the table is only half an instruction —
+         the player still has to find the thing. Dimming everything except a
+         circle around it turns "the red bar is the goal" into a pointer. The
+         cutout is a radial gradient mask so it feathers rather than cutting a
+         hard hole in the felt. */
+      #coach-spot {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        z-index: 30;
+        /* The ending shape is twice the spotlight's half-extents, so the stops
+           read as halves of it: clear out to the shape, then as much again of
+           feather. Feathering over a fixed fraction of the SCREEN instead put
+           the whole table at full dim a few pixels outside the ring, on a scene
+           that is already nearly black — the felt stopped existing rather than
+           receding. */
+        background: radial-gradient(
+          ellipse calc(var(--spot-rx, 90px) * 2) calc(var(--spot-ry, 90px) * 2)
+            at var(--spot-x, 50%) var(--spot-y, 50%),
+          rgba(5, 7, 10, 0) 0%,
+          rgba(5, 7, 10, 0) 50%,
+          rgba(5, 7, 10, 0.52) 100%
+        );
+      }
+      #coach-spot.show { opacity: 1; }
+
+      /* A ring on the spotlit thing, so it reads as "this one" and not just as
+         a brighter patch of table. */
+      #coach-ring {
+        position: absolute;
+        left: var(--spot-x, 50%);
+        top: var(--spot-y, 50%);
+        width: calc(var(--spot-rx, 90px) * 2);
+        height: calc(var(--spot-ry, 90px) * 2);
+        margin-left: calc(var(--spot-rx, 90px) * -1);
+        margin-top: calc(var(--spot-ry, 90px) * -1);
+        /* A capsule, not a circle: it has to hug a wide flat goal bar and a
+           tall narrow rack with the same rule. */
+        border-radius: 999px;
+        border: 2px solid rgba(255, 255, 255, 0.55);
+        box-shadow: 0 0 18px rgba(255, 255, 255, 0.25);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        z-index: 31;
+        animation: spot-pulse 1.9s ease-in-out infinite;
+      }
+      #coach-ring.show { opacity: 1; }
+      @keyframes spot-pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.04); opacity: 0.72; }
+      }
+
       #coach {
         position: absolute;
         left: 50%;
@@ -877,12 +979,18 @@
         bottom: auto;
         transform: translate(-50%, 0) scale(0.94);
         width: min(94%, 452px);
-        padding: 6px 14px 8px;
-        border-radius: 16px;
-        border: 2px solid rgba(255, 179, 64, 0.55);
-        background: rgba(5, 7, 10, 0.88);
-        box-shadow: 0 0 44px rgba(255, 179, 64, 0.2);
-        text-align: center;
+        padding: 11px 16px 13px;
+        border-radius: 14px;
+        border: none;
+        /* Light card on a dark table. A dark card on dark felt has to shout to
+           be seen at all; a light one is legible at a glance and can therefore
+           be smaller and say less. */
+        background: #f2f4f6;
+        color: #12171d;
+        box-shadow:
+          0 6px 0 rgba(0, 0, 0, 0.35),
+          0 10px 30px rgba(0, 0, 0, 0.55);
+        text-align: left;
         opacity: 0;
         transition: opacity 0.22s ease, transform 0.22s ease, border-color 0.2s ease;
         pointer-events: none;
@@ -896,8 +1004,10 @@
       /* Actions. The card itself is pointer-transparent so it never eats an aim;
          only these two take taps, and both sit in the card band well clear of
          the thumb zone below the ball. */
-      #coach .next,
-      #coach .skip {
+      /* Gated on .show: a hidden card must not leave a live target behind.
+         opacity alone does not stop hit-testing. */
+      #coach.show .next,
+      #coach.show .skip {
         pointer-events: auto;
         font-family: inherit;
         cursor: pointer;
@@ -930,47 +1040,60 @@
         font-size: clamp(9.5px, 2.5vmin, 12px);
         letter-spacing: 0.12em;
         text-transform: uppercase;
-        color: rgba(234, 246, 255, 0.42);
+        color: #8b95a1;
         background: transparent;
-        border: 1px solid rgba(234, 246, 255, 0.16);
+        border: 1px solid rgba(18, 23, 29, 0.18);
       }
-      #coach .skip:active { color: var(--bone); }
+      #coach .skip:active { color: #12171d; }
       #coach .skip[hidden] { display: none; }
 
       #coach.done {
-        border-color: rgba(46, 242, 196, 0.85);
-        box-shadow: 0 0 52px rgba(46, 242, 196, 0.3);
+        box-shadow:
+          0 0 0 3px #2ef2c4,
+          0 6px 0 rgba(0, 0, 0, 0.35),
+          0 12px 44px rgba(46, 242, 196, 0.35);
       }
       #coach .say { text-wrap: balance; }
       #coach .step {
-        font-size: clamp(10px, 2.8vmin, 13px);
-        letter-spacing: 0.3em;
+        font-size: clamp(9px, 2.4vmin, 11px);
+        letter-spacing: 0.24em;
         text-transform: uppercase;
-        color: var(--amber);
-        margin-bottom: 4px;
+        color: #7c8794;
+        margin-bottom: 3px;
       }
       #coach.done .step { color: #2ef2c4; }
       #coach .say {
-        font-size: clamp(19px, 5.2vmin, 28px);
+        font-size: clamp(17px, 4.6vmin, 24px);
         font-weight: 800;
-        line-height: 1.08;
+        line-height: 1.15;
         letter-spacing: -0.01em;
-        color: var(--bone);
+        color: #12171d;
         text-wrap: balance;
-        text-shadow: 0 0 26px rgba(234, 246, 255, 0.28);
+      }
+      /* The one word that matters, coloured — the whole reason these read fast. */
+      #coach .say em,
+      #coach .hint em {
+        font-style: normal;
+        color: #12a150;
+        font-weight: 800;
+      }
+      #coach .say b,
+      #coach .hint b {
+        font-weight: 800;
+        color: #d2402f;
       }
       #coach .hint {
-        margin-top: 5px;
-        font-size: clamp(11px, 2.7vmin, 13px);
-        line-height: 1.25;
-        color: rgba(234, 246, 255, 0.7);
+        margin-top: 4px;
+        font-size: clamp(11px, 2.9vmin, 14px);
+        line-height: 1.3;
+        color: #3d4753;
         text-wrap: balance;
       }
       #coach .hint:empty { display: none; }
       #coach .count {
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 8px;
         margin-top: 9px;
       }
@@ -979,7 +1102,7 @@
         width: 13px;
         height: 13px;
         border-radius: 50%;
-        border: 2px solid rgba(255, 179, 64, 0.55);
+        border: 2px solid rgba(18, 23, 29, 0.25);
       }
       #coach .pip.on {
         background: #2ef2c4;
@@ -991,7 +1114,7 @@
         font-size: clamp(12px, 3vmin, 15px);
         font-weight: 700;
         letter-spacing: 0.12em;
-        color: rgba(234, 246, 255, 0.75);
+        color: #3d4753;
       }
       /* Below the card, not inside it. Reserving a line for feedback that is
          absent most of the time made the card permanently taller — and taller
@@ -1017,6 +1140,8 @@
           0 1px 3px rgba(5, 7, 10, 0.95);
       }
       #coach .status.show { opacity: 1; }
+      #coach .status.good { color: #2ef2c4; }
+      #coach .status.bad { color: var(--amber); }
       #coach .status.good { color: #2ef2c4; }
       #coach .status.bad { color: var(--amber); }
       @media (prefers-reduced-motion: reduce) {
