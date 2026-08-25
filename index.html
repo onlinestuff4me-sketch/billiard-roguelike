@@ -1004,8 +1004,10 @@
       /* Actions. The card itself is pointer-transparent so it never eats an aim;
          only these two take taps, and both sit in the card band well clear of
          the thumb zone below the ball. */
-      #coach .next,
-      #coach .skip {
+      /* Gated on .show: a hidden card must not leave a live target behind.
+         opacity alone does not stop hit-testing. */
+      #coach.show .next,
+      #coach.show .skip {
         pointer-events: auto;
         font-family: inherit;
         cursor: pointer;

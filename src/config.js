@@ -209,12 +209,6 @@ export const TRAJECTORY = {
   /** Length of the predicted object-ball departure line. */
   caromConeLength: 6.5,
   /**
-   * Half-angle of the departure cone. Kept narrow: the collision solver is
-   * deterministic, so the object ball's line is a promise, not a guess. The
-   * cone exists to read as a direction at a glance, not to hedge.
-   */
-  caromConeAngle: 0.12,
-  /**
    * Length of the cue ball's own post-impact tangent line — the 90° rule.
    * Showing where *you* end up is what makes a collision legible in advance.
    */

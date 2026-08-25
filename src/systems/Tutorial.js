@@ -354,6 +354,13 @@ export class Tutorial {
     this.spotEl.classList.remove('show');
     this.ringEl.classList.remove('show');
     this.el.classList.remove('show', 'done');
+    // Both buttons are hidden, not merely faded. The card drops to opacity 0
+    // and opacity does not stop hit-testing, so a button left un-hidden here
+    // stayed live as an invisible rect over the playfield — and Skip's handler
+    // still reached `finish`, which starts a new run. Tapping a patch of empty
+    // table restarted the game.
+    this.skipEl.hidden = true;
+    this.nextEl.hidden = true;
     // Emptied rather than left holding the last lesson's text: the card stays
     // in the DOM for a possible replay, and is otherwise one class toggle away
     // from reappearing over live play.
@@ -868,11 +875,14 @@ export class Tutorial {
   _advance() {
     this._awaitingNext = false;
     this.nextEl.hidden = true;
-    this.skipEl.hidden = false;
     if (this.index + 1 >= LESSONS.length) {
       this._finish();
       return;
     }
+    // Un-hidden only once there IS a next lesson to skip. Above the branch, the
+    // last lesson's "Start playing" press re-armed Skip on its way out and left
+    // it live over the running game.
+    this.skipEl.hidden = false;
     this.el.classList.remove('done');
     this._enter(this.index + 1);
   }
