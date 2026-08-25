@@ -31,6 +31,7 @@ import {
   PLAYER,
   PHYSICS,
   CHAIN,
+  ENEMY,
   FEEL,
   BOONS,
   INJECTOR,
@@ -583,8 +584,28 @@ function hitCallout(count) {
  */
 let wasMaxed = false;
 
+/**
+ * The power at which a direct hit SHATTERS a basic ball.
+ *
+ * Derived, not typed: a first strike does `strikeDamage x speedRatio` (the chain
+ * multiplier is still 1.0 on contact one), so the shatter point is wherever that
+ * first reaches a solid's hp. Hard-coding it as a second constant meant the
+ * callout drifted away from the mechanic — it announced at 0.985 while the ball
+ * actually broke from 0.892, so between those two the shot shattered and the
+ * game said nothing.
+ *
+ * Now MAX POWER means one specific, learnable thing: this shot breaks a basic
+ * ball in one.
+ */
+const SHATTER_POWER = (() => {
+  const need = ENEMY.solid.hp / PLAYER.strikeDamage;          // required speedRatio
+  const speed = need * PLAYER.referenceSpeed;                 // required impact speed
+  const p = (speed - PLAYER.launchSpeedMin) / (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin);
+  return clamp(p, PLAYER.minPower, 1);
+})();
+
 function noteAimPower(aim) {
-  const maxed = (aim?.power ?? 0) >= 0.985;
+  const maxed = (aim?.power ?? 0) >= SHATTER_POWER;
   if (maxed && !wasMaxed) {
     const p = player;
     fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.carom, 3.4, 0.3);
