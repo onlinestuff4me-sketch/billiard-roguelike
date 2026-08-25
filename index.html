@@ -952,12 +952,83 @@
         opacity: 0;
         transition: opacity 0.35s ease;
         z-index: 31;
+      }
+      /* The animation is attached ONLY in the shown state. Declared on the base
+         rule it kept setting `opacity` every frame, and a running animation
+         outranks the plain `opacity: 0` above it — so the ring stayed on screen
+         after its lesson was over, floating over a finished table. */
+      #coach-ring.show {
+        opacity: 1;
         animation: spot-pulse 1.9s ease-in-out infinite;
       }
-      #coach-ring.show { opacity: 1; }
       @keyframes spot-pulse {
         0%, 100% { transform: scale(1); opacity: 1; }
         50% { transform: scale(1.04); opacity: 0.72; }
+      }
+
+      /* THE GHOST HAND.
+         A card can name the gesture; only a demonstration teaches it. This is a
+         finger that presses behind the ball, draws back along the cue's own
+         axis to the distance that means full power, and releases — on a loop,
+         until the player does it themselves.
+         Both ends are projected from world space by Tutorial._updateHand, so the
+         path is the actual draw corridor rather than a guess at one. */
+      #coach-hand-track {
+        position: absolute;
+        left: var(--hand-x, 50%);
+        top: var(--hand-y, 50%);
+        width: var(--hand-len, 0px);
+        height: 3px;
+        margin-top: -1.5px;
+        transform-origin: 0 50%;
+        transform: rotate(var(--hand-rot, 0deg));
+        border-radius: 2px;
+        background: linear-gradient(
+          to right,
+          rgba(255, 255, 255, 0.06),
+          rgba(255, 255, 255, 0.42)
+        );
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+        z-index: 32;
+      }
+      #coach-hand-track.show { opacity: 1; }
+
+      #coach-hand {
+        position: absolute;
+        left: var(--hand-x, 50%);
+        top: var(--hand-y, 50%);
+        width: 46px;
+        height: 46px;
+        margin-left: -23px;
+        margin-top: -23px;
+        border-radius: 50%;
+        border: 2.5px solid rgba(255, 255, 255, 0.92);
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.4) 0%,
+          rgba(255, 255, 255, 0.14) 55%,
+          rgba(255, 255, 255, 0) 72%
+        );
+        box-shadow: 0 0 18px rgba(255, 255, 255, 0.5);
+        opacity: 0;
+        pointer-events: none;
+        z-index: 33;
+      }
+      /* Animation lives in the shown state only — the ring above taught us why. */
+      #coach-hand.show {
+        animation: hand-draw 2.6s cubic-bezier(0.33, 0, 0.3, 1) infinite;
+      }
+      @keyframes hand-draw {
+        0%   { opacity: 0; transform: translate(0, 0) scale(1.35); }
+        10%  { opacity: 1; transform: translate(0, 0) scale(1); }
+        18%  { opacity: 1; transform: translate(0, 0) scale(0.88); }
+        58%  { opacity: 1; transform: translate(var(--hand-dx, 0px), var(--hand-dy, 0px)) scale(0.88); }
+        70%  { opacity: 1; transform: translate(var(--hand-dx, 0px), var(--hand-dy, 0px)) scale(0.88); }
+        78%  { opacity: 0.9; transform: translate(var(--hand-dx, 0px), var(--hand-dy, 0px)) scale(1.6); }
+        88%  { opacity: 0; transform: translate(var(--hand-dx, 0px), var(--hand-dy, 0px)) scale(1.8); }
+        100% { opacity: 0; transform: translate(0, 0) scale(1.35); }
       }
 
       #coach {
