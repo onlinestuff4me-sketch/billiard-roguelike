@@ -708,7 +708,15 @@ game.on = {
       silent: true
     });
     game.launchHits += 1;
-    tutorial.notify('hit', { enemy, banked, index: game.launchHits, bounces: p.bouncesUsed });
+    // `killed` matters to the director: a lesson about shattering a ball has
+    // to tell a shatter from a hit that merely moved it.
+    tutorial.notify('hit', {
+      enemy,
+      banked,
+      index: game.launchHits,
+      bounces: p.bouncesUsed,
+      killed: !!result.killed
+    });
 
     // Chaining is the point of the game, so it gets the loudest feedback in it.
     // Every extra body in one launch escalates the callout, pays Focus back and
@@ -772,7 +780,17 @@ game.on = {
 
   /* --- the wall-splat ------------------------------------------------ */
   wallSplat({ enemy, x, z, nx, nz, speed }) {
-    const mult = chainStep();
+    // A WALL IS NOT A CHAIN LINK.
+    //
+    // This called chainStep(), so a ball bouncing around a closed box climbed
+    // the counter on its own. A three-ball rack was seen ending on `10 HITS
+    // x2.5` — six of those hits were splats nobody aimed. The number measured
+    // how long things kept moving, not what the player did, which made it
+    // useless as a skill signal and unteachable as a lesson.
+    //
+    // The splat still hits hard and still scales with a chain that is already
+    // running; it just cannot extend one. HITS now counts contacts you caused.
+    const mult = chainMultiplier();
     const scale = clamp(speed / PHYSICS.wallSplatSpeed, 1, 2.4);
     dealDamage(enemy, PHYSICS.wallSplatDamage * scale * mult, {
       source: 'splat',
