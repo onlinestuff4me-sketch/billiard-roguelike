@@ -37,6 +37,11 @@ import lessonData from '../data/lessons.json';
 
 const KEY = 'billiard-tutorial-done-v1';
 
+/** Where the demonstrating thumb presses: clear of the ball, on the cue's axis. */
+const HAND_PRESS = 2.6;
+/** Where it releases. INPUT.maxDraw is 9.5 — this is a committed, near-full draw. */
+const HAND_RELEASE = 8.6;
+
 
 /**
  * What each lesson ASKS FOR, and how it is judged. Geometry lives in
@@ -63,8 +68,12 @@ const KEY = 'billiard-tutorial-done-v1';
 const RULES = {
   aim: {
     say: 'Aim and shoot the <b>red ball</b>',
-    hint: 'Thumb below the blue ball. <em>Drag down, then let go.</em>',
+    // Names the object and the gesture. The ghost hand shows WHERE and HOW FAR,
+    // so the words no longer have to carry a position ("thumb below the blue
+    // ball") that a demonstration states better in one loop.
+    hint: 'Press <em>anywhere</em> and pull back, like a cue.',
     spot: 'first',
+    hand: true,
     hit: () => 'score',
     shot: (s) => (s.hits === 0 ? 'reject' : null),
     facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
@@ -75,8 +84,9 @@ const RULES = {
 
   goal: {
     say: 'Knock it into the <em>goal</em>',
-    hint: 'Drag <em>right back</em> — the <b>red ball</b> has to carry all the way to the bar.',
+    hint: 'Pull back <em>further</em> — the <b>red ball</b> must reach the bar.',
     spot: 'goal',
+    hand: true,
     usesGoal: true,
     cheer: 'In the goal',
     scold: 'Short — hit it harder, straight down the middle',
@@ -126,8 +136,13 @@ const RULES = {
 
   power: {
     say: 'Pull back <em>further</em>',
-    hint: 'Drag your thumb as far from the ball as it goes. <em>Full power</em> smashes through all three.',
+    // The one fact both novice testers got wrong: power is the thumb's DISTANCE
+    // from the ball, not the length of the drag. A thumb planted far away and
+    // never moved is a full-power shot.
+    hint: 'Power is how <em>far from the ball</em> your thumb is.',
     spot: 'player',
+    hand: true,
+    handDraw: 9.4,
     clearsRack: true,
     cheer: '3 HITS  \u00d71.8 — all yours',
     scold: 'Not enough on it — drag your thumb further from the ball',
@@ -220,8 +235,18 @@ export class Tutorial {
     this.spotEl.id = 'coach-spot';
     this.ringEl = document.createElement('div');
     this.ringEl.id = 'coach-ring';
+    // The ghost hand and the track it draws along. A card can name a gesture;
+    // only a demonstration teaches one, and the gesture here is 209 px long —
+    // far further than a thumb travels by instinct, which is why players stop
+    // pulling at whatever felt like enough.
+    this.trackEl = document.createElement('div');
+    this.trackEl.id = 'coach-hand-track';
+    this.handEl = document.createElement('div');
+    this.handEl.id = 'coach-hand';
     this.layer.appendChild(this.spotEl);
     this.layer.appendChild(this.ringEl);
+    this.layer.appendChild(this.trackEl);
+    this.layer.appendChild(this.handEl);
 
     const el = document.createElement('div');
     el.id = 'coach';
@@ -353,6 +378,8 @@ export class Tutorial {
     this.layer.classList.remove('coaching');
     this.spotEl.classList.remove('show');
     this.ringEl.classList.remove('show');
+    this.handEl.classList.remove('show');
+    this.trackEl.classList.remove('show');
     this.el.classList.remove('show', 'done');
     // Both buttons are hidden, not merely faded. The card drops to opacity 0
     // and opacity does not stop hit-testing, so a button left un-hidden here
@@ -571,6 +598,66 @@ export class Tutorial {
     }
   }
 
+  /**
+   * Drive the ghost hand.
+   *
+   * The demonstration is the real thing, not a cartoon of it: the press point
+   * and the release point are the actual positions a thumb would occupy for
+   * this lesson's own resting heading, projected through the same camera maths
+   * the spotlight uses. So the hand draws back along the cue's own axis, and
+   * stops exactly where full power is.
+   *
+   * It clears the instant a real thumb goes down — the player is now doing it,
+   * and a demonstration competing with their own live preview is noise.
+   */
+  _updateHand() {
+    const lesson = this.lesson;
+    const cam = this.engine?.camera;
+    const off =
+      !lesson?.hand ||
+      this._awaitingNext ||
+      this._launched ||
+      this.input.isAiming ||
+      !cam ||
+      !this.layer.clientWidth;
+    if (off) {
+      this.handEl.classList.remove('show');
+      this.trackEl.classList.remove('show');
+      return;
+    }
+
+    // Behind the ball along the resting heading: the cue's axis, which is the
+    // one direction a draw can travel without changing the aim.
+    const h = this.input.heading;
+    const w = this.layer.clientWidth;
+    const hgt = this.layer.clientHeight;
+    const visX = (cam.right - cam.left) / cam.zoom;
+    const visZ = (cam.top - cam.bottom) / cam.zoom;
+    const toPx = (x, z) => ({
+      x: ((x - cam.position.x) / visX + 0.5) * w,
+      y: ((z - cam.position.z) / visZ + 0.5) * hgt
+    });
+
+    // Start clear of the ball (INPUT.minAimRadius is 0.7; sitting on top of the
+    // ball is the one place the direction goes degenerate) and finish at the
+    // draw this lesson actually wants.
+    const from = toPx(this.player.x - h.x * HAND_PRESS, this.player.z - h.z * HAND_PRESS);
+    const draw = lesson.handDraw || HAND_RELEASE;
+    const to = toPx(this.player.x - h.x * draw, this.player.z - h.z * draw);
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+
+    for (const node of [this.handEl, this.trackEl]) {
+      node.style.setProperty('--hand-x', `${from.x.toFixed(1)}px`);
+      node.style.setProperty('--hand-y', `${from.y.toFixed(1)}px`);
+      node.style.setProperty('--hand-dx', `${dx.toFixed(1)}px`);
+      node.style.setProperty('--hand-dy', `${dy.toFixed(1)}px`);
+      node.classList.add('show');
+    }
+    this.trackEl.style.setProperty('--hand-len', `${Math.hypot(dx, dy).toFixed(1)}px`);
+    this.trackEl.style.setProperty('--hand-rot', `${((Math.atan2(dy, dx) * 180) / Math.PI).toFixed(1)}deg`);
+  }
+
   /* ---------------------------------------------------------------- *
    * Frame
    * ---------------------------------------------------------------- */
@@ -582,6 +669,7 @@ export class Tutorial {
     // still shaking and punching its zoom through the celebration, so it has to
     // be re-projected on frames where nothing else about the lesson is running.
     this._updateSpot();
+    this._updateHand();
 
     if (this._awaitingNext) return;
 
@@ -935,6 +1023,8 @@ export class Tutorial {
     this.el.remove();
     this.spotEl.remove();
     this.ringEl.remove();
+    this.handEl.remove();
+    this.trackEl.remove();
   }
 }
 
