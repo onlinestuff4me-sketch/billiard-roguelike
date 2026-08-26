@@ -1,0 +1,198 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
+  <style>
+    body {
+      margin: 0;
+      background: #05070a;
+      color: #eaf6ff;
+      font-family: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #35f2ff; }
+    a:hover { color: #8ffcff; }
+    .sheet {
+      width: 940px;
+      min-height: 880px;
+      box-sizing: border-box;
+      padding: 34px 36px 38px;
+      background: #05070a;
+      display: flex;
+      flex-direction: column;
+      gap: 26px;
+    }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #35f2ff; }
+    h2.title { margin: 6px 0 0; font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: 0.005em; }
+    .lede { margin: 9px 0 0; max-width: 720px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .lede b { color: #ffe27a; font-weight: 700; }
+
+    .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; }
+    .panel {
+      padding: 20px 22px 22px;
+      border-radius: 6px;
+      background: #080d12;
+      border: 1px solid rgba(29,111,122,0.32);
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #35f2ff; }
+    .panel p { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.72); text-wrap: pretty; }
+    .panel p b { color: #eaf6ff; font-weight: 700; }
+
+    .rules { display: flex; flex-direction: column; gap: 9px; }
+    .rules div { display: flex; gap: 11px; align-items: baseline; font-size: 14px; font-weight: 500; color: rgba(234,246,255,0.76); }
+    .rules .op { flex: 0 0 42px; font-size: 17px; font-weight: 700; color: #ffe27a; letter-spacing: 0.02em; }
+    .rules .op.gold { color: #ffe27a; }
+
+    .formula {
+      padding: 13px 15px;
+      border-radius: 4px;
+      background: #05070a;
+      border-left: 2px solid #ffe27a;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: #eaf6ff;
+      line-height: 1.5;
+    }
+    .formula em { font-style: normal; color: #ffe27a; }
+
+    /* target legend */
+    .legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      padding: 15px 15px 17px;
+      border-radius: 6px;
+      background: #080d12;
+      border: 1px solid rgba(234,246,255,0.09);
+      border-top: 2px solid var(--c);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card .glyph { width: 30px; height: 30px; }
+    .card h4 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); }
+    .card p { margin: 0; font-size: 13px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+
+    /* worked example */
+    .work { display: flex; flex-direction: column; gap: 0; }
+    .step {
+      display: grid;
+      grid-template-columns: 26px 1fr 74px 108px;
+      gap: 16px;
+      align-items: center;
+      padding: 9px 4px;
+      border-bottom: 1px solid rgba(234,246,255,0.08);
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(234,246,255,0.76);
+    }
+    .step:last-child { border-bottom: 0; }
+    .step .i { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: rgba(234,246,255,0.32); }
+    .step .m { font-size: 17px; font-weight: 700; color: #35f2ff; text-align: right; }
+    .step .pay { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: rgba(234,246,255,0.28); text-align: right; }
+    .step.gold { background: rgba(255,226,122,0.06); }
+    .step.gold .m { color: #ffe27a; }
+    .step.gold .pay { color: #ffe27a; }
+    .step.head { border-bottom: 1px solid rgba(234,246,255,0.18); }
+    .step.head span { font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
+    .step.head .m, .step.head .pay { color: rgba(234,246,255,0.4); font-size: 10px; }
+
+    .note {
+      padding: 13px 16px;
+      border-radius: 5px;
+      background: rgba(255,92,225,0.07);
+      border-left: 2px solid #ff5ce1;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.5;
+      color: rgba(234,246,255,0.78);
+    }
+    .note b { color: #ff5ce1; font-weight: 700; }
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <div class="tag">Shared across all three directions</div>
+    <h2 class="title">How you win, and how you score</h2>
+    <p class="lede">One rule change carries the whole redesign: <b>a ball is never destroyed by being hit. It is destroyed by being driven into a target.</b> The cue ball stops being a weapon and becomes a delivery system — which is what makes the shot, not the power, the thing the player is choosing.</p>
+  </div>
+
+  <div class="cols">
+    <div class="panel">
+      <h3>How you win</h3>
+      <p>The <b>room</b> ends when its goal is met — the contract is filled, par is beaten, the threshold is reached. Then the two doors open exactly as they do now, and you shoot into the one you want.</p>
+      <p>The <b>run</b> ends when your hull hits zero. Balls hurt you by touching you, by being fired back out of a live pocket, and by whatever the room's own pressure is. The number you are playing for is your run score.</p>
+      <p>Every room states its goal in one sentence at the top of the screen, and shows progress against it. Nothing about winning is inferred.</p>
+    </div>
+
+    <div class="panel">
+      <h3>How you score</h3>
+      <div class="formula">Every ball is numbered. <em>A ball pays its number × 100</em>, at the multiplier standing the moment it goes down.</div>
+      <p>The stroke opens at ×1 and climbs while the table is still moving. Order matters — bank first, pot last:</p>
+      <div class="rules">
+        <div><span class="op">+1</span><span>each rail the cue ball banks off</span></div>
+        <div><span class="op">+1</span><span>each ball the cue ball touches</span></div>
+        <div><span class="op">+1</span><span>each ball driven into a target</span></div>
+        <div><span class="op gold">×2</span><span>a gold target doubles what has been built</span></div>
+      </div>
+      <p>This is the escalating pentatonic run you already hear — the notes climb with the multiplier, so the audio is the scoreboard.</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="card" style="--c: #35f2ff">
+      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#35f2ff" stroke-width="1.6"/><circle cx="15" cy="15" r="4" fill="#35f2ff"/></svg>
+      <h4>Score</h4>
+      <p>Takes the ball, pays its number. The bread-and-butter target.</p>
+    </div>
+    <div class="card" style="--c: #ffe27a">
+      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#ffe27a" stroke-width="1.8"/><text x="15" y="20" font-size="13" font-weight="700" fill="#ffe27a" text-anchor="middle" font-family="Rajdhani, Arial, sans-serif">2</text></svg>
+      <h4>Gold</h4>
+      <p>Doubles the multiplier you have built, then pays at the doubled rate.</p>
+    </div>
+    <div class="card" style="--c: #ff5ce1">
+      <svg class="glyph" viewBox="0 0 30 30"><rect x="3" y="3" width="24" height="24" rx="4" fill="none" stroke="#ff5ce1" stroke-width="1.6"/><path d="M15,8 L21,15 L15,22 L9,15 Z" fill="#ff5ce1"/></svg>
+      <h4>Upgrade</h4>
+      <p>Pays nothing. Adds a boon pick to the room's reward instead.</p>
+    </div>
+    <div class="card" style="--c: #ff5a3d">
+      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#ff5a3d" stroke-width="1.6"/><path d="M9,8 L22,15 L9,22 Z" fill="#ff5a3d"/></svg>
+      <h4>Live</h4>
+      <p>Pays double, then fires the ball back onto the table at speed, at you.</p>
+    </div>
+    <div class="card" style="--c: rgba(234,246,255,0.5)">
+      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="rgba(234,246,255,0.5)" stroke-width="1.6" stroke-dasharray="4 3"/><line x1="8" y1="8" x2="22" y2="22" stroke="rgba(234,246,255,0.5)" stroke-width="1.8"/></svg>
+      <h4>Scratch</h4>
+      <p>The cue ball into any target. The stroke's score is voided and you re-spot.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>One stroke, itemised — the shot drawn in Direction A</h3>
+    <div class="work">
+      <div class="step head"><span class="i">#</span><span>What happens</span><span class="m">Mult</span><span class="pay">Pays</span></div>
+      <div class="step"><span class="i">01</span><span>Release. The stroke opens.</span><span class="m">×1</span><span class="pay">—</span></div>
+      <div class="step"><span class="i">02</span><span>Cue ball banks off the left rail.</span><span class="m">×2</span><span class="pay">—</span></div>
+      <div class="step"><span class="i">03</span><span>Cue ball cuts the 5.</span><span class="m">×3</span><span class="pay">—</span></div>
+      <div class="step"><span class="i">04</span><span>Cue ball rides the tangent on into the 6.</span><span class="m">×4</span><span class="pay">—</span></div>
+      <div class="step"><span class="i">05</span><span>The 5 is driven into a pocket.</span><span class="m">×5</span><span class="pay">—</span></div>
+      <div class="step gold"><span class="i">06</span><span>It was the <b>gold</b> pocket. The multiplier doubles, and the 5 pays at ×10.</span><span class="m">×10</span><span class="pay">5,000</span></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Where power-ups fit.</b> Destroying a ball with a direct hit is not a rule any more — it is a boon. An earned upgrade that lets a full-power strike shatter on contact is a genuine build-changing pick precisely because the base game says it cannot happen. Same for a boon that turns every rail into a scoring target, or one that keeps the multiplier alive across two strokes.
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
