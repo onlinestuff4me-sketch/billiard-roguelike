@@ -18,180 +18,197 @@
     }
     a { color: #35f2ff; }
     a:hover { color: #8ffcff; }
-    .sheet {
-      width: 940px;
-      min-height: 880px;
+    .board {
       box-sizing: border-box;
-      padding: 34px 36px 38px;
+      padding: 26px 25px 28px;
       background: #05070a;
       display: flex;
       flex-direction: column;
-      gap: 26px;
+      gap: 15px;
     }
     .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #35f2ff; }
-    h2.title { margin: 6px 0 0; font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: 0.005em; }
-    .lede { margin: 9px 0 0; max-width: 720px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
-    .lede b { color: #ffe27a; font-weight: 700; }
+    .title { margin: 0; font-size: 29px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
+    .lede { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.46; color: rgba(234,246,255,0.62); text-wrap: pretty; }
+    .lede b { color: rgba(234,246,255,0.92); font-weight: 600; }
+    .lede em { font-style: normal; color: #ffe27a; font-weight: 600; }
 
-    .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; }
-    .panel {
-      padding: 20px 22px 22px;
-      border-radius: 6px;
-      background: #080d12;
-      border: 1px solid rgba(29,111,122,0.32);
-      display: flex;
-      flex-direction: column;
-      gap: 13px;
+    .stage {
+      width: 360px; height: 640px;
+      align-self: center; position: relative;
+      border-radius: 7px; overflow: hidden; background: #0a1a24;
+      box-shadow: 0 0 0 1px rgba(29,111,122,0.45), 0 18px 44px rgba(0,0,0,0.6);
     }
-    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #35f2ff; }
-    .panel p { margin: 0; font-size: 14px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.72); text-wrap: pretty; }
+    .stage svg { display: block; }
+    .hud { position: absolute; inset: 0; }
+    .lbl { font-size: 8.5px; font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(234,246,255,0.55); }
+
+    .top { position: absolute; top: 13px; left: 13px; right: 13px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .objective { display: flex; flex-direction: column; gap: 4px; padding: 7px 11px 8px; border-radius: 4px; background: rgba(5,7,10,0.74); border-left: 2px solid #35f2ff; }
+    .objective .goal { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; color: #eaf6ff; }
+    .objective .goal em { font-style: normal; color: #ffb340; }
+    .prog { display: flex; align-items: center; gap: 6px; }
+    .pips { display: flex; gap: 3px; }
+    .pip { width: 11px; height: 3px; border-radius: 2px; background: rgba(53,242,255,0.22); }
+    .pip.on { background: #35f2ff; }
+    .prog .n { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: rgba(234,246,255,0.55); }
+    .score { text-align: right; display: flex; flex-direction: column; gap: 1px; }
+    .score .v { font-size: 26px; font-weight: 700; line-height: 0.95; color: #eaf6ff; }
+
+    .strokes { position: absolute; top: 116px; left: 13px; display: flex; flex-direction: column; gap: 5px; padding: 7px 11px 9px; border-radius: 4px; background: rgba(5,7,10,0.74); border-left: 2px solid #ffe27a; }
+    .strokes .lbl { color: rgba(255,226,122,0.8); }
+    .cues { display: flex; gap: 5px; align-items: flex-end; }
+    .cue { width: 5px; height: 22px; border-radius: 2px; background: #ffe27a; }
+    .cue.spent { background: rgba(255,226,122,0.16); }
+    .strokes .n { font-size: 9.5px; font-weight: 600; letter-spacing: 0.14em; color: rgba(234,246,255,0.5); }
+
+    .mult { position: absolute; top: 270px; right: 13px; padding: 8px 11px 9px; border-radius: 5px; background: rgba(5,7,10,0.8); border: 1px solid rgba(255,226,122,0.42); text-align: right; display: flex; flex-direction: column; gap: 2px; }
+    .mult .v { font-size: 30px; font-weight: 700; line-height: 0.9; color: #ffe27a; }
+    .mult .parts { font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(234,246,255,0.6); }
+
+    .bottom { position: absolute; left: 13px; right: 13px; bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .meter { display: flex; flex-direction: column; gap: 4px; }
+    .meter.right { align-items: flex-end; }
+    .hpbar { display: flex; gap: 2px; }
+    .hpseg { width: 15px; height: 4px; border-radius: 1px; background: #35f2ff; }
+    .hpseg.off { background: rgba(53,242,255,0.18); }
+    .frz { display: flex; gap: 4px; align-items: center; }
+    .frzd { width: 9px; height: 9px; transform: rotate(45deg); border: 1.4px solid rgba(53,242,255,0.3); }
+    .frzd.on { background: #35f2ff; border-color: #35f2ff; }
+    .meter.dim .lbl { color: rgba(234,246,255,0.3); }
+
+    .foot { display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
+    .rule { height: 1px; background: rgba(234,246,255,0.12); }
+    .row { display: flex; gap: 11px; align-items: baseline; }
+    .row .k { flex: 0 0 62px; font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #35f2ff; }
+    .row.risk .k { color: #ff5a3d; }
+    .row.gold .k { color: #ffe27a; }
+    .row p { margin: 0; font-size: 12.5px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+    .row p b { color: #eaf6ff; font-weight: 700; }
+    .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
+    .sheet { box-sizing: border-box; width: 1000px; min-height: 1060px; padding: 34px 36px 38px; background: #05070a; display: flex; flex-direction: column; gap: 24px; }
+    .h2b { margin: 6px 0 0; font-size: 34px; font-weight: 700; line-height: 1; color: #eaf6ff; }
+    .ledeb { margin: 9px 0 0; max-width: 780px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .ledeb b { color: #ffe27a; font-weight: 700; }
+    .sources { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+    .src { padding: 16px 17px 18px; border-radius: 6px; background: #080d12; border: 1px solid rgba(234,246,255,0.09); border-top: 2px solid var(--c); display: flex; flex-direction: column; gap: 7px; }
+    .src .n2 { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: rgba(234,246,255,0.3); }
+    .src h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); }
+    .src p { margin: 0; font-size: 13px; font-weight: 500; line-height: 1.44; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .src p b { color: #eaf6ff; font-weight: 700; }
+    .cols2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
+    .stack { display: flex; flex-direction: column; gap: 22px; }
+    .panel { padding: 20px 22px 22px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.32); display: flex; flex-direction: column; gap: 13px; }
+    .panel h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #35f2ff; }
+    .panel p { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.7); text-wrap: pretty; }
     .panel p b { color: #eaf6ff; font-weight: 700; }
-
     .rules { display: flex; flex-direction: column; gap: 9px; }
-    .rules div { display: flex; gap: 11px; align-items: baseline; font-size: 14px; font-weight: 500; color: rgba(234,246,255,0.76); }
-    .rules .op { flex: 0 0 42px; font-size: 17px; font-weight: 700; color: #ffe27a; letter-spacing: 0.02em; }
-    .rules .op.gold { color: #ffe27a; }
-
-    .formula {
-      padding: 13px 15px;
-      border-radius: 4px;
-      background: #05070a;
-      border-left: 2px solid #ffe27a;
-      font-size: 15px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      color: #eaf6ff;
-      line-height: 1.5;
-    }
-    .formula em { font-style: normal; color: #ffe27a; }
-
-    /* target legend */
-    .legend { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
-    .card {
-      padding: 15px 15px 17px;
-      border-radius: 6px;
-      background: #080d12;
-      border: 1px solid rgba(234,246,255,0.09);
-      border-top: 2px solid var(--c);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .card .glyph { width: 30px; height: 30px; }
-    .card h4 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); }
-    .card p { margin: 0; font-size: 13px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.66); text-wrap: pretty; }
-
-    /* worked example */
-    .work { display: flex; flex-direction: column; gap: 0; }
-    .step {
-      display: grid;
-      grid-template-columns: 26px 1fr 74px 108px;
-      gap: 16px;
-      align-items: center;
-      padding: 9px 4px;
-      border-bottom: 1px solid rgba(234,246,255,0.08);
-      font-size: 14px;
-      font-weight: 500;
-      color: rgba(234,246,255,0.76);
-    }
+    .rules div { display: flex; gap: 12px; align-items: baseline; font-size: 14px; font-weight: 500; color: rgba(234,246,255,0.76); }
+    .rules .op { flex: 0 0 40px; font-size: 17px; font-weight: 700; color: #ffe27a; }
+    .ramp { display: flex; flex-direction: column; }
+    .rrow { display: grid; grid-template-columns: 60px 46px 62px 56px 1fr; gap: 10px; align-items: center; padding: 8px 2px; border-bottom: 1px solid rgba(234,246,255,0.08); font-size: 13.5px; font-weight: 600; color: rgba(234,246,255,0.74); }
+    .rrow:last-child { border-bottom: 0; }
+    .rrow .w { font-size: 12.5px; font-weight: 500; color: rgba(234,246,255,0.5); text-wrap: pretty; }
+    .rrow.hd { border-bottom: 1px solid rgba(234,246,255,0.2); }
+    .rrow.hd span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
+    .sp { font-weight: 700; }
+    .sp.pos { color: #2ef2c4; }
+    .sp.zero { color: #eaf6ff; }
+    .sp.neg { color: #ff5a3d; }
+    .work { display: flex; flex-direction: column; }
+    .step { display: grid; grid-template-columns: 24px 1fr 62px 84px; gap: 14px; align-items: center; padding: 8px 3px; border-bottom: 1px solid rgba(234,246,255,0.08); font-size: 13.5px; font-weight: 500; color: rgba(234,246,255,0.76); }
     .step:last-child { border-bottom: 0; }
-    .step .i { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: rgba(234,246,255,0.32); }
-    .step .m { font-size: 17px; font-weight: 700; color: #35f2ff; text-align: right; }
-    .step .pay { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: rgba(234,246,255,0.28); text-align: right; }
+    .step .i { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; color: rgba(234,246,255,0.3); }
+    .step .m { font-size: 16px; font-weight: 700; color: #35f2ff; text-align: right; }
+    .step .pay { font-size: 14px; font-weight: 700; color: rgba(234,246,255,0.25); text-align: right; }
     .step.gold { background: rgba(255,226,122,0.06); }
-    .step.gold .m { color: #ffe27a; }
-    .step.gold .pay { color: #ffe27a; }
-    .step.head { border-bottom: 1px solid rgba(234,246,255,0.18); }
-    .step.head span { font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
-    .step.head .m, .step.head .pay { color: rgba(234,246,255,0.4); font-size: 10px; }
-
-    .note {
-      padding: 13px 16px;
-      border-radius: 5px;
-      background: rgba(255,92,225,0.07);
-      border-left: 2px solid #ff5ce1;
-      font-size: 14px;
-      font-weight: 500;
-      line-height: 1.5;
-      color: rgba(234,246,255,0.78);
-    }
+    .step.gold .m, .step.gold .pay { color: #ffe27a; }
+    .step.hd { border-bottom: 1px solid rgba(234,246,255,0.18); }
+    .step.hd span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
+    .step.hd .m, .step.hd .pay { color: rgba(234,246,255,0.4); font-size: 9.5px; }
+    .note { padding: 14px 17px; border-radius: 5px; background: rgba(255,92,225,0.07); border-left: 2px solid #ff5ce1; font-size: 14px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.78); }
     .note b { color: #ff5ce1; font-weight: 700; }
   </style>
 </helmet>
 
 <div class="sheet">
   <div>
-    <div class="tag">Shared across all three directions</div>
-    <h2 class="title">How you win, and how you score</h2>
-    <p class="lede">One rule change carries the whole redesign: <b>a ball is never destroyed by being hit. It is destroyed by being driven into a target.</b> The cue ball stops being a weapon and becomes a delivery system — which is what makes the shot, not the power, the thing the player is choosing.</p>
+    <div class="tag">The economy</div>
+    <h2 class="h2b">How you win, and how you score</h2>
+    <p class="ledeb">One rule change carries the redesign: <b>a ball is never destroyed by being hit — only by being driven into a target.</b> The cue ball stops being a weapon and becomes a delivery system, which is what makes the shot, rather than the power, the thing you are choosing.</p>
   </div>
 
-  <div class="cols">
-    <div class="panel">
-      <h3>How you win</h3>
-      <p>The <b>room</b> ends when its goal is met — the contract is filled, par is beaten, the threshold is reached. Then the two doors open exactly as they do now, and you shoot into the one you want.</p>
-      <p>The <b>run</b> ends when your hull hits zero. Balls hurt you by touching you, by being fired back out of a live pocket, and by whatever the room's own pressure is. The number you are playing for is your run score.</p>
-      <p>Every room states its goal in one sentence at the top of the screen, and shows progress against it. Nothing about winning is inferred.</p>
+  <div class="sources">
+    <div class="src" style="--c: #35f2ff">
+      <div class="n2">01</div>
+      <h4>Pots</h4>
+      <p>Every ball is numbered. It pays <b>its number × 100</b>, at the multiplier standing the moment it drops.</p>
     </div>
+    <div class="src" style="--c: #ffe27a">
+      <div class="n2">02</div>
+      <h4>Strokes saved</h4>
+      <p>Every stroke left in the budget at room end pays <b>500 × room number</b>. The skill income.</p>
+    </div>
+    <div class="src" style="--c: #2ef2c4">
+      <div class="n2">03</div>
+      <h4>Multipliers picked up</h4>
+      <p>Gold rings on the felt and gold pockets on the rail <b>double</b> whatever you have built this stroke.</p>
+    </div>
+    <div class="src" style="--c: #ff5ce1">
+      <div class="n2">04</div>
+      <h4>Multipliers earned</h4>
+      <p>Banks, extra balls touched, extra balls dropped. <b>Tricks compound</b> inside a single stroke.</p>
+    </div>
+  </div>
 
-    <div class="panel">
-      <h3>How you score</h3>
-      <div class="formula">Every ball is numbered. <em>A ball pays its number × 100</em>, at the multiplier standing the moment it goes down.</div>
-      <p>The stroke opens at ×1 and climbs while the table is still moving. Order matters — bank first, pot last:</p>
-      <div class="rules">
-        <div><span class="op">+1</span><span>each rail the cue ball banks off</span></div>
-        <div><span class="op">+1</span><span>each ball the cue ball touches</span></div>
-        <div><span class="op">+1</span><span>each ball driven into a target</span></div>
-        <div><span class="op gold">×2</span><span>a gold target doubles what has been built</span></div>
+  <div class="cols2">
+    <div class="stack">
+      <div class="panel">
+        <h3>The multiplier ladder</h3>
+        <p>Each stroke opens at ×1 and climbs while the table is still moving:</p>
+        <div class="rules">
+          <div><span class="op">+1</span><span>each rail the cue ball banks off</span></div>
+          <div><span class="op">+1</span><span>each ball the cue ball touches</span></div>
+          <div><span class="op">+1</span><span>each ball sunk, or driven through a gate</span></div>
+          <div><span class="op">×2</span><span>a gold ring or gold pocket doubles what is built</span></div>
+        </div>
+        <p>Points are paid <b>at the instant a ball drops</b>, at the multiplier standing then — so the order of a route is worth real money. Bank before you pot; take the gold ring late, not early.</p>
+        <p>This is the escalating pentatonic run you already hear. The notes climb with the multiplier, so the audio is the scoreboard.</p>
       </div>
-      <p>This is the escalating pentatonic run you already hear — the notes climb with the multiplier, so the audio is the scoreboard.</p>
-    </div>
-  </div>
 
-  <div class="legend">
-    <div class="card" style="--c: #35f2ff">
-      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#35f2ff" stroke-width="1.6"/><circle cx="15" cy="15" r="4" fill="#35f2ff"/></svg>
-      <h4>Score</h4>
-      <p>Takes the ball, pays its number. The bread-and-butter target.</p>
+      <div class="panel">
+        <h3>One stroke, itemised — the route drawn on the table</h3>
+        <div class="work">
+          <div class="step hd"><span class="i">#</span><span>What happens</span><span class="m">Mult</span><span class="pay">Pays</span></div>
+          <div class="step"><span class="i">01</span><span>Release. The stroke opens.</span><span class="m">×1</span><span class="pay">—</span></div>
+          <div class="step gold"><span class="i">02</span><span>Cue ball crosses the gold ring.</span><span class="m">×2</span><span class="pay">—</span></div>
+          <div class="step"><span class="i">03</span><span>Banks off the left rail.</span><span class="m">×3</span><span class="pay">—</span></div>
+          <div class="step"><span class="i">04</span><span>Cuts the 5.</span><span class="m">×4</span><span class="pay">—</span></div>
+          <div class="step gold"><span class="i">05</span><span>The 5 drops, top-right pocket.</span><span class="m">×5</span><span class="pay">2,500</span></div>
+          <div class="step"><span class="i">06</span><span>Cue rides the tangent on into the 3.</span><span class="m">×6</span><span class="pay">—</span></div>
+        </div>
+        <p>Taking the ring <em style="font-style: normal; color: #ffe27a">after</em> the bank instead of before would have doubled a ×2 into a ×4 and paid <b>3,500</b> for the same shape. That gap is the game.</p>
+      </div>
     </div>
-    <div class="card" style="--c: #ffe27a">
-      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#ffe27a" stroke-width="1.8"/><text x="15" y="20" font-size="13" font-weight="700" fill="#ffe27a" text-anchor="middle" font-family="Rajdhani, Arial, sans-serif">2</text></svg>
-      <h4>Gold</h4>
-      <p>Doubles the multiplier you have built, then pays at the doubled rate.</p>
-    </div>
-    <div class="card" style="--c: #ff5ce1">
-      <svg class="glyph" viewBox="0 0 30 30"><rect x="3" y="3" width="24" height="24" rx="4" fill="none" stroke="#ff5ce1" stroke-width="1.6"/><path d="M15,8 L21,15 L15,22 L9,15 Z" fill="#ff5ce1"/></svg>
-      <h4>Upgrade</h4>
-      <p>Pays nothing. Adds a boon pick to the room's reward instead.</p>
-    </div>
-    <div class="card" style="--c: #ff5a3d">
-      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="#ff5a3d" stroke-width="1.6"/><path d="M9,8 L22,15 L9,22 Z" fill="#ff5a3d"/></svg>
-      <h4>Live</h4>
-      <p>Pays double, then fires the ball back onto the table at speed, at you.</p>
-    </div>
-    <div class="card" style="--c: rgba(234,246,255,0.5)">
-      <svg class="glyph" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="rgba(234,246,255,0.5)" stroke-width="1.6" stroke-dasharray="4 3"/><line x1="8" y1="8" x2="22" y2="22" stroke="rgba(234,246,255,0.5)" stroke-width="1.8"/></svg>
-      <h4>Scratch</h4>
-      <p>The cue ball into any target. The stroke's score is voided and you re-spot.</p>
-    </div>
-  </div>
 
-  <div class="panel">
-    <h3>One stroke, itemised — the shot drawn in Direction A</h3>
-    <div class="work">
-      <div class="step head"><span class="i">#</span><span>What happens</span><span class="m">Mult</span><span class="pay">Pays</span></div>
-      <div class="step"><span class="i">01</span><span>Release. The stroke opens.</span><span class="m">×1</span><span class="pay">—</span></div>
-      <div class="step"><span class="i">02</span><span>Cue ball banks off the left rail.</span><span class="m">×2</span><span class="pay">—</span></div>
-      <div class="step"><span class="i">03</span><span>Cue ball cuts the 5.</span><span class="m">×3</span><span class="pay">—</span></div>
-      <div class="step"><span class="i">04</span><span>Cue ball rides the tangent on into the 6.</span><span class="m">×4</span><span class="pay">—</span></div>
-      <div class="step"><span class="i">05</span><span>The 5 is driven into a pocket.</span><span class="m">×5</span><span class="pay">—</span></div>
-      <div class="step gold"><span class="i">06</span><span>It was the <b>gold</b> pocket. The multiplier doubles, and the 5 pays at ×10.</span><span class="m">×10</span><span class="pay">5,000</span></div>
+    <div class="panel">
+      <h3>The stroke ramp</h3>
+      <p>The rack grows and the budget shrinks. <b>Spare</b> is the number of strokes you can afford to waste — once it goes negative, a single stroke has to do double duty.</p>
+      <div class="ramp">
+        <div class="rrow hd"><span>Rooms</span><span>Rack</span><span>Strokes</span><span>Spare</span><span>What it forces</span></div>
+        <div class="rrow"><span>1–2</span><span>4</span><span>7</span><span class="sp pos">+3</span><span class="w">Room to miss. Learn the table.</span></div>
+        <div class="rrow"><span>3–4</span><span>5</span><span>7</span><span class="sp pos">+2</span><span class="w">One wasted stroke is affordable.</span></div>
+        <div class="rrow"><span>5–6</span><span>5</span><span>6</span><span class="sp pos">+1</span><span class="w">Every stroke but one has to pot.</span></div>
+        <div class="rrow"><span>7–8</span><span>6</span><span>6</span><span class="sp zero">0</span><span class="w">Every stroke has to pot.</span></div>
+        <div class="rrow"><span>9–10</span><span>7</span><span>6</span><span class="sp neg">−1</span><span class="w">One stroke has to pot twice.</span></div>
+        <div class="rrow"><span>11+</span><span>7</span><span>5</span><span class="sp neg">−2</span><span class="w">Two doubles, or a gate and a pocket in one.</span></div>
+      </div>
+      <p>Because saved strokes pay <b>500 × room</b>, the ramp cuts both ways: the rooms where a spare stroke is hardest to keep are the rooms where keeping one is worth the most.</p>
+      <p>Failing a contract is not instant death. The rack breaks loose and every ball still standing takes a bite out of your hull — so a bad room costs you the <em style="font-style: normal; color: #ff5a3d">next</em> few rooms.</p>
     </div>
   </div>
 
   <div class="note">
-    <b>Where power-ups fit.</b> Destroying a ball with a direct hit is not a rule any more — it is a boon. An earned upgrade that lets a full-power strike shatter on contact is a genuine build-changing pick precisely because the base game says it cannot happen. Same for a boon that turns every rail into a scoring target, or one that keeps the multiplier alive across two strokes.
-  </div>
+    <b>Where power-ups fit.</b> Destroying a ball with a direct hit is no longer a rule — it is a prize. A boon that lets a full-power strike shatter on contact is genuinely build-changing precisely because the base game forbids it. Same shape for the others: <b>freeze</b> (stop the table mid-stroke), <b>+1 stroke</b> per room, <b>rails count double</b>, <b>the multiplier survives into the next stroke</b>. Each one bends a rule the player has already learned.</div>
 </div>
 </x-dc>
 </body>

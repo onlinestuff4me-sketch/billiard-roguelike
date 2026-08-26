@@ -19,8 +19,6 @@
     a { color: #35f2ff; }
     a:hover { color: #8ffcff; }
     .board {
-      width: 410px;
-      min-height: 980px;
       box-sizing: border-box;
       padding: 26px 25px 28px;
       background: #05070a;
@@ -28,177 +26,88 @@
       flex-direction: column;
       gap: 15px;
     }
-    .tag {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.32em;
-      text-transform: uppercase;
-      color: #35f2ff;
-    }
-    .title {
-      margin: 0;
-      font-size: 29px;
-      font-weight: 700;
-      line-height: 1.02;
-      letter-spacing: 0.005em;
-      color: #eaf6ff;
-    }
-    .lede {
-      margin: 0;
-      font-size: 13.5px;
-      font-weight: 500;
-      line-height: 1.46;
-      color: rgba(234, 246, 255, 0.62);
-      text-wrap: pretty;
-    }
-    .lede b { color: rgba(234, 246, 255, 0.92); font-weight: 600; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #35f2ff; }
+    .title { margin: 0; font-size: 29px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
+    .lede { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.46; color: rgba(234,246,255,0.62); text-wrap: pretty; }
+    .lede b { color: rgba(234,246,255,0.92); font-weight: 600; }
+    .lede em { font-style: normal; color: #ffe27a; font-weight: 600; }
 
     .stage {
-      width: 360px;
-      height: 640px;
-      align-self: center;
-      position: relative;
-      border-radius: 7px;
-      overflow: hidden;
-      background: #0a1a24;
-      box-shadow: 0 0 0 1px rgba(29, 111, 122, 0.45), 0 18px 44px rgba(0, 0, 0, 0.6);
+      width: 360px; height: 640px;
+      align-self: center; position: relative;
+      border-radius: 7px; overflow: hidden; background: #0a1a24;
+      box-shadow: 0 0 0 1px rgba(29,111,122,0.45), 0 18px 44px rgba(0,0,0,0.6);
     }
     .stage svg { display: block; }
     .hud { position: absolute; inset: 0; }
-    .lbl {
-      font-size: 8.5px;
-      font-weight: 600;
-      letter-spacing: 0.28em;
-      text-transform: uppercase;
-      color: rgba(234, 246, 255, 0.55);
-    }
+    .lbl { font-size: 8.5px; font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(234,246,255,0.55); }
 
-    /* top band ------------------------------------------------------- */
-    .top {
-      position: absolute;
-      top: 13px; left: 13px; right: 13px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    .objective {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      padding: 7px 11px 8px;
-      border-radius: 4px;
-      background: rgba(5, 7, 10, 0.72);
-      border-left: 2px solid #35f2ff;
-    }
-    .objective .goal {
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.09em;
-      color: #eaf6ff;
-    }
+    .top { position: absolute; top: 13px; left: 13px; right: 13px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .objective { display: flex; flex-direction: column; gap: 4px; padding: 7px 11px 8px; border-radius: 4px; background: rgba(5,7,10,0.74); border-left: 2px solid #35f2ff; }
+    .objective .goal { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; color: #eaf6ff; }
     .objective .goal em { font-style: normal; color: #ffb340; }
     .prog { display: flex; align-items: center; gap: 6px; }
     .pips { display: flex; gap: 3px; }
-    .pip { width: 13px; height: 3px; border-radius: 2px; background: rgba(53, 242, 255, 0.22); }
+    .pip { width: 11px; height: 3px; border-radius: 2px; background: rgba(53,242,255,0.22); }
     .pip.on { background: #35f2ff; }
-    .prog .n { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: rgba(234, 246, 255, 0.55); }
-
+    .prog .n { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: rgba(234,246,255,0.55); }
     .score { text-align: right; display: flex; flex-direction: column; gap: 1px; }
-    .score .v {
-      font-size: 27px;
-      font-weight: 700;
-      line-height: 0.95;
-      letter-spacing: 0.02em;
-      color: #eaf6ff;
-    }
+    .score .v { font-size: 26px; font-weight: 700; line-height: 0.95; color: #eaf6ff; }
 
-    /* multiplier pill ------------------------------------------------ */
-    .mult {
-      position: absolute;
-      top: 258px; right: 13px;
-      padding: 8px 11px 9px;
-      border-radius: 5px;
-      background: rgba(5, 7, 10, 0.78);
-      border: 1px solid rgba(255, 226, 122, 0.4);
-      text-align: right;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .mult .v {
-      font-size: 30px;
-      font-weight: 700;
-      line-height: 0.9;
-      color: #ffe27a;
-    }
-    .mult .parts { font-size: 9px; font-weight: 600; letter-spacing: 0.13em; color: rgba(234, 246, 255, 0.6); }
+    .strokes { position: absolute; top: 116px; left: 13px; display: flex; flex-direction: column; gap: 5px; padding: 7px 11px 9px; border-radius: 4px; background: rgba(5,7,10,0.74); border-left: 2px solid #ffe27a; }
+    .strokes .lbl { color: rgba(255,226,122,0.8); }
+    .cues { display: flex; gap: 5px; align-items: flex-end; }
+    .cue { width: 5px; height: 22px; border-radius: 2px; background: #ffe27a; }
+    .cue.spent { background: rgba(255,226,122,0.16); }
+    .strokes .n { font-size: 9.5px; font-weight: 600; letter-spacing: 0.14em; color: rgba(234,246,255,0.5); }
 
-    /* bottom band ---------------------------------------------------- */
-    .bottom {
-      position: absolute;
-      left: 13px; right: 13px; bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-    }
-    .hp { display: flex; flex-direction: column; gap: 4px; }
+    .mult { position: absolute; top: 270px; right: 13px; padding: 8px 11px 9px; border-radius: 5px; background: rgba(5,7,10,0.8); border: 1px solid rgba(255,226,122,0.42); text-align: right; display: flex; flex-direction: column; gap: 2px; }
+    .mult .v { font-size: 30px; font-weight: 700; line-height: 0.9; color: #ffe27a; }
+    .mult .parts { font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(234,246,255,0.6); }
+
+    .bottom { position: absolute; left: 13px; right: 13px; bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .meter { display: flex; flex-direction: column; gap: 4px; }
+    .meter.right { align-items: flex-end; }
     .hpbar { display: flex; gap: 2px; }
     .hpseg { width: 15px; height: 4px; border-radius: 1px; background: #35f2ff; }
-    .hpseg.off { background: rgba(53, 242, 255, 0.18); }
-    .focus { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .hpseg.off { background: rgba(53,242,255,0.18); }
+    .frz { display: flex; gap: 4px; align-items: center; }
+    .frzd { width: 9px; height: 9px; transform: rotate(45deg); border: 1.4px solid rgba(53,242,255,0.3); }
+    .frzd.on { background: #35f2ff; border-color: #35f2ff; }
+    .meter.dim .lbl { color: rgba(234,246,255,0.3); }
 
-    /* footer --------------------------------------------------------- */
     .foot { display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
-    .rule { height: 1px; background: rgba(234, 246, 255, 0.12); }
+    .rule { height: 1px; background: rgba(234,246,255,0.12); }
     .row { display: flex; gap: 11px; align-items: baseline; }
-    .row .k {
-      flex: 0 0 62px;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #35f2ff;
-    }
+    .row .k { flex: 0 0 62px; font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #35f2ff; }
     .row.risk .k { color: #ff5a3d; }
-    .row p {
-      margin: 0;
-      font-size: 12.5px;
-      font-weight: 500;
-      line-height: 1.42;
-      color: rgba(234, 246, 255, 0.7);
-      text-wrap: pretty;
-    }
+    .row.gold .k { color: #ffe27a; }
+    .row p { margin: 0; font-size: 12.5px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+    .row p b { color: #eaf6ff; font-weight: 700; }
     .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
   </style>
 </helmet>
 
-<div class="board">
-  <div class="tag">Direction A · leading</div>
-  <h2 class="title">Pockets &amp; Contracts</h2>
-  <p class="lede">Six typed pockets, cut into the rails where a real table has them. <b>A ball is never destroyed by being hit — only by being driven into a pocket.</b> Each room deals a contract naming what has to go down, and the pockets re-roll their types every room.</p>
+<div class="board" style="width: 410px; min-height: 1000px;">
+  <div class="tag">The room, in play</div>
+  <h2 class="title">A rack, a contract, a stroke budget</h2>
+  <p class="lede"><b>Nothing moves until you shoot.</b> The rack is a static puzzle — take as long as you like reading it. The contract names what has to go down; the stroke budget is part of the contract, and it tightens every few rooms.</p>
 
   <div class="stage">
     <svg width="360" height="640" viewBox="0 0 360 640" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="vig" cx="50%" cy="46%" r="72%">
+        <radialGradient id="vigM" cx="50%" cy="46%" r="72%">
           <stop offset="0%" stop-color="#0b3a2e"/>
           <stop offset="62%" stop-color="#0a3529"/>
           <stop offset="100%" stop-color="#06231d"/>
         </radialGradient>
-        <marker id="arrowGold" markerWidth="7" markerHeight="7" refX="5.4" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#ffe27a"/>
+        <marker id="arrowCy" markerWidth="7" markerHeight="7" refX="5.4" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#35f2ff"/>
         </marker>
       </defs>
-
-      <!-- rail frame -->
       <rect x="0" y="0" width="360" height="640" fill="#0a1a24"/>
       <rect x="1" y="1" width="358" height="638" fill="none" stroke="#1d6f7a" stroke-width="1.4" opacity="0.5"/>
-
-      <!-- felt -->
-      <rect x="11" y="11" width="338" height="618" rx="3" fill="url(#vig)"/>
-
-      <!-- diamond grid -->
+      <rect x="11" y="11" width="338" height="618" rx="3" fill="url(#vigM)"/>
       <g stroke="#14624c" stroke-width="0.9" opacity="0.28">
         <line x1="95.5" y1="11" x2="95.5" y2="629"/>
         <line x1="180" y1="11" x2="180" y2="629"/>
@@ -209,99 +118,104 @@
       </g>
 
       <!-- ============ POCKETS ============ -->
-      <!-- top-left : UPGRADE -->
       <g>
-        <circle cx="24" cy="24" r="19" fill="none" stroke="#ff5ce1" stroke-width="6" opacity="0.13"/>
-        <circle cx="24" cy="24" r="15" fill="#05070a" stroke="#ff5ce1" stroke-width="1.5"/>
-        <path d="M24,17 L30,24 L24,31 L18,24 Z" fill="#ff5ce1"/>
+        <circle cx="24" cy="24" r="19" fill="none" stroke="#ffe27a" stroke-width="6" opacity="0.15"/>
+        <circle cx="24" cy="24" r="15" fill="#05070a" stroke="#ffe27a" stroke-width="1.7"/>
+        <text class="svgtext" x="24" y="29" font-size="13" font-weight="700" fill="#ffe27a" text-anchor="middle">2</text>
       </g>
-      <text class="svgtext" x="46" y="27" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#ff5ce1" opacity="0.85">UPGRADE</text>
-
-      <!-- top-right : SCORE -->
+      <text class="svgtext" x="46" y="27" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#ffe27a">GOLD</text>
       <g>
         <circle cx="336" cy="24" r="19" fill="none" stroke="#35f2ff" stroke-width="6" opacity="0.13"/>
         <circle cx="336" cy="24" r="15" fill="#05070a" stroke="#35f2ff" stroke-width="1.5"/>
         <circle cx="336" cy="24" r="4.2" fill="#35f2ff"/>
       </g>
-      <text class="svgtext" x="314" y="27" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#35f2ff" opacity="0.85" text-anchor="end">SCORE</text>
-
-      <!-- mid-left : LIVE (kicks the ball back at you) -->
       <g>
         <circle cx="18" cy="320" r="19" fill="none" stroke="#ff5a3d" stroke-width="6" opacity="0.14"/>
         <circle cx="18" cy="320" r="15" fill="#05070a" stroke="#ff5a3d" stroke-width="1.5"/>
         <path d="M12,313 L24,320 L12,327 Z" fill="#ff5a3d"/>
       </g>
-      <text class="svgtext" x="40" y="323" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#ff5a3d" opacity="0.9">LIVE</text>
-
-      <!-- mid-right : GOLD x2 -->
+      <text class="svgtext" x="40" y="323" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#ff5a3d">LIVE</text>
       <g>
-        <circle cx="342" cy="320" r="21" fill="none" stroke="#ffe27a" stroke-width="7" opacity="0.16"/>
-        <circle cx="342" cy="320" r="15" fill="#05070a" stroke="#ffe27a" stroke-width="1.8"/>
-        <text class="svgtext" x="342" y="325" font-size="13" font-weight="700" fill="#ffe27a" text-anchor="middle">2</text>
+        <circle cx="342" cy="320" r="19" fill="none" stroke="#ff5ce1" stroke-width="6" opacity="0.13"/>
+        <circle cx="342" cy="320" r="15" fill="#05070a" stroke="#ff5ce1" stroke-width="1.5"/>
+        <path d="M342,313 L348,320 L342,327 L336,320 Z" fill="#ff5ce1"/>
       </g>
-      <text class="svgtext" x="320" y="296" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#ffe27a" text-anchor="end">GOLD ×2</text>
-
-      <!-- bottom-left : SCORE -->
+      <text class="svgtext" x="320" y="345" font-size="8.5" font-weight="600" letter-spacing="1.9" fill="#ff5ce1" text-anchor="end">UPGRADE</text>
       <g>
         <circle cx="24" cy="616" r="19" fill="none" stroke="#35f2ff" stroke-width="6" opacity="0.13"/>
         <circle cx="24" cy="616" r="15" fill="#05070a" stroke="#35f2ff" stroke-width="1.5"/>
         <circle cx="24" cy="616" r="4.2" fill="#35f2ff"/>
       </g>
-      <!-- bottom-right : SCORE -->
       <g>
         <circle cx="336" cy="616" r="19" fill="none" stroke="#35f2ff" stroke-width="6" opacity="0.13"/>
         <circle cx="336" cy="616" r="15" fill="#05070a" stroke="#35f2ff" stroke-width="1.5"/>
         <circle cx="336" cy="616" r="4.2" fill="#35f2ff"/>
       </g>
-      <text class="svgtext" x="180" y="632" font-size="8" font-weight="600" letter-spacing="2.2" fill="rgba(234,246,255,0.34)" text-anchor="middle">SCRATCH RAIL — YOUR OWN POCKETS</text>
 
-      <!-- ============ THE SHOT ============ -->
-      <!-- cue -> left rail -->
-      <line x1="178.6" y1="547.1" x2="23" y2="438.1" stroke="#35f2ff" stroke-width="2" opacity="0.9"/>
-      <!-- bank marker -->
-      <circle cx="23" cy="438.1" r="6.5" fill="none" stroke="#35f2ff" stroke-width="1.4" opacity="0.75"/>
-      <text class="svgtext" x="37" y="428" font-size="9" font-weight="700" letter-spacing="1.2" fill="#35f2ff" opacity="0.8">BANK 1</text>
-      <!-- rail -> ghost -->
-      <line x1="23" y1="438.1" x2="189.4" y2="321.5" stroke="#35f2ff" stroke-width="2" opacity="0.72"/>
-      <!-- ghost ball at contact -->
-      <circle cx="189.4" cy="321.5" r="12" fill="none" stroke="#8ffcff" stroke-width="1.3" stroke-dasharray="3 3" opacity="0.85"/>
-      <!-- cue tangent departure -->
-      <line x1="189.4" y1="321.5" x2="290" y2="371" stroke="#4a8fa5" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.9"/>
-      <!-- object ball departure into the gold pocket -->
-      <line x1="200" y1="300" x2="330" y2="35" stroke="#ffe27a" stroke-width="2" stroke-dasharray="6 4" opacity="0.95" marker-end="url(#arrowGold)"/>
+      <!-- ============ TABLE OBJECTS ============ -->
+      <!-- multiplier ring (on the route) -->
+      <g>
+        <circle cx="114" cy="491" r="26" fill="none" stroke="#ffe27a" stroke-width="8" opacity="0.12"/>
+        <circle cx="114" cy="491" r="22" fill="none" stroke="#ffe27a" stroke-width="1.8" stroke-dasharray="7 5"/>
+        <text class="svgtext" x="114" y="496" font-size="14" font-weight="700" fill="#ffe27a" text-anchor="middle">×2</text>
+      </g>
+      <!-- shatter gate -->
+      <g>
+        <line x1="253" y1="470" x2="302" y2="470" stroke="#ff5a3d" stroke-width="7" opacity="0.13"/>
+        <line x1="253" y1="470" x2="302" y2="470" stroke="#ff5a3d" stroke-width="2" stroke-dasharray="4 3"/>
+        <rect x="248" y="460" width="6" height="20" rx="2" fill="#ff5a3d"/>
+        <rect x="301" y="460" width="6" height="20" rx="2" fill="#ff5a3d"/>
+      </g>
+      <text class="svgtext" x="277" y="494" font-size="8" font-weight="600" letter-spacing="1.7" fill="#ff5a3d" text-anchor="middle">SHATTER GATE</text>
+      <!-- freeze cell -->
+      <g>
+        <path d="M95,92 L118,115 L95,138 L72,115 Z" fill="none" stroke="#35f2ff" stroke-width="7" opacity="0.12"/>
+        <path d="M95,95 L115,115 L95,135 L75,115 Z" fill="none" stroke="#35f2ff" stroke-width="1.8"/>
+        <path d="M95,105 L105,115 L95,125 L85,115 Z" fill="#35f2ff"/>
+      </g>
+      <text class="svgtext" x="95" y="153" font-size="8" font-weight="600" letter-spacing="1.7" fill="#35f2ff" text-anchor="middle">FREEZE ×3</text>
+      <!-- mine -->
+      <g>
+        <circle cx="250" cy="400" r="13" fill="none" stroke="#ff5a3d" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <line x1="250" y1="392" x2="250" y2="408" stroke="#ff5a3d" stroke-width="1.8"/>
+        <line x1="242" y1="400" x2="258" y2="400" stroke="#ff5a3d" stroke-width="1.8"/>
+      </g>
+      <text class="svgtext" x="268" y="404" font-size="8" font-weight="600" letter-spacing="1.7" fill="rgba(255,90,61,0.7)">MINE</text>
 
-      <!-- ============ BALLS ============ -->
-      <!-- the 3 (solid) -->
-      <g transform="translate(85,265) rotate(-14)">
-        <rect x="-11" y="-11" width="22" height="22" rx="3" fill="#ff3d6e"/>
-        <text class="svgtext" x="0" y="5" font-size="13" font-weight="700" fill="#2b0410" text-anchor="middle">3</text>
-      </g>
-      <!-- the 2 (solid) -->
-      <g transform="translate(80,430) rotate(9)">
-        <rect x="-11" y="-11" width="22" height="22" rx="3" fill="#ff3d6e"/>
-        <text class="svgtext" x="0" y="5" font-size="13" font-weight="700" fill="#2b0410" text-anchor="middle">2</text>
-      </g>
-      <!-- the 8 (heavy, shielded) -->
-      <g transform="translate(105,165)">
+      <!-- ============ THE STROKE ============ -->
+      <line x1="200" y1="560" x2="23" y2="417.1" stroke="#35f2ff" stroke-width="2" opacity="0.9"/>
+      <circle cx="23" cy="417.1" r="6.5" fill="none" stroke="#35f2ff" stroke-width="1.4" opacity="0.8"/>
+      <text class="svgtext" x="37" y="407" font-size="9" font-weight="700" letter-spacing="1.2" fill="#35f2ff" opacity="0.85">BANK</text>
+      <line x1="23" y1="417.1" x2="203.7" y2="271.2" stroke="#35f2ff" stroke-width="2" opacity="0.72"/>
+      <circle cx="203.7" cy="271.2" r="12" fill="none" stroke="#8ffcff" stroke-width="1.3" stroke-dasharray="3 3" opacity="0.85"/>
+      <line x1="203.7" y1="271.2" x2="292" y2="318.4" stroke="#4a8fa5" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.9"/>
+      <line x1="215" y1="250" x2="330" y2="35" stroke="#35f2ff" stroke-width="2" stroke-dasharray="6 4" opacity="0.95" marker-end="url(#arrowCy)"/>
+
+      <!-- ============ THE RACK ============ -->
+      <g transform="translate(75,255) rotate(-11)">
         <path d="M-16,-6 A17,17 0 0 1 16,-6 L14,-3 A14,14 0 0 0 -14,-3 Z" fill="#fff0c2" opacity="0.85"/>
         <circle r="14" fill="#ffb340"/>
         <text class="svgtext" x="0" y="5" font-size="14" font-weight="700" fill="#2a1500" text-anchor="middle">8</text>
       </g>
-      <!-- the 6 (stripe) -->
-      <g transform="translate(300,375)">
+      <g transform="translate(140,430) rotate(9)">
         <polygon points="-5,-12 5,-12 12,-5 12,5 5,12 -5,12 -12,5 -12,-5" fill="#a05cff"/>
-        <text class="svgtext" x="0" y="5" font-size="13" font-weight="700" fill="#180432" text-anchor="middle">6</text>
+        <text class="svgtext" x="0" y="5" font-size="13" font-weight="700" fill="#180432" text-anchor="middle">7</text>
       </g>
-      <!-- the 5 (solid) — the struck ball -->
-      <g transform="translate(200,300) rotate(-6)">
+      <g transform="translate(265,195) rotate(-7)">
+        <rect x="-11" y="-11" width="22" height="22" rx="3" fill="#ff3d6e"/>
+        <text class="svgtext" x="0" y="5" font-size="13" font-weight="700" fill="#2b0410" text-anchor="middle">2</text>
+      </g>
+      <g transform="translate(305,325) rotate(13)">
+        <rect x="-11" y="-11" width="22" height="22" rx="3" fill="#ff3d6e"/>
+        <text class="svgtext" x="0" y="5" font-size="13" font-weight="700" fill="#2b0410" text-anchor="middle">3</text>
+      </g>
+      <g transform="translate(215,250) rotate(-5)">
         <rect x="-12" y="-12" width="24" height="24" rx="3" fill="#ff3d6e"/>
         <rect x="-12" y="-12" width="24" height="24" rx="3" fill="none" stroke="#fff6d8" stroke-width="1.6" opacity="0.9"/>
         <text class="svgtext" x="0" y="5" font-size="14" font-weight="700" fill="#2b0410" text-anchor="middle">5</text>
       </g>
-      <text class="svgtext" x="216" y="284" font-size="9" font-weight="700" letter-spacing="1.1" fill="#ffe27a">THE 5 · 500</text>
 
-      <!-- cue ball -->
-      <g transform="translate(178.6,547.1)">
+      <g transform="translate(200,560)">
         <circle r="17" fill="#35f2ff" opacity="0.12"/>
         <circle r="12" fill="#35f2ff"/>
         <circle r="5" fill="#d9feff"/>
@@ -311,37 +225,44 @@
     <div class="hud">
       <div class="top">
         <div class="objective">
-          <div class="lbl">Contract</div>
-          <div class="goal">SINK 4 · <em>THE 8 LAST</em></div>
+          <div class="lbl">Contract · Room 6</div>
+          <div class="goal">SINK ALL SEVEN · <em>THE 8 LAST</em></div>
           <div class="prog">
-            <div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span></div>
-            <span class="n">2 / 4</span>
+            <div class="pips"><span class="pip on"></span><span class="pip on"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span><span class="pip"></span></div>
+            <span class="n">2 / 7</span>
           </div>
         </div>
         <div class="score">
-          <div class="lbl">Score</div>
-          <div class="v">12,400</div>
+          <div class="lbl">Run</div>
+          <div class="v">42,600</div>
         </div>
       </div>
 
+      <div class="strokes">
+        <div class="lbl">Strokes</div>
+        <div class="cues">
+          <span class="cue"></span><span class="cue"></span><span class="cue"></span>
+          <span class="cue spent"></span><span class="cue spent"></span><span class="cue spent"></span>
+        </div>
+        <div class="n">3 OF 6 LEFT</div>
+      </div>
+
       <div class="mult">
-        <div class="v">×5</div>
-        <div class="parts">1 BANK · 2 BALLS · 1 POT</div>
+        <div class="v">×6</div>
+        <div class="parts">RING ×2 · BANK · 2 BALLS · POT</div>
       </div>
 
       <div class="bottom">
-        <div class="hp">
+        <div class="meter">
           <div class="lbl">Hull</div>
           <div class="hpbar">
             <span class="hpseg"></span><span class="hpseg"></span><span class="hpseg"></span>
             <span class="hpseg"></span><span class="hpseg off"></span><span class="hpseg off"></span>
           </div>
         </div>
-        <div class="focus">
-          <div class="lbl">Focus</div>
-          <div class="hpbar">
-            <span class="hpseg"></span><span class="hpseg"></span><span class="hpseg"></span><span class="hpseg off"></span>
-          </div>
+        <div class="meter right dim">
+          <div class="lbl">Freeze</div>
+          <div class="frz"><span class="frzd"></span><span class="frzd"></span><span class="frzd"></span></div>
         </div>
       </div>
     </div>
@@ -350,12 +271,16 @@
   <div class="foot">
     <div class="rule"></div>
     <div class="row">
-      <span class="k">Why</span>
-      <p>The most literal billiards read there is: named balls, named pockets, one sentence at the top of the screen that says what winning means. Rails become the delivery system, so every bank is already a scoring route.</p>
+      <span class="k">Reads as</span>
+      <p>One sentence says what winning the room is. One row of cues says what it costs. Everything else on the felt is a thing to route through or route around — <b>and none of it is moving.</b></p>
+    </div>
+    <div class="row gold">
+      <span class="k">This stroke</span>
+      <p>Through the gold ring (×2), bank off the left rail, cut the 5 into the top-right pocket, ride the tangent on into the 3. Six-deep multiplier, one stroke spent, two balls positioned for the next one.</p>
     </div>
     <div class="row risk">
-      <span class="k">Costs you</span>
-      <p>All the goals live at the table edge, so the middle of the felt is transit space. Contracts have to be authored carefully or the room becomes "sink anything, four times".</p>
+      <span class="k">Dimmed</span>
+      <p>The freeze meter is empty — you have not earned it. It is the only thing on this HUD you cannot use yet.</p>
     </div>
   </div>
 </div>

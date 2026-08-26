@@ -1,17 +1,17 @@
 {
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 410, "h": 980 },
-    { "file": "DirectionB.dc.html", "x": 510, "y": 0, "w": 410, "h": 980 },
-    { "file": "DirectionC.dc.html", "x": 1020, "y": 0, "w": 410, "h": 980 },
-    { "file": "Scoring.dc.html", "x": 0, "y": 1100, "w": 940, "h": 880 }
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 410, "h": 1000 },
+    { "file": "RoomEnd.dc.html", "x": 510, "y": 0, "w": 410, "h": 1000 },
+    { "file": "Freeze.dc.html", "x": 1020, "y": 0, "w": 620, "h": 1000 },
+    { "file": "Scoring.dc.html", "x": 0, "y": 1120, "w": 1000, "h": 1060 }
   ],
   "annotations": [
     {
       "id": "brief",
       "x": 0,
-      "y": -170,
-      "w": 940,
-      "text": "Three ways to give the table a goal. They differ on where the targets live (rails vs felt), what ends the room (a contract, a par, a threshold), and what the pressure is (balls closing in vs a stroke budget).\n\nThe scoring model at the bottom is shared — it does not change whichever one you pick.\n\nPick one and I will build it into the game on the branch."
+      "y": -180,
+      "w": 1000,
+      "text": "The synthesis: a static puzzle rack, a contract that includes its own stroke budget, and score coming from pots + strokes saved + multipliers picked up + multipliers earned.\n\nTwo things worth arguing with before I build it: the stroke ramp numbers on the scoring board, and whether \"freeze\" means what the Freeze board says it means."
     }
   ],
   "launch": { "view": "canvas" }
