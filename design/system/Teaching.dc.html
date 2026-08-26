@@ -18,179 +18,156 @@
     }
     a { color: #35f2ff; }
     a:hover { color: #8ffcff; }
-    .sheet {
-      box-sizing: border-box;
-      background: #05070a;
-      padding: 34px 36px 38px;
-      display: flex;
-      flex-direction: column;
-      gap: 26px;
-    }
-    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #35f2ff; }
+    .sheet { box-sizing: border-box; background: #05070a; padding: 34px 36px 38px; display: flex; flex-direction: column; gap: 26px; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #2ef2c4; }
     .title { margin: 6px 0 0; font-size: 33px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
-    .lede { margin: 9px 0 0; max-width: 760px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .lede { margin: 9px 0 0; max-width: 780px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
     .lede b { color: #eaf6ff; font-weight: 700; }
-    .lede em { font-style: normal; color: #ffe27a; font-weight: 600; }
-    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #35f2ff; }
-    .panel {
-      padding: 20px 22px 22px;
-      border-radius: 6px;
-      background: #080d12;
-      border: 1px solid rgba(29,111,122,0.3);
-      display: flex;
-      flex-direction: column;
-      gap: 13px;
-    }
+    .lede em { font-style: normal; color: #2ef2c4; font-weight: 600; }
+    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #2ef2c4; }
+    .panel { padding: 20px 22px 22px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.3); display: flex; flex-direction: column; gap: 13px; }
     .panel p { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.7); text-wrap: pretty; }
     .panel p b { color: #eaf6ff; font-weight: 700; }
     .rule { height: 1px; background: rgba(234,246,255,0.12); }
     .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
-    .mono { font-variant-numeric: tabular-nums; }
-    .sheet { width: 1000px; min-height: 1060px; }
+    .sheet { width: 1000px; }
     .principles { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
-    .pr {
-      padding: 15px 16px 17px; border-radius: 6px;
-      background: #080d12; border: 1px solid rgba(234,246,255,0.08);
-      display: flex; flex-direction: column; gap: 6px;
-    }
-    .pr .h { font-size: 14px; font-weight: 700; color: #35f2ff; line-height: 1.25; }
+    .pr { padding: 15px 16px 17px; border-radius: 6px; background: #080d12; border: 1px solid rgba(234,246,255,0.08); display: flex; flex-direction: column; gap: 6px; }
+    .pr .h { font-size: 14px; font-weight: 700; color: #2ef2c4; line-height: 1.25; }
     .pr .d { font-size: 12.5px; font-weight: 500; line-height: 1.45; color: rgba(234,246,255,0.62); text-wrap: pretty; }
-    .boards { display: flex; flex-direction: column; }
-    .bd {
-      display: grid; grid-template-columns: 30px 108px 128px 1fr 190px;
-      gap: 16px; align-items: center;
-      padding: 11px 4px;
-      border-bottom: 1px solid rgba(234,246,255,0.08);
-    }
+    .bd { display: grid; grid-template-columns: 28px 96px 132px 1fr 178px; gap: 16px; align-items: center; padding: 10px 4px; border-bottom: 1px solid rgba(234,246,255,0.08); }
     .bd:last-child { border-bottom: 0; }
     .bd.hd span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
     .bd .i { font-size: 11px; font-weight: 700; color: rgba(234,246,255,0.3); }
-    .bd .neww { font-size: 15px; font-weight: 700; color: #ffe27a; }
-    .bd .neww.none { color: rgba(234,246,255,0.3); font-weight: 500; font-size: 13px; }
-    .bd .art { display: flex; align-items: center; }
+    .bd .neww { font-size: 15px; font-weight: 700; color: #2ef2c4; }
+    .bd .neww.none { color: rgba(234,246,255,0.28); font-weight: 500; font-size: 13px; }
+    .bd .art { display: flex; align-items: center; gap: 4px; }
     .bd .card { font-size: 13.5px; font-weight: 600; color: #eaf6ff; line-height: 1.3; }
     .bd .why { font-size: 12.5px; font-weight: 500; line-height: 1.35; color: rgba(234,246,255,0.55); }
-    .ramp { display: flex; flex-direction: column; }
-    .rr {
-      display: grid; grid-template-columns: 74px 150px 1fr;
-      gap: 16px; align-items: center; padding: 9px 4px;
-      border-bottom: 1px solid rgba(234,246,255,0.08);
-    }
+    .rr { display: grid; grid-template-columns: 74px 62px 148px 1fr; gap: 14px; align-items: center; padding: 8px 4px; border-bottom: 1px solid rgba(234,246,255,0.08); }
     .rr:last-child { border-bottom: 0; }
     .rr.hd span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
     .rr .rm { font-size: 14px; font-weight: 700; color: #eaf6ff; }
-    .rr .th { display: flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 700; color: var(--c); }
+    .rr .th { font-size: 13.5px; font-weight: 700; color: var(--c); }
     .rr .bn { font-size: 13px; font-weight: 500; color: rgba(234,246,255,0.6); }
-    .label-demo { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-    .tag-chip {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 5px 10px; border-radius: 4px;
-      background: rgba(5,7,10,0.9); border: 1px solid var(--c);
-      font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c);
-    }
+    .chips { display: flex; gap: 16px; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px; border-radius: 4px; background: rgba(5,7,10,0.9); border: 1px solid var(--c); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c); }
   </style>
 </helmet>
 
 <div class="sheet">
   <div>
     <div class="tag">Table language · teaching it</div>
-    <h2 class="title">One new thing at a time, and never two in the same breath</h2>
-    <p class="lede">The system is only worth having if a player picks it up without being lectured. Six boards introduce the four families; after that, every new object gets a room of its own to be met in, with one banner and nothing else new on the table.</p>
+    <h2 class="title">One new word at a time, and never two in the same breath</h2>
+    <p class="lede">Seven boards introduce everything: the cue, the pocket, the wall, and the two colours. After that each new object gets a room of its own to be met in, one banner, and nothing else new on the table.</p>
   </div>
 
   <div class="principles">
-    <div class="pr"><span class="h">One new word per board</span><span class="d">A board that introduces two nouns teaches neither. If a card needs a word the player has not met, that word is what the board is for.</span></div>
-    <div class="pr"><span class="h">The board holds only the thing it teaches</span><span class="d">Empty felt around it. Clutter reads as difficulty, and a lesson has to be able to promise that the table contains its subject and nothing else.</span></div>
-    <div class="pr"><span class="h">Teach a distinction by showing both</span><span class="d">You cannot learn that a pad is not a pocket from a board with only a pad on it. Board 05 puts both gold things on one table deliberately.</span></div>
-    <div class="pr"><span class="h">Name it as it happens</span><span class="d">The text that flies off the table uses the noun from the card, in the same seconds. Feedback is the second sighting of the word, and the second sighting is what makes it stick.</span></div>
-    <div class="pr"><span class="h">Say it once more, in the room</span><span class="d">A thing met in a lesson is reinforced by one banner the first time it appears in a real room — and then never explained again.</span></div>
-    <div class="pr"><span class="h">Label the first sighting</span><span class="d">The first time an object type appears in a run, a small chip sits beside it for three seconds. Once per type per run, then the table speaks for itself.</span></div>
+    <div class="pr"><span class="h">One new word per board</span><span class="d">A board that introduces two nouns teaches neither. If a card needs a word the player has not met, that word is what the board exists for.</span></div>
+    <div class="pr"><span class="h">The board holds only its subject</span><span class="d">Empty felt around it. Clutter reads as difficulty, and a lesson has to be able to promise that the table contains its subject and nothing else.</span></div>
+    <div class="pr"><span class="h">Teach green and red together</span><span class="d">Boards 05 and 06 run back to back on purpose. The two colours are one idea and only mean anything as a pair.</span></div>
+    <div class="pr"><span class="h">Teach a difference by showing both</span><span class="d">Board 05 puts a green pick-up and a pocket on one table, because you cannot learn that they are different things from a board with only one of them on it.</span></div>
+    <div class="pr"><span class="h">Name it as it happens</span><span class="d">The text that flies off the table uses the word from the card, within the same second. Feedback is the second sighting, and the second sighting is what makes it stick.</span></div>
+    <div class="pr"><span class="h">Label the first sighting</span><span class="d">The first time an object appears in a run, a chip sits beside it for three seconds. Once per type per run, then the table speaks for itself.</span></div>
   </div>
 
   <div class="panel">
-    <h3>The six boards</h3>
-    <div class="boards"><div class="bd hd"><span></span><span>New word</span><span>On the table</span><span>The card says</span><span>Why here</span></div><div class="bd"><span class="i">01</span><span class="neww">hit</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
-      <ellipse cx="32" cy="47.3" rx="16.1" ry="5.1" fill="#05070a" opacity="0.5"/>
-      <rect x="15" y="15" width="34" height="34" rx="2.7" fill="#ff3d6e"/>
-      <text class="svgtext" x="32" y="38.1" font-size="17.9" font-weight="700" fill="#eaf6ff" stroke="#2b0410" stroke-width="2.4" paint-order="stroke" text-anchor="middle">1</text>
-    </g></svg></span><span class="card">Hit the 1</span><span class="why">One ball, nothing else. Learn the cue and only the cue.</span></div><div class="bd"><span class="i">02</span><span class="neww">pocket</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="32" cy="32" r="28.5" fill="#35f2ff" opacity="0.07"/>
-      <circle cx="32" cy="32" r="16.0" fill="#05070a"/>
-      <circle cx="32" cy="32" r="19" fill="none" stroke="#35f2ff" stroke-width="3.0"/>
-      <circle cx="32" cy="32" r="3.8" fill="#35f2ff"/>
-    </g></svg></span><span class="card">Sink the 3</span><span class="why">The rule that runs the game: a hit never breaks a ball, a pocket takes it.</span></div><div class="bd"><span class="i">03</span><span class="neww none">—</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
-      <ellipse cx="22" cy="49.7" rx="12.3" ry="3.9" fill="#05070a" opacity="0.5"/>
-      <rect x="9" y="25" width="26" height="26" rx="2.1" fill="#ff3d6e"/>
-      <text class="svgtext" x="22" y="42.7" font-size="13.7" font-weight="700" fill="#eaf6ff" stroke="#2b0410" stroke-width="1.8" paint-order="stroke" text-anchor="middle">5</text>
-    </g><g>
-      <circle cx="48" cy="24" r="21.0" fill="#35f2ff" opacity="0.07"/>
-      <circle cx="48" cy="24" r="11.8" fill="#05070a"/>
-      <circle cx="48" cy="24" r="14" fill="none" stroke="#35f2ff" stroke-width="2.2"/>
-      <circle cx="48" cy="24" r="2.8" fill="#35f2ff"/>
-    </g></svg></span><span class="card">Sink one from an angle</span><span class="why">No new word. The ghost ball is the new idea, and it is shown, not named.</span></div><div class="bd"><span class="i">04</span><span class="neww">wall</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
-      <rect x="10.0" y="26.6" width="44" height="16" rx="3" fill="#05070a" opacity="0.6"/>
-      <rect x="10.0" y="24.0" width="44" height="16" rx="3" fill="#0a1a24" stroke="#1d6f7a" stroke-width="1.6"/>
-    </g></svg></span><span class="card">Bank off a wall first</span><span class="why">Blocked ball, one way in. Ends with "every wall you take is worth more".</span></div><div class="bd"><span class="i">05</span><span class="neww">pad</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="32" r="12.6" fill="#ffe27a" opacity="0.07"/>
-      <circle cx="20" cy="32" r="14" fill="none" stroke="#ffe27a" stroke-width="1.5" stroke-dasharray="4.8 3.6" stroke-linecap="round"/>
-      <text class="svgtext" x="20" y="35.4" font-size="10.1" font-weight="700" fill="#ffe27a" text-anchor="middle">×2</text>
-    </g><g>
-      <circle cx="48" cy="32" r="22.5" fill="#ffe27a" opacity="0.07"/>
-      <circle cx="48" cy="32" r="12.6" fill="#05070a"/>
-      <circle cx="48" cy="32" r="15" fill="none" stroke="#ffe27a" stroke-width="2.4"/>
-      <circle cx="48" cy="32" r="6.6" fill="none" stroke="#ffe27a" stroke-width="1.5"/><circle cx="48" cy="32" r="3.6" fill="none" stroke="#ffe27a" stroke-width="1.5"/>
-    </g></svg></span><span class="card">Drive through the gold pad</span><span class="why"><b>Both gold things on one table, on purpose.</b> The board teaches the difference.</span></div><div class="bd"><span class="i">06</span><span class="neww none">—</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
-      <ellipse cx="32" cy="49.1" rx="18.1" ry="5.7" fill="#05070a" opacity="0.5"/>
-      <circle cx="32" cy="32" r="19" fill="#ffb340"/>
-      <text class="svgtext" x="32" y="38.8" font-size="19.9" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="2.7" paint-order="stroke" text-anchor="middle">8</text>
-    </g></svg></span><span class="card">Sink the 3. The 8 goes last</span><span class="why">No new object — a rule about the ones already met.</span></div></div>
+    <h3>The seven boards</h3>
+    <div><div class="bd hd"><span></span><span>New word</span><span>On the table</span><span>The card says</span><span>Why here</span></div><div class="bd"><span class="i">01</span><span class="neww">ball, hit</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="32" cy="47.6" rx="16.1" ry="4.8" fill="#05070a" opacity="0.55"/><circle cx="32" cy="32" r="17" fill="#ffb340"/><text class="svgtext" x="32" y="38.1" font-size="17.3" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="2.5" paint-order="stroke" text-anchor="middle">1</text></g></svg></span><span class="card">Hit the <b>1</b></span><span class="why">One ball, nothing else. Learn the cue and only the cue.</span></div><div class="bd"><span class="i">02</span><span class="neww">pocket</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc1"><rect x="0" y="0" width="64" height="64" rx="7"/></clipPath>
+      <g clip-path="url(#cc1)">
+        <rect x="0" y="0" width="64" height="64" fill="#0a1a24"/>
+        <circle cx="22" cy="22" r="23.2" fill="#0a1a24"/>
+        <rect x="22" y="22" width="42" height="42" fill="#0b3a2e"/>
+        <g transform="translate(22,22)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"></g></g>
+        <g transform="translate(22,22)">
+          <polygon points="17,0 50,0 42,7 25,7" fill="#123040"/><line x1="25" y1="7" x2="42" y2="7" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,17 0,50 7,42 7,25" fill="#123040"/><line x1="7" y1="25" x2="7" y2="42" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="22" cy="22" r="20.7" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="22" cy="22" r="17" fill="#04060a"/>
+        <circle cx="22" cy="22" r="17" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="22" cy="22" r="15.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="22" cy="22" r="23.2" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg></span><span class="card">Knock the <b>3</b> into a pocket</span><span class="why">The rule the game runs on: a hit never breaks a ball, a pocket takes it.</span></div><div class="bd"><span class="i">03</span><span class="neww none">—</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g transform="translate(28,0)"><g>
+      <clipPath id="cc2"><rect x="0" y="0" width="36" height="36" rx="7"/></clipPath>
+      <g clip-path="url(#cc2)">
+        <rect x="0" y="0" width="36" height="36" fill="#0a1a24"/>
+        <circle cx="17" cy="17" r="14.6" fill="#0a1a24"/>
+        <rect x="17" y="17" width="19" height="19" fill="#0b3a2e"/>
+        <g transform="translate(17,17)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"></g></g>
+        <g transform="translate(17,17)">
+          <polygon points="11,0 24,0 19,5 16,5" fill="#123040"/><line x1="16" y1="5" x2="19" y2="5" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,11 0,24 5,19 5,16" fill="#123040"/><line x1="5" y1="16" x2="5" y2="19" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="17" cy="17" r="13.4" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="17" cy="17" r="11" fill="#04060a"/>
+        <circle cx="17" cy="17" r="11" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="17" cy="17" r="9.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="17" cy="17" r="14.6" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></g><g><ellipse cx="18" cy="52.0" rx="12.3" ry="3.6" fill="#05070a" opacity="0.55"/><circle cx="18" cy="40" r="13" fill="#ffb340"/><text class="svgtext" x="18" y="44.7" font-size="13.3" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="1.9" paint-order="stroke" text-anchor="middle">5</text></g></svg></span><span class="card">Knock one in from an angle</span><span class="why">No new word. The ghost circle is the new idea, and it is shown, not named.</span></div><div class="bd"><span class="i">04</span><span class="neww">wall, bounce</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g><rect x="10.0" y="26.9" width="44" height="16" rx="3" fill="#05070a" opacity="0.6"/><rect x="10.0" y="24.0" width="44" height="16" rx="3" fill="#123040" stroke="#1d6f7a" stroke-width="1.6"/></g></svg></span><span class="card">Bounce off a <b>wall</b> first</span><span class="why">One way in. Ends on "every wall you bounce off is worth more".</span></div><div class="bd"><span class="i">05</span><span class="neww">green</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="32" cy="32" r="17.6" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="32" cy="32" r="20" fill="none" stroke="#2ef2c4" stroke-width="2.2" stroke-dasharray="7.2 5.2" stroke-linecap="round"/>
+      <text class="svgtext" x="32" y="37.2" font-size="15.6" font-weight="700" fill="#2ef2c4" text-anchor="middle">&#215;2</text>
+    </g></svg></span><span class="card">Hit the <em>green</em> on the way in</span><span class="why"><b>A green pick-up and a pocket on one table.</b> The board teaches that they are different things.</span></div><div class="bd"><span class="i">06</span><span class="neww">red</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="32" cy="32" r="17.6" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="32" cy="32" r="20" fill="none" stroke="#ff5a3d" stroke-width="2.2" stroke-dasharray="7.2 5.2" stroke-linecap="round"/>
+      <path d="M32,22.8 L40.8,38.3 L23.2,38.3 Z" fill="none" stroke="#ff5a3d" stroke-width="2.6" stroke-linejoin="round"/><line x1="32" y1="29.5" x2="32" y2="33.8" stroke="#ff5a3d" stroke-width="2.4" stroke-linecap="round"/><circle cx="32" cy="36.0" r="1.3" fill="#ff5a3d"/>
+    </g></svg></span><span class="card">Stay off the <b>red</b></span><span class="why">Immediately after green, so the pair is learned as a pair. The long way round still scores.</span></div><div class="bd"><span class="i">07</span><span class="neww none">—</span><span class="art"><svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="32" cy="49.5" rx="18.1" ry="5.3" fill="#05070a" opacity="0.55"/><circle cx="32" cy="32" r="19" fill="#14181f"/><circle cx="32" cy="32" r="19" fill="none" stroke="#eaf6ff" stroke-width="1.7" opacity="0.55"/><text class="svgtext" x="32" y="38.8" font-size="19.4" font-weight="700" fill="#eaf6ff" stroke="#05070a" stroke-width="2.9" paint-order="stroke" text-anchor="middle">8</text></g></svg></span><span class="card">Knock the <b>3</b> in. Save the <b>8</b> for last.</span><span class="why">No new object — a rule about balls already met.</span></div></div>
   </div>
 
   <div class="panel">
     <h3>After the tutorial: one arrival per room</h3>
-    <div class="ramp"><div class="rr hd"><span>Room</span><span>Arrives</span><span>Banner, once, on entry</span></div><div class="rr" style="--c: #35f2ff"><span class="rm">Room 1</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="20" r="18.0" fill="#35f2ff" opacity="0.07"/>
-      <circle cx="20" cy="20" r="10.1" fill="#05070a"/>
-      <circle cx="20" cy="20" r="12" fill="none" stroke="#35f2ff" stroke-width="1.9"/>
-      <circle cx="20" cy="20" r="2.4" fill="#35f2ff"/>
-    </g></svg>Score pockets</span><span class="bn">Sink every ball. The strokes you save are points.</span></div><div class="rr" style="--c: #ffe27a"><span class="rm">Room 2</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="20" r="10.8" fill="#ffe27a" opacity="0.07"/>
-      <circle cx="20" cy="20" r="12" fill="none" stroke="#ffe27a" stroke-width="1.3" stroke-dasharray="4.1 3.1" stroke-linecap="round"/>
-      <text class="svgtext" x="20" y="22.9" font-size="8.6" font-weight="700" fill="#ffe27a" text-anchor="middle">×2</text>
-    </g></svg>Gold pad</span><span class="bn">Drive through it and the shot doubles.</span></div><div class="rr" style="--c: #ff5ce1"><span class="rm">Room 3</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="20" r="18.0" fill="#ff5ce1" opacity="0.07"/>
-      <circle cx="20" cy="20" r="10.1" fill="#05070a"/>
-      <circle cx="20" cy="20" r="12" fill="none" stroke="#ff5ce1" stroke-width="1.9"/>
-      <path d="M20,14.96 L24.1,20 L20,25.04 L15.9,20 Z" fill="#ff5ce1"/>
-    </g></svg>Upgrade pocket</span><span class="bn">A ball in there buys a boon instead of points.</span></div><div class="rr" style="--c: #ff5a3d"><span class="rm">Room 4</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="20" r="18.0" fill="#ff5a3d" opacity="0.07"/>
-      <circle cx="20" cy="20" r="10.1" fill="#05070a"/>
-      <circle cx="20" cy="20" r="12" fill="none" stroke="#ff5a3d" stroke-width="1.9"/>
-      <path d="M23.7,14.719999999999999 L16.0,20 L23.7,25.28 Z" fill="#ff5a3d"/>
-    </g></svg>Live pocket</span><span class="bn">Pays double, then fires the ball back at you.</span></div><div class="rr" style="--c: #ffb340"><span class="rm">Room 5</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <ellipse cx="20" cy="30.8" rx="11.4" ry="3.6" fill="#05070a" opacity="0.5"/>
-      <circle cx="20" cy="20" r="12" fill="#ffb340"/>
-      <text class="svgtext" x="20" y="24.3" font-size="12.6" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="1.7" paint-order="stroke" text-anchor="middle">8</text>
-    </g></svg>The 8 goes last</span><span class="bn">Sinking it early is a foul. It comes back.</span></div><div class="rr" style="--c: #ff5a3d"><span class="rm">Room 6</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="20" r="10.8" fill="#ff5a3d" opacity="0.07"/>
-      <circle cx="20" cy="20" r="12" fill="none" stroke="#ff5a3d" stroke-width="1.3" stroke-dasharray="4.1 3.1" stroke-linecap="round"/>
-      <line x1="14.48" y1="20" x2="25.52" y2="20" stroke="#ff5a3d" stroke-width="1.6"/><line x1="20" y1="14.48" x2="20" y2="25.52" stroke="#ff5a3d" stroke-width="1.6"/>
-    </g></svg>Mines</span><span class="bn">Route around them. They only bite your ball.</span></div><div class="rr" style="--c: #35f2ff"><span class="rm">Room 8</span><span class="th"><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="20" cy="20" r="18.0" fill="#35f2ff" opacity="0.07"/>
-      <polygon points="20.0,9.9 11.3,15.0 11.3,25.0 20.0,30.1 28.7,25.0 28.7,15.0" fill="#05070a"/>
-      <polygon points="20.0,8.0 9.6,14.0 9.6,26.0 20.0,32.0 30.4,26.0 30.4,14.0" fill="none" stroke="#35f2ff" stroke-width="1.9"/>
-      <circle cx="20" cy="20" r="2.4" fill="#35f2ff"/>
-    </g></svg>Felt pocket</span><span class="bn">A pocket out in the open. Same rules, no rail needed.</span></div></div>
+    <div><div class="rr hd"><span>Room</span><span></span><span>Arrives</span><span>Banner, once, on entry</span></div><div class="rr" style="--c: #1d6f7a"><span class="rm">Room 1</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc3"><rect x="0" y="0" width="40" height="40" rx="7"/></clipPath>
+      <g clip-path="url(#cc3)">
+        <rect x="0" y="0" width="40" height="40" fill="#0a1a24"/>
+        <circle cx="17" cy="17" r="14.6" fill="#0a1a24"/>
+        <rect x="17" y="17" width="23" height="23" fill="#0b3a2e"/>
+        <g transform="translate(17,17)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"></g></g>
+        <g transform="translate(17,17)">
+          <polygon points="11,0 28,0 23,4 16,4" fill="#123040"/><line x1="16" y1="4" x2="23" y2="4" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,11 0,28 4,23 4,16" fill="#123040"/><line x1="4" y1="16" x2="4" y2="23" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="17" cy="17" r="13.4" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="17" cy="17" r="11" fill="#04060a"/>
+        <circle cx="17" cy="17" r="11" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="17" cy="17" r="9.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="17" cy="17" r="14.6" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg></span><span class="th">Pockets</span><span class="bn">Knock every ball in. The shots you save are points.</span></div><div class="rr" style="--c: #2ef2c4"><span class="rm">Room 2</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="20" cy="20" r="11.4" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="20" cy="20" r="13" fill="none" stroke="#2ef2c4" stroke-width="1.4" stroke-dasharray="4.7 3.4" stroke-linecap="round"/>
+      <text class="svgtext" x="20" y="23.4" font-size="10.1" font-weight="700" fill="#2ef2c4" text-anchor="middle">&#215;2</text>
+    </g></svg></span><span class="th">The double</span><span class="bn">Green is good. Hit it and the shot is worth twice as much.</span></div><div class="rr" style="--c: #ff5a3d"><span class="rm">Room 3</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="20" cy="20" r="11.4" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="20" cy="20" r="13" fill="none" stroke="#ff5a3d" stroke-width="1.4" stroke-dasharray="4.7 3.4" stroke-linecap="round"/>
+      <path d="M20,14.0 L25.72,24.1 L14.280000000000001,24.1 Z" fill="none" stroke="#ff5a3d" stroke-width="1.7" stroke-linejoin="round"/><line x1="20" y1="18.4" x2="20" y2="21.1" stroke="#ff5a3d" stroke-width="1.6" stroke-linecap="round"/><circle cx="20" cy="22.6" r="0.8" fill="#ff5a3d"/>
+    </g></svg></span><span class="th">The mine</span><span class="bn">Red is bad. It only bites your ball.</span></div><div class="rr" style="--c: #2ef2c4"><span class="rm">Room 4</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="20" cy="20" r="11.4" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="20" cy="20" r="13" fill="none" stroke="#2ef2c4" stroke-width="1.4" stroke-dasharray="4.7 3.4" stroke-linecap="round"/>
+      <path d="M20,14.280000000000001 L25.72,20 L20,25.72 L14.280000000000001,20 Z" fill="none" stroke="#2ef2c4" stroke-width="1.6"/><path d="M20,17.4 L22.6,20 L20,22.6 L17.4,20 Z" fill="#2ef2c4"/>
+    </g></svg></span><span class="th">The freeze</span><span class="bn">Three charges. Tap while the table is moving.</span></div><div class="rr" style="--c: #eaf6ff"><span class="rm">Room 5</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="20" cy="32.0" rx="12.3" ry="3.6" fill="#05070a" opacity="0.55"/><circle cx="20" cy="20" r="13" fill="#14181f"/><circle cx="20" cy="20" r="13" fill="none" stroke="#eaf6ff" stroke-width="1.2" opacity="0.55"/><text class="svgtext" x="20" y="24.7" font-size="13.3" font-weight="700" fill="#eaf6ff" stroke="#05070a" stroke-width="1.9" paint-order="stroke" text-anchor="middle">8</text></g></svg></span><span class="th">The 8 goes last</span><span class="bn">Knock it in early and it comes straight back.</span></div><div class="rr" style="--c: #2ef2c4"><span class="rm">Room 6</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="20" cy="20" r="11.4" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="20" cy="20" r="13" fill="none" stroke="#2ef2c4" stroke-width="1.4" stroke-dasharray="4.7 3.4" stroke-linecap="round"/>
+      <path d="M14.280000000000001,21.9 L20,17.1 L25.72,21.9" fill="none" stroke="#2ef2c4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.280000000000001,25.1 L20,20.3 L25.72,25.1" fill="none" stroke="#2ef2c4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </g></svg></span><span class="th">The upgrade</span><span class="bn">Buys you a free pick at the door.</span></div><div class="rr" style="--c: #ff5a3d"><span class="rm">Room 7</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="20" cy="20" r="11.4" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="20" cy="20" r="13" fill="none" stroke="#ff5a3d" stroke-width="1.4" stroke-dasharray="4.7 3.4" stroke-linecap="round"/>
+      <path d="M24.3,14.280000000000001 L15.4,20 L24.3,25.72 Z" fill="#ff5a3d"/><line x1="25.4" y1="14.9" x2="25.4" y2="25.1" stroke="#ff5a3d" stroke-width="1.6" stroke-linecap="round"/>
+    </g></svg></span><span class="th">The kicker</span><span class="bn">Hit it and the nearest ball comes back at you.</span></div><div class="rr" style="--c: #ffb340"><span class="rm">Room 9</span><span><svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="14" width="5" height="18" rx="2" fill="#ffb340"/><rect x="16" y="14" width="5" height="18" rx="2" fill="#ffb340"/><rect x="24" y="14" width="5" height="18" rx="2" fill="rgba(255,179,64,0.18)"/></svg></span><span class="th">Fewer shots</span><span class="bn">Every shot has to knock one in from here.</span></div></div>
   </div>
 
   <div class="panel">
     <h3>The first-sighting chip</h3>
-    <p>Anchored beside the object in world space, three seconds, once per type per run. It names the thing and what it does, in the words the lesson used — so a player who skipped the tutorial still meets every noun exactly once, in context, at the moment it first matters.</p>
-    <div class="label-demo">
-      <span class="tag-chip" style="--c: #ffe27a">Gold pad · ×2</span>
-      <span class="tag-chip" style="--c: #ff5ce1">Upgrade pocket · buys a boon</span>
-      <span class="tag-chip" style="--c: #ff5a3d">Live pocket · pays double, fires back</span>
-      <span class="tag-chip" style="--c: #ff5a3d">Mine · costs hull</span>
+    <p>Anchored beside the object in world space, three seconds, once per type per run. It names the thing and what it does in the words the lesson used — so a player who skipped the tutorial still meets every word once, in context, the moment it first matters.</p>
+    <div class="chips">
+      <span class="chip" style="--c: #2ef2c4">Double &nbsp;·&nbsp; hit it, the shot is worth twice as much</span>
+      <span class="chip" style="--c: #ff5a3d">Mine &nbsp;·&nbsp; stay off it</span>
+      <span class="chip" style="--c: #2ef2c4">Extra shot &nbsp;·&nbsp; +1 this room</span>
+      <span class="chip" style="--c: #ff5a3d">Kicker &nbsp;·&nbsp; sends a ball back at you</span>
     </div>
   </div>
 </div>

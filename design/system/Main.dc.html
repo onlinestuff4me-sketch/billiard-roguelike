@@ -18,158 +18,186 @@
     }
     a { color: #35f2ff; }
     a:hover { color: #8ffcff; }
-    .sheet {
-      box-sizing: border-box;
-      background: #05070a;
-      padding: 34px 36px 38px;
-      display: flex;
-      flex-direction: column;
-      gap: 26px;
-    }
-    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #35f2ff; }
+    .sheet { box-sizing: border-box; background: #05070a; padding: 34px 36px 38px; display: flex; flex-direction: column; gap: 26px; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #2ef2c4; }
     .title { margin: 6px 0 0; font-size: 33px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
-    .lede { margin: 9px 0 0; max-width: 760px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .lede { margin: 9px 0 0; max-width: 780px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
     .lede b { color: #eaf6ff; font-weight: 700; }
-    .lede em { font-style: normal; color: #ffe27a; font-weight: 600; }
-    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #35f2ff; }
-    .panel {
-      padding: 20px 22px 22px;
-      border-radius: 6px;
-      background: #080d12;
-      border: 1px solid rgba(29,111,122,0.3);
-      display: flex;
-      flex-direction: column;
-      gap: 13px;
-    }
+    .lede em { font-style: normal; color: #2ef2c4; font-weight: 600; }
+    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #2ef2c4; }
+    .panel { padding: 20px 22px 22px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.3); display: flex; flex-direction: column; gap: 13px; }
     .panel p { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.7); text-wrap: pretty; }
     .panel p b { color: #eaf6ff; font-weight: 700; }
     .rule { height: 1px; background: rgba(234,246,255,0.12); }
     .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
-    .mono { font-variant-numeric: tabular-nums; }
-    .sheet { width: 940px; min-height: 820px; }
-    .families { display: flex; flex-direction: column; gap: 0; }
-    .fam {
-      display: grid;
-      grid-template-columns: 132px 168px 1fr;
-      gap: 24px;
-      align-items: center;
-      padding: 20px 4px;
+    .sheet { width: 960px; }
+    .chan { display: flex; flex-direction: column; }
+    .cr {
+      display: grid; grid-template-columns: 118px 128px 1fr 168px;
+      gap: 20px; align-items: center; padding: 14px 4px;
       border-bottom: 1px solid rgba(234,246,255,0.09);
     }
-    .fam:last-child { border-bottom: 0; }
-    .fam .spec { display: flex; justify-content: center; }
-    .fam .name { display: flex; flex-direction: column; gap: 5px; }
-    .fam .word { font-size: 25px; font-weight: 700; letter-spacing: 0.02em; color: #eaf6ff; line-height: 1; }
-    .fam .kind { font-size: 9.5px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--c); }
-    .fam .says { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.4; color: #eaf6ff; }
-    .fam .law { margin: 5px 0 0; font-size: 13.5px; font-weight: 500; line-height: 1.45; color: rgba(234,246,255,0.62); text-wrap: pretty; }
-    .fam .law b { color: rgba(234,246,255,0.9); font-weight: 700; }
-    .laws { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
-    .law-card {
-      padding: 14px 16px 16px;
-      border-radius: 5px;
-      background: #080d12;
-      border-left: 2px solid var(--c);
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .law-card .q { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(234,246,255,0.42); }
-    .law-card .a { font-size: 15px; font-weight: 700; color: var(--c); }
-    .law-card .n { font-size: 12.5px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.6); }
+    .cr:last-child { border-bottom: 0; }
+    .cr.hd span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(234,246,255,0.4); }
+    .cr .nm { font-size: 17px; font-weight: 700; color: var(--c); line-height: 1.1; }
+    .cr .sw { display: flex; gap: 5px; align-items: center; }
+    .cr .sw i { width: 22px; height: 22px; border-radius: 5px; display: block; }
+    .cr .own { font-size: 13.5px; font-weight: 500; line-height: 1.4; color: rgba(234,246,255,0.72); }
+    .cr .own b { color: #eaf6ff; font-weight: 700; }
+    .cr .nev { font-size: 12.5px; font-weight: 500; line-height: 1.35; color: rgba(234,246,255,0.42); }
+    .forms { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+    .fm { padding: 15px 15px 17px; border-radius: 6px; background: #080d12; border: 1px solid rgba(234,246,255,0.08); display: flex; flex-direction: column; gap: 7px; }
+    .fm .art { height: 74px; display: flex; align-items: center; justify-content: center; }
+    .fm .w { font-size: 18px; font-weight: 700; color: #eaf6ff; }
+    .fm .q { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #2ef2c4; }
+    .fm .d { font-size: 12.5px; font-weight: 500; line-height: 1.4; color: rgba(234,246,255,0.58); }
+    .ba { display: grid; grid-template-columns: 1fr 26px 1fr; gap: 18px; align-items: center; }
+    .ba .col { display: flex; flex-direction: column; gap: 8px; }
+    .ba .band { display: flex; gap: 22px; justify-content: center; padding: 12px 8px; border-radius: 5px; }
+    .ba .col.now .band { background: rgba(255,90,61,0.07); border: 1px solid rgba(255,90,61,0.22); }
+    .ba .col.next .band { background: rgba(46,242,196,0.06); border: 1px solid rgba(46,242,196,0.24); }
+    .ba .cap { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; text-align: center; }
+    .ba .col.now .cap { color: #ff5a3d; }
+    .ba .col.next .cap { color: #2ef2c4; }
+    .ba .arrow { text-align: center; color: rgba(234,246,255,0.3); font-size: 20px; }
   </style>
 </helmet>
 
 <div class="sheet">
   <div>
-    <div class="tag">Table language · the one law</div>
-    <h2 class="title">Four families. You can tell them apart with the colour turned off.</h2>
-    <p class="lede">Right now a gold pad and a gold pocket are both glowing gold rings, because colour is carrying the whole job. It cannot. <b>Form says what a thing is; colour says what it does to your score.</b> Two channels, two jobs, and neither doing the other's work.</p>
+    <div class="tag">Table language · the allocation</div>
+    <h2 class="title">Five channels, and nothing shares one</h2>
+    <p class="lede">Colour was pulling in two directions at once: a cyan pocket and a cyan pick-up both shouting for the same attention while meaning completely different things. So the palette is now <b>allocated</b>. Each channel owns its hues outright, and no hue appears in two rows of this table.</p>
   </div>
 
-  <div class="families">
-    <div class="fam" style="--c: #ff3d6e">
-      <div class="spec"><svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><g>
-      <ellipse cx="60" cy="85.0" rx="28.5" ry="9.0" fill="#05070a" opacity="0.5"/>
-      <rect x="30" y="28" width="60" height="60" rx="4.8" fill="#ff3d6e"/>
-      <text class="svgtext" x="60" y="68.8" font-size="31.5" font-weight="700" fill="#eaf6ff" stroke="#2b0410" stroke-width="4.2" paint-order="stroke" text-anchor="middle">3</text>
-    </g></svg></div>
-      <div class="name"><span class="word">Ball</span><span class="kind">You move it</span></div>
-      <div>
-        <p class="says">Raised. Solid. Carries a number.</p>
-        <p class="law"><b>Only a ball has a number.</b> The number is what it is worth, so anything numbered is something you are trying to move somewhere. Shape still says which archetype: cube, octagon, cylinder.</p>
-      </div>
-    </div>
-
-    <div class="fam" style="--c: #35f2ff">
-      <div class="spec"><svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="60" cy="60" r="51.0" fill="#35f2ff" opacity="0.07"/>
-      <circle cx="60" cy="60" r="28.6" fill="#05070a"/>
-      <circle cx="60" cy="60" r="34" fill="none" stroke="#35f2ff" stroke-width="5.4"/>
-      <circle cx="60" cy="60" r="6.8" fill="#35f2ff"/>
-    </g></svg></div>
-      <div class="name"><span class="word">Pocket</span><span class="kind">A ball that gets here leaves</span></div>
-      <div>
-        <p class="says">A hole. Dark centre, one solid unbroken rim.</p>
-        <p class="law"><b>Only a pocket has a dark centre.</b> Absence reads faster than any colour: a hole in the felt looks like somewhere a ball goes and does not come back from, before you have read anything.</p>
-      </div>
-    </div>
-
-    <div class="fam" style="--c: #ffe27a">
-      <div class="spec"><svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><g>
-      <circle cx="60" cy="60" r="30.6" fill="#ffe27a" opacity="0.07"/>
-      <circle cx="60" cy="60" r="34" fill="none" stroke="#ffe27a" stroke-width="3.7" stroke-dasharray="11.6 8.8" stroke-linecap="round"/>
-      <text class="svgtext" x="60" y="68.2" font-size="24.5" font-weight="700" fill="#ffe27a" text-anchor="middle">×2</text>
-    </g></svg></div>
-      <div class="name"><span class="word">Pad</span><span class="kind">You drive through it</span></div>
-      <div>
-        <p class="says">Flat and open. Broken rim, nothing in the middle.</p>
-        <p class="law"><b>Only a pad has a dashed edge.</b> A broken outline is a gap you can pass through, drawn as one. Nothing stops here and nothing is taken; something about the shot changes and the pad goes dark.</p>
-      </div>
-    </div>
-
-    <div class="fam" style="--c: #1d6f7a">
-      <div class="spec"><svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><g>
-      <rect x="23.0" y="51.2" width="74" height="26" rx="3" fill="#05070a" opacity="0.6"/>
-      <rect x="23.0" y="47.0" width="74" height="26" rx="3" fill="#0a1a24" stroke="#1d6f7a" stroke-width="1.6"/>
-    </g></svg></div>
-      <div class="name"><span class="word">Wall</span><span class="kind">You bounce off it</span></div>
-      <div>
-        <p class="says">Raised, solid, unlit. Never numbered.</p>
-        <p class="law"><b>Walls are the only bright-free objects on the felt.</b> If it glows, it does something. If it does not, it is geometry — and geometry is worth points, because every wall you take pays a rung on the multiplier.</p>
-      </div>
-    </div>
+  <div class="chan">
+    <div class="cr hd"><span>Channel</span><span>Hues</span><span>Owns</span><span>Never</span></div>
+    <div class="cr" style="--c: #35f2ff"><span class="nm">You</span><span class="sw"><i style="background:#35f2ff"></i><i style="background:#d9feff"></i></span><span class="own">The <b>cue ball</b>, the aim line, the trajectory preview. The only cyan on the table is the shot you are about to take.</span><span class="nev">Never on anything you are aiming at.</span></div>
+    <div class="cr" style="--c: #1d6f7a"><span class="nm">The table</span><span class="sw"><i style="background:#0a1a24"></i><i style="background:#123040"></i><i style="background:#1d6f7a"></i></span><span class="own">The <b>frame, cushions, walls and pocket mouths</b>. Architecture: always there, identical every room.</span><span class="nev">Never on anything that can be collected or spent.</span></div>
+    <div class="cr" style="--c: #ffb340"><span class="nm">The rack</span><span class="sw"><i style="background:#ffb340"></i><i style="background:#a05cff"></i><i style="background:#14181f"></i></span><span class="own">The <b>balls</b>. Amber solids 1–4, banded stripes 5–7, the black 8. Their colour says which ball, nothing more.</span><span class="nev">Never red and never mint — a ball is neither good nor bad.</span></div>
+    <div class="cr" style="--c: #2ef2c4"><span class="nm">Good</span><span class="sw"><i style="background:#2ef2c4"></i></span><span class="own">Every <b>pick-up</b>: points, multipliers, upgrades, freeze. If it is mint, hitting it helps you.</span><span class="nev">Never on a pocket, a wall or a ball.</span></div>
+    <div class="cr" style="--c: #ff5a3d"><span class="nm">Bad</span><span class="sw"><i style="background:#ff5a3d"></i></span><span class="own">Every <b>hazard</b>. If it is red, hitting it costs you something.</span><span class="nev">Never on anything you are meant to aim at.</span></div>
   </div>
 
   <div class="rule"></div>
 
-  <div class="laws">
-    <div class="law-card" style="--c: #35f2ff">
-      <div class="q">Is the middle dark?</div>
-      <div class="a">Then it takes the ball</div>
-      <div class="n">Pocket. Nothing else on the table has a void in it.</div>
-    </div>
-    <div class="law-card" style="--c: #ffe27a">
-      <div class="q">Is the edge broken?</div>
-      <div class="a">Then you pass through it</div>
-      <div class="n">Pad. Nothing else on the table is drawn dashed.</div>
-    </div>
-    <div class="law-card" style="--c: #ff3d6e">
-      <div class="q">Does it have a number?</div>
-      <div class="a">Then you can hit it</div>
-      <div class="n">Ball. The number is also what it pays.</div>
-    </div>
-    <div class="law-card" style="--c: #1d6f7a">
-      <div class="q">Is it raised and dark?</div>
-      <div class="a">Then it stops you</div>
-      <div class="n">Wall. Bounce off it — and take the multiplier rung.</div>
+  <div>
+    <h3 style="margin-bottom: 14px">And within a channel, form says which</h3>
+    <div class="forms">
+      <div class="fm">
+        <div class="art"><svg width="74" height="74" viewBox="0 0 74 74" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="37" cy="59.1" rx="22.8" ry="6.7" fill="#05070a" opacity="0.55"/><circle cx="37" cy="37" r="24" fill="#ffb340"/><text class="svgtext" x="37" y="45.6" font-size="24.5" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="3.6" paint-order="stroke" text-anchor="middle">3</text></g></svg></div>
+        <span class="w">Ball</span><span class="q">Has a number</span>
+        <span class="d">Raised, solid, numbered. Only a ball carries a number, and the number is what it pays.</span>
+      </div>
+      <div class="fm">
+        <div class="art"><svg width="74" height="74" viewBox="0 0 74 74" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc1"><rect x="0" y="0" width="74" height="74" rx="7"/></clipPath>
+      <g clip-path="url(#cc1)">
+        <rect x="0" y="0" width="74" height="74" fill="#0a1a24"/>
+        <circle cx="23" cy="23" r="27.8" fill="#0a1a24"/>
+        <rect x="23" y="23" width="51" height="51" fill="#0b3a2e"/>
+        <g transform="translate(23,23)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"></g></g>
+        <g transform="translate(23,23)">
+          <polygon points="21,0 60,0 51,8 30,8" fill="#123040"/><line x1="30" y1="8" x2="51" y2="8" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,21 0,60 8,51 8,30" fill="#123040"/><line x1="8" y1="30" x2="8" y2="51" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="23" cy="23" r="25.6" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="23" cy="23" r="21" fill="#04060a"/>
+        <circle cx="23" cy="23" r="21" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="23" cy="23" r="19.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="23" cy="23" r="27.8" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg></div>
+        <span class="w">Pocket</span><span class="q">Is a hole in the table</span>
+        <span class="d">A void with the frame swelling round it. Six of them, always in the same six places.</span>
+      </div>
+      <div class="fm">
+        <div class="art"><svg width="74" height="74" viewBox="0 0 74 74" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="37" cy="37" r="22.0" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="37" cy="37" r="25" fill="none" stroke="#2ef2c4" stroke-width="2.8" stroke-dasharray="9.0 6.5" stroke-linecap="round"/>
+      <text class="svgtext" x="37" y="43.5" font-size="19.5" font-weight="700" fill="#2ef2c4" text-anchor="middle">&#215;2</text>
+    </g></svg></div>
+        <span class="w">Pick-up</span><span class="q">Mint, dashed, open</span>
+        <span class="d">Flat on the felt. Hit it and something good happens; the glyph says what.</span>
+      </div>
+      <div class="fm">
+        <div class="art"><svg width="74" height="74" viewBox="0 0 74 74" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="37" cy="37" r="22.0" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="37" cy="37" r="25" fill="none" stroke="#ff5a3d" stroke-width="2.8" stroke-dasharray="9.0 6.5" stroke-linecap="round"/>
+      <path d="M37,25.4 L48.0,44.9 L26.0,44.9 Z" fill="none" stroke="#ff5a3d" stroke-width="3.2" stroke-linejoin="round"/><line x1="37" y1="33.9" x2="37" y2="39.2" stroke="#ff5a3d" stroke-width="3.0" stroke-linecap="round"/><circle cx="37" cy="42.1" r="1.6" fill="#ff5a3d"/>
+    </g></svg></div>
+        <span class="w">Hazard</span><span class="q">Red, dashed, open</span>
+        <span class="d">The same flat form, the other meaning. One glance at the colour is the whole decision.</span>
+      </div>
     </div>
   </div>
 
   <div class="panel">
-    <h3>What colour is for</h3>
-    <p>Colour never says what a thing <b>is</b> — form already did that. Colour says one thing only: <b>what it does to your score.</b> Cyan pays points. Gold multiplies. Magenta upgrades. Orange-red costs you. So a gold pad and a gold pocket <em>should</em> share a hue — they both double — and the reader can still tell them apart instantly, because one is a hole and one is dashed.</p>
-    <p>This is also what makes the table readable without colour vision. Every discrimination above is a shape discrimination; hue is confirmation, never the carrier.</p>
+    <h3>What this fixes</h3>
+    <div class="ba">
+      <div class="col now">
+        <div class="band">
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><circle cx="35" cy="35" r="28" fill="#ffe27a" opacity="0.12"/><circle cx="35" cy="35" r="23" fill="#0a3529"/><circle cx="35" cy="35" r="23" fill="none" stroke="#ffe27a" stroke-width="3.2" stroke-dasharray="6 5"/><text class="svgtext" x="35" y="41" font-size="15" font-weight="700" fill="#ffe27a" text-anchor="middle">&#215;2</text></svg>
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><circle cx="35" cy="35" r="28" fill="#ffe27a" opacity="0.12"/><circle cx="35" cy="35" r="23" fill="#0a3529"/><circle cx="35" cy="35" r="23" fill="none" stroke="#ffe27a" stroke-width="3.2"/><circle cx="35" cy="35" r="10" fill="none" stroke="#ffe27a" stroke-width="3"/></svg>
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><circle cx="35" cy="35" r="28" fill="#35f2ff" opacity="0.12"/><circle cx="35" cy="35" r="23" fill="#0a3529"/><circle cx="35" cy="35" r="23" fill="none" stroke="#35f2ff" stroke-width="3.2"/><path d="M35,25 L45,35 L35,45 L25,35 Z" fill="none" stroke="#35f2ff" stroke-width="3"/></svg>
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><circle cx="35" cy="35" r="28" fill="#35f2ff" opacity="0.12"/><circle cx="35" cy="35" r="23" fill="#0a3529"/><circle cx="35" cy="35" r="23" fill="none" stroke="#35f2ff" stroke-width="3.2"/><circle cx="35" cy="35" r="6" fill="#35f2ff"/></svg>
+        </div>
+        <div class="cap">Four glowing rings, three meanings</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="col next">
+        <div class="band">
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="35" cy="35" r="22.0" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="35" cy="35" r="25" fill="none" stroke="#2ef2c4" stroke-width="2.8" stroke-dasharray="9.0 6.5" stroke-linecap="round"/>
+      <text class="svgtext" x="35" y="41.5" font-size="19.5" font-weight="700" fill="#2ef2c4" text-anchor="middle">&#215;2</text>
+    </g></svg>
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="35" cy="35" r="22.0" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="35" cy="35" r="25" fill="none" stroke="#2ef2c4" stroke-width="2.8" stroke-dasharray="9.0 6.5" stroke-linecap="round"/>
+      <path d="M35,24.0 L46.0,35 L35,46.0 L24.0,35 Z" fill="none" stroke="#2ef2c4" stroke-width="3.0"/><path d="M35,29.9 L40.1,35 L35,40.1 L29.9,35 Z" fill="#2ef2c4"/>
+    </g></svg>
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc2"><rect x="0" y="0" width="70" height="70" rx="7"/></clipPath>
+      <g clip-path="url(#cc2)">
+        <rect x="0" y="0" width="70" height="70" fill="#0a1a24"/>
+        <circle cx="22" cy="22" r="26.2" fill="#0a1a24"/>
+        <rect x="22" y="22" width="48" height="48" fill="#0b3a2e"/>
+        <g transform="translate(22,22)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"></g></g>
+        <g transform="translate(22,22)">
+          <polygon points="20,0 57,0 48,8 29,8" fill="#123040"/><line x1="29" y1="8" x2="48" y2="8" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,20 0,57 8,48 8,29" fill="#123040"/><line x1="8" y1="29" x2="8" y2="48" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="22" cy="22" r="24.4" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="22" cy="22" r="20" fill="#04060a"/>
+        <circle cx="22" cy="22" r="20" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="22" cy="22" r="18.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="22" cy="22" r="26.2" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg>
+          <svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="sc3"><rect x="0" y="0" width="70" height="70" rx="7"/></clipPath>
+      <g clip-path="url(#sc3)">
+        <rect x="0" y="0" width="70" height="70" fill="#0a1a24"/>
+        <circle cx="22" cy="35.0" r="26.2" fill="#0a1a24"/>
+        <rect x="22" y="0" width="48" height="70" fill="#0b3a2e"/>
+        <g transform="translate(22,0)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"><line x1="0" y1="58" x2="48" y2="58"/></g></g>
+        <g transform="translate(22,0)">
+          <polygon points="0,-9 0,15.0 8,6.0 8,0" fill="#123040"/><line x1="8" y1="0" x2="8" y2="6.0" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,55.0 0,79 8,70 8,64.0" fill="#123040"/><line x1="8" y1="64.0" x2="8" y2="70" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="22" cy="35.0" r="24.4" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="22" cy="35.0" r="20" fill="#04060a"/>
+        <circle cx="22" cy="35.0" r="20" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="22" cy="35.0" r="18.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="22" cy="35.0" r="26.2" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg>
+        </div>
+        <div class="cap">Two pick-ups and two pockets, unmistakable</div>
+      </div>
+    </div>
+    <p>The two gold things and the two cyan things all became one of two answers: <b>mint on the felt</b> or <b>a hole in the table</b>. Gold and magenta leave the palette entirely — with pocket types gone there is nothing left for them to mean, and every hue that stays means exactly one thing.</p>
   </div>
 </div>
 </x-dc>

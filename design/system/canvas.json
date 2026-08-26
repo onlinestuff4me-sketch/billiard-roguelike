@@ -4,45 +4,45 @@
       "file": "Main.dc.html",
       "x": 0,
       "y": 0,
-      "w": 940,
-      "h": 1420
+      "w": 960,
+      "h": 1215
     },
     {
       "file": "Specimens.dc.html",
-      "x": 1100,
+      "x": 1120,
       "y": 0,
-      "w": 940,
-      "h": 1430
+      "w": 960,
+      "h": 1330
     },
     {
-      "file": "Confusions.dc.html",
+      "file": "Pockets.dc.html",
       "x": 0,
-      "y": 1540,
-      "w": 940,
-      "h": 1080
+      "y": 1335,
+      "w": 1000,
+      "h": 1540
     },
     {
       "file": "Words.dc.html",
-      "x": 1100,
-      "y": 1550,
-      "w": 880,
-      "h": 1720
+      "x": 1120,
+      "y": 1450,
+      "w": 900,
+      "h": 1990
     },
     {
       "file": "Teaching.dc.html",
       "x": 0,
-      "y": 2740,
+      "y": 2995,
       "w": 1000,
-      "h": 1950
+      "h": 2090
     }
   ],
   "annotations": [
     {
       "id": "brief",
       "x": 0,
-      "y": -200,
-      "w": 940,
-      "text": "The fix in one line: form says what a thing IS, colour says what it DOES to your score.\n\nStart at \"Four families\", then \"Three pairs a new player cannot tell apart\" \u2014 that one is the gold-pad-vs-gold-pocket problem you hit, with the before and after side by side."
+      "y": -210,
+      "w": 960,
+      "text": "Three changes from your notes:\n\n1. Pockets are architecture now \u2014 the frame swells around each one and the cushions break and flare into the mouth. See \"Pockets are not on the table\".\n2. The palette is allocated. Five channels, no hue in two of them. Pockets have no colour at all; green is always good, red is always bad.\n3. Plain words only: hit, shoot, knock in, bounce. Sink, pot, bank and drive-through are gone."
     }
   ],
   "launch": {
