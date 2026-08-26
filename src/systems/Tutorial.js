@@ -84,38 +84,42 @@ const RULES = {
 
   goal: {
     say: 'Knock it into the <em>goal</em>',
-    hint: 'Pull back <em>further</em> — the <b>red ball</b> must reach the bar.',
+    // Measured: this carries from 32% to 90% power and fails ONLY at full
+    // power, where the ball shatters before it gets there. The lesson teaches
+    // restraint by being unpassable with the shot lesson 1 just rewarded.
+    hint: 'Not too hard — a <b>broken ball</b> never reaches the bar.',
     spot: 'goal',
     hand: true,
+    handDraw: 5.4,
     usesGoal: true,
     cheer: 'In the goal',
-    scold: 'Short — hit it harder, straight down the middle',
+    scold: 'Too hard — it broke on the way. Ease off the draw',
     whiff: 'Missed the ball entirely — line up on it first',
-    nudge: 'Hit it dead centre at full draw and it carries straight in.'
+    nudge: 'Half a draw carries it all the way. Full power shatters it.'
   },
 
   'pass-straight': {
-    say: 'Hit one ball <em>into the other</em>',
-    hint: 'Full power straight up the middle. The <b>near ball</b> carries on into the far one.',
+    say: 'Move it, don\'t <em>break</em> it',
+    hint: 'A <em>softer</em> hit sends the <b>near ball</b> into the far one.',
     spot: 'rack',
-    pass: () => 'score',
-    shot: () => 'reject',
-    cheer: '2 HITS  \u00d71.4',
-    scold: 'The near ball has to reach the far one — more power',
+    hand: true,
+    handDraw: 4.2,
+    softPass: true,
+    cheer: '2 HITS  \u00d71.4 \u2014 the hand-off',
+    scold: 'Too hard — it shattered instead of travelling. Ease off the draw',
     whiff: 'Missed — take the near ball head on',
-    nudge: 'Straight up the middle at full draw.'
+    nudge: 'Half a draw is plenty. Hard enough to break it is too hard.'
   },
 
   'pass-angled': {
     say: 'Same shot, <em>on an angle</em>',
-    hint: 'The far ball is off to the side. Clip the <b>near ball</b> so it turns into it.',
+    hint: 'Still <em>soft</em>. Clip the <b>near ball</b> so it turns into the far one.',
     spot: 'rack',
-    pass: () => 'score',
-    shot: () => 'reject',
-    cheer: '2 HITS  \u00d71.4 — on an angle',
-    scold: 'It went the wrong way — strike the first ball on its far side',
+    softPass: true,
+    cheer: '2 HITS  \u00d71.4 \u2014 on an angle',
+    scold: 'Too hard, or the wrong line — ease off and clip its far side',
     whiff: 'Missed — the white ghost circle shows where you will make contact',
-    nudge: 'Line the ghost circle up so the yellow cone points at the second ball.'
+    nudge: 'Line the ghost circle up so the line points at the second ball.'
   },
 
   'pass-three': {
@@ -436,9 +440,21 @@ export class Tutorial {
     // playable for a single frame, so lesson 2 could open already scolding you
     // with a miss on the board. The old shot is over; it does not get to finish.
     this._launched = false;
+    // RE-ENTERING A LESSON MUST REBUILD ITS RACK, NOT JUST RE-HOME THE CUE.
+    //
+    // Completing a lesson detonates what it killed, and a scored goal stays
+    // scored until the room is rebuilt. Re-entry only called _homeBall, so a
+    // replay opened on a rack with dead bodies still dead and the goal still
+    // closed — unpassable until a failed attempt happened to trigger a re-rack.
+    // The symptom was a perfect fail / pass / fail / pass alternation.
+    if (this.rooms.goal) this.rooms.goal.scored = false;
     this._needsRoom = lesson.room.id !== this._roomKey;
-    if (this._needsRoom) this._buildRoom();
-    else this._homeBall();
+    if (this._needsRoom) {
+      this._buildRoom();
+    } else {
+      this._reRack();
+      this._homeBall();
+    }
   }
 
   _buildRoom() {
@@ -831,6 +847,20 @@ export class Tutorial {
       const shattered = !!first && first.killed && first.enemy === rack[0];
       const reachedSecond = this._strikes.some((k) => k.enemy === rack[1]);
       if (shattered && reachedSecond && this._passes >= 1) this._score();
+      else this._rejected = true;
+    }
+
+    // SOFT PASS. The lesson is "a gentler hit MOVES it instead of breaking it",
+    // so it must not be satisfied by a max-power shot that shattered the ball
+    // and happened to register a carom on its way out. The struck ball lives.
+    if (stillIts && lesson.softPass) {
+      const rack = this.rooms.scriptedEnemies;
+      // "Survived the CUE", not "is alive now". A ball can take the softer hit
+      // exactly as the lesson asks, travel, hand off, and then splat on a far
+      // wall seconds later — judging its final state failed the very shot the
+      // card describes.
+      const struck = this._strikes.find((k) => k.enemy === rack[0]);
+      if (struck && !struck.killed && this._passes >= 1) this._score();
       else this._rejected = true;
     }
 

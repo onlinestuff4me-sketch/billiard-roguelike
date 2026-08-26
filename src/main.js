@@ -683,11 +683,25 @@ game.forceKill = (enemy) => {
 game.tutorialGuard = null;
 
 /**
- * final = base × speedRatio × chain × damageMult × bankBonus × firstHitBonus
+ * final = base × speedRatio × damageMult × bankBonus × firstHitBonus
  * (backstab and shield mitigation are applied inside Enemy.takeDamage)
+ *
+ * THE CHAIN IS NOT IN THIS PRODUCT ANY MORE, DELIBERATELY.
+ *
+ * It used to multiply damage, which made every later contact in a launch hit
+ * HARDER than the first even though the cue was slower — contact 2 did 44 into a
+ * 34hp solid where contact 1 did 36. One max-power shot therefore destroyed a
+ * whole line, and "knock this ball into that one" became impossible to author
+ * without flagging bodies unkillable.
+ *
+ * With the chain paying points instead, the cue's own speed decides everything:
+ * contact 1 at full power breaks a solid (35.7), contact 2 does not (31.7), so
+ * it survives and carries on into the next ball. That IS the mechanic — shatter
+ * the first, ride through, hand off — and it now falls out of the physics rather
+ * than being staged with an immortality flag.
  */
-function strikeDamage(speed, mult) {
-  let damage = PLAYER.strikeDamage * speedRatio(speed) * mult * player.stats.damageMult;
+function strikeDamage(speed) {
+  let damage = PLAYER.strikeDamage * speedRatio(speed) * player.stats.damageMult;
   if (player.bouncesUsed > 0) {
     damage *= 1 + player.stats.bankDamageBonus * player.bouncesUsed;
   }
@@ -699,8 +713,8 @@ function strikeDamage(speed, mult) {
 game.on = {
   /* --- the cue strike ------------------------------------------------ */
   cueStrike({ player: p, enemy, x, z, speed, banked }) {
-    const mult = chainStep();
-    const result = dealDamage(enemy, strikeDamage(speed, mult), {
+    chainStep();
+    const result = dealDamage(enemy, strikeDamage(speed), {
       fromX: p.x,
       fromZ: p.z,
       banked,
@@ -751,9 +765,10 @@ game.on = {
   /* --- the carom ----------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
     tutorial.notify('pass', { striker, target, x, z, speed });
-    const mult = chainStep();
+    chainStep();
     const scale = clamp(speed / PLAYER.referenceSpeed, 0.4, 2.0);
-    const damage = PHYSICS.caromDamage * scale * mult * player.stats.damageMult;
+    // Same rule as the cue strike: speed decides lethality, the chain pays points.
+    const damage = PHYSICS.caromDamage * scale * player.stats.damageMult;
     // An object ball counts as a banked hit: it ignores frontal shields.
     dealDamage(target, damage, {
       fromX: striker.x,
@@ -790,9 +805,8 @@ game.on = {
     //
     // The splat still hits hard and still scales with a chain that is already
     // running; it just cannot extend one. HITS now counts contacts you caused.
-    const mult = chainMultiplier();
     const scale = clamp(speed / PHYSICS.wallSplatSpeed, 1, 2.4);
-    dealDamage(enemy, PHYSICS.wallSplatDamage * scale * mult, {
+    dealDamage(enemy, PHYSICS.wallSplatDamage * scale, {
       source: 'splat',
       silent: true
     });
