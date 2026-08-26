@@ -19,7 +19,9 @@
  */
 
 import * as THREE from 'three';
-import { ARENA, ROOM, INJECTOR, PALETTE, ENEMY, PROGRESSION, PHYSICS } from '../config.js';
+import { ARENA, ROOM, PALETTE, ENEMY, PROGRESSION, PHYSICS, TABLE } from '../config.js';
+import { Table, pocketSlots } from './Table.js';
+import { contractFor, rackNumbers, archetypeForNumber } from './Rules.js';
 import { Enemy, ENEMY_STATE } from '../entities/Enemy.js';
 import layoutData from '../data/layouts.json';
 
@@ -30,12 +32,7 @@ import layoutData from '../data/layouts.json';
  * reached for makeRng through RoomManager.
  * ------------------------------------------------------------------ */
 
-import {
-  makeRng,
-  roomSeed,
-  budgetFor as directorBudgetFor,
-  buildWaves as directorBuildWaves
-} from './ThreatDirector.js';
+import { makeRng, roomSeed } from './ThreatDirector.js';
 
 export { makeRng };
 
@@ -69,9 +66,14 @@ export const DOOR_REWARDS = [
     describe: (phase) => `${phase ? phase.toUpperCase() : 'ANY'} BOON`
   },
   { id: 'repair', label: 'Repair', glyph: '✚', color: 0x4dff9e, weight: 1 },
-  { id: 'focus', label: 'Focus', glyph: '◯', color: PALETTE.player, weight: 1 },
-  { id: 'power', label: 'Power', glyph: '⌃', color: PALETTE.solid, weight: 1 },
-  { id: 'ricochet', label: 'Ricochet', glyph: '⤢', color: PALETTE.carom, weight: 1 }
+  /**
+   * The reward table follows the rules. Focus and raw damage decided nothing
+   * once balls stopped dying to hits, so both are gone; what a player wants
+   * now is another stroke, another freeze, or another bank on the multiplier.
+   */
+  { id: 'stroke', label: 'Stroke', glyph: '│', color: PALETTE.carom, weight: 1.6 },
+  { id: 'freeze', label: 'Freeze', glyph: '◈', color: PALETTE.player, weight: 1.2 },
+  { id: 'ricochet', label: 'Ricochet', glyph: '⤢', color: PALETTE.bumper, weight: 1 }
 ];
 
 const PHASES = ['launch', 'trajectory', 'impact', 'rebound'];
@@ -114,6 +116,18 @@ export class RoomManager {
 
     this.enemyLayer = new THREE.Group();
     this.group.add(this.enemyLayer);
+
+    /**
+     * Pockets and felt objects. The room owns the table because the room is
+     * what re-rolls it; everything else reaches it through `game.table`.
+     */
+    this.table = new Table(this.group);
+    game.table = this.table;
+
+    /** The contract this room was generated against. */
+    this.contract = contractFor(1);
+    /** The numbered balls currently racked. */
+    this.rack = [];
   }
 
   /* ---------------------------------------------------------------- *
@@ -133,8 +147,8 @@ export class RoomManager {
 
     // --- 1. handcrafted geometry -------------------------------------
     // The first two rooms are always the empty table. Obstacles are a second
-    // idea, and the opening only has room for one: that hitting things with
-    // yourself is the game. Clutter here reads as difficulty, not as teaching.
+    // idea, and the opening only has room for one: that the point is driving
+    // balls into pockets. Clutter here reads as difficulty, not as teaching.
     this.layout = level <= 2 ? LAYOUTS[0] : pick(rng, LAYOUTS);
     this.colliders = this.layout.obstacles.map((o) => ({
       ...o,
@@ -143,23 +157,149 @@ export class RoomManager {
     }));
     this.buildLayoutMeshes();
 
-    // --- 2. procedural environmental injectors ------------------------
-    this.injectEnvironment(rng, level);
+    // --- 2. the contract, and the table it is played on ---------------
+    this.contract = contractFor(level);
+    this.table.buildPockets(level, rng);
+    this.placeObjects(rng, level);
 
-    // --- 3. procedural threat budget ----------------------------------
-    this.waves = this.buildWaves(rng, level);
+    // --- 3. the rack ---------------------------------------------------
+    this.rack = this.rackBalls(rng, level);
+
+    this.waves = [];
     this.waveIndex = 0;
     this.waveDelay = WAVE_GAP;
     this.cleared = false;
 
     this.game.physics.setColliders(this.colliders);
-    this.spawnWave(0);
 
-    return {
-      layout: this.layout,
-      waves: this.waves.length,
-      budget: this.budgetFor(level)
+    return { layout: this.layout, contract: this.contract, rack: this.rack.length };
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Racking
+   * ---------------------------------------------------------------- */
+
+  /**
+   * Anchor points that are safe to put something on: clear of the player's
+   * spawn, clear of the obstacles, and clear of every pocket and lit object
+   * placed so far. Shuffled, so two rooms on the same layout do not rack
+   * identically.
+   */
+  freeAnchors(rng, radius = 1.0) {
+    const spawn = this.layout.spawn;
+    const list = this.layout.anchors.filter(
+      (a) =>
+        Math.hypot(a.x - spawn.x, a.z - spawn.z) >= ROOM.safeSpawnRadius &&
+        !this.overlapsObstacle(a.x, a.z, radius + 0.6) &&
+        !this.table.blocked(a.x, a.z, radius)
+    );
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+  }
+
+  /**
+   * Roll the lit objects onto the felt. Each type has a room it can first
+   * appear in, so the table gains one new idea at a time rather than arriving
+   * fully furnished.
+   */
+  placeObjects(rng, level) {
+    this.game.zones.length = 0;
+    const order = ['gold', 'gate', 'freeze', 'mine'];
+    const spec = {
+      gold: TABLE.objects.gold,
+      gate: TABLE.objects.gate,
+      freeze: TABLE.objects.freezeCell,
+      mine: TABLE.objects.mine
     };
+    for (const kind of order) {
+      const cfg = spec[kind];
+      if (level < cfg.minLevel) continue;
+      if (rng() > cfg.chance) continue;
+      const anchors = this.freeAnchors(rng, kind === 'gate' ? 2.0 : 1.4);
+      const anchor = anchors[0];
+      if (!anchor) continue;
+      this.table.addObject(kind, anchor.x, anchor.z);
+    }
+  }
+
+  /**
+   * Place the numbered rack.
+   *
+   * Balls go on free anchors rather than in a triangle: a tight rack is a
+   * lovely opening break and a terrible puzzle, because every ball after the
+   * first is behind another one. Spread positions are what make a route a
+   * choice.
+   */
+  rackBalls(rng, level) {
+    const numbers = rackNumbers(this.contract.rack);
+    const anchors = this.freeAnchors(rng, 1.2);
+    const placed = [];
+
+    numbers.forEach((number, index) => {
+      const type = archetypeForNumber(number);
+      const anchor = anchors[index] || this.fallbackSpot(rng, placed);
+      if (!anchor) return;
+      const ball = new Enemy(this.enemyLayer, type, anchor.x, anchor.z, level);
+      // A racked ball is on the table from the first frame. There is no
+      // telegraph to wait out, because nothing spawned — it was always there.
+      ball.state = ENEMY_STATE.ACTIVE;
+      ball.spawnTimer = 0;
+      ball.drag = PHYSICS.enemyDrag;
+      ball.frozen = true;
+      ball.disarmed = true;
+      ball.setNumber(number);
+      ball.homeX = anchor.x;
+      ball.homeZ = anchor.z;
+      this.game.enemies.push(ball);
+      placed.push(ball);
+    });
+
+    return placed;
+  }
+
+  /** Last resort when a layout runs out of anchors: jitter into open felt. */
+  fallbackSpot(rng, placed) {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const x = (rng() * 2 - 1) * (ARENA.halfW - 2.6);
+      const z = -ARENA.halfH + 2.6 + rng() * (ARENA.height - 9);
+      if (this.overlapsObstacle(x, z, 1.6)) continue;
+      if (this.table.blocked(x, z, 1.2)) continue;
+      if (placed.some((b) => Math.hypot(b.x - x, b.z - z) < 2.8)) continue;
+      return { x, z };
+    }
+    return null;
+  }
+
+  /**
+   * Re-spot a ball that must not have gone down yet — the 8 potted early
+   * under an "8 last" contract. Classic billiards: it comes back, and the
+   * stroke that fouled pays nothing.
+   */
+  respot(ball) {
+    const spot = this.fallbackSpot(this.rng, this.game.enemies.filter((b) => b !== ball && b.alive));
+    if (!spot) return false;
+    ball.x = spot.x;
+    ball.z = spot.z;
+    ball.vx = 0;
+    ball.vz = 0;
+    ball.state = ENEMY_STATE.ACTIVE;
+    ball.group?.position.set(spot.x, 0, spot.z);
+    return true;
+  }
+
+  /** How many contract balls are still on the felt. */
+  get ballsRemaining() {
+    return this.game.enemies.filter((b) => b.alive && b.number > 0).length;
+  }
+
+  /** The contract is filled: put the exits up. Called by the run, not here. */
+  openExits() {
+    if (this.cleared) return this.doors;
+    this.cleared = true;
+    return this.spawnDoors();
   }
 
   /* ---------------------------------------------------------------- *
@@ -211,6 +351,27 @@ export class RoomManager {
     this.goal = spec.goal ? { ...spec.goal, scored: false } : null;
     if (this.goal) this.buildGoalMesh(this.goal);
 
+    // A LESSON TABLE HAS TO BE THE REAL TABLE.
+    //
+    // The tutorial teaches potting, so lesson rooms get real pockets — the
+    // same capture radii, the same types, the same rules. A lesson that taught
+    // the game against a stand-in target would be teaching a different game.
+    // Only the pockets a lesson names are built, so each board contains the
+    // thing it is about and nothing else.
+    if (spec.pockets && spec.pockets.length) {
+      const byslot = new Map(pocketSlots().map((slot) => [slot.slot, slot]));
+      const spots = spec.pockets
+        .map((entry) => {
+          const slot = byslot.get(entry.slot);
+          return slot ? { ...slot, type: entry.type || 'score' } : null;
+        })
+        .filter(Boolean);
+      this.table.buildPockets(0, () => 0, spots);
+    }
+    for (const object of spec.objects || []) {
+      this.table.addObject(object.kind, object.x, object.z, object);
+    }
+
     this.scriptedEnemies = this.spawnScripted(spec.enemies || []);
 
     return this.layout;
@@ -235,6 +396,9 @@ export class RoomManager {
       // Remembered so a lesson can re-rack after a shot that scattered them.
       enemy.homeX = slot.x;
       enemy.homeZ = slot.z;
+      // Numbered like every other ball, so a lesson can talk about "the 8" and
+      // mean the same thing the contract means.
+      if (slot.number) enemy.setNumber(slot.number);
       this.game.enemies.push(enemy);
       return enemy;
     });
@@ -301,137 +465,6 @@ export class RoomManager {
     const g = this.goal;
     if (!g) return false;
     return Math.abs(x - g.x) < g.hw + radius && Math.abs(z - g.z) < g.hh + radius;
-  }
-
-  budgetFor(level) {
-    return directorBudgetFor(level);
-  }
-
-  /**
-   * The Threat Director: spend a budget across waves, drawing archetypes by
-   * weight subject to unlock gates, and bind each to a validated anchor — or
-   * take the layout's own authored waves when it has them.
-   */
-  buildWaves(rng, level) {
-    return directorBuildWaves(this.layout, level, rng);
-  }
-
-  /* ---------------------------------------------------------------- *
-   * Environmental injectors
-   * ---------------------------------------------------------------- */
-
-  injectEnvironment(rng, level) {
-    this.game.zones.length = 0;
-    if (level < ROOM.injectors.minLevel) return;
-
-    const free = this.layout.anchors.filter(
-      (a) =>
-        Math.hypot(a.x - this.layout.spawn.x, a.z - this.layout.spawn.z) >= ROOM.safeSpawnRadius &&
-        !this.overlapsObstacle(a.x, a.z, 2.0)
-    );
-    for (let i = free.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [free[i], free[j]] = [free[j], free[i]];
-    }
-
-    let placed = 0;
-    let cursor = 0;
-    const rolls = [
-      { kind: 'bumper', chance: ROOM.injectors.bumperChance },
-      { kind: 'pyre', chance: ROOM.injectors.pyreChance },
-      { kind: 'hazard', chance: ROOM.injectors.hazardChance }
-    ];
-
-    for (const roll of rolls) {
-      if (placed >= ROOM.injectors.maxPerRoom) break;
-      if (rng() > roll.chance) continue;
-      const anchor = free[cursor++ % Math.max(free.length, 1)];
-      if (!anchor) break;
-      this.spawnInjector(roll.kind, anchor.x, anchor.z);
-      placed++;
-    }
-  }
-
-  spawnInjector(kind, x, z) {
-    if (kind === 'bumper') {
-      const collider = {
-        type: 'circle',
-        x,
-        z,
-        radius: INJECTOR.bumper.radius,
-        kind: 'bumper',
-        restitution: 1.0
-      };
-      this.colliders.push(collider);
-      const mesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(INJECTOR.bumper.radius, INJECTOR.bumper.radius * 0.8, 0.5, 20),
-        new THREE.MeshStandardMaterial({
-          color: PALETTE.bumper,
-          emissive: new THREE.Color(PALETTE.bumper),
-          emissiveIntensity: 0.6,
-          roughness: 0.3
-        })
-      );
-      mesh.position.set(x, 0.25, z);
-      this.group.add(mesh);
-      collider.mesh = mesh;
-      return;
-    }
-
-    if (kind === 'pyre') {
-      const zone = {
-        type: 'circle',
-        x,
-        z,
-        radius: INJECTOR.pyre.radius,
-        kind: 'pyre',
-        contains: false
-      };
-      this.game.zones.push(zone);
-      const mesh = new THREE.Mesh(
-        new THREE.RingGeometry(INJECTOR.pyre.radius * 0.35, INJECTOR.pyre.radius, 28),
-        new THREE.MeshBasicMaterial({
-          color: PALETTE.pyre,
-          transparent: true,
-          opacity: 0.3,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        })
-      );
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(x, 0.04, z);
-      this.group.add(mesh);
-      zone.mesh = mesh;
-      return;
-    }
-
-    // hazard strip
-    const zone = {
-      type: 'box',
-      x,
-      z,
-      hw: INJECTOR.hazard.width / 2,
-      hh: INJECTOR.hazard.height / 2,
-      kind: 'hazard',
-      contains: false
-    };
-    this.game.zones.push(zone);
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(INJECTOR.hazard.width, INJECTOR.hazard.height),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.hazard,
-        transparent: true,
-        opacity: 0.35,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    );
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(x, 0.035, z);
-    this.group.add(mesh);
-    zone.mesh = mesh;
   }
 
   overlapsObstacle(x, z, radius) {
@@ -517,23 +550,6 @@ export class RoomManager {
       this.group.add(outline);
       c.outline = outline;
     }
-  }
-
-  /* ---------------------------------------------------------------- *
-   * Waves
-   * ---------------------------------------------------------------- */
-
-  spawnWave(index) {
-    const wave = this.waves[index];
-    if (!wave) return;
-    for (const slot of wave) {
-      this.game.enemies.push(new Enemy(this.enemyLayer, slot.type, slot.x, slot.z, this.level));
-    }
-    this.waveIndex = index;
-  }
-
-  get wavesRemaining() {
-    return Math.max(0, this.waves.length - this.waveIndex - 1);
   }
 
   /* ---------------------------------------------------------------- *
@@ -651,37 +667,22 @@ export class RoomManager {
    * ---------------------------------------------------------------- */
 
   update(dt, game) {
-    // An authored room has no wave queue and no exits — whatever is driving it
-    // decides when it is over.
+    this.table.update(dt);
+
+    // An authored room has no exits — whatever is driving it decides when it
+    // is over.
     if (this.scripted) return;
 
-    const alive = game.enemies.length;
+    // THE ROOM IS NOT OVER WHEN THE TABLE IS EMPTY, IT IS OVER WHEN THE
+    // CONTRACT IS FILLED.
+    //
+    // Those used to be the same sentence, back when clearing meant killing
+    // everything. They are not any more: a ball can leave the table without
+    // counting (an early 8 is re-spotted) and a contract can be filled with
+    // balls still standing. So the run calls `openExits()` when the rules say
+    // so, and this loop only ever drives the doors.
+    if (!this.cleared) return;
 
-    if (!this.cleared) {
-      if (alive === 0) {
-        if (this.wavesRemaining > 0) {
-          // A short breath between waves so a clear always reads as a clear.
-          this.waveDelay -= dt;
-          if (this.waveDelay <= 0) {
-            this.waveDelay = WAVE_GAP;
-            this.spawnWave(this.waveIndex + 1);
-            this.handlers.onWaveSpawned?.({
-              index: this.waveIndex,
-              total: this.waves.length
-            });
-          }
-        } else {
-          this.cleared = true;
-          this.spawnDoors();
-          this.handlers.onRoomClear?.({ level: this.level, layout: this.layout });
-        }
-      } else {
-        this.waveDelay = WAVE_GAP;
-      }
-      return;
-    }
-
-    // Doors are live: pulse them and test for the player flying in.
     const player = game.player;
     for (const door of this.doors) {
       door.pulse += dt * 3;
@@ -706,16 +707,23 @@ export class RoomManager {
 
   teardown() {
     this.clearDoors();
+    this.table.clear();
+    this.rack = [];
     for (const enemy of this.game.enemies) enemy.dispose();
     this.game.enemies.length = 0;
     for (const projectile of this.game.projectiles) projectile.dispose();
     this.game.projectiles.length = 0;
     this.game.zones.length = 0;
 
-    // Dispose everything except the (persistent) enemy layer.
+    // Dispose everything except the two PERSISTENT layers.
+    //
+    // The table's own group used to be caught by this sweep, which quietly
+    // detached it on the first generate() — every pocket and lit object built
+    // afterwards went into an orphaned group and rendered nowhere. Both
+    // long-lived layers are named here so the next one added cannot repeat it.
     for (let i = this.group.children.length - 1; i >= 0; i--) {
       const child = this.group.children[i];
-      if (child === this.enemyLayer) continue;
+      if (child === this.enemyLayer || child === this.table.group) continue;
       this.group.remove(child);
       child.traverse?.((node) => {
         if (node.geometry) node.geometry.dispose();

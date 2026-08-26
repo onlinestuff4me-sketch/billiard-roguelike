@@ -14,7 +14,7 @@
  */
 
 import * as THREE from 'three';
-import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA } from '../config.js';
+import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA, RULES } from '../config.js';
 
 export const ENEMY_STATE = {
   SPAWNING: 'spawning',
@@ -55,6 +55,56 @@ function geometry(key, factory) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Ball numbers
+ *
+ * Every ball on the table carries a number, because the contract talks about
+ * them by name ("the 8 last") and because the number IS the ball's value. The
+ * digit rides as a camera-facing sprite rather than being baked into the
+ * silhouette, so shape still means behaviour and the number means worth —
+ * two channels, never one doing both jobs.
+ * ------------------------------------------------------------------ */
+
+const NUMBER_TEXTURES = new Map();
+
+/**
+ * The digit sits on a disc of the BALL'S OWN COLOUR, not on a bone one.
+ *
+ * A light disc was the obvious choice and the wrong one: bloom is thresholded
+ * at 0.34, so a near-white puck haloed harder than anything else on the table
+ * and every ball turned into a glowing blob with a number lost inside it. A
+ * disc that matches the body adds no luminance at all, and a near-black digit
+ * on it reads at 60px on a phone.
+ */
+function numberTexture(number, hex) {
+  const key = `${number}:${hex}`;
+  if (NUMBER_TEXTURES.has(key)) return NUMBER_TEXTURES.get(key);
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  // No disc. A light puck haloed harder than anything on the table under a
+  // 0.34 bloom threshold, and a puck in the ball's own colour just read as a
+  // hole. What survives both is an outlined numeral: a heavy near-black stroke
+  // for contrast against red, violet and amber alike, filled bone so it reads
+  // as lit rather than painted.
+  ctx.font = `700 ${size * 0.7}px Rajdhani, "Segoe UI", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = size * 0.14;
+  ctx.strokeStyle = 'rgba(5, 7, 10, 0.95)';
+  ctx.strokeText(String(number), size / 2, size / 2 + size * 0.02);
+  ctx.fillStyle = '#eaf6ff';
+  ctx.fillText(String(number), size / 2, size / 2 + size * 0.02);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = 4;
+  NUMBER_TEXTURES.set(key, texture);
+  return texture;
+}
+
+/* ------------------------------------------------------------------ *
  * Enemy
  * ------------------------------------------------------------------ */
 
@@ -72,6 +122,13 @@ export class Enemy {
 
     this.parent = parent;
     this.type = type;
+    /**
+     * The ball's number, and therefore its worth. Zero until a rack assigns
+     * one — an unnumbered body is a legacy enemy and pays nothing.
+     */
+    this.number = 0;
+    this.value = 0;
+    this.numberSprite = null;
     /**
      * Set by scripted (tutorial) rooms: hold position instead of steering.
      * Holding still is not the same as being harmless — a frozen shooter still
@@ -162,10 +219,16 @@ export class Enemy {
     }
 
     this.baseColor = new THREE.Color(color);
+    // The heavy is nearly four times the area of a solid, so the same emissive
+    // intensity puts four times as much light through the bloom pass and the
+    // whole body whites out — taking the number with it. Under the old rules
+    // that was merely bright; now the 8 is the ball the contract names, and an
+    // unreadable 8 makes "the 8 last" unplayable.
+    const emissive = this.type === 'heavy' ? 0.3 : 0.55;
     this.material = new THREE.MeshStandardMaterial({
       color,
       emissive: new THREE.Color(color),
-      emissiveIntensity: 0.55,
+      emissiveIntensity: emissive,
       roughness: 0.4,
       metalness: 0.2
     });
@@ -190,7 +253,14 @@ export class Enemy {
     this.group.add(this.marker);
 
     // Heavy: a 180° frontal shield band. Local +Z is "forward".
-    if (this.type === 'heavy') {
+    //
+    // THE SHIELD IS GONE ON A STATIC TABLE.
+    //
+    // It existed to mitigate damage, and damage no longer decides whether a
+    // ball leaves the table — a pocket does. Keeping a near-white band that
+    // means nothing would be worse than cosmetic: it is the brightest thing in
+    // the scene, and it was drowning the one number the contract names.
+    if (!RULES.staticTable && this.type === 'heavy') {
       const shieldGeo = geometry(
         'shield',
         () => new THREE.TorusGeometry(cfg.radius * 1.2, 0.11, 8, 26, Math.PI)
@@ -311,6 +381,35 @@ export class Enemy {
     return this.alive && this.state === ENEMY_STATE.ACTIVE;
   }
 
+  /**
+   * Give this ball its number. The sprite is added once and follows the body,
+   * so re-numbering (a re-rack, a re-spot) is cheap.
+   */
+  setNumber(number) {
+    this.number = number;
+    this.value = number * 100;
+    // Deliberately wider than the body: at this camera scale a numeral
+    // confined to the silhouette is about ten pixels tall on a phone.
+    const scale = Math.max(1.5, this.radius * 2.4);
+    const hex = `#${(this.baseColor?.getHex?.() ?? 0xff3d6e).toString(16).padStart(6, '0')}`;
+    if (!this.numberSprite) {
+      this.numberSprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: numberTexture(number, hex),
+          transparent: true,
+          depthWrite: false
+        })
+      );
+      this.group.add(this.numberSprite);
+    } else {
+      this.numberSprite.material.map = numberTexture(number, hex);
+      this.numberSprite.material.needsUpdate = true;
+    }
+    this.numberSprite.scale.set(scale, scale, scale);
+    this.numberSprite.position.set(0, this.radius * 1.9, 0);
+    return this;
+  }
+
   /** Knocked bodies above the carom threshold are lethal to their own side. */
   get isLethalProjectile() {
     return this.alive && this.state === ENEMY_STATE.KNOCKED && this.speed >= PHYSICS.caromMinSpeed;
@@ -428,6 +527,14 @@ export class Enemy {
         break;
 
       case ENEMY_STATE.ACTIVE:
+        // ON A STATIC TABLE A BALL DOES NOTHING ON ITS OWN.
+        //
+        // No pursuit, no range-keeping, no wind-up, no shot. It sits where the
+        // last stroke left it until the next one moves it. This is the single
+        // switch the whole "nothing moves between shots" promise hangs on, so
+        // it is checked here rather than being spread across three behaviours
+        // that each have to remember to opt out.
+        if (RULES.staticTable) break;
         // A frozen enemy still collides, still gets knocked, still dies — it
         // just does not drive. The tutorial racks its targets in exact spots
         // and a lesson that walks away from its own diagram teaches nothing.

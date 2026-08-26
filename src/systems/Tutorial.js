@@ -68,123 +68,82 @@ const HAND_RELEASE = 8.6;
 const RULES = {
   aim: {
     say: 'Aim and shoot the <b>red ball</b>',
-    // Names the object and the gesture. The ghost hand shows WHERE and HOW FAR,
-    // so the words no longer have to carry a position ("thumb below the blue
-    // ball") that a demonstration states better in one loop.
     hint: 'Press <em>anywhere</em> and pull back, like a cue.',
     spot: 'first',
     hand: true,
     hit: () => 'score',
     shot: (s) => (s.hits === 0 ? 'reject' : null),
     facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
-    cheer: '1 HIT — now make them count',
+    cheer: 'That is the whole control',
     whiff: 'Missed — drag straight down from the blue ball and release',
     nudge: 'Put your thumb below the blue ball and pull down. The line shows where it goes.'
   },
 
-  goal: {
-    say: 'Knock it into the <em>goal</em>',
-    // Measured: this carries from 32% to 90% power and fails ONLY at full
-    // power, where the ball shatters before it gets there. The lesson teaches
-    // restraint by being unpassable with the shot lesson 1 just rewarded.
-    hint: 'Not too hard — a <b>broken ball</b> never reaches the bar.',
-    spot: 'goal',
+  pot: {
+    // The rule the entire redesign turns on, stated as the second thing the
+    // player is ever told: hitting a ball does not destroy it. Pockets do.
+    say: 'Knock it <em>down the pocket</em>',
+    hint: 'Hitting a ball never breaks it. Only a <b>pocket</b> takes one off the table.',
+    spot: 'first',
     hand: true,
-    handDraw: 5.4,
-    usesGoal: true,
-    cheer: 'In the goal',
-    scold: 'Too hard — it broke on the way. Ease off the draw',
-    whiff: 'Missed the ball entirely — line up on it first',
-    nudge: 'Half a draw carries it all the way. Full power shatters it.'
+    handDraw: 6.2,
+    pot: () => 'score',
+    cheer: 'Down it goes — that is a point',
+    whiff: 'Missed the ball — line up on it first',
+    nudge: 'The ball, the pocket and your cue are already in a straight line. Just hit it.'
   },
 
-  'pass-straight': {
-    say: 'Move it, don\'t <em>break</em> it',
-    hint: 'A <em>softer</em> hit sends the <b>near ball</b> into the far one.',
-    spot: 'rack',
+  'pot-cut': {
+    say: 'Now <em>cut</em> one in',
+    hint: 'Strike its <b>far side</b>. The white ghost circle shows where you make contact.',
+    spot: 'first',
     hand: true,
-    handDraw: 4.2,
-    softPass: true,
-    cheer: '2 HITS  \u00d71.4 \u2014 the hand-off',
-    scold: 'Too hard — it shattered instead of travelling. Ease off the draw',
-    whiff: 'Missed — take the near ball head on',
-    nudge: 'Half a draw is plenty. Hard enough to break it is too hard.'
+    handDraw: 6.2,
+    pot: () => 'score',
+    cheer: 'Cut and potted',
+    scold: 'It went past the pocket — clip more of its far side',
+    whiff: 'Missed — the ghost circle is where your ball ends up on contact',
+    nudge: 'Aim at the point on the far side that lines the ball up with the pocket.'
   },
 
-  'pass-angled': {
-    say: 'Same shot, <em>on an angle</em>',
-    hint: 'Still <em>soft</em>. Clip the <b>near ball</b> so it turns into the far one.',
-    spot: 'rack',
-    softPass: true,
-    cheer: '2 HITS  \u00d71.4 \u2014 on an angle',
-    scold: 'Too hard, or the wrong line — ease off and clip its far side',
-    whiff: 'Missed — the white ghost circle shows where you will make contact',
-    nudge: 'Line the ghost circle up so the line points at the second ball.'
-  },
-
-  'pass-three': {
-    say: 'Shatter it and <em>keep going</em>',
-    hint: '<em>Max power</em> breaks the first <b>ball</b> — your cue carries on through.',
-    spot: 'rack',
-    // The old `relay` rule asked for one hand-off and every ball having moved.
-    // That was satisfiable without doing any of what the card described: at
-    // 0.70 power the first ball survived, was knocked into a wall, splatted
-    // there, and the lesson said well done. Judged properly now — see
-    // `shatterThrough` in _resolveShot.
-    shatterThrough: true,
-    cheer: 'SHATTERED  \u2014 3 HITS \u00d71.8',
-    scold: 'It survived — pull back further so the first ball breaks',
-    whiff: 'Missed — line the cue straight up at the near ball',
-    nudge: 'The first ball must SHATTER. Anything less and your cue stops there.'
-  },
-
-  power: {
-    say: 'Pull back <em>further</em>',
-    // The one fact both novice testers got wrong: power is the thumb's DISTANCE
-    // from the ball, not the length of the drag. A thumb planted far away and
-    // never moved is a full-power shot.
-    hint: 'Power is how <em>far from the ball</em> your thumb is.',
-    spot: 'player',
+  gold: {
+    // Two ideas, one shot: rings pay, and the pocket you choose pays.
+    say: 'Run it through the <em>gold ring</em>',
+    hint: 'Gold <em>doubles</em> what the shot is worth. The <b>ring</b> is on your way.',
+    spot: 'first',
     hand: true,
-    handDraw: 9.4,
-    clearsRack: true,
-    cheer: '3 HITS  \u00d71.8 — all yours',
-    scold: 'Not enough on it — drag your thumb further from the ball',
-    whiff: 'Missed the line — straight up the middle',
-    nudge: 'Keep dragging until the cue glows gold. That is full power.'
+    handDraw: 6.2,
+    pot: (p) => (p.pocket.type === 'gold' ? 'score' : 'reject'),
+    cheer: 'Ring and gold pocket — doubled twice',
+    scold: 'Potted, but you missed the ring — take the line straight through it',
+    whiff: 'Missed the ball — the ring is on the way, not the target',
+    nudge: 'Same shot as before. The ring sits on the line; drive straight through it.'
   },
 
-  'bank-1': {
+  bank: {
+    // Banks are the cheapest rung on the ladder and the one the player has to
+    // choose deliberately, so it gets a board where nothing else will work.
     say: 'Bounce off a <em>wall</em> first',
-    hint: 'The <b>red ball</b> is blocked. Aim <em>out to the right</em> — the rail brings it back in.',
+    hint: 'The <b>red ball</b> is blocked. Every rail you take is worth <em>more points</em>.',
     spot: 'blocked',
     hit: (h) => (h.banked ? 'score' : 'reject'),
-    cheer: 'Off the rail',
+    cheer: 'Off the rail — and worth more for it',
     scold: 'No rail yet — aim into the side wall, not at the ball',
     whiff: 'Missed — the dashed line shows where the bounce goes',
     nudge: 'Aim well out to the side. The dashed preview is the return path.'
   },
 
-  'bank-2': {
-    say: 'Again, <em>other side</em>',
-    hint: 'Same shot mirrored. Aim <em>out to the left</em> and let the rail turn it.',
-    spot: 'blocked',
-    hit: (h) => (h.banked ? 'score' : 'reject'),
-    cheer: 'You have got it',
-    scold: 'Straight at it does not count — rail first',
-    whiff: 'Missed — follow the dashed line',
-    nudge: 'Aim out to the left this time and let it come back.'
-  },
-
-  'bank-two-rails': {
-    say: '<em>Two bounces</em>, then hit',
-    hint: 'Aim <em>hard right</em>. Two walls on the way round, then the <b>red ball</b>.',
+  eight: {
+    // The one contract rule that can be got wrong by doing the obvious thing,
+    // so it is taught by letting the player see the temptation and be told no.
+    say: 'Sink the <b>3</b>. The <em>8 goes last</em>',
+    hint: 'The <b>8</b> is right in front of a pocket. Potting it early is a foul.',
     spot: 'rack',
-    hit: (h) => (h.bounces >= 2 ? 'score' : 'reject'),
-    cheer: 'Two rails. Big points.',
-    scold: 'Only one bounce — go the long way round',
-    whiff: 'Missed — trace the dashed line before you let go',
-    nudge: 'Take it off the top wall first, then the side.'
+    pot: (p) => (p.ball.number === 8 ? 'reject' : 'score'),
+    cheer: 'The 3 first — that is the order',
+    scold: 'That was the 8. It comes back, and the stroke pays nothing',
+    whiff: 'Missed — the 3 is the one on your left',
+    nudge: 'Leave the 8 alone. Take the 3 into the pocket on the left.'
   }
 };
 
@@ -199,6 +158,10 @@ export const LESSONS = lessonData.lessons.map((table) => ({
     name: table.name,
     obstacles: table.obstacles || [],
     enemies: table.enemies || [],
+    // Pockets and lit objects are part of a lesson's table, not decoration:
+    // most boards are judged on a ball going down one.
+    pockets: table.pockets || [],
+    objects: table.objects || [],
     goal: table.goal || null
   }
 }));
@@ -760,6 +723,16 @@ export class Tutorial {
       if (!lesson.pass) return;
       const verdict = lesson.pass({ ...payload, depth: this._passes });
       if (verdict === 'score') this._score();
+      else if (verdict === 'reject') this._rejected = true;
+      return;
+    }
+
+    // A ball going down a pocket. This is the verdict most of the new boards
+    // are judged on, because it is the thing the game is actually about.
+    if (name === 'potted') {
+      if (!lesson.pot) return;
+      const verdict = lesson.pot(payload);
+      if (verdict === 'score') this._score([payload.ball]);
       else if (verdict === 'reject') this._rejected = true;
       return;
     }

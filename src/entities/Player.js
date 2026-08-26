@@ -10,7 +10,7 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA } from '../config.js';
+import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES } from '../config.js';
 
 export const PLAYER_STATE = {
   IDLE: 'idle',
@@ -562,6 +562,7 @@ export class Player {
     this.dashCooldown = 0;
     this.flashTimer = 0;
     this.touchTimer = 0;
+    this.scratchGuard = 0;
     this.pyreTimer = 0;
 
     // --- aim ---
@@ -640,6 +641,10 @@ export class Player {
   }
 
   get canAim() {
+    // Aiming is free on a static table. There is nothing to slow down between
+    // strokes, so there is nothing to charge for — the budget that limits you
+    // is the stroke count, not a gauge that drains while you think.
+    if (RULES.staticTable) return this.alive;
     return this.alive && this.focus >= FOCUS.minToAim;
   }
 
@@ -810,7 +815,9 @@ export class Player {
    */
   update(dt, rawDt, game, aimingActive) {
     // --- Focus economy runs on REAL time: slow-mo must feel expensive. ---
-    if (aimingActive && this.state === PLAYER_STATE.AIMING) {
+    if (RULES.staticTable) {
+      this.focus = this.focusMax;
+    } else if (aimingActive && this.state === PLAYER_STATE.AIMING) {
       this.focus = Math.max(0, this.focus - FOCUS.drainPerSecond * rawDt);
     } else if (this.focus < this.focusMax) {
       this.focus = Math.min(
@@ -824,6 +831,9 @@ export class Player {
     if (this.flashTimer > 0) this.flashTimer -= rawDt;
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
     if (this.touchTimer > 0) this.touchTimer -= dt;
+    // Stops one scratch being reported on every sub-step while the cue ball
+    // is still sitting inside the pocket's capture radius.
+    if (this.scratchGuard > 0) this.scratchGuard -= rawDt;
     if (this.pyreTimer > 0) this.pyreTimer -= dt;
 
     if (this.state === PLAYER_STATE.DASHING) {

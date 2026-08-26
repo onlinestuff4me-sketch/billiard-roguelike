@@ -1,12 +1,13 @@
 # Billiard Roguelike
 
-**Real-time kinetic billiards meets a boon-stacking action roguelike.**
+**Strategic billiards with a scorecard and a boon-stacking roguelike on top.**
 A portrait (9:16) mobile web prototype built with Vite + Three.js.
 
-> You are the cue ball. Hold to drop the world into 20% speed, drag back to load the
-> slingshot, release to break the rack. Every enemy you hit becomes a lethal object
-> ball; every rail is a damage multiplier; every room ends with a shot into one of
-> two doors that decides your build.
+> You are the cue ball. Every room is a static rack: nothing moves until you shoot,
+> so read it for as long as you like — then spend one of the few strokes you have.
+> A ball is never destroyed by being hit, only by being driven into a pocket. The
+> contract says what has to go down; the strokes you *don't* spend are worth more
+> than most of the ones you do.
 
 ---
 
@@ -29,12 +30,12 @@ geometry is procedural and all audio is synthesised at runtime.
 
 | Input | Action |
 | --- | --- |
-| **Hold** | Bullet-time (0.20x) + trajectory prediction |
-| **Drag** | Pull the slingshot — length is power, direction is inverted |
-| **Release** | Launch with invulnerability frames for the flight |
-| **Quick flick** (<150 ms) | Emergency dash, no slow-mo, no Focus cost |
+| **Hold** | Aim. The table is already frozen — there is no clock on this |
+| **Drag** | Pull the cue — distance from the ball is power, direction is `ball − thumb` |
+| **Release** | Fire. One stroke |
+| **Tap while the table is moving** | Spend a freeze charge: stop it, re-aim, resume. No stroke |
 
-Clear the room, then **slingshot into a door** to take its reward.
+Fill the contract, then **slingshot into a door** to take its reward.
 
 ## Documentation
 
@@ -58,9 +59,12 @@ src/
 │   ├── Player.js        cue ball, focus gauge, ribbon trail
 │   └── Enemy.js         Solids · Stripes · Heavy Eight-Balls
 ├── systems/
-│   ├── PhysicsSystem.js sweeps, rebounds, caroms, trajectory prediction
+│   ├── PhysicsSystem.js sweeps, rebounds, caroms, pockets, trajectory prediction
+│   ├── Rules.js         contracts, the stroke budget, the multiplier ladder, score
+│   ├── Table.js         six typed pockets + the lit objects on the felt
 │   ├── BoonSystem.js    4-phase hook registry + card offers
-│   └── RoomManager.js   layout pool + threat director + injectors + doors
+│   ├── Tutorial.js      the six teaching boards
+│   └── RoomManager.js   layout pool + racking + doors
 └── ui/
     ├── HUD.js           health · radial focus · room · combo · door labels
     └── BoonModal.js     3-card reward overlay
@@ -74,6 +78,7 @@ src/
 | `v0.2-core-physics` | Input, slingshot, bullet-time, trajectory prediction |
 | `v0.3-combat-carom` | Enemy archetypes, billiard collisions, caroms, audio |
 | `v0.4-boons-progression` | 4-phase boon engine, hybrid rooms, HUD & boon modal |
+| _(unreleased)_ `v0.5` | Static rack, contracts, stroke budget, pockets, scorecard, freeze |
 
 See [`docs/ARCHITECTURE.md#7-git-versioning--rollback-workflow`](docs/ARCHITECTURE.md#7-git-versioning--rollback-workflow)
 for the rollback recipes.

@@ -109,7 +109,17 @@ export const PLAYER = {
   /** Power floor, so the shortest draw is still a real shot rather than a dud. */
   minPower: 0.32,
   /** Velocity damping (per second, multiplicative) in each state. */
-  dragLaunched: 0.26,
+  /**
+   * A STROKE HAS TO END.
+   *
+   * At 0.26 a full-power shot carried 170 units — ten crossings of an 18x32
+   * table — and took eleven seconds to come to rest. That was fine when a
+   * launch was just a move; it is unplayable when the launch IS the turn and
+   * the player is waiting to take the next one. At 0.9 a max shot runs about
+   * 60 units, which is three crossings: still a proper pinball route, and it
+   * lands within a whisker of the 46 units the trajectory preview draws.
+   */
+  dragLaunched: 0.9,
   dragIdle: 2.6,
   /** Below this speed a launched player settles back to IDLE. */
   settleSpeed: 2.2,
@@ -178,7 +188,8 @@ export const PHYSICS = {
   /** Knocked enemies decay to harmless below this speed. */
   knockedSettleSpeed: 5.0,
   enemyDrag: 1.5,
-  knockedDrag: 0.4,
+  /** Object balls carry far enough to reach a pocket from mid-table, no further. */
+  knockedDrag: 0.8,
   /** Separation bias so resolved circles never re-overlap next step. */
   skin: 0.002,
   /** Backstab window: cos(angle) threshold behind a shielded target. */
@@ -299,6 +310,153 @@ export const ENEMY = {
     turnRate: 2.2,
     scoreFocus: 0.9
   }
+};
+
+/* ------------------------------------------------------------------ *
+ * RULES — the billiards layer: contracts, stroke budgets and score
+ *
+ * The redesign turns every room into a static rack. Nothing moves between
+ * strokes, so the pressure is not "something is walking at me" but "I have
+ * four strokes and six balls". These are the numbers that hold that up.
+ * ------------------------------------------------------------------ */
+export const RULES = {
+  /**
+   * The table is frozen except while a stroke is resolving. This is the flag
+   * every "does anything move on its own?" question routes through, so a
+   * future mode can flip it in one place.
+   */
+  staticTable: true,
+
+  /**
+   * A stroke is over when every body on the table is slower than this, or when
+   * the timeout expires (a ball trapped in a slow bumper loop must not hang
+   * the room).
+   */
+  settleSpeed: 1.1,
+  settleGrace: 0.28,
+  /**
+   * The tail of a shot is the boring part: a ball drifting at two units a
+   * second is not going to reach anything, but it holds the whole turn open.
+   * Below `creepSpeed` drag is forced up to `creepDrag`, which brings the
+   * table to rest in about half a second without touching the part of the
+   * shot anyone is watching.
+   */
+  creepSpeed: 5.5,
+  creepDrag: 3.2,
+  strokeTimeout: 14,
+
+  /**
+   * The ramp. Each band is `{ fromLevel, rack, strokes }`, read as "from this
+   * room until the next band". Rack grows, budget shrinks, and the spare —
+   * strokes minus balls — is what the player actually feels.
+   *
+   *   rooms 1-2   4 balls / 7 strokes   spare +3
+   *   rooms 3-4   5 balls / 7 strokes   spare +2
+   *   rooms 5-6   5 balls / 6 strokes   spare +1
+   *   rooms 7-8   6 balls / 6 strokes   spare  0
+   *   rooms 9-10  7 balls / 6 strokes   spare -1
+   *   rooms 11+   7 balls / 5 strokes   spare -2
+   */
+  ramp: [
+    { fromLevel: 1, rack: 4, strokes: 7 },
+    { fromLevel: 3, rack: 5, strokes: 7 },
+    { fromLevel: 5, rack: 5, strokes: 6 },
+    { fromLevel: 7, rack: 6, strokes: 6 },
+    { fromLevel: 9, rack: 7, strokes: 6 },
+    { fromLevel: 11, rack: 7, strokes: 5 }
+  ],
+
+  /** The room where the 8 starts having to go last. */
+  eightLastFrom: 5,
+
+  score: {
+    /** A ball pays its number times this. */
+    perPip: 100,
+    /** A ball driven through a shatter gate pays less than one that is potted. */
+    gateRate: 0.6,
+    /** The live pocket pays double, then fires the ball back at you. */
+    liveRate: 2,
+    /** Every stroke left in the budget at room end pays this times the room. */
+    savedStroke: 500
+  },
+
+  multiplier: {
+    /** Every stroke opens here. */
+    base: 1,
+    perBank: 1,
+    perBallTouched: 1,
+    perBallDown: 1,
+    /** A gold ring or gold pocket doubles whatever has been built. */
+    goldFactor: 2,
+    max: 99
+  },
+
+  /** Freeze: stop the table mid-stroke and re-aim from where the cue ball got to. */
+  freeze: {
+    /** Charges granted by shooting the cue ball into a freeze cell. */
+    cellCharges: 3,
+    maxCharges: 6
+  },
+
+  /** Hull damage. Nothing hurts you between strokes — only during resolution. */
+  damage: {
+    mine: 12,
+    /** A ball fired back out of a live pocket, on contact with the cue ball. */
+    kickback: 10,
+    /** Per ball still standing when the strokes run out. */
+    looseBall: 8
+  },
+
+  /** Scratching (cue ball into a pocket) voids the stroke's score. */
+  scratch: { voidScore: true }
+};
+
+/* ------------------------------------------------------------------ *
+ * TABLE — pockets and the lit objects on the felt
+ * ------------------------------------------------------------------ */
+export const TABLE = {
+  pocket: {
+    /** A body whose centre gets inside this radius is captured. */
+    radius: 1.25,
+    /**
+     * Side pockets sit almost flush with the cushion, so a ball can never get
+     * its centre to the pocket centre. A smaller capture radius keeps the
+     * live stretch of rail down to about two units instead of three.
+     */
+    sideRadius: 1.05,
+    /** Corner pockets sit this far in from each rail. */
+    cornerInset: 0.9,
+    /** Side pockets sit on the long rails, this far in. */
+    sideInset: 0.9,
+    /** How the six pocket types are drawn from, by weight, each room. */
+    weight: { score: 4, gold: 1.4, upgrade: 1, live: 1 },
+    /** Every room is guaranteed at least this many plain score pockets. */
+    minScore: 3
+  },
+  gold: { radius: 1.5 },
+  gate: { width: 3.2, thickness: 0.5 },
+  freezeCell: { radius: 1.2 },
+  mine: { radius: 0.9 },
+  /** Chances a room rolls each felt object, and the level each unlocks at. */
+  objects: {
+    gold: { chance: 0.75, minLevel: 2 },
+    gate: { chance: 0.55, minLevel: 3 },
+    freezeCell: { chance: 0.5, minLevel: 4 },
+    mine: { chance: 0.5, minLevel: 6 }
+  }
+};
+
+/* ------------------------------------------------------------------ *
+ * BALLS — the numbered rack
+ * ------------------------------------------------------------------ */
+export const RACK = {
+  /**
+   * Which archetype wears which number. The silhouettes stay exactly as they
+   * were — the number is a decal on top, so shape still encodes behaviour.
+   */
+  archetypeByNumber: ['solid', 'solid', 'solid', 'solid', 'stripe', 'stripe', 'stripe', 'heavy'],
+  /** The 8 is always the last ball of a rack, and always the heavy. */
+  eight: 8
 };
 
 /* ------------------------------------------------------------------ *
@@ -586,18 +744,14 @@ export const TUTORIAL = {
    * now keyed to the room where that thing genuinely first appears.
    */
   lessons: {
-    1: { title: 'They Move Now', sub: 'And they hurt on contact · keep your distance' },
-    3: { title: 'Bumpers', sub: 'Cyan pillars: free speed and a refunded bounce' },
-    4: { title: 'Mind The Shooters', sub: 'Violet enemies fire back · close the gap fast' },
-    5: { title: 'More Coming', sub: 'Clear the table twice' },
-    6: { title: 'Shields Face Forward', sub: 'Hit the heavies from behind, or bank into them' }
+    1: { title: 'The Contract', sub: 'Sink every ball · the strokes you save are points' },
+    2: { title: 'The Gold Ring', sub: 'Drive through it and the shot doubles' },
+    3: { title: 'The Upgrade Pocket', sub: 'A ball in there buys a boon instead of points' },
+    4: { title: 'The Live Pocket', sub: 'Pays double, then fires the ball back at you' },
+    5: { title: 'The 8 Goes Last', sub: 'Potting it early is a foul · it comes back' },
+    6: { title: 'Mines', sub: 'Route around them · they only bite the cue ball' },
+    7: { title: 'Fewer Strokes Now', sub: 'Every stroke has to pot from here' }
   },
-  /**
-   * Contact damage is suppressed for this long at the start of room 1, so the
-   * opening banner can be read. Measured before this existed: a standing player
-   * lost 63 of 100 hull in the first four seconds, most of it while the banner
-   * telling them what had changed was still on screen.
-   */
   graceSeconds: 3.0,
   /**
    * Multi-hit praise, indexed by hits landed in a single launch.
@@ -624,7 +778,11 @@ export const PROGRESSION = {
     maxHp: 15,
     focusMax: 0.4,
     damage: 0.12,
-    bounce: 1
+    bounce: 1,
+    /** Extra strokes per room, for the rest of the run. */
+    stroke: 1,
+    /** Freeze charges granted at the door. */
+    freeze: 2
   }
 };
 
@@ -644,6 +802,9 @@ export default {
   AUDIO,
   PALETTE,
   CSS_PALETTE,
+  RULES,
+  TABLE,
+  RACK,
   RENDER,
   INPUT,
   PROGRESSION

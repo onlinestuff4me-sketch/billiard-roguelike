@@ -6,28 +6,27 @@
  * nothing performs zero DOM writes — the HUD must never be the reason a frame
  * misses its budget.
  *
- * Layout follows the style guide: top ~12% and bottom ~10% are HUD, the middle
- * 78% is untouched play space.
+ * WHAT IT HAS TO ANSWER, AT ALL TIMES, WITHOUT BEING ASKED:
+ *
+ *   1. What does winning this room mean?   the contract line, in words
+ *   2. How am I doing against it?          the progress pips
+ *   3. What is it costing me?              the stroke chips
+ *   4. What is this shot worth?            the multiplier pill
+ *   5. What have I got?                    run score, hull, freeze charges
+ *
+ * Those five used to be spread between a room counter, a wave line and a combo
+ * that meant nothing on its own. Every one of them is now a sentence or a
+ * countable row of marks, because a number the player has to interpret is a
+ * number that does not get read mid-shot.
  */
 
 import * as THREE from 'three';
-import { CSS_PALETTE } from '../config.js';
-
-const FOCUS_RADIUS = 42;
-const FOCUS_CIRCUMFERENCE = 2 * Math.PI * FOCUS_RADIUS;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function el(tag, className, parent) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  if (parent) parent.appendChild(node);
-  return node;
-}
-
-function svgEl(tag, attrs, parent) {
-  const node = document.createElementNS(SVG_NS, tag);
-  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
   if (parent) parent.appendChild(node);
   return node;
 }
@@ -54,72 +53,53 @@ export class HUD {
     this.hpFill = el('div', 'hp-fill', hpBar);
     this.hpText = el('div', 'hp-text', hpBlock);
 
-    const roomBlock = el('div', 'hud-room', top);
-    el('div', 'hud-label', roomBlock).textContent = 'Room';
-    this.roomNumber = el('div', 'room-number', roomBlock);
-    // How the room is going, in the one place the player already looks for
-    // which room they are in. The wave line only ever appeared on multi-wave
-    // rooms, so most of the time nothing on screen answered "how much of this
-    // is left" — the player had to count the balls.
-    this.roomLeft = el('div', 'room-left', roomBlock);
-    this.waveText = el('div', 'wave-text', roomBlock);
+    // The contract. This is the single most important thing on the screen and
+    // it is written as a sentence, not encoded.
+    const contractBlock = el('div', 'hud-contract', top);
+    this.contractLabel = el('div', 'hud-label', contractBlock);
+    this.contractLabel.textContent = 'Contract';
+    this.contractText = el('div', 'contract-text', contractBlock);
+    this.contractPips = el('div', 'contract-pips', contractBlock);
 
-    const layoutBlock = el('div', 'hud-layout', top);
-    el('div', 'hud-label', layoutBlock).textContent = 'Table';
-    this.layoutName = el('div', 'layout-name', layoutBlock);
+    const scoreBlock = el('div', 'hud-score', top);
+    el('div', 'hud-label', scoreBlock).textContent = 'Run';
+    this.scoreValue = el('div', 'score-value', scoreBlock);
 
     /* ---------------- build strip ---------------- */
     this.buildStrip = el('div', 'hud-build', this.root);
 
-    /* ---------------- combo ---------------- */
+    /* ---------------- multiplier ---------------- */
     this.combo = el('div', 'hud-combo', this.root);
     this.comboMult = el('div', 'combo-mult', this.combo);
     this.comboCount = el('div', 'combo-count', this.combo);
-    // The chain window is the only thing in the game on a hidden clock: hit
-    // again before it runs out and the multiplier climbs. Draining it in front
-    // of the player turns "why did my ×1.8 vanish" into a visible deadline.
-    this.comboBar = el('div', 'combo-bar', this.combo);
-    this.comboFill = el('div', 'combo-fill', this.comboBar);
 
-    /* ---------------- radial focus gauge ---------------- */
-    const focusBlock = el('div', 'hud-focus', this.root);
-    const svg = svgEl('svg', { viewBox: '0 0 100 100', class: 'focus-svg' }, focusBlock);
-    svgEl(
-      'circle',
-      {
-        cx: 50,
-        cy: 50,
-        r: FOCUS_RADIUS,
-        fill: 'none',
-        stroke: 'rgba(234,246,255,0.12)',
-        'stroke-width': 7
-      },
-      svg
-    );
-    this.focusArc = svgEl(
-      'circle',
-      {
-        cx: 50,
-        cy: 50,
-        r: FOCUS_RADIUS,
-        fill: 'none',
-        stroke: CSS_PALETTE.cyan,
-        'stroke-width': 7,
-        'stroke-linecap': 'round',
-        'stroke-dasharray': FOCUS_CIRCUMFERENCE,
-        'stroke-dashoffset': 0,
-        transform: 'rotate(-90 50 50)'
-      },
-      svg
-    );
-    this.focusValue = el('div', 'focus-value', focusBlock);
-    el('div', 'focus-label', focusBlock).textContent = 'Focus';
+    /* ---------------- strokes ---------------- */
+    // The budget, as countable marks. "3 of 6" is a fact you have to read;
+    // three lit cues and three dark ones is a fact you can glance at.
+    const strokeBlock = el('div', 'hud-strokes', this.root);
+    el('div', 'hud-label', strokeBlock).textContent = 'Strokes';
+    this.strokeRow = el('div', 'stroke-row', strokeBlock);
+    this.strokeText = el('div', 'stroke-text', strokeBlock);
+
+    /* ---------------- freeze charges ---------------- */
+    const freezeBlock = el('div', 'hud-freeze', this.root);
+    el('div', 'hud-label', freezeBlock).textContent = 'Freeze';
+    this.freezeRow = el('div', 'freeze-row', freezeBlock);
 
     /* ---------------- banner ---------------- */
     this.banner = el('div', 'hud-banner', this.root);
     this.bannerTitle = el('div', 'banner-title', this.banner);
     this.bannerSub = el('div', 'banner-sub', this.banner);
     this.bannerTimer = 0;
+
+    /* ---------------- room scorecard ---------------- */
+    this.card = el('div', 'hud-card', this.root);
+    this.cardHead = el('div', 'card-head', this.card);
+    this.cardStatus = el('div', 'card-status', this.cardHead);
+    this.cardTitle = el('div', 'card-title', this.cardHead);
+    this.cardLines = el('div', 'card-lines', this.card);
+    this.cardTotals = el('div', 'card-totals', this.card);
+    this.cardPrompt = el('div', 'card-prompt', this.card);
 
     /* ---------------- damage vignette ---------------- */
     this.damageVeil = el('div', 'hud-damage', this.root);
@@ -134,12 +114,12 @@ export class HUD {
     this._cache = {
       hp: -1,
       ghost: -1,
-      focus: -1,
-      level: -1,
-      wave: '',
-      chain: -1,
-      left: '',
-      layout: '',
+      contract: '',
+      progress: '',
+      strokes: '',
+      freeze: -1,
+      score: -1,
+      mult: -1,
       buildKey: ''
     };
     this._ghost = 1;
@@ -163,6 +143,59 @@ export class HUD {
   hideBanner() {
     this.bannerTimer = 0;
     this.banner.classList.remove('visible');
+  }
+
+  /**
+   * The room scorecard: where a saved stroke actually gets paid.
+   *
+   * Shown at the end of every room, pass or fail, because the moment the
+   * economy becomes legible is the moment the player can start playing it.
+   *
+   * @param {{level:number, filled:boolean, ledger:Array, roomScore:number,
+   *          runScore:number, penalty?:{standing:number, damage:number}}} data
+   */
+  showScorecard(data) {
+    this.cardStatus.textContent = data.filled ? 'Contract filled' : 'Rack broke loose';
+    this.cardStatus.classList.toggle('failed', !data.filled);
+    this.cardTitle.textContent = `Room ${String(data.level).padStart(2, '0')}`;
+
+    this.cardLines.textContent = '';
+    for (const entry of data.ledger || []) {
+      const row = el('div', `card-line${entry.id === 'saved' ? ' hero' : ''}`, this.cardLines);
+      el('span', 'card-k', row).textContent = entry.label;
+      el('span', 'card-d', row).textContent = entry.detail || '';
+      el('span', 'card-v', row).textContent = `+${entry.amount.toLocaleString()}`;
+    }
+    if (data.penalty && data.penalty.standing > 0) {
+      const row = el('div', 'card-line bad', this.cardLines);
+      el('span', 'card-k', row).textContent = 'Balls left';
+      el('span', 'card-d', row).textContent = `${data.penalty.standing} standing`;
+      el('span', 'card-v', row).textContent = `−${data.penalty.damage} hull`;
+    }
+    if (!this.cardLines.childElementCount) {
+      const row = el('div', 'card-line', this.cardLines);
+      el('span', 'card-k', row).textContent = 'Nothing scored';
+      el('span', 'card-d', row).textContent = '';
+      el('span', 'card-v', row).textContent = '0';
+    }
+
+    this.cardTotals.textContent = '';
+    const room = el('div', 'card-total', this.cardTotals);
+    el('span', 'card-k', room).textContent = 'Room';
+    el('span', 'card-v', room).textContent = data.roomScore.toLocaleString();
+    const run = el('div', 'card-total run', this.cardTotals);
+    el('span', 'card-k', run).textContent = 'Run';
+    el('span', 'card-v', run).textContent = data.runScore.toLocaleString();
+
+    // The banner says the same thing the card's own header says, one layer
+    // behind it. Two readouts of one event, overlapping, is worse than either.
+    this.hideBanner();
+    this.cardPrompt.textContent = 'Shoot into an exit';
+    this.card.classList.add('visible');
+  }
+
+  hideScorecard() {
+    this.card.classList.remove('visible');
   }
 
   /** Render the owned-boon chips. Only rebuilds when the build changes. */
@@ -238,69 +271,69 @@ export class HUD {
       this.hpGhost.style.width = `${this._ghost * 100}%`;
     }
 
-    // --- radial focus gauge ---
-    const focusRatio = Math.max(0, Math.min(1, s.focus / s.focusMax));
-    if (Math.abs(focusRatio - cache.focus) > 0.004) {
-      cache.focus = focusRatio;
-      this.focusArc.setAttribute(
-        'stroke-dashoffset',
-        String(FOCUS_CIRCUMFERENCE * (1 - focusRatio))
-      );
-      this.focusValue.textContent = `${s.focus.toFixed(1)}s`;
-      const low = focusRatio < 0.12;
-      this.focusArc.setAttribute('stroke', low ? CSS_PALETTE.magenta : CSS_PALETTE.cyan);
-      this.root.classList.toggle('focus-low', low);
+    // --- the contract, in words ---
+    const line = s.cleared ? 'CONTRACT FILLED' : s.contractText || '';
+    if (line !== cache.contract) {
+      cache.contract = line;
+      this.contractText.textContent = line;
+      this.contractText.classList.toggle('done', !!s.cleared);
+    }
+    const progress = `${s.ballsDown}/${s.rack}`;
+    if (progress !== cache.progress) {
+      cache.progress = progress;
+      this.contractPips.textContent = '';
+      for (let i = 0; i < (s.rack || 0); i++) {
+        el('span', `pip${i < s.ballsDown ? ' on' : ''}`, this.contractPips);
+      }
     }
 
-    // --- room / wave / layout ---
-    if (s.level !== cache.level) {
-      cache.level = s.level;
-      // Level 0 is the tutorial. It reads as dashes so that "01" appearing is
-      // the moment the run starts — the counter used to say 01 throughout the
-      // tutorial AND in the first real room, so no number ever changed and
-      // nothing on screen marked the handoff.
-      this.roomNumber.textContent = s.level > 0 ? String(s.level).padStart(2, '0') : '\u2013\u2013';
-    }
-    // Dashes during the tutorial, alongside the dashed room number: lesson
-    // tables are re-racked rather than cleared, so a count there would tick
-    // down and back up again and mean nothing.
-    const leftLabel = s.level > 0 ? (s.enemies > 0 ? `${s.enemies} left` : 'Clear') : '';
-    if (leftLabel !== cache.left) {
-      cache.left = leftLabel;
-      this.roomLeft.textContent = leftLabel;
-      this.roomLeft.classList.toggle('clear', s.enemies === 0);
-    }
-    const waveLabel = s.waveCount > 1 ? `Wave ${s.waveIndex + 1}/${s.waveCount}` : '';
-    if (waveLabel !== cache.wave) {
-      cache.wave = waveLabel;
-      this.waveText.textContent = waveLabel;
-    }
-    if (s.layout !== cache.layout) {
-      cache.layout = s.layout;
-      this.layoutName.textContent = s.layout || '';
+    // --- run score ---
+    if (s.displayScore !== cache.score) {
+      cache.score = s.displayScore;
+      this.scoreValue.textContent = (s.displayScore || 0).toLocaleString();
     }
 
-    // --- combo ---
-    if (s.chain !== cache.chain) {
-      cache.chain = s.chain;
-      if (s.chain > 1) {
+    // --- the stroke budget ---
+    const strokeKey = `${s.strokesLeft}/${s.strokesTotal}`;
+    if (strokeKey !== cache.strokes) {
+      cache.strokes = strokeKey;
+      this.strokeRow.textContent = '';
+      for (let i = 0; i < (s.strokesTotal || 0); i++) {
+        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}`, this.strokeRow);
+      }
+      this.strokeText.textContent = `${s.strokesLeft} of ${s.strokesTotal} left`;
+      this.strokeRow.classList.toggle('last', s.strokesLeft === 1);
+      this.strokeRow.classList.toggle('out', s.strokesLeft === 0);
+    }
+
+    // --- freeze charges ---
+    if (s.freezeCharges !== cache.freeze) {
+      cache.freeze = s.freezeCharges;
+      this.freezeRow.textContent = '';
+      const shown = Math.max(3, s.freezeCharges);
+      for (let i = 0; i < shown; i++) {
+        el('span', `frz${i < s.freezeCharges ? ' on' : ''}`, this.freezeRow);
+      }
+      this.root.classList.toggle('has-freeze', s.freezeCharges > 0);
+    }
+
+    // --- the multiplier, while a stroke is running ---
+    const mult = s.midStroke ? s.multiplier : 0;
+    if (mult !== cache.mult) {
+      cache.mult = mult;
+      if (mult > 1) {
         this.combo.classList.add('visible');
-        this.comboMult.textContent = `\u00d7${s.chainMult.toFixed(1)}`;
-        // The same words the float text uses over the ball. It said "3 chain"
-        // here and "3 HITS ×1.8" out on the table, so the two readouts of one
-        // event did not obviously refer to each other.
-        this.comboCount.textContent = `${s.chain} hits`;
+        this.comboMult.textContent = `×${mult}`;
+        const parts = [];
+        if (s.banks) parts.push(`${s.banks} bank${s.banks > 1 ? 's' : ''}`);
+        if (s.ballsTouched) parts.push(`${s.ballsTouched} ball${s.ballsTouched > 1 ? 's' : ''}`);
+        this.comboCount.textContent = parts.join(' · ') || 'building';
         this.combo.classList.remove('pop');
-        // Force a reflow so the pop animation can restart on every step.
         void this.combo.offsetWidth;
         this.combo.classList.add('pop');
       } else {
         this.combo.classList.remove('visible');
       }
-    }
-    if (s.chain > 1 && s.chainWindow > 0) {
-      const left = Math.max(0, Math.min(1, s.chainTimer / s.chainWindow));
-      this.comboFill.style.transform = `scaleX(${left.toFixed(3)})`;
     }
 
     this._updateDoorLabels();

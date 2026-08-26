@@ -1,6 +1,6 @@
 {
   "$schema": "./lessons.schema.md",
-  "note": "Tutorial lesson tables. Read by Tutorial.js and editable in the level tool at /tool. Geometry only \u2014 what each lesson ASKS FOR, and how it is judged, lives in RULES in src/systems/Tutorial.js keyed by the same id. Every ball is mortal: a basic solid takes two hits, and only a max-power direct hit breaks it in one. A lesson that needs a ball to survive being hit asks for a softer shot rather than flagging the body unkillable. Coordinates are world units: x in [-9,9], z in [-16,16], -z is up-screen. The ball spawns at (0, 6.4) and the instruction card covers roughly z -10.1 to -5.6, so racks belong in z -5.0 to 5.5.",
+  "note": "Geometry only. What each lesson asks for lives in RULES in src/systems/Tutorial.js, keyed by the same id.",
   "lessons": [
     {
       "id": "aim",
@@ -14,128 +14,89 @@
         {
           "type": "solid",
           "x": 0,
-          "z": -1.0
+          "z": -1.0,
+          "number": 1
         }
       ]
     },
     {
-      "id": "goal",
-      "name": "Into The Goal",
+      "id": "pot",
+      "name": "Down The Pocket",
       "rest": {
-        "x": 0,
-        "z": -1
+        "x": 0.799,
+        "z": -0.602
       },
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 0,
-          "z": -2.0
+          "x": 4.79,
+          "z": 2.79,
+          "number": 3
         }
       ],
-      "goal": {
-        "x": 0,
-        "z": -11.8,
-        "hw": 5.2,
-        "hh": 1.1
-      }
-    },
-    {
-      "id": "pass-straight",
-      "name": "The Hand-Off",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
+      "pockets": [
         {
-          "type": "solid",
-          "x": 0,
-          "z": 1.4
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -3.0
+          "slot": "mr",
+          "type": "score"
         }
       ]
     },
     {
-      "id": "pass-angled",
+      "id": "pot-cut",
       "name": "The Cut",
       "rest": {
-        "x": 0.1973,
-        "z": -0.9803
+        "x": 0.435,
+        "z": -0.9
       },
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
+          "x": 2.6,
+          "z": 2.8,
+          "number": 5
+        }
+      ],
+      "pockets": [
+        {
+          "slot": "mr",
+          "type": "score"
+        }
+      ]
+    },
+    {
+      "id": "gold",
+      "name": "Through The Gold",
+      "rest": {
+        "x": 0.799,
+        "z": -0.602
+      },
+      "obstacles": [],
+      "enemies": [
+        {
+          "type": "solid",
+          "x": 4.79,
+          "z": 2.79,
+          "number": 4
+        }
+      ],
+      "objects": [
+        {
+          "kind": "gold",
           "x": 2.4,
-          "z": -1.0
-        },
+          "z": 4.6
+        }
+      ],
+      "pockets": [
         {
-          "type": "solid",
-          "x": 4.88,
-          "z": -1.77
+          "slot": "mr",
+          "type": "gold"
         }
       ]
     },
     {
-      "id": "pass-three",
-      "name": "Straight Through",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 2.4
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -0.2
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -2.8
-        }
-      ]
-    },
-    {
-      "id": "power",
-      "name": "Straight Through",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 3.0
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 0.4
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -2.2
-        }
-      ]
-    },
-    {
-      "id": "bank-1",
+      "id": "bank",
       "name": "Off The Rail",
       "rest": {
         "x": 0.8942,
@@ -154,62 +115,51 @@
         {
           "type": "solid",
           "x": 0,
-          "z": -2.0
-        }
-      ]
-    },
-    {
-      "id": "bank-2",
-      "name": "Off The Rail Again",
-      "rest": {
-        "x": -0.8942,
-        "z": -0.4478
-      },
-      "obstacles": [
-        {
-          "type": "box",
-          "x": 0,
-          "z": 3.5,
-          "hw": 3.0,
-          "hh": 0.5
+          "z": -2.0,
+          "number": 2
         }
       ],
-      "enemies": [
+      "pockets": [
         {
-          "type": "solid",
-          "x": 0,
-          "z": -2.0
-        }
-      ]
-    },
-    {
-      "id": "bank-two-rails",
-      "name": "The Long Way",
-      "rest": {
-        "x": 0.9517,
-        "z": -0.307
-      },
-      "obstacles": [
-        {
-          "type": "box",
-          "x": 0,
-          "z": 2.6,
-          "hw": 4.4,
-          "hh": 0.5
+          "slot": "ml",
+          "type": "score"
         },
         {
-          "type": "box",
-          "x": 4.6,
-          "z": -1.6,
-          "hw": 0.5,
-          "hh": 2.6
+          "slot": "mr",
+          "type": "score"
         }
-      ],
+      ]
+    },
+    {
+      "id": "eight",
+      "name": "The 8 Goes Last",
+      "rest": {
+        "x": -0.799,
+        "z": -0.602
+      },
+      "obstacles": [],
       "enemies": [
         {
+          "type": "heavy",
+          "x": 5.4,
+          "z": 2.2,
+          "number": 8
+        },
+        {
           "type": "solid",
-          "x": 6.6,
-          "z": 0.6
+          "x": -4.79,
+          "z": 2.79,
+          "number": 3
+        }
+      ],
+      "pockets": [
+        {
+          "slot": "ml",
+          "type": "score"
+        },
+        {
+          "slot": "mr",
+          "type": "score"
         }
       ]
     }

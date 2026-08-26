@@ -119,15 +119,21 @@
         margin-bottom: 0.35em;
       }
 
+      /* The corner pockets sit exactly where the HUD's corners do — that is
+         what a 9:16 table with pockets at its corners means — so the top band
+         gets a scrim of its own rather than fighting a glowing rim for
+         legibility. */
       .hud-top {
         position: absolute;
-        top: var(--hud-pad);
-        left: var(--hud-pad);
-        right: var(--hud-pad);
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: var(--hud-pad) var(--hud-pad) calc(var(--hud-pad) * 0.9);
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 8px;
+        background: linear-gradient(to bottom, rgba(5, 7, 10, 0.82) 0%, rgba(5, 7, 10, 0.55) 60%, transparent 100%);
       }
 
       .hud-hp {
@@ -174,61 +180,58 @@
         color: var(--muted);
       }
 
-      .hud-room {
-        flex: 0 0 auto;
+      /* THE CONTRACT.
+         The one thing on screen that says what winning means, written as a
+         sentence. It sits dead centre of the top band because that is where
+         the eye lands between strokes. */
+      .hud-contract {
+        flex: 1 1 44%;
         text-align: center;
-      }
-
-      .room-number {
-        font-size: clamp(20px, 6vmin, 34px);
-        font-weight: 700;
-        line-height: 1;
-        letter-spacing: 0.08em;
-        color: var(--bone);
-        text-shadow: 0 0 16px rgba(53, 242, 255, 0.5);
-      }
-
-      /* Room progress, directly under the room number. Cyan while there is
-         still work, mint the moment there is not — a state change you can see
-         without reading, from the corner of your eye, mid-shot. */
-      .room-left {
-        margin-top: 0.28em;
-        font-size: clamp(10px, 2.7vmin, 14px);
-        font-weight: 700;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: rgba(234, 246, 255, 0.85);
-        min-height: 1em;
-        transition: color 0.2s ease;
-      }
-      .room-left.clear {
-        color: #2ef2c4;
-        text-shadow: 0 0 14px rgba(46, 242, 196, 0.6);
-      }
-
-      .wave-text {
-        margin-top: 0.3em;
-        font-size: clamp(8px, 2.1vmin, 11px);
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: var(--amber);
-        min-height: 1em;
-      }
-
-      .hud-layout {
-        flex: 1 1 30%;
-        text-align: right;
         min-width: 0;
       }
 
-      .layout-name {
-        font-size: clamp(9px, 2.3vmin, 12px);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(234, 246, 255, 0.8);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+      .contract-text {
+        font-size: clamp(11px, 3.1vmin, 16px);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: 0.1em;
+        color: var(--bone);
+        text-shadow: 0 0 16px rgba(53, 242, 255, 0.45);
+      }
+      .contract-text.done {
+        color: #2ef2c4;
+        text-shadow: 0 0 16px rgba(46, 242, 196, 0.6);
+      }
+
+      .contract-pips {
+        margin-top: 0.45em;
+        display: flex;
+        gap: 3px;
+        justify-content: center;
+      }
+      .contract-pips .pip {
+        width: clamp(9px, 2.6vmin, 14px);
+        height: 3px;
+        border-radius: 2px;
+        background: rgba(53, 242, 255, 0.22);
+        transition: background 0.18s ease;
+      }
+      .contract-pips .pip.on {
+        background: var(--cyan);
+        box-shadow: 0 0 8px rgba(53, 242, 255, 0.8);
+      }
+
+      .hud-score {
+        flex: 0 0 auto;
+        text-align: right;
+        min-width: 0;
+      }
+      .score-value {
+        font-size: clamp(17px, 5vmin, 28px);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        color: var(--bone);
       }
 
       /* Owned-boon chips */
@@ -349,54 +352,196 @@
         100% { transform: scale(1); }
       }
 
-      /* Early lessons top Focus up every frame, so the gauge would be a dial
-         that never moves — noise on a table meant to hold only the lesson. The
-         last lesson drops the `coaching` class so the gauge fades in and drains
-         for real while the player still cannot lose. */
-      #ui-layer.coaching .hud-focus { opacity: 0; pointer-events: none; }
-
-      /* Radial focus gauge */
-      .hud-focus {
+      /* A lesson has no contract and no stroke budget, so both readouts would
+         be stating numbers nothing is enforcing. They fade in together with the
+         first real room. */
+      #ui-layer.coaching .hud-contract,
+      #ui-layer.coaching .hud-strokes,
+      #ui-layer.coaching .hud-score,
+      #ui-layer.coaching .hud-freeze {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .hud-contract, .hud-strokes, .hud-score {
         transition: opacity 0.45s ease;
+      }
+
+      /* THE BUDGET, AS COUNTABLE MARKS.
+         A number you have to read is a number that does not get read mid-shot.
+         Lit cues are strokes you still have; dark ones are strokes you spent. */
+      .hud-strokes {
         position: absolute;
         bottom: calc(var(--hud-pad) + 2px);
         left: 50%;
         transform: translateX(-50%);
-        width: clamp(64px, 19vmin, 108px);
-        height: clamp(64px, 19vmin, 108px);
+        padding: 6px 14px;
+        border-radius: 10px;
+        background: rgba(5, 7, 10, 0.6);
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        gap: 5px;
       }
 
-      .focus-svg {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        filter: drop-shadow(0 0 6px rgba(53, 242, 255, 0.5));
+      .stroke-row {
+        display: flex;
+        gap: clamp(4px, 1.3vmin, 7px);
+        align-items: flex-end;
+      }
+      .stroke-row .cue {
+        width: clamp(4px, 1.2vmin, 6px);
+        height: clamp(18px, 5vmin, 28px);
+        border-radius: 3px;
+        background: var(--amber);
+        box-shadow: 0 0 10px rgba(255, 179, 64, 0.55);
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+      }
+      .stroke-row .cue.spent {
+        background: rgba(255, 179, 64, 0.16);
+        box-shadow: none;
+      }
+      .stroke-row.last .cue:not(.spent) {
+        background: var(--magenta);
+        box-shadow: 0 0 14px rgba(255, 61, 139, 0.8);
+        animation: cue-pulse 0.9s ease-in-out infinite;
       }
 
-      .focus-value {
-        font-size: clamp(13px, 3.6vmin, 20px);
-        font-weight: 700;
-        color: var(--bone);
-        line-height: 1;
-      }
-
-      .focus-label {
-        margin-top: 0.25em;
+      .stroke-text {
         font-size: clamp(7px, 1.9vmin, 10px);
-        letter-spacing: 0.26em;
+        letter-spacing: 0.24em;
         text-transform: uppercase;
         color: var(--muted);
       }
 
-      .hud.focus-low .focus-value {
-        color: var(--magenta);
-        animation: cue-pulse 0.8s ease-in-out infinite;
+      /* Freeze charges. Diamonds, because freeze is the one power that stops
+         the table, and nothing else on the HUD is a diamond. */
+      .hud-freeze {
+        position: absolute;
+        bottom: calc(var(--hud-pad) + 2px);
+        right: var(--hud-pad);
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(5, 7, 10, 0.6);
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+        opacity: 0.4;
+        transition: opacity 0.3s ease;
       }
+      .hud.has-freeze .hud-freeze { opacity: 1; }
+
+      .freeze-row { display: flex; gap: 5px; }
+      .freeze-row .frz {
+        width: clamp(8px, 2.2vmin, 11px);
+        height: clamp(8px, 2.2vmin, 11px);
+        transform: rotate(45deg);
+        border: 1.5px solid rgba(53, 242, 255, 0.32);
+      }
+      .freeze-row .frz.on {
+        background: var(--cyan);
+        border-color: var(--cyan);
+        box-shadow: 0 0 10px rgba(53, 242, 255, 0.8);
+      }
+
+      /* THE SCORECARD. The moment the economy becomes legible: what the pots
+         paid, and what the strokes you did not spend were worth. */
+      .hud-card {
+        position: absolute;
+        left: 50%;
+        top: 33%;
+        transform: translate(-50%, -12px);
+        width: min(78%, 330px);
+        padding: 14px 16px 15px;
+        border-radius: 8px;
+        background: rgba(5, 7, 10, 0.93);
+        border: 1px solid rgba(53, 242, 255, 0.34);
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .hud-card.visible {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      .card-head { margin-bottom: 10px; }
+      .card-status {
+        font-size: clamp(8px, 2.1vmin, 11px);
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #2ef2c4;
+      }
+      .card-status.failed { color: var(--hazard, #ff5a3d); }
+      .card-title {
+        margin-top: 2px;
+        font-size: clamp(14px, 4vmin, 20px);
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--bone);
+      }
+
+      .card-line, .card-total {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        align-items: baseline;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(234, 246, 255, 0.08);
+      }
+      .card-line .card-k {
+        font-size: clamp(9px, 2.4vmin, 12px);
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(234, 246, 255, 0.62);
+      }
+      .card-line .card-d {
+        font-size: clamp(8px, 2vmin, 10px);
+        color: rgba(234, 246, 255, 0.35);
+      }
+      .card-line .card-v {
+        font-size: clamp(11px, 2.9vmin, 14px);
+        font-weight: 700;
+        color: var(--bone);
+      }
+      .card-line.hero .card-k, .card-line.hero .card-v { color: var(--amber); }
+      .card-line.bad .card-v { color: #ff5a3d; }
+
+      .card-totals { margin-top: 8px; }
+      .card-total {
+        grid-template-columns: 1fr auto;
+        border-bottom: 0;
+        padding: 3px 0;
+      }
+      .card-total .card-k {
+        font-size: clamp(8px, 2.1vmin, 10px);
+        font-weight: 700;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: rgba(234, 246, 255, 0.5);
+      }
+      .card-total .card-v {
+        font-size: clamp(15px, 4.4vmin, 22px);
+        font-weight: 700;
+        color: var(--bone);
+      }
+      .card-total.run .card-v { color: var(--cyan); }
+
+      .card-prompt {
+        margin-top: 11px;
+        padding-top: 9px;
+        border-top: 1px solid rgba(234, 246, 255, 0.1);
+        text-align: center;
+        font-size: clamp(8px, 2.1vmin, 11px);
+        font-weight: 700;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: rgba(234, 246, 255, 0.6);
+      }
+
 
       /* Banner */
       /* Long banner subs ran edge to edge and wrapped badly, clipping letters

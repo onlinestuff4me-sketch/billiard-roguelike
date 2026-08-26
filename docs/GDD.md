@@ -1,6 +1,6 @@
 # Billiard Roguelike — Game Design Document
 
-**Version:** 0.4 (prototype)
+**Version:** 0.5 (the static-rack redesign)
 **Platform:** Mobile web, portrait 9:16, one-thumb play
 **Engine:** Vite + Three.js (WebGL), Web Audio API
 **Session length:** 6–12 minutes per run
@@ -10,31 +10,36 @@
 ## 1. High-Level Hook
 
 > **You are the cue ball.**
-> Real-time kinetic billiards meets a boon-stacking action roguelike.
+> A rack, a contract, and fewer strokes than you would like.
 
-Every room is a break shot. Threats close in *in real time*; the instant your thumb
-touches the glass the world drops to 20% speed, trajectory lines bloom across the
-felt, and you pull the slingshot back looking for the line that clears the rack in
-one stroke. Release, and physics takes over — you are a projectile, the enemies you
-hit become projectiles, and the rails turn a mediocre angle into a four-body carom.
+Every room is a static puzzle. Nothing moves until you shoot, so you have all the
+time in the world to read the table — and a stroke budget that shrinks as the rack
+grows. The contract names what has to go down; the pockets decide what it pays.
 
-The fantasy is the **billiards trick shot**, executed under pressure, with a Hades-style
-boon economy layered on top so that by room 8 your cue ball is leaving fire at the
-launch point, cutting a damage trail mid-flight, arcing lightning on impact, and
-gaining +50% damage per rail.
+**One-line pitch:** *Billiards with a scorecard and a Hades boon economy, where the
+skill being scored is how few strokes it took.*
 
-**One-line pitch:** *Hades' boon stacking and slow-mo kinetics, played on a pool table
-where everything you touch becomes ammunition.*
+### The rule the whole design turns on
+
+> **A ball is never destroyed by being hit. It is destroyed by being driven into a
+> target.**
+
+The cue ball carries no damage number. Hitting a ball moves it; that is all. Pockets
+and shatter gates are the only things that take a ball off the table. That single
+change is what makes the *shot* — not the power — the thing the player is choosing,
+and it retires the damage maths (`strikeDamage × speedRatio × chainMultiplier`) that
+used to decide, invisibly, whether a ball survived contact.
 
 ### Design Pillars
 
 | Pillar | What it means | What it forbids |
 | --- | --- | --- |
-| **Every stroke is a decision** | Slow-mo is a *resource* (Focus), not a mode. Aiming costs the thing that keeps you alive. | Free, unlimited planning time. |
-| **The table is the weapon** | Rails, pillars, bumpers and enemy bodies all do damage. Raw DPS is the worst way to play. | Homing, auto-aim, or "just point at the enemy". |
-| **Legible physics** | The prediction lines never lie. If the preview shows a bank into a carom, that is what happens. | Hidden randomness in collision response. |
-| **Builds that change verbs** | Boons must change *how you shoot*, not just how hard. | Pure "+5% damage" filler as the primary reward. |
-| **Portrait, one thumb** | Everything reachable with a single thumb drag; no second input ever required. | Buttons, virtual sticks, two-finger gestures. |
+| **Nothing moves between strokes** | The table is a puzzle you may study for as long as you like. | Timers, drains, and anything walking at you while you plan. |
+| **The budget is the pressure** | Strokes are finite and get scarcer. Every one is a decision with a price. | Free repositioning. There is no dash. |
+| **The table is the weapon** | Rails, rings and gates all pay. Raw power is the worst way to play. | Homing, auto-aim, "just point at the ball". |
+| **Legible physics** | The prediction lines never lie. A preview that shows a bank into a cut is what happens. | Hidden randomness in collision response. |
+| **Nothing is inferred** | The contract is a sentence. The budget is countable marks. | Numbers the player has to decode mid-shot. |
+| **Portrait, one thumb** | Everything reachable with a single thumb drag. | Buttons, virtual sticks, two-finger gestures. |
 
 ---
 
@@ -44,328 +49,280 @@ where everything you touch becomes ammunition.*
         ┌──────────────────────────────────────────────────────────┐
         │                                                          │
         ▼                                                          │
-  REAL-TIME THREAT ──► HOLD: BULLET-TIME AIM ──► DRAG: SLINGSHOT   │
-  (enemies advance,     (time → 0.20, Focus       (pull vector,    │
-   shots charge)         gauge drains)             3 preview lines)│
+   STATIC RACK ──► AIM (no clock) ──► RELEASE ──► RESOLVE          │
+   contract +      drag the cue,      one stroke   physics owns    │
+   stroke budget   4 preview layers   spent        the table       │
         │                                              │           │
+        │                          ┌───────────────────┤           │
+        │                          ▼                   ▼           │
+        │                    FREEZE (earned)      TABLE SETTLES    │
+        │                    stop it, re-aim,     bank the stroke  │
+        │                    no stroke spent      step the budget  │
+        │                          │                   │           │
+        │                          └───────────────────┤           │
         │                                              ▼           │
-        │                                        RELEASE: LAUNCH   │
-        │                                        (i-frames, cue    │
-        │                                         ball flight)     │
+        │                                    contract filled?      │
         │                                              │           │
-        │                                              ▼           │
-        │                                   CHAIN COLLISIONS       │
-        │                                   caroms · wall-splats · │
-        │                                   pierces · banks        │
-        │                                              │           │
-        └───────────────── enemies remain ◄────────────┤           │
+        └──────── strokes left ◄───────────────────────┤           │
                                                        │           │
-                                              room cleared         │
-                                                       ▼           │
-                                          2 DOORS ROLLED ──► BOON  │
-                                          (slingshot into one)  ───┘
+                                            SCORECARD ─┴─► 2 DOORS │
+                                            pots + strokes saved ──┘
 ```
 
 ### Beat-by-beat
 
-1. **Threat (real time, 1.0x).** Solids walk you down, Stripes line up a shot, an
-   Eight-Ball turns its shield toward you. Standing still is death; the room is
-   always pressuring the player to commit to a stroke.
-2. **Focus (0.20x).** Pointer-down instantly dilates time. The Focus gauge (4.5 max)
-   drains at 0.5 per *real* second, so a full tank is roughly nine seconds of real
-   thinking time, during which the table advances less than two. Slow-mo is the most
-   enjoyable thing in the loop, so the budget is deliberately generous — Focus is
-   there to stop you camping in bullet-time, not to cut a good plan short.
-3. **Aim.** The shot rotates about the cue ball: drag anywhere and the launch line
+1. **The rack.** A room deals a contract — *"SINK ALL 6 · THE 8 LAST"* — and a stroke
+   budget. Both are on screen from the first frame. Nothing on the table moves.
+2. **Aim.** The shot rotates about the cue ball: drag anywhere and the launch line
    runs from your finger through the ball, so pulling further out both raises power
    and sharpens the angle. Four preview layers render — the cue path, ghosted rail
    reflections, a **ghost ball** at the contact position, and the departure line of
-   the body you would strike, with the cue ball's own **tangent** at right angles
-   to it.
-4. **Release.** The player becomes a high-velocity cue ball with invulnerability
-   frames for the duration of the flight. This is the core risk inversion: *moving
-   is safe, hesitating is not.*
-5. **Cascade.** Struck enemies become lethal object balls. Enemy-into-enemy is a
-   **Carom**. Enemy-into-rail at speed is a **Wall-Splat**. Every body that survives
-   the hit is a genuine collision — the object ball leaves down the line of centres
-   and you leave along the tangent — while a body you destroy outright is passed
-   through, which is what keeps a single stroke chaining 4+ deep.
-6. **Clear → Reward.** Two glowing doors spawn on the top rail. You must *slingshot
-   into* the door you want — the reward choice is itself a shot.
+   the body you would strike, with the cue ball's own **tangent** at right angles.
+   There is no clock on any of this.
+3. **Release.** One stroke is spent. Physics takes the table and the player has no
+   further say — unless they have a freeze charge.
+4. **Resolve.** Balls carom, bank, run rings, and drop. The multiplier climbs while
+   the table is still moving, and the pentatonic run climbs with it.
+5. **Settle.** The stroke banks what it paid. The budget steps down.
+6. **Fill → Scorecard → Doors.** When the contract is filled, unspent strokes pay
+   out, the scorecard shows the ledger, and two doors open. You must *slingshot into*
+   the door you want — the reward choice is itself a shot, and it costs no stroke.
 
-### Failure & Death
+### Failure
 
-- HP only decreases from contact with active (non-knocked) enemies, Stripe
-  projectiles, and hazard strips.
-- Death returns to room 1 with an empty build. Runs are short by design; the meta
-  payload is knowledge of the layout pool and the boon synergies.
+Run out of strokes with the contract unfilled and the rack **breaks loose**: every
+ball still standing takes a bite out of the hull, and the exits open anyway. A bad
+room costs you the next few rooms, not the run on the spot. The run ends when the
+hull reaches zero.
 
 ---
 
-## 3. Multiplier & Momentum System
+## 3. Scoring
 
-Damage in this game is a product, not a sum. The whole scoring layer exists to make
-the *shape* of a shot matter more than its power.
+Score comes from four places, and only four.
 
-```
-final = baseStrike
-      × chainMultiplier      (cascade, 1.0 → 2.5)
-      × speedRatio           (impact speed / reference speed, clamped 0.35–2.2)
-      × bankBonus            (+50% per rail with Trickshot)
-      × backstab/crit        (×2.0 behind a shield, doubled again by Shatter Crit)
-```
+| Source | Rate |
+| --- | --- |
+| **Pots** | The ball's number × 100, at the multiplier standing when it drops |
+| **Strokes saved** | 500 × room number, per unspent stroke, paid at room end |
+| **Multipliers picked up** | Gold rings and gold pockets *double* what has been built |
+| **Multipliers earned** | Banks, balls touched, balls dropped — the trick ladder |
 
-### 3.1 Cascade Multiplier
+### 3.1 The multiplier ladder
 
-Every damaging event inside a single unbroken chain steps the multiplier:
+Every stroke opens at ×1 and climbs while the table is still moving:
 
-| Chain index | Multiplier | Audio |
-| --- | --- | --- |
-| 1st hit | **1.0x** | pentatonic root |
-| 2nd hit | **1.4x** | +3 semitones |
-| 3rd hit | **1.8x** | +5 semitones |
-| 4th and beyond | **2.5x** | +7, +10, then octave up |
+| Event | Effect |
+| --- | --- |
+| Each rail the cue ball banks off | **+1** |
+| Each ball the cue ball touches | **+1** |
+| Each ball sunk, or driven through a gate | **+1** |
+| A gold ring or gold pocket | **×2** on what has been built |
 
-The chain lapses after **1.6 s** of scaled time without a damaging event. Because the
-window runs on *scaled* time, staying in bullet-time does not preserve a chain —
-you have to keep the table moving.
+Points are paid **at the instant a ball drops**, at the multiplier standing then. So
+the order of a route is worth real money: bank before you pot, and take the gold ring
+late rather than early. A worked example, matching the design canvas:
 
-### 3.2 Carom Breaks (collateral)
-
-A knocked enemy above `caromMinSpeed` (12 u/s) that strikes another enemy triggers
-**"CAROM!"**: both bodies take carom damage, momentum is redistributed (70% transfer),
-the chain steps, hit-stop extends to 60 ms, and a sub-bass drop plays. This is the
-highest-value play in the game and the reason positioning beats aiming.
-
-### 3.3 Wall-Splats
-
-A knocked enemy hitting a rail above `wallSplatSpeed` (16 u/s) takes flat bonus
-damage and shatters into debris. Wall-splats refund **0.4 s of Focus** — the table
-edges are a resource, not a boundary.
-
-### 3.4 Backstabs & Shields
-
-Heavy Eight-Balls carry a 180° frontal shield that mitigates damage to 12%. Two
-counters exist, and both are *geometric*:
-
-- **Backstab** — strike from behind the shield normal (×2.0 damage, crit hit-stop).
-- **Bank** — any shot that has already touched at least one rail ignores the shield
-  entirely. Banking is the mechanical answer to "I can't get behind it."
-
-### 3.5 Momentum Feedback (game feel)
-
-| Event | Hit-stop | Shake impulse | Zoom punch |
+| # | What happens | Mult | Pays |
 | --- | --- | --- | --- |
-| Cue strike | 30 ms | momentum × 0.0075 | — |
-| Carom / crit | 60 ms | momentum × 0.0075 (×1.6) | yes |
-| Wall-splat | 60 ms | high | yes |
-| Room clear | 350 ms pause | — | yes |
+| 01 | Release | ×1 | — |
+| 02 | Cue ball crosses the gold ring | ×2 | — |
+| 03 | Banks off the left rail | ×3 | — |
+| 04 | Cuts the 5 | ×4 | — |
+| 05 | The 5 drops | ×5 | **2,500** |
+| 06 | Cue rides the tangent into the 3 | ×6 | — |
+
+Taking the ring *after* the bank would have doubled a ×2 into a ×4 and paid **3,500**
+for the same shape. That gap is the game.
+
+### 3.2 Why strokes saved is the headline
+
+A saved stroke pays `500 × room`. In room 2 that is 1,000 and barely registers; in
+room 12 it is 6,000 and beats most pots. Efficiency becomes more valuable exactly as
+it becomes harder to achieve — and it is the only score source that rewards *not*
+doing something.
 
 ---
 
-## 4. The 4-Phase Boon Engine
+## 4. The Table
 
-Boons are not stat lines; they are **hooks into the four phases of a stroke**. Any
-boon registers into one of four dispatch points, and the build is simply the set of
-hooks currently attached.
+### 4.1 Pockets
 
-```
-     LAUNCH            TRAJECTORY            IMPACT             REBOUND
-  (release frame)    (every flight tick)   (on damaging hit)   (on rail contact)
-        │                    │                    │                   │
-   Ignition            Blade Rift            Chain Arc           Trickshot
-   Recoil Nova         Aegis                 Shatter Crit        Ricochet Fuse
-   Break Pulse         Phase Drift           Concussive          Kinetic Bank
-```
+Six, where a real table has them: four corners and the middle of each long rail.
+They are **capture zones, not holes cut in the geometry** — the rails still reflect,
+and a body is taken the moment its centre gets inside the capture radius. That keeps
+the trajectory preview exactly as trustworthy as it was, while still letting a ball
+rolling along a cushion drop.
 
-| Phase | Fires when | Signature boons |
+| Type | Colour | Effect |
 | --- | --- | --- |
-| **Launch** | The instant the slingshot releases | **Ignition** — drops a burning hazard zone at the launch point. **Recoil Nova** — a knockback shockwave from the origin. **Break Pulse** — first hit of every launch deals bonus damage. |
-| **Trajectory** | Every physics tick while airborne | **Blade Rift** — a damaging trail behind the cue ball. **Aegis** — a frontal deflection shield that destroys Stripe projectiles mid-flight. **Phase Drift** — pierce retention up, flight drag down. |
-| **Impact** | On every damaging collision | **Chain Arc** — lightning zaps the nearest targets. **Shatter Crit** — +100% backstab crit damage. **Concussive** — impacts push a shockwave into neighbours, creating free caroms. |
-| **Rebound** | On every rail / obstacle bounce | **Trickshot** — +2 max wall bounces and +50% damage per bank. **Ricochet Fuse** — each bank spawns a detonation at the contact point. **Kinetic Bank** — banks restore speed instead of bleeding it. |
+| **Score** | Cyan | Takes the ball, pays its number |
+| **Gold** | Carom gold | Doubles the multiplier, then pays at the doubled rate |
+| **Upgrade** | Magenta | Pays nothing; adds a boon pick to the room's reward |
+| **Live** | Hazard red | Pays double, then fires the ball back onto the table at you |
+| **Scratch** | — | The *cue ball* into any pocket: the stroke's score is voided, cue re-spots |
 
-### Rules of the engine
+Types are re-rolled every room, and arrive one at a time: gold is always present,
+upgrade unlocks at room 3, live at room 4. Colour never encodes a mechanic alone —
+each type also carries a distinct glyph.
 
-- Boons are **stackable to rank 3**. Re-offering an owned boon levels it instead of
-  duplicating it.
-- Rarity (Common / Rare / Epic) is a **scalar** on the boon's numbers, rolled at
-  offer time, so the same boon can be a small or a build-defining pick.
-- Boons may also contribute **passive stats** (`damageMult`, `maxBounces`,
-  `focusMax`, `pierceRetention`) which are aggregated into a single stat block the
-  systems read every frame.
-- Because each phase has a distinct dispatch site, synergy is emergent and cheap to
-  author: Trickshot (more bounces) multiplies Ricochet Fuse (bounce detonations)
-  multiplies Chain Arc (each detonation is an impact).
+### 4.2 Lit objects on the felt
 
-### Intended build archetypes
-
-| Build | Core boons | Play pattern |
+| Object | Effect | From |
 | --- | --- | --- |
-| **Pinball** | Trickshot + Kinetic Bank + Ricochet Fuse | Aim at rails, not enemies. Long routes, huge bank bonuses. |
-| **Blender** | Blade Rift + Phase Drift + Chain Arc | Pierce everything, damage comes from the flight path. |
-| **Executioner** | Shatter Crit + Break Pulse + Aegis | Single decisive backstab per stroke; survive the approach. |
-| **Demolition** | Ignition + Concussive + Recoil Nova | Play for area denial and forced caroms. |
+| **Gold ring** | Doubles the multiplier when anything runs through it. Re-arms every stroke. | Room 2 |
+| **Shatter gate** | Destroys an object ball driven through it and pays 60% of a pot. Harmless to the cue ball. | Room 3 |
+| **Freeze cell** | Shoot the cue ball into it for 3 freeze charges. One use. | Room 4 |
+| **Mine** | Costs hull on contact with the cue ball. One use. | Room 6 |
+
+Everything except the gold ring stays spent for the room, so clearing a table
+visibly changes it.
+
+### 4.3 The rack
+
+Every ball is numbered, because the contract talks about them by name and because
+the number *is* the ball's worth. Silhouettes are unchanged — shape still encodes
+behaviour, the number encodes value:
+
+| Numbers | Archetype | Silhouette |
+| --- | --- | --- |
+| 1–4 | Solid | Red cube |
+| 5–7 | Stripe | Violet octagon |
+| **8** | Heavy | Amber cylinder — always the last ball of a rack |
 
 ---
 
-## 5. Hybrid Level Generation (The Hades Model)
+## 5. The Stroke Ramp
 
-Fully procedural geometry produces tables that are *unreadable* for bank shots — an
-angle you cannot predict is not a decision. Fully handcrafted rooms get memorised in
-three runs. So the generator splits responsibility exactly like Hades does:
-**hand-authored space, procedural contents.**
+The rack grows and the budget shrinks. **Spare** — strokes minus balls — is what the
+player actually feels.
 
-```
- ┌──────────────────────────┐   ┌──────────────────────────┐
- │  HANDCRAFTED             │   │  PROCEDURAL              │
- │  ─────────────           │   │  ──────────              │
- │  · Table geometry pool   │   │  · Threat budget         │
- │  · Collision layout      │   │  · Archetype composition │
- │  · Spawn anchors         │──►│  · Environmental injectors│
- │  · Sightlines & angles   │   │  · Door rewards          │
- └──────────────────────────┘   └──────────────────────────┘
-        stable, learnable              fresh every run
-```
+| Rooms | Rack | Strokes | Spare | What it forces |
+| --- | --- | --- | --- | --- |
+| 1–2 | 4 | 7 | +3 | Room to miss. Learn the table. |
+| 3–4 | 5 | 7 | +2 | One wasted stroke is affordable. |
+| 5–6 | 5 | 6 | +1 | Every stroke but one has to pot. |
+| 7–8 | 6 | 6 | 0 | Every stroke has to pot. |
+| 9–10 | 7 | 6 | −1 | One stroke has to pot twice. |
+| 11+ | 7 | 5 | −2 | Two doubles, or a gate and a pocket in one. |
 
-### 5.1 Handcrafted Table Geometry Pool
+From room 5 the contract adds **the 8 goes last**. Potting it early is a foul: it is
+re-spotted and the stroke it happened on pays nothing.
 
-A pool of **10–15 fixed layout presets** (6 implemented in the prototype, all
-authored for clean billiard geometry: symmetric obstacle placement, corner pockets
-of open space, and at least two guaranteed two-rail routes).
+---
 
-| Preset | Shape | Designed for |
-| --- | --- | --- |
-| **Open Arena** | Empty felt | Pure carom chains; the tutorial table. |
-| **Split Central Pillar** | One fat column mid-table | Forces committed left/right routing; blind-side backstabs. |
-| **Triangle Bumper Grid** | 6 circular bumpers in a rack triangle | Pinball routes; every miss is still a bank. |
-| **Choke Corridor** | Two walls forming a narrow throat | Line-up shots; punishes wide angles, rewards precision. |
-| **Pinball Pillars** | Scattered circles + side bumpers | Chaotic multi-rebound routes; Trickshot heaven. |
-| **Diamond Bank** | Four diagonal-ish blocks in a diamond | Textbook two-rail bank practice. |
+## 6. Freeze — the earned power
 
-Each preset declares:
-- `obstacles[]` — circles and axis-aligned boxes with restitution
-- `anchors[]` — validated enemy spawn points with clear sightlines
-- `spawn` — the player's entry position (always lower third)
-- `tags[]` — hints the director uses to bias composition (e.g. a corridor prefers
-  Stripes at the far end; an open arena prefers dense Solids)
+Between strokes the table is already frozen, so there is nothing to slow down. The
+thing worth earning is the *other* freeze: **stopping the table mid-stroke**, while
+the cue ball is still travelling, and re-aiming from wherever it has got to.
 
-### 5.2 Procedural Threat Budget Director
+- Spending a charge stops every body where it is. The cue ball comes to rest and is
+  re-aimed; every other ball keeps the velocity it had.
+- Releasing again **resumes the same stroke**: the multiplier, the budget and every
+  other ball's momentum carry straight on.
+- It costs a charge. It never costs a stroke.
 
-For room level *L*:
+Two ways in: shoot the cue ball into a **freeze cell** on the felt (3 charges, and it
+costs you a stroke and a good position to go and get it), or take **Freeze** at a
+door, where it competes head-on with the stroke and bounce rewards.
 
-```
-budget = clamp(baseBudget + budgetPerLevel × (L − 1), …, maxBudget)      // 6 → 46
-waves  = waveCountByLevel[min(L, len) − 1]                               // 1 → 3
-```
+Freeze-and-re-aim is the best-feeling thing in the game, which makes it a poor
+default and a superb prize. Moving it behind a cost is also what lets the base game
+be honestly, calmly static.
 
-The director spends the budget across waves, drawing archetypes by weight subject to
-unlock gates (Solid: L1, Stripe: L2, Heavy: L3). Archetype costs are
-Solid **2**, Stripe **3**, Heavy **6**, so a level-8 room might be
-`3 Solids + 2 Stripes + 1 Heavy` in wave one and `4 Solids + 1 Heavy` in wave two.
+---
 
-Anchors are filtered against `safeSpawnRadius` (6.5 u) from the player, so no wave
-ever materialises on top of you, and every spawn plays a 0.55 s telegraph ring.
-
-### 5.3 Procedural Environmental Injectors
-
-After the layout is chosen, the director rolls up to 3 dynamic props (from level 2):
-
-- **Bumper Pads** — circular kickers that *amplify* rebound speed (×1.28) and refund
-  a wall bounce. They turn the table into a pinball machine.
-- **Kinetic Amplifier Pyres** — glowing discs that boost the cue ball's speed (×1.45,
-  once per launch) and add +25% damage to the rest of the stroke.
-- **Hazard Strips** — damage-over-time bands (14 dps) that carve the safe space and
-  force committed routes.
-
-Injectors are placed on free anchors, never inside obstacles, and never within the
-player's spawn safety radius.
-
-### 5.4 Procedural 2-Door Exit Routing
+## 7. Rewards
 
 On room clear, **two** doors materialise on the top rail with independently rolled
-reward types:
+rewards, telegraphed before you commit the shot.
 
-| Reward | Symbol | Effect |
-| --- | --- | --- |
-| **Boon** | phase glyph (Launch / Trajectory / Impact / Rebound) | Opens the 3-card boon modal |
-| **Repair** | cross | Restores HP (guaranteed every 3rd room) |
-| **Focus** | ring | +0.4 s max Focus |
-| **Power** | chevron | +12% damage |
-| **Ricochet** | arc | +1 max wall bounce |
+| Reward | Effect |
+| --- | --- |
+| **Boon** | Opens the 3-card boon modal (see §8) |
+| **Repair** | Restores hull (guaranteed every 3rd room) |
+| **Stroke** | +1 stroke every room, for the rest of the run |
+| **Freeze** | +2 freeze charges |
+| **Ricochet** | +1 max wall bounce |
 
-Doors telegraph their reward *before* you commit, so the exit is a real choice, and
-you must **slingshot into** the door — the reward selection is the last shot of the
-room. Entering a door advances the room counter, restores Focus, and re-rolls the
-whole generation pipeline.
+Focus and raw damage are gone from the pool: neither decides anything now that balls
+do not die to hits. What a player wants is another stroke, another freeze, or another
+bank on the multiplier.
 
----
-
-## 6. Enemy Archetypes
-
-| Archetype | Silhouette | HP | Behaviour | Counter |
-| --- | --- | --- | --- | --- |
-| **Solid** (Chaser) | Red cube | 34 | Steady pursuit, contact damage | Pierce straight through; the chain fodder that builds multipliers |
-| **Stripe** (Shooter) | Violet octagon | 26 | Holds ~9.5 u range, charges a linear shot every 3 s | Close the gap in one stroke, or bank behind their line |
-| **Heavy Eight-Ball** (Tank) | Amber cylinder | 130 | Slow advance, 180° frontal shield (88% mitigation) | Backstab (×2.0) or **bank** into it — a banked shot ignores the shield |
-
-Design intent: each archetype teaches a different geometric lesson — *pierce lines*,
-*range control*, and *approach angle* respectively. A mixed room asks you to solve
-all three with a single vector.
+Potting into an **upgrade pocket** buys an extra boon pick, cashed on the way out of
+the room — a second reward the player routed for rather than rolled for.
 
 ---
 
-## 7. Controls
+## 8. The 4-Phase Boon Engine
+
+Boons are hooks into the four phases of a stroke — **launch**, **trajectory**,
+**impact**, **rebound** — stackable to rank 3, with rarity as a scalar on their
+numbers. The engine is unchanged from v0.4; what changed is what a good boon *does*.
+
+Under the new rules the strongest picks are the ones that bend a rule the player has
+already learned:
+
+- **Shatter on contact** — a full-power strike destroys a ball outright. Genuinely
+  build-changing precisely because the base game forbids it.
+- **+1 stroke** per room.
+- **Rails count double** on the ladder.
+- **The multiplier survives** into the next stroke.
+
+*(Status: the phase engine and the v0.4 boon list ship as-is. The rule-bending picks
+above are designed but not yet implemented.)*
+
+---
+
+## 9. Level Generation
+
+**Hand-authored space, procedural contents** — the Hades model, unchanged in shape.
+
+- **Handcrafted:** a pool of table geometry presets (6 implemented), each authored for
+  clean billiard angles, with obstacles, spawn anchors and at least two viable
+  two-rail routes. Rooms 1–2 are always the empty table.
+- **Procedural:** pocket types, felt objects, and where the rack sits — drawn from the
+  layout's validated anchors, filtered against the spawn radius, the obstacles and
+  every pocket and object already placed.
+
+Balls are spread across anchors rather than racked in a triangle: a tight rack is a
+lovely opening break and a terrible puzzle, because every ball after the first is
+behind another one.
+
+---
+
+## 10. Controls
 
 | Input | Action |
 | --- | --- |
-| **Pointer down + hold** | Enter bullet-time (0.20x), start trajectory prediction |
 | **Touch below the ball** | A cue appears under your thumb, its line running through the ball and out the top. The shot fires up |
 | **Slide the thumb right** | The butt swings right, so the shot swings left — exactly as a real cue does |
 | **Pull straight back along the line** | Loads power. The angle does not move |
-| **Release** | Fire, at the drawn speed |
+| **Release** | Fire, at the drawn speed. One stroke |
+| **Tap while the table is moving** | Spend a freeze charge (if you have one) |
 
-You are holding a cue. Your thumb is the butt, the ball is the tip, and the shot
-runs out the far side: the direction is simply `ball − thumb`. Put your thumb
-below the ball and you fire up the table; pull down and to the right and you
-both swing the shot up-and-left and load it.
+You are holding a cue. Your thumb is the butt, the ball is the tip, and the shot runs
+out the far side: the direction is simply `ball − thumb`. Sensitivity is bounded the
+way a real cue bounds it — turning gets finer the further back you draw, so the lever
+arm is longest exactly when the shot matters.
 
-The metaphor also solves the problem that defeated every earlier scheme. The cue
-is always *behind* the ball relative to the shot, so your thumb is never sitting
-on the stretch of table the ball is about to cross — you are looking down the cue
-at your own target.
-
-Sensitivity is bounded the way a real cue bounds it: turning gets finer the
-further back you draw, so the lever arm is longest exactly when the shot matters.
+There is no dash. A flick is simply a soft shot, and it costs the same one stroke
+every other shot does.
 
 ---
 
-## 8. Progression & Pacing
+## 11. Prototype Scope & Non-Goals
 
-| Room | Budget | Waves | Introduces |
-| --- | --- | --- | --- |
-| 1 | 6 | 1 | Solids, the slingshot, the rail |
-| 2 | 9 | 1 | Stripes, injectors |
-| 3 | 11 | 2 | Heavies, shields, banking |
-| 4–6 | 14–19 | 2 | Mixed compositions, hazard strips |
-| 7+ | 22 → 46 | 3 | Dense racks; builds are expected to carry |
-
-Focus fully refills on room clear. HP does not — repair doors are the only sustain,
-which is why the door choice matters as much as the boon.
-
----
-
-## 9. Prototype Scope & Non-Goals
-
-**In scope (v0.4):** full stroke loop, 3 archetypes, caroms/splats/pierce/banks,
-12 boons across 4 phases, 6 layout presets, threat director, injectors, 2-door
-routing, HUD, boon modal, procedural audio.
+**In scope (v0.5):** static rack, contracts, the stroke ramp, six typed pockets,
+four felt objects, the multiplier ladder, strokes-saved scoring, the room scorecard,
+freeze as an earned power, 6 layout presets, 2-door routing, 6 tutorial boards.
 
 **Explicitly out of scope:** meta-progression between runs, narrative, bosses,
-persistent unlocks, multiplayer, tutorials beyond the boot card.
+persistent unlocks, multiplayer.
 
 **Known open questions for playtesting:**
-1. Is 2.0 s of Focus too generous once Trickshot routes get long?
-2. Should Heavies telegraph their shield arc more loudly than the current emissive
-   band?
-3. Do 3 waves in a room overstay their welcome versus 2 denser ones?
+1. Is the ramp too generous early? Rooms 1–4 have +3 and +2 spare.
+2. Should a scratch cost a stroke as well as the score, or is voiding enough?
+3. Is one freeze cell per room the right supply, or should charges be scarcer?
+4. Does the live pocket read as a risk worth taking, or as a trap to avoid?
