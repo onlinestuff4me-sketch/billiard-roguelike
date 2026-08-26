@@ -1,6 +1,6 @@
 {
   "$schema": "./lessons.schema.md",
-  "note": "Tutorial lesson tables. Read by Tutorial.js and editable in the level tool at /tool. Geometry only \u2014 what each lesson ASKS FOR, and how it is judged, lives in RULES in src/systems/Tutorial.js keyed by the same id. Coordinates are world units: x in [-9,9], z in [-16,16], -z is up-screen. The ball spawns at (0, 6.4) and the instruction card covers roughly z -10.1 to -5.6, so racks belong in z -5.0 to 5.5.",
+  "note": "Tutorial lesson tables. Read by Tutorial.js and editable in the level tool at /tool. Geometry only \u2014 what each lesson ASKS FOR, and how it is judged, lives in RULES in src/systems/Tutorial.js keyed by the same id. Every ball is mortal: a basic solid takes two hits, and only a max-power direct hit breaks it in one. A lesson that needs a ball to survive being hit asks for a softer shot rather than flagging the body unkillable. Coordinates are world units: x in [-9,9], z in [-16,16], -z is up-screen. The ball spawns at (0, 6.4) and the instruction card covers roughly z -10.1 to -5.6, so racks belong in z -5.0 to 5.5.",
   "lessons": [
     {
       "id": "aim",
@@ -30,8 +30,7 @@
         {
           "type": "solid",
           "x": 0,
-          "z": -2.0,
-          "invulnerable": true
+          "z": -2.0
         }
       ],
       "goal": {
@@ -53,14 +52,12 @@
         {
           "type": "solid",
           "x": 0,
-          "z": 1.4,
-          "invulnerable": true
+          "z": 1.4
         },
         {
           "type": "solid",
           "x": 0,
-          "z": -3.0,
-          "invulnerable": true
+          "z": -3.0
         }
       ]
     },
@@ -76,14 +73,12 @@
         {
           "type": "solid",
           "x": 2.4,
-          "z": -1.0,
-          "invulnerable": true
+          "z": -1.0
         },
         {
           "type": "solid",
           "x": 4.88,
-          "z": -1.77,
-          "invulnerable": true
+          "z": -1.77
         }
       ]
     },
@@ -104,14 +99,12 @@
         {
           "type": "solid",
           "x": 0,
-          "z": -0.2,
-          "invulnerable": true
+          "z": -0.2
         },
         {
           "type": "solid",
           "x": 0,
-          "z": -2.8,
-          "invulnerable": true
+          "z": -2.8
         }
       ]
     },

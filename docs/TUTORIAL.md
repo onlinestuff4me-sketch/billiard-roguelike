@@ -166,15 +166,48 @@ judged on physics events that did not survive contact with real play:
   forward and taps another ball seconds later, which is why strike counts are a
   bad basis for anything.
 
-**Chain targets must be mortal; pass targets must not.** The cue ball only
-passes through a body it *kills*, so a rack meant to be run through has to be
-killable, and a ball meant to be knocked somewhere has to survive being hit
-(`invulnerable` per body).
+**Every ball is mortal. There is no `invulnerable` flag any more.**
 
-**Every lesson is solvable from its own resting heading.** Verified by firing
-along each `rest` and checking the director scores it. Three were not, when
-first authored: one bank was geometrically impossible because its barrier
-blocked the *return* leg as well as the direct one.
+It used to exist because the cue only passes through a body it *kills*, so a
+"knock this ball into that one" lesson needed its target to survive the hit. The
+flag bought that by making the body unkillable — and produced a tutorial that
+flipped between two incompatible rules four times using identical-looking balls.
+Lesson 1's ball died, lessons 2-4's could not die at all, lesson 6's died again.
+Nothing on screen distinguished them, and once knocked loose an immortal ball
+pinballed around the table forever throwing SPLAT.
+
+**Power does that job now, and it is a rule the player can learn:** a basic solid
+takes two hits, and only a direct hit at 89.2% power or above breaks it in one.
+So a softer shot leaves the ball alive and moving — which is exactly the pass
+shot — and a full-power shot shatters it and rides through. Hit it hard and it
+breaks; hit it softer and it moves.
+
+This required taking the chain multiplier out of the damage product (see
+`strikeDamage` in `src/main.js`). It used to multiply damage, so contact 2 of a
+launch hit *harder* than contact 1 despite the cue being slower — 44 into a 34hp
+solid where contact 1 did 36 — and one max-power shot cleared a whole line. The
+chain pays points now; the cue's own speed decides lethality.
+
+**Every lesson is solvable from its own resting heading, at its own power.**
+Verified by firing along each `rest` and checking the director scores it. The
+"at its own power" half is new and matters: lessons 2, 3 and 4 now teach a
+*softer* hit and are **supposed** to fail at full power, so a solver run that
+only fires at 1.0 reports them broken when they are working correctly.
+
+| lesson | passes at | fails at |
+|---|---|---|
+| 2 `goal`, 3 `pass-straight`, 4 `pass-angled` | 0.85 and below | 1.00 — the ball shatters instead of travelling |
+| 5 `pass-three` | 1.00 only | 0.85 and below — the first ball survives, so the cue stops there |
+
+Three lessons were unsolvable when first authored: one bank was geometrically
+impossible because its barrier blocked the *return* leg as well as the direct
+one.
+
+**Verify with repeats, not one shot.** The integration step is frame-rate
+dependent (`PhysicsSystem.update` divides `dt` by the substep count instead of
+carrying an accumulator), so a lesson tuned near its margin resolves differently
+on different devices. `pass-angled` was certified "solvable" by a single-shot run
+while actually scoring 2 times in 4 at its own resting heading.
 
 **Say what the gesture is, including power.** Power is the hidden requirement in
 most of these — the goal shot must carry a ball the length of the table, the
@@ -218,7 +251,8 @@ has never been true — power is draw distance alone.
 | Room building, re-rack, ball homing | `Tutorial._buildRoom` / `_reRack` / `_homeBall` |
 | Scripted tables (no waves/doors/injectors) | `RoomManager.loadScripted` |
 | Goal bar geometry and hit test | `RoomManager.loadScripted` + `Tutorial._checkGoal` |
-| Unfailability | `game.tutorialGuard` in `src/main.js` — blocks contact and projectile damage **to the player**. Targets are killed normally; the ones that must survive a hit carry `invulnerable` per body, and a partial attempt calls `RoomManager.reRackScripted` |
+| Unfailability | `game.tutorialGuard` in `src/main.js` — blocks contact and projectile damage **to the player**. Targets are killed normally; a lesson that needs one to survive asks for a softer shot, and a partial attempt calls `RoomManager.reRackScripted` |
+| Re-entering a lesson | `Tutorial._enter` re-racks *and* re-homes. Re-entry used to only re-home, so a replay opened with dead bodies still dead and a scored goal still closed — unpassable until a failed attempt happened to re-rack |
 | Card markup and styling | `#coach` in `index.html` |
 | Spotlight | `Tutorial._focus` / `_updateSpot`; `#coach-spot` and `#coach-ring` in `index.html` |
 | Completion flag | `billiard-tutorial-done-v1` in localStorage; reset from Settings |
