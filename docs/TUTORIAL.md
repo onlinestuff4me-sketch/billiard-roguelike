@@ -134,6 +134,24 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 | 7 | `bank-1` | Bounce off a wall first | a rail is touched before the ball |
 | 8 | `bank-2` | Again, other side | as above, mirrored |
 | 9 | `bank-two-rails` | Two bounces, then hit | 2+ bounces before the ball |
+| 10 | `freeze-reaim` | Freeze, then re-aim | both balls destroyed |
+
+**Lesson 10 teaches the loop the game is actually made of** — break one ball,
+press again while the cue is still rolling to stop time, aim at the next, fire.
+It is the first time `tap-to-freeze` is taught at all, and the reason the Focus
+gauge exists.
+
+It is scored on **the rack being clear**, never on the gesture: a coach that
+rejects a cleared table contradicts its own scoreboard. The geometry does the
+teaching instead. After a shatter the cue is slower and its next contact does
+31.7 against 34 hp, so one launch cannot cue-kill both; and the resting line sits
+2.5 degrees off the direct one, outside the narrow band where the second ball
+dies to a rail splat. Measured: the resting line takes the left ball 3/3 and
+doubles 0/3.
+
+A dividing wall was tried first and rejected. It made one-launch doubles
+genuinely impossible, but it also blocked the straight line between the two
+halves — so the second shot needed a bank, which is a different lesson.
 
 `spot` picks what the lesson's spotlight frames: `player`, `goal`, `first` (the
 ball nearest the cue), `rack` (all of them in one shape) or `blocked` (the rack
@@ -165,6 +183,23 @@ judged on physics events that did not survive contact with real play:
   moved. Note also that a cue ball is *not* still after a stop shot — it creeps
   forward and taps another ball seconds later, which is why strike counts are a
   bad basis for anything.
+
+**Damage is visible.** A body that has taken a hit but not died is cracked and
+visibly duller than a fresh one. Without that the two-hit rule — the rule the
+whole tutorial is built on — was invisible in play: `takeDamage` set a 0.09s
+flash and nothing else, so a ball one tap from breaking looked identical to a
+full-health one and planning a shot was guesswork.
+
+The crack is placed from the body's own measured bounding box, not a constant.
+Archetypes are different solids at different heights (a box of side r×1.55
+centred at 0.85r tops out at 1.625r; a heavy cylinder at 1.45r), so any single
+hand-placed Y sits *inside* one of them and vanishes — which is exactly what
+happened on the first attempt. It also draws with `depthTest: false` and an
+explicit render order, so it stays independent of body shape.
+
+Condition lives on the **body**; the ground ring is already spoken for as a
+threat-state indicator (active pulse / knocked / spawning), and overloading it
+with health would make both harder to read.
 
 **Every ball is mortal. There is no `invulnerable` flag any more.**
 

@@ -176,6 +176,17 @@ const RULES = {
     nudge: 'Aim out to the left this time and let it come back.'
   },
 
+  'freeze-reaim': {
+    say: 'Freeze, then <em>re-aim</em>',
+    hint: 'Break one. While the cue still rolls, <em>press again</em> to aim at the other.',
+    spot: 'rack',
+    freezeReaim: true,
+    cheer: 'BOTH DOWN \u2014 that is the whole game',
+    scold: 'One down. Press mid-roll to freeze, then line up the other',
+    whiff: 'Missed — take one ball, then freeze and take the other',
+    nudge: 'A press while the ball is still rolling stops time. Aim, release, repeat.'
+  },
+
   'bank-two-rails': {
     say: '<em>Two bounces</em>, then hit',
     hint: 'Aim <em>hard right</em>. Two walls on the way round, then the <b>red ball</b>.',
@@ -307,6 +318,8 @@ export class Tutorial {
     this._struck = new Set();
     /** Cue contacts this launch, in order, with whether each one killed. */
     this._strikes = [];
+    /** Launches within the current attempt. A re-aim mid-flight makes this 2. */
+    this._launchCount = 0;
     this._rejected = false;
     /** True once a lesson is finished and the Next button is showing. */
     this._awaitingNext = false;
@@ -416,6 +429,7 @@ export class Tutorial {
     this._hits = 0;
     this._struck.clear();
     this._rejected = false;
+    this._launchCount = 0;
     this._misses = 0;
     // Entering a lesson means one is running, so nothing may still be waiting
     // on a Next press. Only start() and the Next handler cleared this, which
@@ -749,6 +763,10 @@ export class Tutorial {
       this._struck.clear();
       this._strikes.length = 0;
       this._rejected = false;
+      // Counts LAUNCHES within one attempt, so a lesson can ask for a mid-flight
+      // re-aim. Everything else here resets per launch, which is exactly why
+      // none of it could express "they froze and fired again".
+      this._launchCount += 1;
       return;
     }
 
@@ -861,6 +879,21 @@ export class Tutorial {
       // card describes.
       const struck = this._strikes.find((k) => k.enemy === rack[0]);
       if (struck && !struck.killed && this._passes >= 1) this._score();
+      else this._rejected = true;
+    }
+
+    // FREEZE AND RE-AIM. Scored on the rack being clear, which is what the
+    // player watched happen — never on the gesture, because a coach that
+    // rejects a cleared table contradicts its own scoreboard.
+    //
+    // The geometry does the teaching instead. After a shatter the cue is slower
+    // and its next contact does 31.7 against 34hp, so one launch cannot cue-kill
+    // both; and the resting line is set 2.5deg off the direct one, outside the
+    // narrow band where the second ball dies to a rail splat. Measured: the
+    // resting line takes the left ball 3/3 and doubles 0/3.
+    if (stillIts && lesson.freezeReaim) {
+      const rack = this.rooms.scriptedEnemies;
+      if (rack.length && rack.every((e) => !e.alive)) this._score();
       else this._rejected = true;
     }
 

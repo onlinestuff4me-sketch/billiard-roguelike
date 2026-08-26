@@ -212,6 +212,27 @@
           "z": 0.6
         }
       ]
+    },
+    {
+      "id": "freeze-reaim",
+      "name": "Freeze And Re-Aim",
+      "rest": {
+        "x": -0.5476,
+        "z": -0.8368
+      },
+      "obstacles": [],
+      "enemies": [
+        {
+          "type": "solid",
+          "x": -4.4,
+          "z": -1.0
+        },
+        {
+          "type": "solid",
+          "x": 4.4,
+          "z": -1.0
+        }
+      ]
     }
   ]
 }

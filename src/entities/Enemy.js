@@ -189,6 +189,56 @@ export class Enemy {
     this.marker.position.y = 0.03;
     this.group.add(this.marker);
 
+    // THE DAMAGED STATE.
+    //
+    // A body that had taken a hit but not died looked exactly like a fresh one:
+    // `takeDamage` set a 0.09s flash and nothing else. So the two-hit rule —
+    // the rule the whole tutorial is now built on — was invisible in play. You
+    // could not tell which ball was one tap from breaking, which makes planning
+    // a shot guesswork rather than skill.
+    //
+    // A crack, drawn across the top face where a top-down camera can see it.
+    // Dark rather than bright: this is absence of material, and the table is
+    // already full of things that glow.
+    // Sized for a phone, not for a screenshot. A body is about 27px across on
+    // a 430px-wide stage, so a hairline is invisible where it matters: the
+    // fracture is a fifth of that width, and there are two of them crossing, so
+    // the silhouette reads as broken rather than merely marked.
+    this.crackMat = new THREE.MeshBasicMaterial({
+      color: 0x05070a,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+      // Drawn regardless of depth. The archetypes are different solids at
+      // different heights — a box of side r*1.55 centred at 0.85r tops out at
+      // 1.625r, a heavy cylinder at 1.45r — so any single hand-placed Y sits
+      // INSIDE one of them and vanishes. That is exactly what happened first
+      // time round. Depth-testing off plus an explicit render order makes this
+      // independent of body shape, which is what a shared cue should be.
+      depthTest: false
+    });
+    this.crack = new THREE.Group();
+    for (const [len, wid, rot, lift] of [
+      [1.95, 0.34, 0.42, 0],
+      [1.5, 0.24, -1.05, 0.004]
+    ]) {
+      const shard = new THREE.Mesh(
+        new THREE.PlaneGeometry(cfg.radius * len, cfg.radius * wid),
+        this.crackMat
+      );
+      shard.rotation.x = -Math.PI / 2;
+      shard.rotation.z = rot;
+      shard.position.y = lift;
+      this.crack.add(shard);
+    }
+    // Sit just clear of whatever this archetype's body actually is, measured
+    // rather than assumed.
+    bodyGeo.computeBoundingBox();
+    this.crack.position.y = this.body.position.y + bodyGeo.boundingBox.max.y + cfg.radius * 0.06;
+    this.crack.renderOrder = 4;
+    this.crack.visible = false;
+    this.group.add(this.crack);
+
     // Heavy: a 180° frontal shield band. Local +Z is "forward".
     if (this.type === 'heavy') {
       const shieldGeo = geometry(
@@ -628,6 +678,20 @@ export class Enemy {
     this.material.transparent = spawning;
     this.material.opacity = spawning ? 0.3 : 1;
 
+    // Wounded: cracked, AND visibly duller than a body at full health. Both
+    // cues together, because colour alone is not a signal every player can read
+    // (STYLE_GUIDE 3: never communicate a mechanic with colour alone).
+    // Condition lives on the BODY; the ground ring is already spoken for as a
+    // threat-state indicator further down (active pulse / knocked / spawning),
+    // and overloading it with health would make both harder to read.
+    const wounded = this.alive && !spawning && this.hp < this.maxHp;
+    this.crack.visible = wounded;
+    if (wounded) {
+      const left = Math.max(0, this.hp) / this.maxHp;
+      this.material.color.lerp(new THREE.Color(0x2a1016), 0.55);
+      this.material.emissiveIntensity = intensity * (0.34 + left * 0.3);
+    }
+
     // Velocity-aligned squash while knocked.
     if (knocked && this.speed > 1) {
       const stretch = 1 + Math.min(this.speed / 40, 1) * 0.5;
@@ -749,6 +813,8 @@ export class Enemy {
   dispose() {
     this.parent.remove(this.group);
     this.material.dispose();
+    for (const shard of this.crack.children) shard.geometry.dispose();
+    this.crackMat.dispose();
     this.markerMat.dispose();
     this.marker.geometry.dispose();
     this.telegraphMat.dispose();
