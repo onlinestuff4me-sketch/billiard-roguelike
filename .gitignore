@@ -12,3 +12,6 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Single-file build output (npm run build:single)
+dist-single
