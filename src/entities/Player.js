@@ -12,6 +12,24 @@
 import * as THREE from 'three';
 import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES } from '../config.js';
 
+const clamp = (value, lo, hi) => Math.min(Math.max(value, lo), hi);
+
+/**
+ * Does the cue ball's departure line run into a pocket? Tested as a segment
+ * against each pocket's capture circle, not just the endpoint — a line that
+ * passes through a mouth on its way somewhere else is still a scratch.
+ */
+function tangentScratches(x, z, tx, tz, length, pockets) {
+  if (!pockets || !pockets.length) return false;
+  for (const pocket of pockets) {
+    const along = clamp((pocket.x - x) * tx + (pocket.z - z) * tz, 0, length);
+    const cx = x + tx * along;
+    const cz = z + tz * along;
+    if (Math.hypot(pocket.x - cx, pocket.z - cz) <= pocket.radius) return true;
+  }
+  return false;
+}
+
 export const PLAYER_STATE = {
   IDLE: 'idle',
   AIMING: 'aiming',
@@ -250,7 +268,7 @@ class AimRenderer {
     this.tangentGeo = new THREE.BufferGeometry();
     this.tangentGeo.setAttribute('position', new THREE.BufferAttribute(this.tangentPositions, 3));
     this.tangentGeo.setDrawRange(0, 0);
-    this.tangentMat = new THREE.LineBasicMaterial({
+    this.tangentMat = new THREE.LineDashedMaterial({
       color: PALETTE.player,
       transparent: true,
       opacity: 0.75,
@@ -313,7 +331,8 @@ class AimRenderer {
    * @param {object} player
    * @param {number} power 0..1
    */
-  show(prediction, player, power, charge = 1) {
+  show(prediction, player, power, charge = 1, context = {}) {
+    const power0 = power;
     this.group.visible = true;
     const y = 0.12;
     const segments = prediction.segments;
@@ -443,8 +462,20 @@ class AimRenderer {
       this.marker.visible = true;
       this.marker.position.set(h.x, y, h.z);
 
-      // Tangent = perpendicular to the object ball's line, taking whichever of
-      // the two perpendiculars the cue ball is already travelling towards.
+      // THE TANGENT LINE TELLS THE TRUTH ABOUT ITS OWN CONFIDENCE.
+      //
+      // It used to be drawn at a fixed 4.6 units whatever the shot, and that
+      // is where the preview was lying: on a near-full-ball hit the cue ball
+      // keeps almost nothing and stops dead, while the line still promised a
+      // full-length departure. For equal masses the cue leaves along the
+      // tangent with exactly the tangential share of its speed — sin of the
+      // cut angle — so that number is both the length AND the confidence.
+      //
+      // Thin cut  -> the cue keeps most of its speed, the direction is stable,
+      //              and the line is long, bright and near-solid.
+      // Full hit  -> the cue barely moves and a degree of aim error swings the
+      //              departure wildly. The line is short, faint and broken,
+      //              which is not a hedge — it is what actually happens.
       const last = segments[segments.length - 1];
       let inX = last ? last.bx - last.ax : 0;
       let inZ = last ? last.bz - last.az : 0;
@@ -458,11 +489,32 @@ class AimRenderer {
           tx = -tx;
           tz = -tz;
         }
-        const TL = TRAJECTORY.tangentLength;
+
+        // The tangential share of the incoming direction: sin(cut angle).
+        const share = clamp(Math.abs(inX * tx + inZ * tz), 0, 1);
+        const power = context.power ?? power0;
+        const speed =
+          (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * power) *
+          (player?.stats?.launchSpeedMult ?? 1);
+        // How far a body actually carries at that speed under the launch drag,
+        // rather than a constant: v / drag is the whole remaining journey.
+        const carry = ((speed * share) / PLAYER.dragLaunched) * TRAJECTORY.tangentCarry;
+        const TL = clamp(carry, TRAJECTORY.tangentMin, TRAJECTORY.tangentMax);
+
+        // A line that ends down a pocket is a scratch, and the player deserves
+        // to know before they let go rather than after.
+        const scratch = tangentScratches(h.x, h.z, tx, tz, TL, context.pockets);
+
         this.tangentPositions.set([h.x, y, h.z, h.x + tx * TL, y, h.z + tz * TL]);
         this.tangentGeo.setDrawRange(0, 2);
         this.tangentGeo.attributes.position.needsUpdate = true;
-        this.tangent.visible = true;
+        this.tangent.computeLineDistances();
+        this.tangentMat.color.setHex(scratch ? PALETTE.bad : PALETTE.aimGhost);
+        this.tangentMat.opacity = scratch ? 0.95 : 0.25 + share * 0.7;
+        // Confident lines are nearly solid; unconfident ones fall apart.
+        this.tangentMat.dashSize = 0.12 + share * 1.15;
+        this.tangentMat.gapSize = 0.5 - share * 0.34;
+        this.tangent.visible = TL > 0.2;
       } else {
         this.tangent.visible = false;
       }
@@ -888,9 +940,9 @@ export class Player {
   }
 
   /** Draw the aim layers from a fresh prediction. */
-  showTrajectory(prediction) {
+  showTrajectory(prediction, context = {}) {
     this.prediction = prediction;
-    this.aimRenderer.show(prediction, this, this.aimPower, this.aimCharge);
+    this.aimRenderer.show(prediction, this, this.aimPower, this.aimCharge, context);
   }
 
   hideTrajectory() {

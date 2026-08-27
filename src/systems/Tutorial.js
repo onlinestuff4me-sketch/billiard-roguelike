@@ -83,7 +83,7 @@ const RULES = {
 
   angle: {
     say: 'Knock the <b>2</b> in <em>from an angle</em>',
-    hint: 'Hit its <em>far side</em>. The white circle is where your ball ends up.',
+    hint: 'Hit its <em>far side</em>, toward the lit pocket.',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
@@ -97,19 +97,19 @@ const RULES = {
   budget: {
     // No explanation. Four balls and three shots IS the lesson.
     say: 'Four balls. <em>Three shots.</em>',
-    hint: 'One shot has to knock <em>two</em> in.',
+    hint: 'The <b>1</b> and the <b>4</b> line up on the lit pocket. <em>Hit the 1 into the 4.</em>',
     spot: 'rack',
     potsNeeded: 2,
     shots: 3,
     cheer: 'Two in one — that is how the budget works',
     scold: 'One at a time will not get there. Find the shot that takes two',
     whiff: 'Missed — look for two balls lined up on the same pocket',
-    nudge: 'The 1 and the 4 are on the same line. Send the 1 through the 4.'
+    nudge: 'Hit the 1 on its left side so it runs into the 4.'
   },
 
   walls: {
     say: '<em>Go round</em> the barrier',
-    hint: 'The <b>3</b> is blocked. <em>Bounce off a side wall</em> — and every bounce is worth more.',
+    hint: 'The <b>3</b> is blocked. <em>Bounce off the left wall</em> to reach it.',
     spot: 'blocked',
     pot: (p) => (p.bounces >= 1 ? 'score' : 'reject'),
     cheer: 'Off the wall, and worth more for it',
@@ -120,14 +120,14 @@ const RULES = {
 
   'green-red': {
     say: 'Take the <em>green</em>. Miss the <b>red</b>.',
-    hint: '<em>Green</em> is always good. <b>Red</b> is always bad.',
+    hint: '<em>Green</em> is always good. <b>Red</b> always costs you.',
     spot: 'rack',
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
     cheer: 'Green on the way, red left alone',
-    scold: 'In, but you missed the green — take the line straight through it',
+    scold: 'In, but you missed the green — take the line that rolls over it',
     whiff: 'Missed the ball. The green is on the way, not the target',
-    nudge: 'The green sits on the line to the 2. Drive straight through it.'
+    nudge: 'The green sits on the line to the 2. Aim so your ball rolls over it.'
   }
 };
 
@@ -137,6 +137,7 @@ export const LESSONS = lessonData.lessons.map((table) => ({
   id: table.id,
   goal: 1,
   rest: table.rest || { x: 0, z: -1 },
+  call: table.call || null,
   room: {
     id: `lesson-${table.id}`,
     name: table.name,
@@ -415,6 +416,13 @@ export class Tutorial {
     // first lesson — two sets of instructions at once, one of them stale.
     this.hud?.hideBanner?.();
     this.rooms.loadScripted(lesson.room);
+    // POINT AT THE TARGET, DO NOT DESCRIBE IT.
+    //
+    // "the far corner" is a sentence the player has to translate into a place.
+    // Lighting the pocket costs no words and cannot be misread — and it uses
+    // the pocket's own called state, so the tutorial is teaching the same
+    // signal a contract will use later.
+    this.game.callPocket?.(lesson.call || null);
     this.player.respawn(0, this.spawnZ());
     this.player.focus = this.player.focusMax;
     this._restAim();
@@ -730,6 +738,14 @@ export class Tutorial {
       return;
     }
 
+    // Knocking your own ball in fails the rep on every board. It is the one
+    // mistake that is always a mistake, so it is always called by name.
+    if (name === 'scratch') {
+      this._rejected = true;
+      this._setStatus(lesson.scratched || 'Scratch — your own ball went in. Take it again.', 'bad');
+      return;
+    }
+
     // A pick-up or a hazard. Only the green matters to a lesson; hitting the
     // red is its own punishment and the board says so without failing you.
     if (name === 'object') {
@@ -1030,15 +1046,23 @@ export class Tutorial {
     this.el.classList.add('show');
   }
 
+  /**
+   * ONE PLACE FOR EVERY WORD A LESSON SAYS.
+   *
+   * Corrections used to be a separate floating line with its own style and its
+   * own timer — a second voice, in a second place, that could vanish before it
+   * had been read. They replace the card's own hint line now: same component,
+   * same position, and nothing hides them but the next attempt.
+   */
   _setStatus(text, tone) {
-    this.statusEl.textContent = text;
-    this.statusEl.classList.remove('good', 'bad');
+    this.statusEl.classList.remove('show', 'good', 'bad');
+    this.hintEl.classList.remove('good', 'bad');
     if (!text) {
-      this.statusEl.classList.remove('show');
+      if (this.lesson) this.hintEl.innerHTML = this.lesson.hint || '';
       return;
     }
-    if (tone) this.statusEl.classList.add(tone);
-    this.statusEl.classList.add('show');
+    this.hintEl.textContent = text;
+    if (tone) this.hintEl.classList.add(tone);
   }
 
   dispose() {

@@ -134,6 +134,14 @@ export class HUD {
   }
 
   showBanner(title, sub = '', duration = 2.2) {
+    // ONE VOICE AT A TIME.
+    //
+    // While a lesson is up, the coach card is the instruction AND the
+    // correction — it is the component the player has learned to read. A
+    // banner firing over the same event ("Scratch" here, "Scratch" there,
+    // "SCRATCH" floating off the felt) is three sources for one fact, and the
+    // player parses none of them. The card wins; the banner stands down.
+    if (this.layer.classList.contains('coaching')) return;
     this.bannerTitle.textContent = title;
     this.bannerSub.textContent = sub;
     this.bannerTimer = duration;

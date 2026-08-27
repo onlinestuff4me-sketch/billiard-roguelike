@@ -156,6 +156,36 @@ function buildComposer(width, height) {
  * uses. A ball that looks like it is going in, goes in — the visual promise
  * has to be more generous than the rule, never less.
  */
+/**
+ * Live handles on each pocket's "called" ring, so a contract or a lesson can
+ * point at one. Brightness is the only channel a pocket has.
+ */
+const calledRings = [];
+
+/** Light one pocket by slot id, or none. */
+let calledSlot = null;
+function callPocket(slotId) {
+  calledSlot = slotId || null;
+  for (const entry of calledRings) {
+    entry.material.opacity = entry.slot === calledSlot ? 1 : 0;
+  }
+}
+
+/**
+ * The called pocket breathes. Six identical mouths is exactly the point of the
+ * architecture, so the one being pointed at has to move to be found — a static
+ * brightness step reads as a lighting accident at this scale.
+ */
+function pulseCalledPocket(rawDt) {
+  if (!calledSlot) return;
+  calledPulse += rawDt * 3.4;
+  const glow = 0.62 + Math.sin(calledPulse) * 0.38;
+  for (const entry of calledRings) {
+    if (entry.slot === calledSlot) entry.material.opacity = glow;
+  }
+}
+let calledPulse = 0;
+
 function buildTable(target) {
   const table = new THREE.Group();
   table.name = 'table';
@@ -267,63 +297,102 @@ function buildTable(target) {
   ];
   for (const quad of runs) table.add(cushion(quad));
 
-  /* -- the pockets themselves ----------------------------------------- */
+  /* -- the pockets themselves ----------------------------------------- *
+   *
+   * ONE ARC, ONE ORIENTATION, SIX POCKETS.
+   *
+   * Drawn as a full circle these were being cropped by whatever happened to
+   * sit over them — a corner pocket overlapped two frame bands, a side pocket
+   * one — so every mouth had a different bite taken out of it and none of it
+   * meant anything. The arc is authored now: 300 degrees, with the 60-degree
+   * gap always facing the middle of the table. That is the throat the ball
+   * comes in through, so the opening points at where the ball comes from, and
+   * every pocket reads identically wherever it sits.
+   *
+   * The whole assembly is lifted above the cushions so nothing can crop it.
+   * The camera looks straight down, so height is only draw order; the inset
+   * read comes from the void and the arc, not from depth.
+   */
   const lip = new THREE.Color(PALETTE.lip);
+  const bright = new THREE.Color(PALETTE.aim);
+  const GAP = Math.PI / 3;           // 60 degrees of opening
+  const SWEEP = Math.PI * 2 - GAP;   // 300 degrees of rim
+
   for (const slot of slots) {
     const m = mouth(slot);
 
-    // The frame swelling around the mouth, sitting under everything else.
+    // The gap faces the centre of the table. atan2 is taken in the same frame
+    // RingGeometry uses (theta from +x, counter-clockwise in XY before the
+    // -90° rotation puts it flat), which is why z is negated here.
+    const toCentre = Math.atan2(-(0 - slot.z), 0 - slot.x);
+    const start = toCentre + GAP / 2;
+
     const swell = new THREE.Mesh(
-      new THREE.CircleGeometry(m + frameT * TABLE.pocket.swell, 40),
+      new THREE.CircleGeometry(m + frameT * TABLE.pocket.swell, 44),
       frameMat
     );
     swell.rotation.x = -Math.PI / 2;
-    swell.position.set(slot.x, 0.05, slot.z);
+    swell.position.set(slot.x, 0.78, slot.z);
     table.add(swell);
 
     // The void. Absence reads faster than any colour.
     const hole = new THREE.Mesh(
-      new THREE.CircleGeometry(m, 36),
+      new THREE.CircleGeometry(m, 40),
       new THREE.MeshBasicMaterial({ color: PALETTE.void })
     );
     hole.rotation.x = -Math.PI / 2;
-    hole.position.set(slot.x, 0.09, slot.z);
+    hole.position.set(slot.x, 0.82, slot.z);
     table.add(hole);
 
-    // The lit mouth: one bright unbroken ring, the only glow on the table
-    // that means neither good nor bad. It is drawn in the pale end of the
-    // table's own teal rather than the body colour, because a pocket has to
-    // pull the eye — it is the thing the whole game is aimed at — and the
-    // frame it sits in is deliberately dark.
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(m * 0.95, m * 1.05, 44),
-      new THREE.MeshBasicMaterial({
-        color: new THREE.Color(PALETTE.aim),
-        transparent: true,
-        opacity: 0.72,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(slot.x, 0.11, slot.z);
-    table.add(ring);
-
     const halo = new THREE.Mesh(
-      new THREE.RingGeometry(m * 1.05, m * 1.5, 40),
+      new THREE.RingGeometry(m * 1.02, m * 1.44, 44, 1, start, SWEEP),
       new THREE.MeshBasicMaterial({
         color: lip,
         transparent: true,
-        opacity: 0.26,
+        opacity: 0.24,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide
       })
     );
     halo.rotation.x = -Math.PI / 2;
-    halo.position.set(slot.x, 0.1, slot.z);
+    halo.position.set(slot.x, 0.84, slot.z);
     table.add(halo);
+
+    // The lit mouth, in the pale end of the table's own teal: a pocket has to
+    // pull the eye, and the frame it sits in is deliberately dark.
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(m * 0.95, m * 1.05, 48, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: bright,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(slot.x, 0.86, slot.z);
+    table.add(ring);
+
+    // The called state: the contract names this pocket. Brightness and nothing
+    // else — no hue, because hue belongs to the felt objects.
+    const called = new THREE.Mesh(
+      new THREE.RingGeometry(m * 0.86, m * 1.2, 48, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(PALETTE.bone),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    called.rotation.x = -Math.PI / 2;
+    called.position.set(slot.x, 0.88, slot.z);
+    table.add(called);
+    calledRings.push({ slot: slot.slot, x: slot.x, z: slot.z, material: called.material });
   }
 
   target.add(table);
@@ -593,7 +662,12 @@ function createFX() {
         }
         const progress = 1 - t.life / t.maxLife;
         scratch.set(t.x, 0.7, t.z).project(camera);
-        const px = (scratch.x * 0.5 + 0.5) * w;
+        // A pot or a scratch happens AT a pocket, and every pocket is in a
+        // corner or hard against a rail — so the unclamped label runs off the
+        // edge exactly when it matters most ("SCRATCH" read as "CRATCH").
+        // Half the label's own width is the margin.
+        const half = t.el.offsetWidth * 0.5 + 6;
+        const px = clamp((scratch.x * 0.5 + 0.5) * w, half, w - half);
         const py = (-scratch.y * 0.5 + 0.5) * h - progress * FEEL.floatText.rise;
         t.el.style.transform = `translate(${px}px, ${py}px) translate(-50%, -50%) scale(${
           1 + (1 - progress) * 0.25
@@ -674,6 +748,7 @@ game.boons = boons;
 
 const rules = new Rules();
 game.rules = rules;
+game.callPocket = callPocket;
 // A handle for the console and for automated smoke runs. Read-only in spirit:
 // nothing in the game reads it back.
 if (typeof window !== 'undefined') window.__game = game;
@@ -1043,7 +1118,7 @@ game.on = {
       engine.shake(9);
       fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
       fx.floatText(ball.x, ball.z, 'THE 8 GOES LAST', 'splat');
-      hud.showBanner('Foul', 'The 8 goes last — back on the table', 1.8);
+      hud.showBanner('Too early', 'The 8 goes last — back on the table', 1.8);
       rooms.respot(ball);
       return;
     }
@@ -1071,9 +1146,9 @@ game.on = {
     audio.playerHurt();
     engine.shake(14);
     engine.zoomPunch();
-    fx.shockwave(pocket.x, pocket.z, PALETTE.bone, 7, 0.55);
-    fx.floatText(pocket.x, pocket.z, 'FOUL', 'splat');
-    hud.showBanner('Foul', 'Your own ball went in — this shot pays nothing', 1.9);
+    fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 7, 0.55);
+    fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
+    hud.showBanner('Scratch', 'Your own ball went in — this shot pays nothing', 1.9);
     // Back to the spot, at rest. The stroke ends here.
     p.vx = 0;
     p.vz = 0;
@@ -1413,6 +1488,7 @@ function advanceRoom() {
   hud.hideScorecard();
 
   rooms.generate(game.level);
+  callPocket(null);
   rules.beginRoom(game.level, game.strokeBonus
     ? { strokes: rooms.contract.strokes + game.strokeBonus }
     : null);
@@ -1470,6 +1546,7 @@ function startRun() {
   game.tutorialGuard = null;
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
+  callPocket(null);
   rules.beginRoom(game.level);
   player.respawn(rooms.layout.spawn.x, spawnZ());
   input.setHeading(0, -1);
@@ -1489,7 +1566,9 @@ function refreshPrediction() {
     maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
     bodies: game.enemies
   });
-  player.showTrajectory(prediction);
+  // The pockets go in so the preview can warn about a scratch: a line that
+  // ends down a hole is the one prediction the player most needs in advance.
+  player.showTrajectory(prediction, { pockets: rooms.table.pockets, power: player.aimPower });
 }
 
 /** Heading when the current hold began; used to measure how far it turned. */
@@ -1504,6 +1583,7 @@ const input = new InputManager(stage, {
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
+    uiLayer.classList.add('aiming');
     const h = input.heading;
     aimStartDir = { x: h.x, z: h.z };
     game.lastTurn = 0;
@@ -1520,12 +1600,14 @@ const input = new InputManager(stage, {
     else player.hideTrajectory();
   },
   onAimCancel: () => {
+    uiLayer.classList.remove('aiming');
     wasMaxed = false;
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.cancelAim();
   },
   onRelease: (aim) => {
+    uiLayer.classList.remove('aiming');
     wasMaxed = false;
     if (aimStartDir) {
       const dot = clamp(aimStartDir.x * aim.dirX + aimStartDir.z * aim.dirZ, -1, 1);
@@ -1541,6 +1623,7 @@ const input = new InputManager(stage, {
     else beginStroke();
   },
   onFlick: (aim) => {
+    uiLayer.classList.remove('aiming');
     // THERE IS NO FREE MOVE.
     //
     // The dash used to be a no-cost reposition, which is fine when the threat
@@ -1811,6 +1894,7 @@ function frame(now) {
 
   attract(rawDt);
   tutorial.update(rawDt);
+  pulseCalledPocket(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 

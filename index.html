@@ -1091,8 +1091,12 @@
         /* A capsule, not a circle: it has to hug a wide flat goal bar and a
            tall narrow rack with the same rule. */
         border-radius: 999px;
-        border: 2px solid rgba(255, 255, 255, 0.55);
-        box-shadow: 0 0 18px rgba(255, 255, 255, 0.25);
+        /* Dashed and faint on purpose. A solid white capsule reads as an OBJECT
+           on the felt and competes with the called pocket, which is the one
+           thing on screen allowed to be bright white. This is a region marker:
+           it says "the sentence is about what's in here", nothing more. */
+        border: 1.5px dashed rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 14px rgba(255, 255, 255, 0.09);
         pointer-events: none;
         opacity: 0;
         transition: opacity 0.35s ease;
@@ -1191,12 +1195,25 @@
            thumb below the ball, so a card down there hides the ball, the cue
            and the player's own hand at once. It lives in the band above the
            racks instead, and is capped so it can never grow into them. */
-        top: 21%;
+        /* THE VERTICAL BUDGET, REVISED.
+             0-11%   HUD band
+             12-25%  this card, and it is CAPPED so it cannot grow past 25%
+             28-64%  every rack, every target, every route
+             ~70%    the ball's spawn
+             70-100% where the thumb goes
+           The card used to sit at 21% and grow downward, which put it over the
+           middle of the table on any lesson whose copy ran to two lines — so
+           the board covered the very thing it was describing. It is docked
+           under the HUD now, and it fades almost out the moment a thumb goes
+           down, so it can never be between the player and the shot. */
+        top: 12.5%;
         bottom: auto;
+        max-height: 13%;
+        overflow: hidden;
         transform: translate(-50%, 0) scale(0.94);
-        width: min(94%, 452px);
-        padding: 11px 16px 13px;
-        border-radius: 14px;
+        width: min(92%, 424px);
+        padding: 9px 14px 11px;
+        border-radius: 12px;
         border: none;
         /* Light card on a dark table. A dark card on dark felt has to shout to
            be seen at all; a light one is legible at a glance and can therefore
@@ -1271,17 +1288,31 @@
       }
       #coach .say { text-wrap: balance; }
       #coach .step {
-        font-size: clamp(9px, 2.4vmin, 11px);
+        font-size: clamp(8px, 2.1vmin, 10px);
         letter-spacing: 0.24em;
         text-transform: uppercase;
         color: #7c8794;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
       }
+
+      /* THE CARD GETS OUT OF THE WAY OF THE SHOT.
+         The instant a thumb goes down the player is aiming, not reading, and
+         anything opaque over the felt is in the way. Fading rather than hiding
+         keeps the words recoverable at a glance without a reappearing flash on
+         every release. The spotlight scrim goes with it for the same reason. */
+      #ui-layer.aiming #coach.show {
+        opacity: 0.09;
+        transform: translate(-50%, -4px) scale(0.98);
+      }
+      #ui-layer.aiming #coach.show .next,
+      #ui-layer.aiming #coach.show .skip { pointer-events: none; }
+      #ui-layer.aiming #coach-spot.show { opacity: 0.3; }
+      #coach-spot, #coach { transition: opacity 0.16s ease, transform 0.16s ease; }
       #coach.done .step { color: #2ef2c4; }
       #coach .say {
-        font-size: clamp(17px, 4.6vmin, 24px);
+        font-size: clamp(15px, 4vmin, 20px);
         font-weight: 800;
-        line-height: 1.15;
+        line-height: 1.12;
         letter-spacing: -0.01em;
         color: #12171d;
         text-wrap: balance;
@@ -1293,6 +1324,9 @@
         color: #12a150;
         font-weight: 800;
       }
+      #coach .hint.good { color: #12a150; font-weight: 700; }
+      #coach .hint.bad { color: #d2402f; font-weight: 700; }
+
       #coach .say b,
       #coach .hint b {
         font-weight: 800;

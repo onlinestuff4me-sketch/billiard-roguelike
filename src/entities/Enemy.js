@@ -113,11 +113,29 @@ function numberTexture(number, hex) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
-  ctx.lineWidth = size * 0.15;
-  ctx.strokeStyle = 'rgba(5, 7, 10, 0.96)';
-  ctx.strokeText(String(number), size / 2, size / 2 + size * 0.02);
+  const x = size / 2;
+  const y = size / 2 + size * 0.02;
+
+  // THREE PASSES, BECAUSE THE BALL UNDERNEATH IS LIT.
+  //
+  // A hard outline alone was not enough: an emissive ball blooms outward past
+  // its own silhouette and eats a one-pixel stroke from behind. A soft dark
+  // halo goes down first to push the glow away from the glyph, then the hard
+  // outline gives it an edge, then the fill.
+  ctx.shadowColor = 'rgba(3, 5, 8, 0.95)';
+  ctx.shadowBlur = size * 0.16;
+  ctx.lineWidth = size * 0.2;
+  ctx.strokeStyle = 'rgba(3, 5, 8, 0.85)';
+  ctx.strokeText(String(number), x, y);
+  ctx.strokeText(String(number), x, y);
+  ctx.shadowBlur = 0;
+
+  ctx.lineWidth = size * 0.14;
+  ctx.strokeStyle = 'rgba(4, 6, 10, 0.98)';
+  ctx.strokeText(String(number), x, y);
+
   ctx.fillStyle = hex;
-  ctx.fillText(String(number), size / 2, size / 2 + size * 0.02);
+  ctx.fillText(String(number), x, y);
   const texture = new THREE.CanvasTexture(canvas);
   texture.anisotropy = 4;
   NUMBER_TEXTURES.set(key, texture);
@@ -246,7 +264,7 @@ export class Enemy {
     // The 8 is a dark ball and stays dark: it reads by contrast against the
     // felt, not by glow. Stripes are bone-bodied and would white out at the
     // same intensity a solid needs.
-    const emissive = this.type === 'heavy' ? 0.05 : this.type === 'stripe' ? 0.16 : 0.45;
+    const emissive = this.type === 'heavy' ? 0.05 : this.type === 'stripe' ? 0.08 : 0.45;
     this.material = new THREE.MeshStandardMaterial({
       color,
       emissive: new THREE.Color(color),
@@ -364,7 +382,10 @@ export class Enemy {
     // was doing nothing, and the shot arrived from a silhouette that had never
     // pointed anywhere. A barrel is the whole fix: it makes the facing visible,
     // gives the wind-up somewhere to happen, and gives the bullet an origin.
-    if (this.type === 'stripe') {
+    // On a static table a stripe never fires, so the barrel is a violet stalk
+    // hanging off a ball that does nothing with it — noise on the one glyph the
+    // player has to read at a glance. Same call as the 8's shield.
+    if (this.type === 'stripe' && !RULES.staticTable) {
       this.gun = new THREE.Group();
       this.gunMat = new THREE.MeshStandardMaterial({
         color: PALETTE.stripe,
@@ -409,8 +430,8 @@ export class Enemy {
       this.group.add(this.gun);
     }
 
-    // Stripe: closing charge ring.
-    if (this.type === 'stripe') {
+    // Stripe: closing charge ring. Nothing to charge on a static table.
+    if (this.type === 'stripe' && !RULES.staticTable) {
       this.chargeMat = new THREE.MeshBasicMaterial({
         color: PALETTE.bad,
         transparent: true,
@@ -453,8 +474,10 @@ export class Enemy {
     // Deliberately wider than the body: at this camera scale a numeral
     // confined to the silhouette is about ten pixels tall on a phone.
     const scale = Math.max(1.15, this.radius * 2.5);
-    // Bone on everything except the bone-bodied stripes, which take the band's violet.
-    const ink = this.type === 'stripe' ? PALETTE.stripe : PALETTE.bone;
+    // Bone on every ball. The band, not the numeral, is what says "stripe";
+    // violet ink on a bone body over a violet band was the least legible
+    // combination on the table, and legibility outranks consistency here.
+    const ink = PALETTE.bone;
     const hex = `#${ink.toString(16).padStart(6, '0')}`;
     if (!this.numberSprite) {
       this.numberSprite = new THREE.Sprite(

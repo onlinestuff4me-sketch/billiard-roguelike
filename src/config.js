@@ -223,7 +223,15 @@ export const TRAJECTORY = {
    * Length of the cue ball's own post-impact tangent line — the 90° rule.
    * Showing where *you* end up is what makes a collision legible in advance.
    */
-  tangentLength: 4.6,
+  /**
+   * The cue ball's departure line is sized from the shot, not from a constant.
+   * `tangentCarry` scales the physical carry distance (speed / drag) down to
+   * something that fits on the table without dominating it; the clamps keep a
+   * near-stop readable and a thin cut from running off the felt.
+   */
+  tangentCarry: 0.34,
+  tangentMin: 0.6,
+  tangentMax: 9.0,
   /**
    * The main aim beam is a ribbon mesh, not a line.
    *
@@ -687,7 +695,7 @@ export const PALETTE = {
   solid: 0xffb340,
   stripe: 0xa05cff,
   /** Stripes are a bone body with a coloured band, like a real striped ball. */
-  stripeBody: 0xeaf6ff,
+  stripeBody: 0xcfdceb,
   eight: 0x14181f,
 
   /* -- GOOD: every pick-up ------------------------------------------- */

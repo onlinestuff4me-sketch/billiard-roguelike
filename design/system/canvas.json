@@ -36,6 +36,13 @@
       "h": 2020
     },
     {
+      "file": "Prompts.dc.html",
+      "x": 1240,
+      "y": 3180,
+      "w": 1120,
+      "h": 2203
+    },
+    {
       "file": "Headroom.dc.html",
       "x": 0,
       "y": 5320,
@@ -49,7 +56,7 @@
       "x": 0,
       "y": -210,
       "w": 960,
-      "text": "The fix in one line: form says what a thing IS, colour says what it DOES to your score.\n\nSheets, top to bottom: the palette allocation, the catalogue, the pocket architecture, the words, the five tutorial boards, and \u2014 last \u2014 Headroom, which answers the three questions about states, shapes and scale."
+      "text": "The fix in one line: form says what a thing IS, colour says what it DOES to your score.\n\nSheets, top to bottom: the palette allocation, the catalogue, the pocket architecture, the words, the five tutorial boards and \u2014 beside them \u2014 how a prompt is written and where it sits, and last Headroom, which answers the three questions about states, shapes and scale."
     }
   ],
   "launch": {
