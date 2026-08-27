@@ -26,14 +26,14 @@
       "x": 1120,
       "y": 1450,
       "w": 900,
-      "h": 1990
+      "h": 1610
     },
     {
       "file": "Teaching.dc.html",
       "x": 0,
-      "y": 2995,
-      "w": 1000,
-      "h": 2090
+      "y": 3180,
+      "w": 1180,
+      "h": 2020
     }
   ],
   "annotations": [
@@ -42,7 +42,7 @@
       "x": 0,
       "y": -210,
       "w": 960,
-      "text": "Three changes from your notes:\n\n1. Pockets are architecture now \u2014 the frame swells around each one and the cushions break and flare into the mouth. See \"Pockets are not on the table\".\n2. The palette is allocated. Five channels, no hue in two of them. Pockets have no colour at all; green is always good, red is always bad.\n3. Plain words only: hit, shoot, knock in, bounce. Sink, pot, bank and drive-through are gone."
+      "text": "Latest change is the tutorial: five boards, not seven, on the \"Five boards\" sheet at the bottom.\n\nBoard 01 is a real pot straight away. 03 has no card at all \u2014 four balls and three shots is the whole lesson. The 8-goes-last board is gone; it is a room banner now."
     }
   ],
   "launch": {
