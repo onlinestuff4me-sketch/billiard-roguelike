@@ -83,15 +83,15 @@ const RULES = {
 
   angle: {
     say: 'Knock the <b>2</b> in <em>from an angle</em>',
-    hint: 'Hit its <em>far side</em>, toward the lit pocket.',
+    hint: 'Aim at the ghost, not the ball. Slide it onto the <em>far side</em>.',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
     pot: (p) => (p.ball.number === 2 ? 'score' : null),
     cheer: 'Cut and in',
-    scold: 'Straight up sends it into the wall — hit more of its far side',
+    scold: 'Straight at it sends the 2 wide — hit more of its far side',
     whiff: 'Missed — the white circle shows where contact happens',
-    nudge: 'Aim at the point on its far side that lines it up with the corner.'
+    nudge: 'Slide the white ghost onto the 2\'s far side, until it lines up with the lit pocket.'
   },
 
   budget: {
@@ -107,15 +107,29 @@ const RULES = {
     nudge: 'Hit the 1 on its left side so it runs into the 4.'
   },
 
+  // WALLS ARE FURNITURE, NOT A PUZZLE.
+  //
+  // This lesson used to demand a BANK: the 3 sat behind the barrier, so the
+  // only way to it was off a cushion. Sweeping every heading at every power
+  // found exactly one shot in 2160 that potted — a banked pot needs better
+  // than half a degree of aim, because the cushion multiplies the error and
+  // the path to the ball is long. It was not a hard lesson, it was an
+  // unpassable one.
+  //
+  // The wall now stands beside the shot instead of across it: the pot is the
+  // widest direct window on the table (3.5 degrees, measured), and the wall is
+  // what the cue ball rebounds off on its way out. You learn that it is solid
+  // by watching it be solid, not by being locked out of the room.
   walls: {
-    say: '<em>Go round</em> the barrier',
-    hint: 'The <b>3</b> is blocked. <em>Bounce off the left wall</em> to reach it.',
-    spot: 'blocked',
-    pot: (p) => (p.bounces >= 1 ? 'score' : 'reject'),
-    cheer: 'Off the wall, and worth more for it',
-    scold: 'Straight at it is blocked. Aim into the side wall instead',
-    whiff: 'Missed — the dashed line shows where the bounce goes',
-    nudge: 'Aim well out to the left. The dashed preview is the return path.'
+    say: 'The wall is <em>solid</em>',
+    hint: 'Knock the <b>3</b> into the lit pocket. <em>Nothing</em> passes through a wall.',
+    spot: 'first',
+    hand: true,
+    handDraw: 6.4,
+    cheer: 'In — and the wall never got a say',
+    scold: 'That is off the wall, not into the pocket',
+    whiff: 'Missed the 3 — line up on it first',
+    nudge: 'The lit pocket is right beside the 3. Barely a cut.'
   },
 
   'green-red': {

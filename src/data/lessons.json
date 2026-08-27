@@ -24,16 +24,16 @@
       "id": "angle",
       "name": "The Angle",
       "rest": {
-        "x": 0,
-        "z": -1
+        "x": 0.568,
+        "z": -0.823
       },
-      "call": "tr",
+      "call": "mr",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 0,
-          "z": 2.0,
+          "x": 2.0,
+          "z": 3.5,
           "number": 2
         },
         {
@@ -82,17 +82,17 @@
     },
     {
       "id": "walls",
-      "name": "Round The Barrier",
+      "name": "The Wall",
       "rest": {
-        "x": -0.918,
-        "z": -0.396
+        "x": 0.846,
+        "z": -0.533
       },
-      "call": "tl",
+      "call": "mr",
       "obstacles": [
         {
           "type": "box",
-          "x": 0,
-          "z": 2.0,
+          "x": 2.5,
+          "z": -3.5,
           "hw": 3.0,
           "hh": 0.4
         }
@@ -100,8 +100,8 @@
       "enemies": [
         {
           "type": "solid",
-          "x": 0,
-          "z": -2.0,
+          "x": 7.0,
+          "z": 2.0,
           "number": 3
         }
       ]
@@ -110,35 +110,35 @@
       "id": "green-red",
       "name": "Green And Red",
       "rest": {
-        "x": 0.406,
-        "z": -0.914
+        "x": -0.846,
+        "z": -0.533
       },
-      "call": "tr",
+      "call": "ml",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 3.2,
-          "z": -1.0,
+          "x": -7.0,
+          "z": 2.0,
           "number": 2
         },
         {
           "type": "stripe",
-          "x": -5.2,
-          "z": 0.5,
+          "x": 2.5,
+          "z": 0.0,
           "number": 5
         }
       ],
       "objects": [
         {
           "kind": "double",
-          "x": 1.4,
-          "z": 3.2
+          "x": -3.5,
+          "z": 4.5
         },
         {
           "kind": "mine",
-          "x": -2.6,
-          "z": 3.0
+          "x": -3.0,
+          "z": 0.5
         }
       ]
     }

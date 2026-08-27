@@ -44,7 +44,7 @@ import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { AudioManager } from './core/AudioManager.js';
 import { Player, PLAYER_STATE } from './entities/Player.js';
-import { PhysicsSystem } from './systems/PhysicsSystem.js';
+import { PhysicsSystem, carryDistance, speedAfterDistance } from './systems/PhysicsSystem.js';
 import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
 import { Rules } from './systems/Rules.js';
@@ -167,7 +167,9 @@ let calledSlot = null;
 function callPocket(slotId) {
   calledSlot = slotId || null;
   for (const entry of calledRings) {
-    entry.material.opacity = entry.slot === calledSlot ? 1 : 0;
+    const on = entry.slot === calledSlot;
+    entry.material.opacity = on ? 1 : 0;
+    entry.halo.opacity = on ? 0.22 : 0;
   }
 }
 
@@ -179,9 +181,12 @@ function callPocket(slotId) {
 function pulseCalledPocket(rawDt) {
   if (!calledSlot) return;
   calledPulse += rawDt * 3.4;
-  const glow = 0.62 + Math.sin(calledPulse) * 0.38;
+  const wave = Math.sin(calledPulse);
+  const glow = 0.72 + wave * 0.28;
   for (const entry of calledRings) {
-    if (entry.slot === calledSlot) entry.material.opacity = glow;
+    if (entry.slot !== calledSlot) continue;
+    entry.material.opacity = glow;
+    entry.halo.opacity = 0.2 + wave * 0.14;
   }
 }
 let calledPulse = 0;
@@ -392,7 +397,32 @@ function buildTable(target) {
     called.rotation.x = -Math.PI / 2;
     called.position.set(slot.x, 0.88, slot.z);
     table.add(called);
-    calledRings.push({ slot: slot.slot, x: slot.x, z: slot.z, material: called.material });
+
+    // A soft outer bloom on the same arc. The rim alone reads at the pocket
+    // but not from the far end of the table, which is exactly where the player
+    // is looking from when they need to know which one is being pointed at.
+    const callHalo = new THREE.Mesh(
+      new THREE.RingGeometry(m * 1.15, m * 1.75, 48, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(PALETTE.bone),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    callHalo.rotation.x = -Math.PI / 2;
+    callHalo.position.set(slot.x, 0.84, slot.z);
+    table.add(callHalo);
+
+    calledRings.push({
+      slot: slot.slot,
+      x: slot.x,
+      z: slot.z,
+      material: called.material,
+      halo: callHalo.material
+    });
   }
 
   target.add(table);
@@ -1557,6 +1587,74 @@ function startRun() {
  * Input wiring
  * ------------------------------------------------------------------ */
 
+/** The speed this shot would leave the cue at, given how long it is held. */
+function launchSpeed() {
+  return (
+    (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * player.aimPower) *
+    player.stats.launchSpeedMult
+  );
+}
+
+/**
+ * WHERE THE CUE BALL ACTUALLY ENDS UP.
+ *
+ * Not a tangent ray — the real thing. Take the speed the cue still has when it
+ * arrives at the object ball, run the SAME two-body impulse the collision will
+ * run (`resolveBallImpulse`, mass 1.6 against a 1.0 solid, restitution 0.96),
+ * and march the resulting velocity back through the same predictor that drew
+ * the approach, for exactly as far as that speed carries under drag.
+ *
+ * The 90° tangent is a special case of this — equal masses, perfect
+ * restitution — and the cue ball is heavier than everything it hits, so it
+ * always drifts forward of the tangent. Drawing the special case was the bug.
+ *
+ * @returns {{segments: Array}|null} null when the departure is not worth drawing
+ */
+function projectCuePath(prediction) {
+  const hit = prediction?.hit;
+  if (!hit || !hit.body) return null;
+  const last = prediction.segments[prediction.segments.length - 1];
+  if (!last) return null;
+
+  // Speed at contact: what is left of the launch after coasting to the ball.
+  const arrival = speedAfterDistance(launchSpeed(), prediction.totalDistance);
+  if (arrival <= 0) return null;
+
+  let dx = last.bx - last.ax;
+  let dz = last.bz - last.az;
+  const dl = Math.hypot(dx, dz);
+  if (dl < 1e-5) return null;
+  dx /= dl;
+  dz /= dl;
+
+  const vx = dx * arrival;
+  const vz = dz * arrival;
+  const vn = vx * hit.nx + vz * hit.nz;
+  if (vn <= 0) return null;
+
+  const invA = 1 / player.mass;
+  const invB = 1 / (hit.body.mass || 1);
+  const j = (-(1 + PHYSICS.ballRestitution) * vn) / (invA + invB);
+  const ox = vx + j * invA * hit.nx;
+  const oz = vz + j * invA * hit.nz;
+  const outSpeed = Math.hypot(ox, oz);
+
+  const carry = carryDistance(outSpeed);
+  if (carry < TRAJECTORY.minDraw) return null;
+
+  return physics.predictTrajectory(
+    { x: hit.x, z: hit.z },
+    { x: ox / outSpeed, z: oz / outSpeed },
+    {
+      radius: player.radius,
+      maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
+      maxDistance: carry,
+      // The ball we just struck is leaving; it is not in our way any more.
+      bodies: game.enemies.filter((b) => b !== hit.body)
+    }
+  );
+}
+
 function refreshPrediction() {
   if (!player.alive) return;
   const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
@@ -1564,11 +1662,18 @@ function refreshPrediction() {
     // Never preview more banks than the launch can actually survive — the
     // prediction lines are a promise, not a suggestion.
     maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
+    // Nor more DISTANCE than the launch can survive. A preview that runs 46
+    // units when the shot only carries 12 promises a shot nobody played.
+    maxDistance: Math.min(TRAJECTORY.maxDistance, carryDistance(launchSpeed())),
     bodies: game.enemies
   });
   // The pockets go in so the preview can warn about a scratch: a line that
   // ends down a hole is the one prediction the player most needs in advance.
-  player.showTrajectory(prediction, { pockets: rooms.table.pockets, power: player.aimPower });
+  player.showTrajectory(prediction, {
+    pockets: rooms.table.pockets,
+    power: player.aimPower,
+    cuePath: projectCuePath(prediction)
+  });
 }
 
 /** Heading when the current hold began; used to measure how far it turned. */

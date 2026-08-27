@@ -19,12 +19,24 @@ const clamp = (value, lo, hi) => Math.min(Math.max(value, lo), hi);
  * against each pocket's capture circle, not just the endpoint — a line that
  * passes through a mouth on its way somewhere else is still a scratch.
  */
-function tangentScratches(x, z, tx, tz, length, pockets) {
+/**
+ * Does this leg of the cue ball's projected path pass down a pocket?
+ *
+ * Closest approach from a point to a finite segment. It has to be the segment
+ * and not the infinite ray, because the path now STOPS where the ball stops:
+ * a pocket sitting beyond the end of the roll is not a scratch, and warning
+ * about one was the loudest way the old preview lied.
+ */
+function segmentScratches(seg, pockets) {
   if (!pockets || !pockets.length) return false;
+  const dx = seg.bx - seg.ax;
+  const dz = seg.bz - seg.az;
+  const len2 = dx * dx + dz * dz;
+  if (len2 < 1e-9) return false;
   for (const pocket of pockets) {
-    const along = clamp((pocket.x - x) * tx + (pocket.z - z) * tz, 0, length);
-    const cx = x + tx * along;
-    const cz = z + tz * along;
+    const t = clamp(((pocket.x - seg.ax) * dx + (pocket.z - seg.az) * dz) / len2, 0, 1);
+    const cx = seg.ax + dx * t;
+    const cz = seg.az + dz * t;
     if (Math.hypot(pocket.x - cx, pocket.z - cz) <= pocket.radius) return true;
   }
   return false;
@@ -259,12 +271,15 @@ class AimRenderer {
     this.cone.frustumCulled = false;
     this.group.add(this.cone);
 
-    // 4. Cue-ball tangent line — the 90° rule.
-    //    On a cut, the striking ball leaves perpendicular to the object ball's
-    //    departure. Drawing it is what turns "why did I end up there?" into a
-    //    decision you make before releasing, and it is the single most useful
-    //    aid real pool players train with.
-    this.tangentPositions = new Float32Array(6);
+    // 4. The cue ball's own departure path — where YOU end up.
+    //    A polyline, not a ray: it is the projected velocity marched through
+    //    the table for the distance the shot actually carries, so it banks off
+    //    rails and stops where the ball stops. Turning "why did I end up
+    //    there?" into a decision made before releasing is the single most
+    //    useful aid real pool players train with, and it only works if the
+    //    line is the truth. See main.js `projectCuePath`.
+    //    Room for one segment per previewed bank, plus the first.
+    this.tangentPositions = new Float32Array((TRAJECTORY.previewBounces + 2) * 6);
     this.tangentGeo = new THREE.BufferGeometry();
     this.tangentGeo.setAttribute('position', new THREE.BufferAttribute(this.tangentPositions, 3));
     this.tangentGeo.setDrawRange(0, 0);
@@ -480,7 +495,8 @@ class AimRenderer {
       let inX = last ? last.bx - last.ax : 0;
       let inZ = last ? last.bz - last.az : 0;
       const inLen = Math.hypot(inX, inZ);
-      if (inLen > 1e-5) {
+      const path = context.cuePath;
+      if (inLen > 1e-5 && path && path.segments.length) {
         inX /= inLen;
         inZ /= inLen;
         let tx = -cd.z;
@@ -490,23 +506,27 @@ class AimRenderer {
           tz = -tz;
         }
 
-        // The tangential share of the incoming direction: sin(cut angle).
+        // WHAT THE LINE SAYS vs HOW LOUDLY IT SAYS IT.
+        //
+        // The path itself is solved physics — length, direction and banks all
+        // come from `projectCuePath`. What is left for the drawing to express
+        // is how much a small aim error would move that path, and the honest
+        // measure of that is the tangential share of the hit: sin(cut angle).
+        // On a thin cut the departure is stable, so the line is bright and
+        // near-solid. On a near-full hit a degree of aim swings the outcome
+        // wildly, so it falls apart into faint wide-gapped dashes. The line is
+        // never lying about WHERE — only about how sure it is.
         const share = clamp(Math.abs(inX * tx + inZ * tz), 0, 1);
-        const power = context.power ?? power0;
-        const speed =
-          (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * power) *
-          (player?.stats?.launchSpeedMult ?? 1);
-        // How far a body actually carries at that speed under the launch drag,
-        // rather than a constant: v / drag is the whole remaining journey.
-        const carry = ((speed * share) / PLAYER.dragLaunched) * TRAJECTORY.tangentCarry;
-        const TL = clamp(carry, TRAJECTORY.tangentMin, TRAJECTORY.tangentMax);
 
-        // A line that ends down a pocket is a scratch, and the player deserves
-        // to know before they let go rather than after.
-        const scratch = tangentScratches(h.x, h.z, tx, tz, TL, context.pockets);
-
-        this.tangentPositions.set([h.x, y, h.z, h.x + tx * TL, y, h.z + tz * TL]);
-        this.tangentGeo.setDrawRange(0, 2);
+        let n = 0;
+        let scratch = false;
+        for (const seg of path.segments) {
+          if ((n + 1) * 6 > this.tangentPositions.length) break;
+          this.tangentPositions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
+          n += 1;
+          if (!scratch) scratch = segmentScratches(seg, context.pockets);
+        }
+        this.tangentGeo.setDrawRange(0, n * 2);
         this.tangentGeo.attributes.position.needsUpdate = true;
         this.tangent.computeLineDistances();
         this.tangentMat.color.setHex(scratch ? PALETTE.bad : PALETTE.aimGhost);
@@ -514,13 +534,18 @@ class AimRenderer {
         // Confident lines are nearly solid; unconfident ones fall apart.
         this.tangentMat.dashSize = 0.12 + share * 1.15;
         this.tangentMat.gapSize = 0.5 - share * 0.34;
-        this.tangent.visible = TL > 0.2;
+        this.tangent.visible = n > 0;
       } else {
+        // Empty the draw range too, not just the visibility flag: the buffer
+        // still holds the last path, and anything that turns the line back on
+        // would draw a shot from three aims ago.
+        this.tangentGeo.setDrawRange(0, 0);
         this.tangent.visible = false;
       }
     } else {
       this.cone.visible = false;
       this.marker.visible = false;
+      this.tangentGeo.setDrawRange(0, 0);
       this.tangent.visible = false;
     }
 

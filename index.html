@@ -1208,7 +1208,12 @@
            down, so it can never be between the player and the shot. */
         top: 12.5%;
         bottom: auto;
-        max-height: 13%;
+        /* The cap is the BAND, not the card. An instruction sizes itself to two
+           lines and lands near 10%; only the completion state — which adds the
+           Next button — needs the rest, and by then the rep is over so the
+           extra height costs the player nothing. Capping at 13% clipped that
+           button clean off the bottom of the card. */
+        max-height: 25%;
         overflow: hidden;
         transform: translate(-50%, 0) scale(0.94);
         width: min(92%, 424px);

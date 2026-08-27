@@ -38,6 +38,46 @@ export function reflect(vx, vz, nx, nz, restitution = 1) {
 }
 
 /**
+ * THE DRAG MODEL, SOLVED RATHER THAN STEPPED.
+ *
+ * `integrate` damps velocity exponentially (v *= e^-drag*h), and the integral
+ * of that is beautifully simple: the distance covered between two speeds is
+ * (v0 - v1) / drag. So speed and distance are LINEAR in each other inside one
+ * drag regime, and the preview never has to run the simulation to know where a
+ * body stops — it can solve for it.
+ *
+ * There are two regimes, because the creep assist forces drag up to
+ * `creepDrag` once a body drops below `creepSpeed` (see RULES.creepSpeed).
+ * Both functions below walk the fast regime first, then the creep regime.
+ */
+
+/** Speed remaining after coasting `dist` from `v0`. */
+export function speedAfterDistance(v0, dist) {
+  let v = v0;
+  let s = Math.max(0, dist);
+  if (RULES.staticTable && v > RULES.creepSpeed) {
+    const fast = (v - RULES.creepSpeed) / PLAYER.dragLaunched;
+    if (s <= fast) return v - PLAYER.dragLaunched * s;
+    s -= fast;
+    v = RULES.creepSpeed;
+  } else if (!RULES.staticTable) {
+    return Math.max(0, v - PLAYER.dragLaunched * s);
+  }
+  return Math.max(0, v - RULES.creepDrag * s);
+}
+
+/** How far a body still travels before it is slow enough to have stopped. */
+export function carryDistance(v0) {
+  const floor = RULES.staticTable ? RULES.settleSpeed : PLAYER.settleSpeed;
+  if (v0 <= floor) return 0;
+  if (!RULES.staticTable) return (v0 - floor) / PLAYER.dragLaunched;
+  if (v0 <= RULES.creepSpeed) return (v0 - floor) / RULES.creepDrag;
+  return (
+    (v0 - RULES.creepSpeed) / PLAYER.dragLaunched + (RULES.creepSpeed - floor) / RULES.creepDrag
+  );
+}
+
+/**
  * Swept circle vs static circle.
  * @returns distance along `d` (unit) of first contact, or Infinity.
  */

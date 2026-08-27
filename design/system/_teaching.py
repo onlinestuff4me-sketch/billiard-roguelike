@@ -52,37 +52,67 @@ def ghost(x, y, r=17):
 def path_to(x1, y1, x2, y2):
     return f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{BONE}" stroke-width="3" stroke-dasharray="9 7" opacity="0.55"/>'
 
-# --- 01: straight in ---------------------------------------------------------
-# Cue, ball and pocket are collinear: the only thing being tested is the draw.
-b1 = (aim(170, 440, 252, 230) + path_to(264, 198, 336, 12)
-      + ball(264, 198, 17, 'solid', '3') + cue_ball(170, 440, 17))
+# --- THE FIVE BOARDS, DRAWN FROM THE GAME'S OWN LESSON DATA -------------------
+#
+# These used to be hand-placed and they drifted the moment a board was retuned.
+# They are now projected straight out of src/data/lessons.json, so a sheet that
+# disagrees with the game is a bug in one file rather than a difference of
+# opinion between two.
+import json, math, os
 
-# --- 02: on an angle ---------------------------------------------------------
-b2 = (aim(170, 450, 151, 289) + ghost(151, 289) + path_to(170, 260, 334, 14)
-      + ball(170, 260, 17, 'solid', '2') + ball(280, 380, 17, 'stripe', '5')
-      + cue_ball(170, 450, 17))
+LESSONS = json.load(open(os.path.join(os.path.dirname(os.path.abspath('_teaching.py')),
+                                      '../../src/data/lessons.json')))
+if isinstance(LESSONS, dict):
+    LESSONS = LESSONS['lessons']
+LESSONS = {l['id']: l for l in LESSONS}
 
-# --- 03: four balls, three strokes ------------------------------------------
-b3 = (aim(170, 460, 232, 132) + path_to(250, 110, 300, 45) + path_to(300, 45, 336, 12)
-      + ball(250, 110, 17, 'solid', '1') + ball(300, 45, 17, 'solid', '4')
-      + ball(80, 150, 17, 'stripe', '6') + ball(95, 315, 17, 'solid', '2')
-      + cue_ball(170, 460, 17))
+# The real table is 18 x 32 world units with the cue spawning at z = +6.4;
+# pieces carry RULES.pieceScale = 0.78. World -> mini is a straight linear map.
+AW, AH = 18.0, 32.0
+SPAWN = (0.0, 6.4)
+BR = 0.4836 * 2          # centre-to-centre at contact, in world units
+SLOT = {'tl': 0, 'tr': 1, 'ml': 2, 'mr': 3, 'bl': 4, 'br': 5}
+POCKET = {'tl': (-8.1, -15.1), 'tr': (8.1, -15.1), 'ml': (-8.1, 0.0),
+          'mr': (8.1, 0.0), 'bl': (-8.1, 15.1), 'br': (8.1, 15.1)}
 
-# --- 04: round the barrier ---------------------------------------------------
-# The direct line is a vertical through the barrier, so the only way in is a
-# bounce. Solved for a bank off the left cushion that arrives on the ghost.
-b4 = (aim(170, 450, 17, 317) + aim(17, 317, 147, 205, True) + ghost(147, 205)
-      + path_to(170, 180, 334, 14)
-      + wall(170, 330, 150, 22)
-      + ball(170, 180, 17, 'solid', '3') + cue_ball(170, 450, 17))
+def mx(x): return (x + AW / 2) / AW * W
+def my(z): return (z + AH / 2) / AH * H
+def mr(r): return r / AW * W
 
-# --- 05: green and red -------------------------------------------------------
-# The green sits on the line to the 2; the red sits on the other route a
-# player might take. Both are a choice, not decoration.
-b5 = (aim(170, 455, 212, 209) + path_to(230, 180, 334, 14)
-      + felt_object(197, 300, 30, True, 'x2') + felt_object(95, 300, 28, False, 'mine')
-      + ball(230, 180, 17, 'solid', '2') + ball(88, 175, 17, 'stripe', '5')
-      + cue_ball(170, 455, 17))
+# Positions are true to the game; the PIECES are drawn 1.7x so a ball reads as
+# a ball at thumbnail size. Everything that matters for judging a board — the
+# lines, the angles, which pocket is lit — is unexaggerated.
+GAIN = 1.7
+
+def draw(lid):
+    """One lesson board: the cue, the shot it teaches, and nothing else."""
+    L = LESSONS[lid]
+    call = L.get('call')
+    pk = POCKET[call]
+    target = L['enemies'][0]
+    # The ghost: where the cue ball's centre sits at contact for this pot.
+    dx, dz = pk[0] - target['x'], pk[1] - target['z']
+    d = math.hypot(dx, dz) or 1
+    gx, gz = target['x'] - dx / d * BR, target['z'] - dz / d * BR
+
+    out = []
+    for w in L.get('obstacles', []):
+        out.append(wall(mx(w['x']), my(w['z']), mr(w['hw'] * 2), mr(w['hh'] * 2)))
+    for o in L.get('objects', []):
+        out.append(felt_object(mx(o['x']), my(o['z']), mr(1.1) * GAIN,
+                               o['kind'] != 'mine', 'x2' if o['kind'] == 'double' else o['kind']))
+    out.append(aim(mx(SPAWN[0]), my(SPAWN[1]), mx(gx), my(gz)))
+    out.append(ghost(mx(gx), my(gz), mr(0.48) * GAIN))
+    out.append(path_to(mx(target['x']), my(target['z']), mx(pk[0]), my(pk[1])))
+    for e in L['enemies']:
+        out.append(ball(mx(e['x']), my(e['z']), mr(0.48) * GAIN, e['type'], str(e['number'])))
+    out.append(cue_ball(mx(SPAWN[0]), my(SPAWN[1]), mr(0.48) * GAIN))
+    return ''.join(out), SLOT[call]
+
+def board_svg(lid, px=190):
+    contents, lit = draw(lid)
+    return (f'<svg width="{px}" height="{int(px * 620 / 400)}" viewBox="-30 -30 400 620" '
+            f'xmlns="http://www.w3.org/2000/svg">{table(W, H, lit=lit, extra=contents)}</svg>')
 
 def budget(left, total):
     cues = ''.join(f'<span class="cue{"" if i < left else " off"}"></span>' for i in range(total))
@@ -103,27 +133,27 @@ def cues(on, off, label):
     return c + f'<span class="lb">{label}</span>'
 
 boards = (
-  board('01', 'pocket', mini(b1),
+  board('01', 'pocket', board_svg('pocket'),
         'Knock the <b>3</b> in',
         'Press anywhere and pull back, like a cue.',
         'The cue, the pocket and the one rule the game runs on, in a single shot. Everything is already on a straight line, so the only thing being tested is the gesture. <b>Hitting a ball never breaks it — a pocket is the only way one leaves.</b>')
-  + board('02', 'the angle', mini(b2),
+  + board('02', 'the angle', board_svg('angle'),
         'Knock the <b>2</b> in <em>from an angle</em>',
-        'Hit its far side. The white circle is where your ball ends up.',
-        'The cue rests pointing straight at the ball, and straight is wrong — it would go into the top wall. The player has to move off the obvious line themselves. <b>The second ball is there so the table is a choice, not a rail.</b>')
-  + board('03', 'the budget', mini(b3),
+        'Aim at the ghost, not the ball. Slide it onto the far side.',
+        'The cue rests pointing straight at the ball, and straight is wrong. The player has to move off the obvious line themselves. <b>Measured window: 3.2° of aim, scratch-free at every power.</b>')
+  + board('03', 'the budget', board_svg('budget'),
         'Four balls. <em>Three shots.</em>',
         'One shot has to knock two in.',
         'No card explains the budget, because the budget explains itself: the numbers do not add up and the player has to find the shot that does. <b>The first board that requires a plan.</b>',
         cues(3, 0, 'four balls'))
-  + board('04', 'walls', mini(b4),
-        '<em>Go round</em> the barrier',
-        'The <b>3</b> is blocked. Bounce off a side wall.',
-        'The first thing on the table that is in the way rather than in play. Ends on the fact that makes walls worth using rather than tolerating: <b>every wall you bounce off is worth more points.</b>')
-  + board('05', 'green &amp; red', mini(b5),
+  + board('04', 'walls', board_svg('walls'),
+        'The wall is <em>solid</em>',
+        'Knock the <b>3</b> into the lit pocket. Nothing passes through a wall.',
+        'This board used to put the 3 <i>behind</i> the barrier, so the only route was a bank — and a swept measurement found one potting shot in 2160. A banked pot needs better than half a degree. The wall now stands beside the shot, not across it. <b>Measured window: 3.5°, the widest on the table.</b>')
+  + board('05', 'green &amp; red', board_svg('green-red'),
         'Take the <em>green</em>. Miss the <b>red</b>.',
-        'Green is always good. Red is always bad.',
-        'Both colours on one table, one on each of the two obvious routes, so the law is learned as a pair and as a decision. <b>Nothing else new is on this board.</b>')
+        'Green is always good. Red always costs you.',
+        'Both colours on one table: the green sits <i>on</i> the line to the 2, the red beside it, so the law is learned as a pair and as a decision. <b>32 of the 39 scratch-free potting shots also collect the green.</b>')
 )
 
 ramp = [

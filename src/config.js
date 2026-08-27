@@ -220,18 +220,25 @@ export const TRAJECTORY = {
   /** Length of the predicted object-ball departure line. */
   caromConeLength: 6.5,
   /**
-   * Length of the cue ball's own post-impact tangent line — the 90° rule.
-   * Showing where *you* end up is what makes a collision legible in advance.
+   * THE DEPARTURE LINE IS NOT A HINT, IT IS THE ANSWER.
+   *
+   * It used to be a tangent ray of a fudged length (a `tangentCarry` scale on
+   * v/drag, clamped into something tidy), and it was wrong twice over. The
+   * direction was wrong because the pure 90° tangent only holds for equal
+   * masses and perfect restitution; the cue ball is 1.6 to a solid's 1.0, so
+   * it keeps about a quarter of its normal component and drifts FORWARD of the
+   * tangent. And the length was wrong because a scaled proxy is not a stopping
+   * distance. Together they produced the exact failure a player notices: a red
+   * scratch warning on a pocket the ball then rolls comfortably past.
+   *
+   * The line is now the real post-impulse velocity marched through the real
+   * table for the real carry distance — banks included. Nothing here to tune;
+   * the numbers it needs are the physics constants it already shares.
+   *
+   * `minDraw` only decides whether a departure worth under a ball's width is
+   * worth drawing at all.
    */
-  /**
-   * The cue ball's departure line is sized from the shot, not from a constant.
-   * `tangentCarry` scales the physical carry distance (speed / drag) down to
-   * something that fits on the table without dominating it; the clamps keep a
-   * near-stop readable and a thin cut from running off the felt.
-   */
-  tangentCarry: 0.34,
-  tangentMin: 0.6,
-  tangentMax: 9.0,
+  minDraw: 0.35,
   /**
    * The main aim beam is a ribbon mesh, not a line.
    *
