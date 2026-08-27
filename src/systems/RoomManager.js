@@ -20,7 +20,7 @@
 
 import * as THREE from 'three';
 import { ARENA, ROOM, PALETTE, ENEMY, PROGRESSION, PHYSICS, TABLE } from '../config.js';
-import { Table, pocketSlots } from './Table.js';
+import { Table } from './Table.js';
 import { contractFor, rackNumbers, archetypeForNumber } from './Rules.js';
 import { Enemy, ENEMY_STATE } from '../entities/Enemy.js';
 import layoutData from '../data/layouts.json';
@@ -65,15 +65,15 @@ export const DOOR_REWARDS = [
     weight: 3,
     describe: (phase) => `${phase ? phase.toUpperCase() : 'ANY'} BOON`
   },
-  { id: 'repair', label: 'Repair', glyph: '✚', color: 0x4dff9e, weight: 1 },
+  { id: 'repair', label: 'Repair', glyph: '✚', color: PALETTE.good, weight: 1 },
   /**
    * The reward table follows the rules. Focus and raw damage decided nothing
    * once balls stopped dying to hits, so both are gone; what a player wants
    * now is another stroke, another freeze, or another bank on the multiplier.
    */
-  { id: 'stroke', label: 'Stroke', glyph: '│', color: PALETTE.carom, weight: 1.6 },
-  { id: 'freeze', label: 'Freeze', glyph: '◈', color: PALETTE.player, weight: 1.2 },
-  { id: 'ricochet', label: 'Ricochet', glyph: '⤢', color: PALETTE.bumper, weight: 1 }
+  { id: 'stroke', label: 'Shot', glyph: '│', color: PALETTE.good, weight: 1.6 },
+  { id: 'freeze', label: 'Freeze', glyph: '◈', color: PALETTE.good, weight: 1.2 },
+  { id: 'ricochet', label: 'Bounce', glyph: '⤢', color: PALETTE.good, weight: 1 }
 ];
 
 const PHASES = ['launch', 'trajectory', 'impact', 'rebound'];
@@ -159,7 +159,8 @@ export class RoomManager {
 
     // --- 2. the contract, and the table it is played on ---------------
     this.contract = contractFor(level);
-    this.table.buildPockets(level, rng);
+    // Pockets are architecture and live in the static table — there is nothing
+    // per-room to build. Only the felt objects are rolled.
     this.placeObjects(rng, level);
 
     // --- 3. the rack ---------------------------------------------------
@@ -207,21 +208,26 @@ export class RoomManager {
    */
   placeObjects(rng, level) {
     this.game.zones.length = 0;
-    const order = ['gold', 'gate', 'freeze', 'mine'];
-    const spec = {
-      gold: TABLE.objects.gold,
-      gate: TABLE.objects.gate,
-      freeze: TABLE.objects.freezeCell,
-      mine: TABLE.objects.mine
-    };
-    for (const kind of order) {
-      const cfg = spec[kind];
+    // ONE NEW IDEA PER ROOM.
+    //
+    // Each object type has a room it can first appear in, so the table gains
+    // one thing at a time and every arrival gets a banner of its own. Order is
+    // fixed rather than shuffled: a player should meet the double before the
+    // mine, and the mine before anything that fights back.
+    const roll = [
+      ...Object.entries(TABLE.object.pickups).map(([kind, cfg]) => ({ kind, cfg })),
+      ...Object.entries(TABLE.object.hazards).map(([kind, cfg]) => ({ kind, cfg }))
+    ].sort((a, b) => a.cfg.minLevel - b.cfg.minLevel);
+
+    let placed = 0;
+    for (const { kind, cfg } of roll) {
+      if (placed >= TABLE.object.maxPerRoom) break;
       if (level < cfg.minLevel) continue;
       if (rng() > cfg.chance) continue;
-      const anchors = this.freeAnchors(rng, kind === 'gate' ? 2.0 : 1.4);
-      const anchor = anchors[0];
+      const anchor = this.freeAnchors(rng, TABLE.object.radius + 0.6)[0];
       if (!anchor) continue;
       this.table.addObject(kind, anchor.x, anchor.z);
+      placed += 1;
     }
   }
 
@@ -351,23 +357,9 @@ export class RoomManager {
     this.goal = spec.goal ? { ...spec.goal, scored: false } : null;
     if (this.goal) this.buildGoalMesh(this.goal);
 
-    // A LESSON TABLE HAS TO BE THE REAL TABLE.
-    //
-    // The tutorial teaches potting, so lesson rooms get real pockets — the
-    // same capture radii, the same types, the same rules. A lesson that taught
-    // the game against a stand-in target would be teaching a different game.
-    // Only the pockets a lesson names are built, so each board contains the
-    // thing it is about and nothing else.
-    if (spec.pockets && spec.pockets.length) {
-      const byslot = new Map(pocketSlots().map((slot) => [slot.slot, slot]));
-      const spots = spec.pockets
-        .map((entry) => {
-          const slot = byslot.get(entry.slot);
-          return slot ? { ...slot, type: entry.type || 'score' } : null;
-        })
-        .filter(Boolean);
-      this.table.buildPockets(0, () => 0, spots);
-    }
+    // A lesson table IS the real table: same six pockets, same capture radii,
+    // same rules. A board that taught the game against a stand-in target would
+    // be teaching a different game.
     for (const object of spec.objects || []) {
       this.table.addObject(object.kind, object.x, object.z, object);
     }
@@ -487,15 +479,21 @@ export class RoomManager {
   buildLayoutMeshes() {
     for (const c of this.colliders) {
       const isBumper = c.kind === 'bumper';
-      const color = isBumper ? PALETTE.bumper : PALETTE.railGlow;
+      // A BUMPER IS A WALL, NOT A PICK-UP.
+      //
+      // It was drawn in mint, which is now exactly the colour that means
+      // "hit this, something good happens" — and a bumper is geometry. It
+      // goes back into the table channel and says "springy" by being lit
+      // brighter than a plain pillar, not by wearing a different hue.
+      const color = PALETTE.lip;
       let mesh;
       if (c.type === 'circle') {
         mesh = new THREE.Mesh(
           new THREE.CylinderGeometry(c.radius, c.radius * 0.92, isBumper ? 0.55 : 1.1, 22),
           new THREE.MeshStandardMaterial({
-            color: isBumper ? PALETTE.bumper : PALETTE.rail,
+            color: isBumper ? PALETTE.cushion : PALETTE.rail,
             emissive: new THREE.Color(color),
-            emissiveIntensity: isBumper ? 0.55 : 0.35,
+            emissiveIntensity: isBumper ? 0.75 : 0.3,
             roughness: 0.45,
             metalness: 0.3
           })

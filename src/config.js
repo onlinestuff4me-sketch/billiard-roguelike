@@ -22,7 +22,7 @@ export const ARENA = {
   /** Visual thickness of the rail cushions (purely cosmetic). */
   railThickness: 0.55,
   /** Camera pulls back past the rails so the cushions stay fully visible. */
-  viewPadding: 1.4,
+  viewPadding: 1.7,
   aspect: 9 / 16
 };
 
@@ -289,17 +289,21 @@ export const ENEMY = {
     shotLife: 3.2,
     scoreFocus: 0.5
   },
-  /** "Heavy Eight-Balls" — amber cylinders with a 180° frontal shield. */
+  /**
+   * The 8. On a real table it is exactly the same size as every other ball —
+   * it is special by colour, not bulk. At 1.15 it was 43px across on a phone,
+   * nearly double a normal ball, and it ate the felt.
+   */
   heavy: {
     id: 'heavy',
-    label: 'Eight-Ball',
+    label: 'The 8',
     cost: 6,
     hp: 130,
-    radius: 1.15,
-    mass: 3.4,
+    radius: 0.64,
+    mass: 1.4,
     speed: 1.9,
     accel: 4,
-    pierceable: false,
+    pierceable: true,
     contactDamage: 16,
     /** Damage multiplier when struck inside the frontal shield arc. */
     shieldMitigation: 0.12,
@@ -320,6 +324,22 @@ export const ENEMY = {
  * four strokes and six balls". These are the numbers that hold that up.
  * ------------------------------------------------------------------ */
 export const RULES = {
+  /**
+   * ONE MULTIPLIER ON EVERY PIECE.
+   *
+   * Measured against a real 7ft table the pockets were already right and the
+   * balls were oversized: 14.5 ball diameters across the felt against a real
+   * 17.6. Scaling the pieces rather than growing the arena means not a single
+   * line of authored layout geometry moves. 0.78 lands on real proportions;
+   * 0.66 is the floor, because below about 15px across the number on a ball
+   * stops being readable on a phone.
+   *
+   * A per-room ramp on this is the obvious difficulty axis — more fits on the
+   * table, angles tighten, nothing new to learn — but that waits until the
+   * flat version has been played.
+   */
+  pieceScale: 0.78,
+
   /**
    * The table is frozen except while a stroke is resolving. This is the flag
    * every "does anything move on its own?" question routes through, so a
@@ -370,13 +390,13 @@ export const RULES = {
   eightLastFrom: 5,
 
   score: {
-    /** A ball pays its number times this. */
+    /**
+     * A ball pays its number times this, at the multiplier standing when it
+     * drops. Every pocket pays the same — the variable rates went with the
+     * pocket types, onto the felt where colour is allowed to mean something.
+     */
     perPip: 100,
-    /** A ball driven through a shatter gate pays less than one that is potted. */
-    gateRate: 0.6,
-    /** The live pocket pays double, then fires the ball back at you. */
-    liveRate: 2,
-    /** Every stroke left in the budget at room end pays this times the room. */
+    /** Every shot left in the budget at room end pays this times the room. */
     savedStroke: 500
   },
 
@@ -415,6 +435,19 @@ export const RULES = {
  * TABLE — pockets and the lit objects on the felt
  * ------------------------------------------------------------------ */
 export const TABLE = {
+  /**
+   * POCKETS ARE ARCHITECTURE.
+   *
+   * All six are identical and carry no colour at all: they are drawn in the
+   * table's own materials, with the frame swelling around each mouth and the
+   * cushions breaking and flaring into it. That is what stops them competing
+   * with the mint and red objects for the same glance — the eye can look for
+   * "a hole" without parsing hue.
+   *
+   * There are no pocket types. Every pocket pays the ball's number; the
+   * multiplier, upgrade and hazard effects live on the felt, where colour is
+   * allowed to mean something.
+   */
   pocket: {
     /** A body whose centre gets inside this radius is captured. */
     radius: 1.25,
@@ -428,21 +461,39 @@ export const TABLE = {
     cornerInset: 0.9,
     /** Side pockets sit on the long rails, this far in. */
     sideInset: 0.9,
-    /** How the six pocket types are drawn from, by weight, each room. */
-    weight: { score: 4, gold: 1.4, upgrade: 1, live: 1 },
-    /** Every room is guaranteed at least this many plain score pockets. */
-    minScore: 3
+    /**
+     * The drawn mouth is wider than the capture radius, so a ball that LOOKS
+     * like it is going in, goes in. The visual promise is always more
+     * generous than the rule, never less.
+     */
+    mouthScale: 1.18,
+    /** How far the frame swells out past the mouth, as a fraction of the frame. */
+    swell: 0.52,
+    /** How far the cushion ends splay open toward a pocket. */
+    jaw: 0.62
   },
-  gold: { radius: 1.5 },
-  gate: { width: 3.2, thickness: 0.5 },
-  freezeCell: { radius: 1.2 },
-  mine: { radius: 0.9 },
-  /** Chances a room rolls each felt object, and the level each unlocks at. */
-  objects: {
-    gold: { chance: 0.75, minLevel: 2 },
-    gate: { chance: 0.55, minLevel: 3 },
-    freezeCell: { chance: 0.5, minLevel: 4 },
-    mine: { chance: 0.5, minLevel: 6 }
+
+  /**
+   * FELT OBJECTS. One form — a dashed outline around a hollow interior — and
+   * two meanings. Mint is a pick-up you want to hit; red is a hazard to route
+   * around. The glyph says which one.
+   */
+  object: {
+    radius: 1.5,
+    /** Pick-ups, and the room each first appears in. */
+    pickups: {
+      double: { chance: 0.8, minLevel: 2, label: 'Double' },
+      freeze: { chance: 0.5, minLevel: 4, label: 'Freeze' },
+      upgrade: { chance: 0.45, minLevel: 6, label: 'Upgrade' },
+      shot: { chance: 0.4, minLevel: 8, label: 'Extra shot' }
+    },
+    /** Hazards, likewise. */
+    hazards: {
+      mine: { chance: 0.55, minLevel: 3, label: 'Mine' },
+      kicker: { chance: 0.4, minLevel: 7, label: 'Kicker' }
+    },
+    /** At most this many felt objects in one room. */
+    maxPerRoom: 3
   }
 };
 
@@ -602,36 +653,62 @@ export const AUDIO = {
  * PALETTE — "Dark Velvet Cyber-Billiards"
  * ------------------------------------------------------------------ */
 export const PALETTE = {
-  obsidian: 0x05070a,
-  feltDeep: 0x06231d,
-  felt: 0x0b3a2e,
-  feltLine: 0x14624c,
-  rail: 0x0a1a24,
-  railGlow: 0x1d6f7a,
+  /* ---------------------------------------------------------------- *
+   * FIVE CHANNELS. No hue appears in two of them.
+   *
+   * Colour was doing two jobs at once — a cyan pocket and a cyan pick-up
+   * shouting for the same glance while meaning different things. It cannot.
+   * Form now says what a thing IS; colour says only what it DOES to your
+   * score. See design/system/Main.dc.html.
+   * ---------------------------------------------------------------- */
+
+  /* -- YOU: the cue ball, the aim line, and nothing else -------------- */
   player: 0x35f2ff,
   playerCore: 0xd9feff,
   trail: 0x1fd7ff,
   aim: 0x8ffcff,
   aimGhost: 0x4a8fa5,
-  carom: 0xffe27a,
-  solid: 0xff3d6e,
+
+  /* -- THE TABLE: architecture. Never on anything you can collect ----- */
+  obsidian: 0x05070a,
+  feltDeep: 0x06231d,
+  felt: 0x0b3a2e,
+  feltLine: 0x14624c,
+  frame: 0x0a1a24,
+  cushion: 0x123040,
+  rail: 0x0a1a24,
+  railGlow: 0x1d6f7a,
+  /** The lit ring on a pocket mouth. The one glow that means neither good nor bad. */
+  lip: 0x1d6f7a,
+  /** What is inside a pocket. */
+  void: 0x04060a,
+
+  /* -- THE RACK: which ball, and nothing more ------------------------- */
+  solid: 0xffb340,
   stripe: 0xa05cff,
-  heavy: 0xffb340,
-  shield: 0xfff0c2,
-  projectile: 0xff8ad4,
-  bumper: 0x2ef2c4,
-  pyre: 0xffd166,
-  hazard: 0xff5a3d,
-  door: 0x35f2ff,
-  doorAlt: 0xff5ce1,
+  /** Stripes are a bone body with a coloured band, like a real striped ball. */
+  stripeBody: 0xeaf6ff,
+  eight: 0x14181f,
+
+  /* -- GOOD: every pick-up ------------------------------------------- */
+  good: 0x2ef2c4,
+
+  /* -- BAD: every hazard --------------------------------------------- */
+  bad: 0xff5a3d,
+
+  /* -- neutral ------------------------------------------------------- */
   spark: 0xfff6d8,
-  bone: 0xeaf6ff
+  bone: 0xeaf6ff,
+  /** Exit doors sit outside the table and use the two ends of the run. */
+  door: 0x35f2ff,
+  doorAlt: 0xeaf6ff
 };
 
 /* CSS-side mirror so DOM UI can share the exact same hues. */
 export const CSS_PALETTE = {
   cyan: '#35f2ff',
-  magenta: '#ff3d8b',
+  good: '#2ef2c4',
+  bad: '#ff5a3d',
   amber: '#ffb340',
   violet: '#a05cff',
   bone: '#eaf6ff',
@@ -744,13 +821,14 @@ export const TUTORIAL = {
    * now keyed to the room where that thing genuinely first appears.
    */
   lessons: {
-    1: { title: 'The Contract', sub: 'Sink every ball · the strokes you save are points' },
-    2: { title: 'The Gold Ring', sub: 'Drive through it and the shot doubles' },
-    3: { title: 'The Upgrade Pocket', sub: 'A ball in there buys a boon instead of points' },
-    4: { title: 'The Live Pocket', sub: 'Pays double, then fires the ball back at you' },
-    5: { title: 'The 8 Goes Last', sub: 'Potting it early is a foul · it comes back' },
-    6: { title: 'Mines', sub: 'Route around them · they only bite the cue ball' },
-    7: { title: 'Fewer Strokes Now', sub: 'Every stroke has to pot from here' }
+    1: { title: 'The Contract', sub: 'Knock every ball in · the shots you save are points' },
+    2: { title: 'The Double', sub: 'Green is good · hit it and the shot is worth twice as much' },
+    3: { title: 'Mines', sub: 'Red is bad · they only bite your ball, so go around' },
+    4: { title: 'The Freeze', sub: 'Three charges · tap while the table is still moving' },
+    5: { title: 'The 8 Goes Last', sub: 'Knock it in early and it comes straight back' },
+    6: { title: 'The Upgrade', sub: 'Buys you a free pick at the door' },
+    7: { title: 'The Kicker', sub: 'Hit it and the nearest ball comes back at you' },
+    9: { title: 'Fewer Shots Now', sub: 'Every shot has to knock one in from here' }
   },
   graceSeconds: 3.0,
   /**
@@ -785,6 +863,27 @@ export const PROGRESSION = {
     freeze: 2
   }
 };
+
+/* ------------------------------------------------------------------ *
+ * Apply the piece scale, once, here.
+ *
+ * Every radius that describes a PIECE — balls, the cue ball, pocket mouths,
+ * felt objects — is scaled at load rather than at each call site, so there is
+ * exactly one place the table's density is decided and no consumer can forget
+ * to apply it. Arena size, obstacle geometry and every authored layout stay
+ * untouched: the table gets roomier because the things on it got smaller.
+ * ------------------------------------------------------------------ */
+{
+  const k = RULES.pieceScale;
+  if (k !== 1) {
+    PLAYER.radius *= k;
+    PLAYER.trailWidth *= k;
+    for (const type of Object.keys(ENEMY)) ENEMY[type].radius *= k;
+    TABLE.pocket.radius *= k;
+    TABLE.pocket.sideRadius *= k;
+    TABLE.object.radius *= k;
+  }
+}
 
 export default {
   ARENA,

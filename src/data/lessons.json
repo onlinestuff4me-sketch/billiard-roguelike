@@ -1,10 +1,27 @@
 {
   "$schema": "./lessons.schema.md",
-  "note": "Geometry only. What each lesson asks for lives in RULES in src/systems/Tutorial.js, keyed by the same id.",
+  "note": "Geometry only. What each board asks for lives in RULES in src/systems/Tutorial.js, keyed by the same id.",
   "lessons": [
     {
-      "id": "aim",
-      "name": "First Contact",
+      "id": "pocket",
+      "name": "Down The Pocket",
+      "rest": {
+        "x": 0.785,
+        "z": -0.62
+      },
+      "obstacles": [],
+      "enemies": [
+        {
+          "type": "solid",
+          "x": 4.71,
+          "z": 2.68,
+          "number": 3
+        }
+      ]
+    },
+    {
+      "id": "angle",
+      "name": "The Angle",
       "rest": {
         "x": 0,
         "z": -1
@@ -14,101 +31,66 @@
         {
           "type": "solid",
           "x": 0,
-          "z": -1.0,
-          "number": 1
-        }
-      ]
-    },
-    {
-      "id": "pot",
-      "name": "Down The Pocket",
-      "rest": {
-        "x": 0.799,
-        "z": -0.602
-      },
-      "obstacles": [],
-      "enemies": [
+          "z": 2.0,
+          "number": 2
+        },
         {
-          "type": "solid",
-          "x": 4.79,
-          "z": 2.79,
-          "number": 3
-        }
-      ],
-      "pockets": [
-        {
-          "slot": "mr",
-          "type": "score"
-        }
-      ]
-    },
-    {
-      "id": "pot-cut",
-      "name": "The Cut",
-      "rest": {
-        "x": 0.435,
-        "z": -0.9
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 2.6,
-          "z": 2.8,
+          "type": "stripe",
+          "x": -4.5,
+          "z": 1.0,
           "number": 5
         }
-      ],
-      "pockets": [
-        {
-          "slot": "mr",
-          "type": "score"
-        }
       ]
     },
     {
-      "id": "gold",
-      "name": "Through The Gold",
+      "id": "budget",
+      "name": "Four Balls, Three Shots",
       "rest": {
-        "x": 0.799,
-        "z": -0.602
+        "x": 0.539,
+        "z": -0.842
       },
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 4.79,
-          "z": 2.79,
+          "x": 5.6,
+          "z": -3.0,
+          "number": 1
+        },
+        {
+          "type": "solid",
+          "x": 6.8,
+          "z": -8.5,
           "number": 4
-        }
-      ],
-      "objects": [
+        },
         {
-          "kind": "gold",
-          "x": 2.4,
-          "z": 4.6
-        }
-      ],
-      "pockets": [
+          "type": "stripe",
+          "x": -5.0,
+          "z": -6.0,
+          "number": 6
+        },
         {
-          "slot": "mr",
-          "type": "gold"
+          "type": "solid",
+          "x": -3.5,
+          "z": 2.5,
+          "number": 2
         }
       ]
     },
     {
-      "id": "bank",
-      "name": "Off The Rail",
+      "id": "walls",
+      "name": "Round The Barrier",
       "rest": {
-        "x": 0.8942,
-        "z": -0.4478
+        "x": -0.918,
+        "z": -0.396
       },
       "obstacles": [
         {
           "type": "box",
           "x": 0,
-          "z": 3.5,
+          "z": 2.0,
           "hw": 3.0,
-          "hh": 0.5
+          "hh": 0.4
         }
       ],
       "enemies": [
@@ -116,50 +98,42 @@
           "type": "solid",
           "x": 0,
           "z": -2.0,
-          "number": 2
-        }
-      ],
-      "pockets": [
-        {
-          "slot": "ml",
-          "type": "score"
-        },
-        {
-          "slot": "mr",
-          "type": "score"
+          "number": 3
         }
       ]
     },
     {
-      "id": "eight",
-      "name": "The 8 Goes Last",
+      "id": "green-red",
+      "name": "Green And Red",
       "rest": {
-        "x": -0.799,
-        "z": -0.602
+        "x": 0.406,
+        "z": -0.914
       },
       "obstacles": [],
       "enemies": [
         {
-          "type": "heavy",
-          "x": 5.4,
-          "z": 2.2,
-          "number": 8
+          "type": "solid",
+          "x": 3.2,
+          "z": -1.0,
+          "number": 2
         },
         {
-          "type": "solid",
-          "x": -4.79,
-          "z": 2.79,
-          "number": 3
+          "type": "stripe",
+          "x": -4.6,
+          "z": -1.0,
+          "number": 5
         }
       ],
-      "pockets": [
+      "objects": [
         {
-          "slot": "ml",
-          "type": "score"
+          "kind": "double",
+          "x": 1.4,
+          "z": 3.2
         },
         {
-          "slot": "mr",
-          "type": "score"
+          "kind": "mine",
+          "x": -2.6,
+          "z": 3.0
         }
       ]
     }

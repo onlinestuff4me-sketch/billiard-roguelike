@@ -36,6 +36,7 @@ import {
   BOONS,
   INJECTOR,
   RULES,
+  TABLE,
   TUTORIAL,
   PROGRESSION
 } from './config.js';
@@ -47,7 +48,7 @@ import { PhysicsSystem } from './systems/PhysicsSystem.js';
 import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
 import { Rules } from './systems/Rules.js';
-import { KICKBACK_SPEED } from './systems/Table.js';
+import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD } from './ui/HUD.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
@@ -141,6 +142,20 @@ function buildComposer(width, height) {
  * Static table geometry
  * ------------------------------------------------------------------ */
 
+/**
+ * The table, as architecture.
+ *
+ * Pockets are not drawn on the felt — they are cut into it. The frame is one
+ * continuous band that SWELLS into a full circle at each pocket, and the
+ * cushions BREAK, their ends splaying open into the mouth, exactly as a real
+ * table's jaws do. All of it is static: identical in every room, built once,
+ * and drawn only in the table's own materials so it can never compete with a
+ * mint pick-up or a red hazard for the player's glance.
+ *
+ * The drawn mouth is deliberately wider than the capture radius the physics
+ * uses. A ball that looks like it is going in, goes in — the visual promise
+ * has to be more generous than the rule, never less.
+ */
 function buildTable(target) {
   const table = new THREE.Group();
   table.name = 'table';
@@ -181,36 +196,135 @@ function buildTable(target) {
     )
   );
 
-  const t = ARENA.railThickness;
-  const railMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.rail,
-    roughness: 0.6,
-    metalness: 0.35,
-    emissive: new THREE.Color(PALETTE.railGlow),
-    emissiveIntensity: 0.22
+  const slots = pocketSlots();
+  const frameT = ARENA.railThickness * 2.1;
+  const cushT = ARENA.railThickness;
+
+  /* -- the frame: one continuous band, swelling at every pocket ------- */
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.frame,
+    roughness: 0.65,
+    metalness: 0.3,
+    emissive: new THREE.Color(PALETTE.lip),
+    emissiveIntensity: 0.1
   });
-  const railSpecs = [
-    { w: ARENA.width + t * 2, d: t, x: 0, z: -ARENA.halfH - t / 2 },
-    { w: ARENA.width + t * 2, d: t, x: 0, z: ARENA.halfH + t / 2 },
-    { w: t, d: ARENA.height, x: -ARENA.halfW - t / 2, z: 0 },
-    { w: t, d: ARENA.height, x: ARENA.halfW + t / 2, z: 0 }
+  const frameSpecs = [
+    { w: ARENA.width + frameT * 2, d: frameT, x: 0, z: -ARENA.halfH - frameT / 2 },
+    { w: ARENA.width + frameT * 2, d: frameT, x: 0, z: ARENA.halfH + frameT / 2 },
+    { w: frameT, d: ARENA.height, x: -ARENA.halfW - frameT / 2, z: 0 },
+    { w: frameT, d: ARENA.height, x: ARENA.halfW + frameT / 2, z: 0 }
   ];
-  for (const spec of railSpecs) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(spec.w, 0.9, spec.d), railMat);
-    rail.position.set(spec.x, 0.35, spec.z);
-    table.add(rail);
+  for (const spec of frameSpecs) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(spec.w, 0.5, spec.d), frameMat);
+    band.position.set(spec.x, 0.2, spec.z);
+    table.add(band);
   }
 
-  const outline = new THREE.LineLoop(
-    new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-ARENA.halfW, 0.02, -ARENA.halfH),
-      new THREE.Vector3(ARENA.halfW, 0.02, -ARENA.halfH),
-      new THREE.Vector3(ARENA.halfW, 0.02, ARENA.halfH),
-      new THREE.Vector3(-ARENA.halfW, 0.02, ARENA.halfH)
-    ]),
-    new THREE.LineBasicMaterial({ color: PALETTE.railGlow, transparent: true, opacity: 0.75 })
-  );
-  table.add(outline);
+  /* -- cushions: broken runs whose ends splay into the mouths --------- */
+  const cushMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.cushion,
+    roughness: 0.5,
+    metalness: 0.25,
+    emissive: new THREE.Color(PALETTE.lip),
+    emissiveIntensity: 0.62
+  });
+
+  /**
+   * A cushion run as an extruded trapezoid. `quad` is four world-space
+   * (x, z) corners; the outer pair are longer than the inner pair, which is
+   * what makes the end flare open toward the pocket.
+   */
+  const cushion = (quad, height = 0.72) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(quad[0][0], -quad[0][1]);
+    for (let i = 1; i < quad.length; i++) shape.lineTo(quad[i][0], -quad[i][1]);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    return new THREE.Mesh(geo, cushMat);
+  };
+
+  const mouth = (slot) => (slot.radius ?? TABLE.pocket.radius) * TABLE.pocket.mouthScale;
+  const jawOf = (slot) => mouth(slot) * TABLE.pocket.jaw;
+  const [tl, tr, ml, mr, bl, br] = slots;
+  const gapX = (a) => mouth(a) + jawOf(a);
+  const W = ARENA.halfW;
+  const H = ARENA.halfH;
+
+  // Long rails (left and right) are interrupted by the side pockets, so each
+  // becomes two runs; the short rails are one run each.
+  const runs = [
+    // top
+    [[tl.x + gapX(tl), -H], [tr.x - gapX(tr), -H], [tr.x - gapX(tr) - jawOf(tr), -H + cushT], [tl.x + gapX(tl) + jawOf(tl), -H + cushT]],
+    // bottom
+    [[bl.x + gapX(bl), H], [bl.x + gapX(bl) + jawOf(bl), H - cushT], [br.x - gapX(br) - jawOf(br), H - cushT], [br.x - gapX(br), H]],
+    // left, above and below the side pocket
+    [[-W, -H + gapX(tl)], [-W + cushT, -H + gapX(tl) + jawOf(tl)], [-W + cushT, ml.z - gapX(ml) - jawOf(ml)], [-W, ml.z - gapX(ml)]],
+    [[-W, ml.z + gapX(ml)], [-W + cushT, ml.z + gapX(ml) + jawOf(ml)], [-W + cushT, H - gapX(bl) - jawOf(bl)], [-W, H - gapX(bl)]],
+    // right, likewise
+    [[W, -H + gapX(tr)], [W, mr.z - gapX(mr)], [W - cushT, mr.z - gapX(mr) - jawOf(mr)], [W - cushT, -H + gapX(tr) + jawOf(tr)]],
+    [[W, mr.z + gapX(mr)], [W, H - gapX(br)], [W - cushT, H - gapX(br) - jawOf(br)], [W - cushT, mr.z + gapX(mr) + jawOf(mr)]]
+  ];
+  for (const quad of runs) table.add(cushion(quad));
+
+  /* -- the pockets themselves ----------------------------------------- */
+  const lip = new THREE.Color(PALETTE.lip);
+  for (const slot of slots) {
+    const m = mouth(slot);
+
+    // The frame swelling around the mouth, sitting under everything else.
+    const swell = new THREE.Mesh(
+      new THREE.CircleGeometry(m + frameT * TABLE.pocket.swell, 40),
+      frameMat
+    );
+    swell.rotation.x = -Math.PI / 2;
+    swell.position.set(slot.x, 0.05, slot.z);
+    table.add(swell);
+
+    // The void. Absence reads faster than any colour.
+    const hole = new THREE.Mesh(
+      new THREE.CircleGeometry(m, 36),
+      new THREE.MeshBasicMaterial({ color: PALETTE.void })
+    );
+    hole.rotation.x = -Math.PI / 2;
+    hole.position.set(slot.x, 0.09, slot.z);
+    table.add(hole);
+
+    // The lit mouth: one bright unbroken ring, the only glow on the table
+    // that means neither good nor bad. It is drawn in the pale end of the
+    // table's own teal rather than the body colour, because a pocket has to
+    // pull the eye — it is the thing the whole game is aimed at — and the
+    // frame it sits in is deliberately dark.
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(m * 0.95, m * 1.05, 44),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(PALETTE.aim),
+        transparent: true,
+        opacity: 0.72,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(slot.x, 0.11, slot.z);
+    table.add(ring);
+
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(m * 1.05, m * 1.5, 40),
+      new THREE.MeshBasicMaterial({
+        color: lip,
+        transparent: true,
+        opacity: 0.26,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.set(slot.x, 0.1, slot.z);
+    table.add(halo);
+  }
 
   target.add(table);
   return table;
@@ -579,7 +693,7 @@ game.rooms = rooms;
 const ENEMY_COLOR = {
   solid: PALETTE.solid,
   stripe: PALETTE.stripe,
-  heavy: PALETTE.heavy
+  heavy: PALETTE.bone
 };
 
 /** Step the cascade multiplier and play its pentatonic note. */
@@ -626,8 +740,8 @@ function noteAimPower(aim) {
   const maxed = (aim?.power ?? 0) >= 0.97;
   if (maxed && !wasMaxed) {
     const p = player;
-    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.carom, 3.4, 0.3);
-    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.carom, 13, 0.6);
+    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.bone, 3.4, 0.3);
+    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.bone, 13, 0.6);
     fx.floatText(p.x, p.z + 1.9, 'MAX POWER', 'crit');
     engine.shake(5);
     audio.bumper?.();
@@ -730,7 +844,7 @@ function finishStroke() {
   game.phase = 'aim';
   game.settleTimer = 0;
 
-  // Shooting into a door is not a stroke. The room is already decided; the
+  // Shooting into a door is not a shot off the budget. The room is already decided; the
   // exit shot must not be able to bankrupt you.
   if (game.state === 'cleared') return;
   // Neither is a lesson rep. A tutorial with a budget is a tutorial you can
@@ -753,7 +867,7 @@ function finishStroke() {
   } else if (rules.strokesLeft <= 0) {
     failRoom();
   } else if (rules.strokesLeft === 1) {
-    hud.showBanner('Last stroke', `${rules.contract.rack - rules.ballsDown} still on the table`, 1.8);
+    hud.showBanner('Last shot', `${rules.contract.rack - rules.ballsDown} still on the table`, 1.8);
   }
 }
 
@@ -780,7 +894,7 @@ function tryFreeze() {
   audio.focusEnter?.();
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
   fx.floatText(player.x, player.z - 2.2, 'FREEZE', 'crit');
-  hud.showBanner('Freeze', 'Re-aim — this does not cost a stroke', 1.6);
+  hud.showBanner('Freeze', 'Re-aim — this does not cost a shot', 1.6);
   return true;
 }
 game.tryFreeze = tryFreeze;
@@ -793,28 +907,33 @@ game.tryFreeze = tryFreeze;
  * pure hazard, and can still carom into whatever is in its way. Which is the
  * risk you accepted when you chose that pocket.
  */
-function kickBack(ball, pocket) {
-  ball.spent = true;
-  ball.number = 0;
-  ball.value = 0;
-  if (ball.numberSprite) ball.numberSprite.visible = false;
+function kickBack(source) {
+  // The kicker takes the nearest ball on the table and sends it at you. It
+  // does not consume it — the ball is still worth its number if you can get it
+  // down — but while it is travelling it is the one thing on a static table
+  // that can hurt you.
+  let target = null;
+  let best = Infinity;
+  for (const ball of game.enemies) {
+    if (!ball.alive) continue;
+    const d = Math.hypot(ball.x - source.x, ball.z - source.z);
+    if (d < best) {
+      best = d;
+      target = ball;
+    }
+  }
+  if (!target) return;
 
-  const dx = player.x - pocket.x;
-  const dz = player.z - pocket.z;
+  const dx = player.x - target.x;
+  const dz = player.z - target.z;
   const len = Math.hypot(dx, dz) || 1;
-  // Nudged clear of the pocket mouth, or it is captured again on the next step.
-  const push = pocket.radius + ball.radius + 0.3;
-  ball.x = pocket.x + (dx / len) * push;
-  ball.z = pocket.z + (dz / len) * push;
-  ball.group?.position.set(ball.x, 0, ball.z);
-  ball.applyKnock((dx / len) * KICKBACK_SPEED, (dz / len) * KICKBACK_SPEED);
-  ball.vx = (dx / len) * KICKBACK_SPEED;
-  ball.vz = (dz / len) * KICKBACK_SPEED;
+  target.applyKnock((dx / len) * KICKBACK_SPEED, (dz / len) * KICKBACK_SPEED);
+  target.vx = (dx / len) * KICKBACK_SPEED;
+  target.vz = (dz / len) * KICKBACK_SPEED;
+  target.hostile = true;
 
-  audio.enemyDeath();
-  engine.shake(12);
-  fx.shockwave(pocket.x, pocket.z, PALETTE.hazard, 5, 0.45);
-  fx.floatText(pocket.x, pocket.z, 'LIVE — INCOMING', 'splat');
+  fx.shockwave(target.x, target.z, PALETTE.bad, 5, 0.45);
+  fx.floatText(target.x, target.z, 'INCOMING', 'splat');
 }
 
 game.on = {
@@ -833,8 +952,9 @@ game.on = {
 
     // A ball fired back out of a live pocket is the one thing on a static
     // table that can still hurt you.
-    if (enemy.spent) {
+    if (enemy.hostile) {
       if (!game.tutorialGuard && speed > 8) p.takeDamage(RULES.damage.kickback, game, enemy);
+      enemy.hostile = false;
     } else {
       ladder('touch');
     }
@@ -847,9 +967,9 @@ game.on = {
       killed: false
     });
 
-    if (rules.multiplier > 1 && game.midStroke && !enemy.spent) {
+    if (rules.multiplier > 1 && game.midStroke) {
       fx.floatText(p.x, p.z - 2.4, `×${rules.multiplier}  ${multCallout()}`, 'crit');
-      fx.shockwave(x, z, PALETTE.carom, 4.4 + game.launchHits * 0.5, 0.36);
+      fx.shockwave(x, z, PALETTE.good, 4.4 + game.launchHits * 0.5, 0.36);
     }
 
     engine.hitStop(TIME.hitStop);
@@ -864,15 +984,15 @@ game.on = {
   /* --- ball into ball ------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
     tutorial.notify('pass', { striker, target, x, z, speed });
-    if (!striker.spent && !target.spent) ladder('touch');
+    ladder('touch');
 
     engine.hitStop(TIME.hitStopCrit);
     engine.shake(speed * 2.6);
     engine.zoomPunch();
     audio.carom();
     fx.floatText(x, z, `×${rules.multiplier}`, 'carom');
-    fx.burst(x, z, 24, PALETTE.carom, speed * 0.7, 1.2);
-    fx.shockwave(x, z, PALETTE.carom, 4.2, 0.45);
+    fx.burst(x, z, 24, PALETTE.good, speed * 0.7, 1.2);
+    fx.shockwave(x, z, PALETTE.good, 4.2, 0.45);
 
     boons.onImpact({ player, enemy: target, x, z, speed, banked: true, result: null });
   },
@@ -891,8 +1011,8 @@ game.on = {
   },
 
   enemyFired({ x, z, dirX, dirZ }) {
-    fx.burst(x, z, 9, PALETTE.projectile, 9, 0.34);
-    fx.shockwave(x, z, PALETTE.projectile, 1.5, 0.16);
+    fx.burst(x, z, 9, PALETTE.bad, 9, 0.34);
+    fx.shockwave(x, z, PALETTE.bad, 1.5, 0.16);
     fx.burst(x + dirX * 0.5, z + dirZ * 0.5, 5, PALETTE.spark, 13, 0.22);
     engine.shake(1.6);
   },
@@ -909,50 +1029,35 @@ game.on = {
   potted({ ball, pocket }) {
     if (!ball.alive) return;
 
-    // A spent ball — one a live pocket already paid for and spat back — is
-    // just litter. It disappears quietly and pays nothing twice.
-    if (ball.spent || ball.number <= 0) {
+    // An unnumbered body is not part of the contract and pays nothing.
+    if (ball.number <= 0) {
       removeBall(ball);
       return;
     }
 
-    // The 8 down early under an "8 last" contract: classic foul. It comes back
-    // and the stroke it happened on pays nothing.
+    // The 8 down early under an "8 last" contract: a foul. It comes back and
+    // the shot it happened on pays nothing.
     if (rules.isFoul(ball.number)) {
       rules.scratch();
       audio.playerHurt();
       engine.shake(9);
-      fx.shockwave(pocket.x, pocket.z, PALETTE.hazard, 6, 0.5);
-      fx.floatText(ball.x, ball.z, 'THE 8 IS LAST', 'splat');
-      hud.showBanner('Foul', 'The 8 goes last — re-spotted', 1.8);
+      fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
+      fx.floatText(ball.x, ball.z, 'THE 8 GOES LAST', 'splat');
+      hud.showBanner('Foul', 'The 8 goes last — back on the table', 1.8);
       rooms.respot(ball);
       return;
     }
 
-    const paid = rules.pot(ball.number, pocket.type);
-    tutorial.notify('potted', { ball, pocket, paid });
+    const paid = rules.pot(ball.number);
+    tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
 
     audio.chainNote(game.chain.count + 2);
     engine.hitStop(TIME.hitStopCrit);
     engine.zoomPunch();
     engine.shake(10);
-    fx.shockwave(pocket.x, pocket.z, pocket.color, 6.5, 0.5);
-    fx.burst(pocket.x, pocket.z, 26, pocket.color, 13, 1.1);
-
-    if (pocket.type === 'gold') {
-      fx.floatText(pocket.x, pocket.z, `×${rules.multiplier}  GOLD`, 'crit');
-    } else if (pocket.type === 'upgrade') {
-      game.pendingBoons += 1;
-      fx.floatText(pocket.x, pocket.z, 'UPGRADE EARNED', 'crit');
-    } else {
-      fx.floatText(pocket.x, pocket.z, `+${paid.value.toLocaleString()}`, 'crit');
-    }
-
-    if (pocket.type === 'live') {
-      // Paid double, and now it comes back at you.
-      kickBack(ball, pocket);
-      return;
-    }
+    fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
+    fx.burst(pocket.x, pocket.z, 24, PALETTE.lip, 12, 1.1);
+    fx.floatText(pocket.x, pocket.z, `+${paid.value.toLocaleString()}`, 'crit');
 
     removeBall(ball);
   },
@@ -967,8 +1072,8 @@ game.on = {
     engine.shake(14);
     engine.zoomPunch();
     fx.shockwave(pocket.x, pocket.z, PALETTE.bone, 7, 0.55);
-    fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
-    hud.showBanner('Scratch', 'This stroke pays nothing', 1.8);
+    fx.floatText(pocket.x, pocket.z, 'FOUL', 'splat');
+    hud.showBanner('Foul', 'Your own ball went in — this shot pays nothing', 1.9);
     // Back to the spot, at rest. The stroke ends here.
     p.vx = 0;
     p.vz = 0;
@@ -977,60 +1082,61 @@ game.on = {
   },
 
   /* --- the lit objects ------------------------------------------------ */
+  /**
+   * A pick-up or a hazard. One form, two meanings: mint helps you, red costs
+   * you. Only the cue ball triggers them — an object ball rolling over a mine
+   * would make routing unreadable, and half the point of the felt is that YOUR
+   * ball's path is the thing you are choosing.
+   */
   objectHit({ object, body, isCue }) {
-    if (!object.armed) return;
+    if (!object.armed || !isCue) return;
+    rooms.table.consume(object);
+    const colour = object.good ? PALETTE.good : PALETTE.bad;
+    fx.shockwave(object.x, object.z, colour, 5, 0.42);
+    fx.burst(object.x, object.z, 18, colour, 12, 0.9);
+    tutorial.notify('object', { object });
 
-    if (object.kind === 'gold') {
-      rooms.table.consume(object);
-      const value = ladder('gold');
-      audio.pyre?.();
-      fx.shockwave(object.x, object.z, PALETTE.carom, 5, 0.42);
-      fx.burst(object.x, object.z, 18, PALETTE.carom, 12, 0.9);
-      fx.floatText(object.x, object.z, `×${value}`, 'crit');
-      tutorial.notify('gold', { object });
-      return;
-    }
-
-    if (object.kind === 'gate') {
-      // A gate destroys balls, not cue balls. Driving your own ball through it
-      // is safe and pays nothing, which keeps the gate a delivery target
-      // rather than a trap.
-      if (isCue || body.spent || body.number <= 0) return;
-      rooms.table.consume(object);
-      const paid = rules.pot(body.number, 'gate');
-      audio.wallSplat();
-      engine.hitStop(TIME.hitStopCrit);
-      engine.shake(11);
-      fx.shockwave(object.x, object.z, PALETTE.hazard, 5.5, 0.45);
-      fx.floatText(object.x, object.z, `SHATTER +${paid.value.toLocaleString()}`, 'crit');
-      tutorial.notify('gate', { ball: body, paid });
-      removeBall(body);
-      return;
-    }
-
-    if (object.kind === 'freeze') {
-      if (!isCue) return;
-      rooms.table.consume(object);
-      const charges = rules.grantFreeze();
-      audio.boonPick?.();
-      engine.zoomPunch();
-      fx.shockwave(object.x, object.z, PALETTE.player, 6, 0.5);
-      fx.burst(object.x, object.z, 22, PALETTE.player, 13, 1);
-      fx.floatText(object.x, object.z, `FREEZE ×${charges}`, 'crit');
-      hud.showBanner('Freeze earned', 'Tap while the table is moving', 2);
-      tutorial.notify('freeze', { charges });
-      return;
-    }
-
-    if (object.kind === 'mine') {
-      rooms.table.consume(object);
-      audio.wallSplat();
-      engine.shake(14);
-      engine.zoomPunch();
-      fx.shockwave(object.x, object.z, PALETTE.hazard, 6, 0.5);
-      fx.burst(object.x, object.z, 24, PALETTE.hazard, 14, 1.1);
-      if (isCue && !game.tutorialGuard) {
-        player.takeDamage(RULES.damage.mine, game, 'mine');
+    switch (object.kind) {
+      case 'double': {
+        const value = ladder('gold');
+        audio.pyre?.();
+        fx.floatText(object.x, object.z, `×${value}`, 'crit');
+        return;
+      }
+      case 'freeze': {
+        const charges = rules.grantFreeze();
+        audio.boonPick?.();
+        engine.zoomPunch();
+        fx.floatText(object.x, object.z, `FREEZE ×${charges}`, 'crit');
+        hud.showBanner('Freeze', 'Tap while the table is still moving', 2);
+        return;
+      }
+      case 'upgrade': {
+        game.pendingBoons += 1;
+        audio.boonPick?.();
+        fx.floatText(object.x, object.z, 'UPGRADE', 'crit');
+        return;
+      }
+      case 'shot': {
+        rules.strokesLeft += 1;
+        audio.boonPick?.();
+        fx.floatText(object.x, object.z, '+1 SHOT', 'crit');
+        return;
+      }
+      case 'kicker': {
+        audio.wallSplat();
+        engine.shake(12);
+        engine.zoomPunch();
+        fx.floatText(object.x, object.z, 'KICKER', 'splat');
+        kickBack(object);
+        return;
+      }
+      case 'mine':
+      default: {
+        audio.wallSplat();
+        engine.shake(14);
+        engine.zoomPunch();
+        if (!game.tutorialGuard) player.takeDamage(RULES.damage.mine, game, 'mine');
         fx.floatText(object.x, object.z, 'MINE', 'splat');
       }
     }
@@ -1059,8 +1165,8 @@ game.on = {
       p.vz *= scale;
       if (INJECTOR.bumper.refundsBounce) p.bouncesUsed = Math.max(0, p.bouncesUsed - 1);
       audio.bumper();
-      fx.burst(x, z, 12, PALETTE.bumper, 11, 0.8);
-      fx.shockwave(x, z, PALETTE.bumper, 2.6, 0.3);
+      fx.burst(x, z, 12, PALETTE.lip, 11, 0.8);
+      fx.shockwave(x, z, PALETTE.lip, 2.6, 0.3);
     } else {
       fx.burst(x, z, 5, PALETTE.railGlow, speed * 0.3, 0.6);
     }
@@ -1095,7 +1201,8 @@ game.on = {
     if (game.tutorialGuard) return;
     if (game.graceTimer > 0) return;
     if (p.touchTimer > 0) return;
-    if (!enemy.spent) return;
+    if (!enemy.hostile) return;
+    enemy.hostile = false;
     if (p.takeDamage(RULES.damage.kickback, game, enemy)) {
       p.touchTimer = PLAYER.touchInterval;
     }
@@ -1119,7 +1226,7 @@ game.on = {
   },
 
   projectileHit({ projectile, player: p }) {
-    fx.burst(projectile.x, projectile.z, 8, PALETTE.projectile, 7, 0.7);
+    fx.burst(projectile.x, projectile.z, 8, PALETTE.bad, 7, 0.7);
     if (game.tutorialGuard) {
       hud.flashDamage();
       engine.shake(6);
@@ -1129,7 +1236,7 @@ game.on = {
   },
 
   projectileExpired({ projectile }) {
-    fx.burst(projectile.x, projectile.z, 4, PALETTE.projectile, 4, 0.5);
+    fx.burst(projectile.x, projectile.z, 4, PALETTE.bad, 4, 0.5);
   },
 
 };
@@ -1146,7 +1253,7 @@ function doorLabelText(door) {
     case 'repair':
       return `+${PROGRESSION.healAmount} hull`;
     case 'stroke':
-      return `+${PROGRESSION.statRewards.stroke} stroke / room`;
+      return `+${PROGRESSION.statRewards.stroke} shot every room`;
     case 'freeze':
       return `+${PROGRESSION.statRewards.freeze} freeze`;
     case 'ricochet':
@@ -1246,7 +1353,7 @@ function handleDoorEntered(door) {
       break;
     case 'stroke':
       game.strokeBonus += PROGRESSION.statRewards.stroke;
-      hud.showBanner('Stroke Up', `+${PROGRESSION.statRewards.stroke} stroke every room`, 1.8);
+      hud.showBanner('More Shots', `+${PROGRESSION.statRewards.stroke} shot every room`, 1.8);
       break;
     case 'freeze':
       rules.grantFreeze(PROGRESSION.statRewards.freeze);
@@ -1254,7 +1361,7 @@ function handleDoorEntered(door) {
       break;
     case 'ricochet':
       boons.addRunBonus({ maxBounces: PROGRESSION.statRewards.bounce });
-      hud.showBanner('Ricochet', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
+      hud.showBanner('Bounce', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
       break;
     default:
       break;
@@ -1333,7 +1440,7 @@ function showRoomBanner() {
     return;
   }
   const c = rules.contract;
-  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().contractText} · ${c.strokes} strokes`, 2.4);
+  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().contractText} · ${c.strokes} shots`, 2.4);
 }
 
 /** Everything a fresh start clears, minus the room itself. */

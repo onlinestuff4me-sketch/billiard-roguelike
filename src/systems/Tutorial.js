@@ -66,84 +66,68 @@ const HAND_RELEASE = 8.6;
  * whatever is in the way of it).
  */
 const RULES = {
-  aim: {
-    say: 'Aim and shoot the <b>red ball</b>',
+  pocket: {
+    // The gesture and the rule arrive together. A player who has only been
+    // told to hit a ball has not been told what the game is.
+    say: 'Knock the <b>3</b> in',
     hint: 'Press <em>anywhere</em> and pull back, like a cue.',
     spot: 'first',
     hand: true,
-    hit: () => 'score',
-    shot: (s) => (s.hits === 0 ? 'reject' : null),
-    facing: 'Other way — the orb fires AWAY from your thumb. Drag from below it.',
-    cheer: 'That is the whole control',
-    whiff: 'Missed — drag straight down from the blue ball and release',
-    nudge: 'Put your thumb below the blue ball and pull down. The line shows where it goes.'
-  },
-
-  pot: {
-    // The rule the entire redesign turns on, stated as the second thing the
-    // player is ever told: hitting a ball does not destroy it. Pockets do.
-    say: 'Knock it <em>down the pocket</em>',
-    hint: 'Hitting a ball never breaks it. Only a <b>pocket</b> takes one off the table.',
-    spot: 'first',
-    hand: true,
-    handDraw: 6.2,
+    handDraw: 6.4,
     pot: () => 'score',
-    cheer: 'Down it goes — that is a point',
+    facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
+    cheer: 'That is the whole game',
     whiff: 'Missed the ball — line up on it first',
-    nudge: 'The ball, the pocket and your cue are already in a straight line. Just hit it.'
+    nudge: 'Your ball, the 3 and the pocket are already in a line. Just hit it.'
   },
 
-  'pot-cut': {
-    say: 'Now <em>cut</em> one in',
-    hint: 'Strike its <b>far side</b>. The white ghost circle shows where you make contact.',
+  angle: {
+    say: 'Knock the <b>2</b> in <em>from an angle</em>',
+    hint: 'Hit its <em>far side</em>. The white circle is where your ball ends up.',
     spot: 'first',
     hand: true,
-    handDraw: 6.2,
-    pot: () => 'score',
-    cheer: 'Cut and potted',
-    scold: 'It went past the pocket — clip more of its far side',
-    whiff: 'Missed — the ghost circle is where your ball ends up on contact',
-    nudge: 'Aim at the point on the far side that lines the ball up with the pocket.'
+    handDraw: 6.4,
+    pot: (p) => (p.ball.number === 2 ? 'score' : null),
+    cheer: 'Cut and in',
+    scold: 'Straight up sends it into the wall — hit more of its far side',
+    whiff: 'Missed — the white circle shows where contact happens',
+    nudge: 'Aim at the point on its far side that lines it up with the corner.'
   },
 
-  gold: {
-    // Two ideas, one shot: rings pay, and the pocket you choose pays.
-    say: 'Run it through the <em>gold ring</em>',
-    hint: 'Gold <em>doubles</em> what the shot is worth. The <b>ring</b> is on your way.',
-    spot: 'first',
-    hand: true,
-    handDraw: 6.2,
-    pot: (p) => (p.pocket.type === 'gold' ? 'score' : 'reject'),
-    cheer: 'Ring and gold pocket — doubled twice',
-    scold: 'Potted, but you missed the ring — take the line straight through it',
-    whiff: 'Missed the ball — the ring is on the way, not the target',
-    nudge: 'Same shot as before. The ring sits on the line; drive straight through it.'
-  },
-
-  bank: {
-    // Banks are the cheapest rung on the ladder and the one the player has to
-    // choose deliberately, so it gets a board where nothing else will work.
-    say: 'Bounce off a <em>wall</em> first',
-    hint: 'The <b>red ball</b> is blocked. Every rail you take is worth <em>more points</em>.',
-    spot: 'blocked',
-    hit: (h) => (h.banked ? 'score' : 'reject'),
-    cheer: 'Off the rail — and worth more for it',
-    scold: 'No rail yet — aim into the side wall, not at the ball',
-    whiff: 'Missed — the dashed line shows where the bounce goes',
-    nudge: 'Aim well out to the side. The dashed preview is the return path.'
-  },
-
-  eight: {
-    // The one contract rule that can be got wrong by doing the obvious thing,
-    // so it is taught by letting the player see the temptation and be told no.
-    say: 'Sink the <b>3</b>. The <em>8 goes last</em>',
-    hint: 'The <b>8</b> is right in front of a pocket. Potting it early is a foul.',
+  budget: {
+    // No explanation. Four balls and three shots IS the lesson.
+    say: 'Four balls. <em>Three shots.</em>',
+    hint: 'One shot has to knock <em>two</em> in.',
     spot: 'rack',
-    pot: (p) => (p.ball.number === 8 ? 'reject' : 'score'),
-    cheer: 'The 3 first — that is the order',
-    scold: 'That was the 8. It comes back, and the stroke pays nothing',
-    whiff: 'Missed — the 3 is the one on your left',
-    nudge: 'Leave the 8 alone. Take the 3 into the pocket on the left.'
+    potsNeeded: 2,
+    shots: 3,
+    cheer: 'Two in one — that is how the budget works',
+    scold: 'One at a time will not get there. Find the shot that takes two',
+    whiff: 'Missed — look for two balls lined up on the same pocket',
+    nudge: 'The 1 and the 4 are on the same line. Send the 1 through the 4.'
+  },
+
+  walls: {
+    say: '<em>Go round</em> the barrier',
+    hint: 'The <b>3</b> is blocked. <em>Bounce off a side wall</em> — and every bounce is worth more.',
+    spot: 'blocked',
+    pot: (p) => (p.bounces >= 1 ? 'score' : 'reject'),
+    cheer: 'Off the wall, and worth more for it',
+    scold: 'Straight at it is blocked. Aim into the side wall instead',
+    whiff: 'Missed — the dashed line shows where the bounce goes',
+    nudge: 'Aim well out to the left. The dashed preview is the return path.'
+  },
+
+  'green-red': {
+    say: 'Take the <em>green</em>. Miss the <b>red</b>.',
+    hint: '<em>Green</em> is always good. <b>Red</b> is always bad.',
+    spot: 'rack',
+    needsGreen: true,
+    pot: (p) => (p.tookGreen ? 'score' : 'reject'),
+    cheer: 'Green on the way, red left alone',
+    scold: 'In, but you missed the green — take the line straight through it',
+    whiff: 'Missed the ball. The green is on the way, not the target',
+    nudge: 'The green sits on the line to the 2. Drive straight through it.'
   }
 };
 
@@ -158,9 +142,7 @@ export const LESSONS = lessonData.lessons.map((table) => ({
     name: table.name,
     obstacles: table.obstacles || [],
     enemies: table.enemies || [],
-    // Pockets and lit objects are part of a lesson's table, not decoration:
-    // most boards are judged on a ball going down one.
-    pockets: table.pockets || [],
+    // Pockets are static architecture; only the felt objects are per-board.
     objects: table.objects || [],
     goal: table.goal || null
   }
@@ -267,6 +249,8 @@ export class Tutorial {
     this._shotLesson = -1;
     this._hits = 0;
     this._passes = 0;
+    this._pots = 0;
+    this._tookGreen = false;
     this._struck = new Set();
     /** Cue contacts this launch, in order, with whether each one killed. */
     this._strikes = [];
@@ -709,6 +693,8 @@ export class Tutorial {
       this._shotLesson = this.index;
       this._hits = 0;
       this._passes = 0;
+      this._pots = 0;
+      this._tookGreen = false;
       this._struck.clear();
       this._strikes.length = 0;
       this._rejected = false;
@@ -727,13 +713,27 @@ export class Tutorial {
       return;
     }
 
-    // A ball going down a pocket. This is the verdict most of the new boards
-    // are judged on, because it is the thing the game is actually about.
+    // A ball going down a pocket. This is the verdict most boards are judged
+    // on, because it is the thing the game is actually about.
     if (name === 'potted') {
+      this._pots += 1;
+      // A board that asks for two in one shot is satisfied by the count, not
+      // by which ball — there is more than one pair that works.
+      if (lesson.potsNeeded) {
+        if (this._pots >= lesson.potsNeeded) this._score();
+        return;
+      }
       if (!lesson.pot) return;
-      const verdict = lesson.pot(payload);
+      const verdict = lesson.pot({ ...payload, tookGreen: this._tookGreen });
       if (verdict === 'score') this._score([payload.ball]);
       else if (verdict === 'reject') this._rejected = true;
+      return;
+    }
+
+    // A pick-up or a hazard. Only the green matters to a lesson; hitting the
+    // red is its own punishment and the board says so without failing you.
+    if (name === 'object') {
+      if (payload.object?.good) this._tookGreen = true;
       return;
     }
 

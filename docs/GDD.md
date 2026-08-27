@@ -104,9 +104,13 @@ Score comes from four places, and only four.
 | Source | Rate |
 | --- | --- |
 | **Pots** | The ball's number × 100, at the multiplier standing when it drops |
-| **Strokes saved** | 500 × room number, per unspent stroke, paid at room end |
-| **Multipliers picked up** | Gold rings and gold pockets *double* what has been built |
-| **Multipliers earned** | Banks, balls touched, balls dropped — the trick ladder |
+| **Shots saved** | 500 × room number, per unspent shot, paid at room end |
+| **Multipliers picked up** | The green **double** on the felt multiplies what has been built |
+| **Multipliers earned** | Bounces, balls touched, balls dropped — the trick ladder |
+
+Every pocket pays the same. There are no pocket types: the multiplier, the
+upgrade and the risk all live on the felt, where colour is allowed to mean
+something.
 
 ### 3.1 The multiplier ladder
 
@@ -114,10 +118,10 @@ Every stroke opens at ×1 and climbs while the table is still moving:
 
 | Event | Effect |
 | --- | --- |
-| Each rail the cue ball banks off | **+1** |
+| Each wall the cue ball bounces off | **+1** |
 | Each ball the cue ball touches | **+1** |
-| Each ball sunk, or driven through a gate | **+1** |
-| A gold ring or gold pocket | **×2** on what has been built |
+| Each ball knocked in | **+1** |
+| The green double | **×2** on what has been built |
 
 Points are paid **at the instant a ball drops**, at the multiplier standing then. So
 the order of a route is worth real money: bank before you pot, and take the gold ring
@@ -146,51 +150,84 @@ doing something.
 
 ## 4. The Table
 
-### 4.1 Pockets
+### 4.1 Pockets are architecture
 
 Six, where a real table has them: four corners and the middle of each long rail.
-They are **capture zones, not holes cut in the geometry** — the rails still reflect,
-and a body is taken the moment its centre gets inside the capture radius. That keeps
-the trajectory preview exactly as trustworthy as it was, while still letting a ball
-rolling along a cushion drop.
+The **frame swells outward into a full circle around every mouth** and the
+**cushions break and flare into it**, exactly as a real table's jaws do. A pocket
+is not a lit target painted on the felt; it is a hole with a railing round it,
+in the same six places every room.
 
-| Type | Colour | Effect |
+They are **capture zones, not holes cut in the geometry** — the rails still
+reflect, and a body is taken the moment its centre gets inside the capture
+radius. The drawn mouth is deliberately *wider* than that radius, so a ball that
+looks like it is going in, goes in: the visual promise is always more generous
+than the rule. The throat is drawn, not simulated — no jaw rattles, and no
+near-miss the trajectory preview did not show.
+
+**All six are identical and carry no colour at all.** They are drawn in the
+table's own materials, which is what stops them competing with the mint and red
+objects for the same glance: the eye can look for "a hole" without parsing hue.
+A pocket has exactly one extra state — **called**, a bone-white lip, when a
+contract names it — and any future state is expressed in brightness, geometry or
+motion, never in a new hue.
+
+Knocking your own ball in is a **foul**: the shot pays nothing and you re-spot.
+
+### 4.2 Pick-ups and hazards
+
+One form and two meanings. A **dashed outline around a hollow interior** is what
+says "you drive through this"; **mint** means hitting it helps you and **red**
+means it costs you. The glyph says which. Nothing about the silhouette is
+load-bearing, so bars, lanes, gates and irregular shapes are all legal.
+
+| | Effect | From |
 | --- | --- | --- |
-| **Score** | Cyan | Takes the ball, pays its number |
-| **Gold** | Carom gold | Doubles the multiplier, then pays at the doubled rate |
-| **Upgrade** | Magenta | Pays nothing; adds a boon pick to the room's reward |
-| **Live** | Hazard red | Pays double, then fires the ball back onto the table at you |
-| **Scratch** | — | The *cue ball* into any pocket: the stroke's score is voided, cue re-spots |
+| **Double** (mint) | Multiplies what the shot has built. Comes back every shot. | Room 2 |
+| **Mine** (red) | Costs hull. Only bites the cue ball. | Room 3 |
+| **Freeze** (mint) | Three freeze charges. | Room 4 |
+| **Upgrade** (mint) | A free boon pick at the door. | Room 6 |
+| **Kicker** (red) | Sends the nearest ball back at you at speed. | Room 7 |
+| **Extra shot** (mint) | +1 shot this room. | Room 8 |
 
-Types are re-rolled every room, and arrive one at a time: gold is always present,
-upgrade unlocks at room 3, live at room 4. Colour never encodes a mechanic alone —
-each type also carries a distinct glyph.
-
-### 4.2 Lit objects on the felt
-
-| Object | Effect | From |
-| --- | --- | --- |
-| **Gold ring** | Doubles the multiplier when anything runs through it. Re-arms every stroke. | Room 2 |
-| **Shatter gate** | Destroys an object ball driven through it and pays 60% of a pot. Harmless to the cue ball. | Room 3 |
-| **Freeze cell** | Shoot the cue ball into it for 3 freeze charges. One use. | Room 4 |
-| **Mine** | Costs hull on contact with the cue ball. One use. | Room 6 |
-
-Everything except the gold ring stays spent for the room, so clearing a table
-visibly changes it.
+Only the cue ball triggers them. An object ball rolling over a mine would make
+routing unreadable, and half the point of the felt is that *your* ball's path is
+the thing you are choosing.
 
 ### 4.3 The rack
 
-Every ball is numbered, because the contract talks about them by name and because
-the number *is* the ball's worth. Silhouettes are unchanged — shape still encodes
-behaviour, the number encodes value:
+Every ball is numbered, because the contract talks about them by name and the
+number *is* the ball's worth. The rack is its own colour channel — never red,
+never mint, because a ball is neither good nor bad:
 
-| Numbers | Archetype | Silhouette |
-| --- | --- | --- |
-| 1–4 | Solid | Red cube |
-| 5–7 | Stripe | Violet octagon |
-| **8** | Heavy | Amber cylinder — always the last ball of a rack |
+| Numbers | Look |
+| --- | --- |
+| 1–4 | Amber |
+| 5–7 | A bone ball with a violet band, like a real striped ball |
+| **8** | Black with a bone rim. Always the last ball of a rack. |
 
----
+The 8 is exactly the same size as every other ball. It is special by colour, not
+bulk — at nearly double a normal ball it was eating the felt.
+
+### 4.4 Scale
+
+Every piece radius — balls, the cue ball, pocket mouths, felt objects — passes
+through one multiplier, `RULES.pieceScale`. Nothing else moves: the arena, the
+obstacles and every authored layout stay exactly as written, and the table gets
+roomier because the things on it got smaller.
+
+| | Before | Now (0.78) | A real 7ft table |
+| --- | --- | --- | --- |
+| Table width, in ball diameters | 14.5 | **18.6** | 17.6 |
+| Table length, in ball diameters | 25.8 | **33.1** | 35.1 |
+| Pocket mouth, in ball diameters | 2.02 | **2.02** | ~2.0 |
+| Ball on a 390px phone | 23 px | **18 px** | — |
+
+**0.66 is the floor**, because below about 15px across the number on a ball
+stops being readable. Going smaller means numbers come off the ball entirely.
+Stepping this down with the room ramp is the obvious difficulty axis — more fits
+on the table, angles tighten, nothing new to learn — and waits until the flat
+version has been played.
 
 ## 5. The Stroke Ramp
 
@@ -323,6 +360,7 @@ persistent unlocks, multiplayer.
 
 **Known open questions for playtesting:**
 1. Is the ramp too generous early? Rooms 1–4 have +3 and +2 spare.
-2. Should a scratch cost a stroke as well as the score, or is voiding enough?
-3. Is one freeze cell per room the right supply, or should charges be scarcer?
-4. Does the live pocket read as a risk worth taking, or as a trap to avoid?
+2. Should a foul cost a shot as well as the score, or is voiding enough?
+3. Is `pieceScale` 0.78 right, and should it step down with the room ramp?
+4. Does the kicker read as a risk worth routing around, or just as noise?
+5. Amber solids sit near red hazards in hue. Does form carry it on a phone?

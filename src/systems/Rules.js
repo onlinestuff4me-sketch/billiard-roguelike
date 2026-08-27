@@ -53,7 +53,7 @@ export function contractFor(level) {
 /** Plain-English contract line for the HUD. Never inferred, always on screen. */
 export function contractText(contract) {
   const n = contract.rack;
-  return contract.eightLast ? `SINK ALL ${n} · THE 8 LAST` : `SINK ALL ${n}`;
+  return contract.eightLast ? `KNOCK ALL ${n} IN · 8 LAST` : `KNOCK ALL ${n} IN`;
 }
 
 /** Which archetype wears a given number. */
@@ -143,7 +143,7 @@ export class Rules {
     const bonus = saved * rate;
     if (bonus > 0) {
       this.roomScore += bonus;
-      this.ledger.push({ id: 'saved', label: 'Strokes saved', detail: `${saved} × ${rate.toLocaleString()}`, amount: bonus });
+      this.ledger.push({ id: 'saved', label: 'Shots saved', detail: `${saved} × ${rate.toLocaleString()}`, amount: bonus });
     }
     this.runScore += this.roomScore;
     // Once the room is banked, `roomScore` is already inside `runScore`. The
@@ -181,7 +181,7 @@ export class Rules {
     if (paid > 0) {
       this.ledger.push({
         id: 'stroke',
-        label: `Stroke ${this.strokesUsed + 1}`,
+        label: `Shot ${this.strokesUsed + 1}`,
         detail: `×${this.multiplier}`,
         amount: paid
       });
@@ -223,7 +223,7 @@ export class Rules {
     return this._step(RULES.multiplier.perBallTouched);
   }
 
-  /** A gold ring or gold pocket: double whatever has been built. */
+  /** The double: multiply whatever has been built. */
   gold() {
     this.multiplier = Math.min(RULES.multiplier.max, this.multiplier * RULES.multiplier.goldFactor);
     this.bestMultiplier = Math.max(this.bestMultiplier, this.multiplier);
@@ -249,23 +249,15 @@ export class Rules {
    * standing after the step — so the pot that completes a long route is worth
    * more than the pot that opens one.
    *
-   * @param {number} number the ball's number
-   * @param {'score'|'gold'|'upgrade'|'live'|'gate'} kind what took it
+   * Every pocket pays the same. There is nothing to pass in but the number.
    */
-  pot(number, kind = 'score') {
+  pot(number) {
     this._step(RULES.multiplier.perBallDown);
-    if (kind === 'gold') this.gold();
-
-    let rate = 1;
-    if (kind === 'gate') rate = RULES.score.gateRate;
-    else if (kind === 'live') rate = RULES.score.liveRate;
-    else if (kind === 'upgrade') rate = 0;
-
-    const value = Math.round(number * RULES.score.perPip * rate * this.multiplier);
+    const value = Math.round(number * RULES.score.perPip * this.multiplier);
     this.strokeScore += value;
     this.ballsDown += 1;
-    this.strokeEvents.push({ number, kind, value, multiplier: this.multiplier });
-    return { value, multiplier: this.multiplier, kind };
+    this.strokeEvents.push({ number, value, multiplier: this.multiplier });
+    return { value, multiplier: this.multiplier };
   }
 
   /** The cue ball went down a pocket. */

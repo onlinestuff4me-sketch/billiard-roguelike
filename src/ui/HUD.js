@@ -77,7 +77,7 @@ export class HUD {
     // The budget, as countable marks. "3 of 6" is a fact you have to read;
     // three lit cues and three dark ones is a fact you can glance at.
     const strokeBlock = el('div', 'hud-strokes', this.root);
-    el('div', 'hud-label', strokeBlock).textContent = 'Strokes';
+    el('div', 'hud-label', strokeBlock).textContent = 'Shots';
     this.strokeRow = el('div', 'stroke-row', strokeBlock);
     this.strokeText = el('div', 'stroke-text', strokeBlock);
 
@@ -155,7 +155,7 @@ export class HUD {
    *          runScore:number, penalty?:{standing:number, damage:number}}} data
    */
   showScorecard(data) {
-    this.cardStatus.textContent = data.filled ? 'Contract filled' : 'Rack broke loose';
+    this.cardStatus.textContent = data.filled ? 'Contract filled' : 'Out of shots';
     this.cardStatus.classList.toggle('failed', !data.filled);
     this.cardTitle.textContent = `Room ${String(data.level).padStart(2, '0')}`;
 
@@ -169,7 +169,7 @@ export class HUD {
     if (data.penalty && data.penalty.standing > 0) {
       const row = el('div', 'card-line bad', this.cardLines);
       el('span', 'card-k', row).textContent = 'Balls left';
-      el('span', 'card-d', row).textContent = `${data.penalty.standing} standing`;
+      el('span', 'card-d', row).textContent = `${data.penalty.standing} still up`;
       el('span', 'card-v', row).textContent = `−${data.penalty.damage} hull`;
     }
     if (!this.cardLines.childElementCount) {

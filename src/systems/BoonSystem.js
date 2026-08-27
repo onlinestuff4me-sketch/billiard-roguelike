@@ -129,7 +129,7 @@ export const BOON_DEFS = [
         radius: v.radius,
         dps: v.dps,
         life: v.duration,
-        color: PALETTE.hazard
+        color: PALETTE.bad
       });
     }
   },
@@ -298,7 +298,7 @@ export const BOON_DEFS = [
     stats: (v) => ({ backstabBonus: v.bonus }),
     run(event, v, game) {
       if (!event.result?.backstab) return;
-      game.fx.shockwave(event.x, event.z, PALETTE.heavy, 3.4, 0.32);
+      game.fx.shockwave(event.x, event.z, PALETTE.solid, 3.4, 0.32);
     }
   },
   {
@@ -335,7 +335,7 @@ export const BOON_DEFS = [
     numbers: (v) => `+${v.bounces} bounces · +${pct(v.damage)} damage per bank`,
     stats: (v) => ({ maxBounces: v.bounces, bankDamageBonus: v.damage }),
     run(event, v, game) {
-      game.fx.burst(event.x, event.z, 6, PALETTE.carom, 7, 0.6);
+      game.fx.burst(event.x, event.z, 6, PALETTE.good, 7, 0.6);
     }
   },
   {
@@ -349,8 +349,8 @@ export const BOON_DEFS = [
     effect: () => 'Every wall bounce explodes',
     numbers: (v) => `${Math.round(v.damage)} damage · ${v.radius.toFixed(1)}m`,
     run(event, v, game) {
-      game.fx.shockwave(event.x, event.z, PALETTE.hazard, v.radius * 1.6, 0.34);
-      game.fx.burst(event.x, event.z, 10, PALETTE.hazard, 9, 0.8);
+      game.fx.shockwave(event.x, event.z, PALETTE.bad, v.radius * 1.6, 0.34);
+      game.fx.burst(event.x, event.z, 10, PALETTE.bad, 9, 0.8);
       game.audio.impact(0.45);
       for (const enemy of enemiesWithin(game, event.x, event.z, v.radius)) {
         game.dealDamage(enemy, v.damage, {
@@ -380,7 +380,7 @@ export const BOON_DEFS = [
       const scale = target / speed;
       player.vx *= scale;
       player.vz *= scale;
-      game.fx.burst(event.x, event.z, 5, PALETTE.bumper, 8, 0.5);
+      game.fx.burst(event.x, event.z, 5, PALETTE.lip, 8, 0.5);
     }
   }
 ];

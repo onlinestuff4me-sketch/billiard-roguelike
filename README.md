@@ -4,9 +4,9 @@
 A portrait (9:16) mobile web prototype built with Vite + Three.js.
 
 > You are the cue ball. Every room is a static rack: nothing moves until you shoot,
-> so read it for as long as you like — then spend one of the few strokes you have.
-> A ball is never destroyed by being hit, only by being driven into a pocket. The
-> contract says what has to go down; the strokes you *don't* spend are worth more
+> so read it for as long as you like — then spend one of the few shots you have.
+> A ball is never destroyed by being hit, only by being knocked into a pocket. The
+> contract says what has to go down; the shots you *don't* spend are worth more
 > than most of the ones you do.
 
 ---
@@ -32,8 +32,8 @@ geometry is procedural and all audio is synthesised at runtime.
 | --- | --- |
 | **Hold** | Aim. The table is already frozen — there is no clock on this |
 | **Drag** | Pull the cue — distance from the ball is power, direction is `ball − thumb` |
-| **Release** | Fire. One stroke |
-| **Tap while the table is moving** | Spend a freeze charge: stop it, re-aim, resume. No stroke |
+| **Release** | Fire. One shot |
+| **Tap while the table is moving** | Spend a freeze charge: stop it, aim again, resume. No shot |
 
 Fill the contract, then **slingshot into a door** to take its reward.
 
@@ -60,10 +60,10 @@ src/
 │   └── Enemy.js         Solids · Stripes · Heavy Eight-Balls
 ├── systems/
 │   ├── PhysicsSystem.js sweeps, rebounds, caroms, pockets, trajectory prediction
-│   ├── Rules.js         contracts, the stroke budget, the multiplier ladder, score
-│   ├── Table.js         six typed pockets + the lit objects on the felt
+│   ├── Rules.js         contracts, the shot budget, the multiplier ladder, score
+│   ├── Table.js         pocket capture + the mint and red objects on the felt
 │   ├── BoonSystem.js    4-phase hook registry + card offers
-│   ├── Tutorial.js      the six teaching boards
+│   ├── Tutorial.js      the five teaching boards
 │   └── RoomManager.js   layout pool + racking + doors
 └── ui/
     ├── HUD.js           health · radial focus · room · combo · door labels
@@ -78,7 +78,8 @@ src/
 | `v0.2-core-physics` | Input, slingshot, bullet-time, trajectory prediction |
 | `v0.3-combat-carom` | Enemy archetypes, billiard collisions, caroms, audio |
 | `v0.4-boons-progression` | 4-phase boon engine, hybrid rooms, HUD & boon modal |
-| _(unreleased)_ `v0.5` | Static rack, contracts, stroke budget, pockets, scorecard, freeze |
+| _(unreleased)_ `v0.5` | Static rack, contracts, shot budget, pockets, scorecard, freeze |
+| _(unreleased)_ `v0.6` | Pockets as architecture, the five-channel palette, plain words |
 
 See [`docs/ARCHITECTURE.md#7-git-versioning--rollback-workflow`](docs/ARCHITECTURE.md#7-git-versioning--rollback-workflow)
 for the rollback recipes.
@@ -88,3 +89,10 @@ for the rollback recipes.
 Everything that affects feel lives in [`src/config.js`](src/config.js) — time
 dilation, focus economy, chain multipliers, hit-stop, shake, enemy stat blocks,
 threat budgets and the palette. A balance pass should be a one-file diff.
+
+## Design system
+
+The visual and verbal system the table is built to — four families, one word each,
+and the order they are taught in — lives in [`design/system/`](design/system/) and
+is published as a canvas. Every colour decision in `src/config.js` traces back to
+the allocation on the first board there.

@@ -232,7 +232,7 @@ class AimRenderer {
     this.coneGeo.setAttribute('position', new THREE.BufferAttribute(this.conePositions, 3));
     this.coneGeo.setDrawRange(0, 0);
     this.coneMat = new THREE.LineBasicMaterial({
-      color: PALETTE.carom,
+      color: PALETTE.aim,
       transparent: true,
       opacity: 0.9,
       depthWrite: false
@@ -337,7 +337,7 @@ class AimRenderer {
       const wBase =
         (TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power) *
         (1 + over * 0.45);
-      const hue = new THREE.Color(prediction.hit ? PALETTE.carom : PALETTE.aim);
+      const hue = new THREE.Color(prediction.hit ? PALETTE.aim : PALETTE.aim);
       const t = performance.now() / 1000;
 
       for (let i = 0; i < SLICES; i++) {
@@ -386,7 +386,7 @@ class AimRenderer {
       this.primaryMat.opacity = 0.45 + 0.5 * power;
       // The line states outright whether this shot connects: gold means it
       // lands on a body, cyan means it does not. No counting pixels.
-      this.primaryMat.color.setHex(prediction.hit ? PALETTE.carom : PALETTE.aim);
+      this.primaryMat.color.setHex(prediction.hit ? PALETTE.aim : PALETTE.aim);
     } else {
       this.primary.visible = false;
     }
@@ -494,9 +494,9 @@ class AimRenderer {
     // like it is straining, not idling.
     const beat = maxed ? 0.55 + 0.45 * Math.sin(performance.now() / 42) : 0;
 
-    this.pullMat.color.setHex(maxed ? PALETTE.carom : PALETTE.aim);
+    this.pullMat.color.setHex(maxed ? PALETTE.aim : PALETTE.aim);
     this.pullMat.opacity = maxed ? 0.85 + 0.15 * beat : 0.35 + 0.5 * power;
-    this.anchorMat.color.setHex(maxed ? PALETTE.carom : PALETTE.player);
+    this.anchorMat.color.setHex(maxed ? PALETTE.aim : PALETTE.player);
     this.anchor.scale.setScalar((0.7 + power * 0.9) * (maxed ? 1.6 + 0.5 * beat : 1));
   }
 
@@ -882,7 +882,7 @@ export class Player {
     // so it now changes colour as well: cyan halo = armed and safe, amber ring
     // = you can be hit.
     const armed = this.invulnerable;
-    this.haloMat.color.setHex(armed ? PALETTE.player : PALETTE.heavy);
+    this.haloMat.color.setHex(armed ? PALETTE.player : PALETTE.aimGhost);
     this.haloMat.opacity = armed ? 0.55 + Math.sin(performance.now() / 60) * 0.2 : 0.34;
     this.halo.scale.setScalar(armed ? 1.15 : 1);
   }
