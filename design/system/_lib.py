@@ -241,3 +241,85 @@ def side_detail(w=300, h=300, pr=54, ft=40, t=24, jaw=28):
         <circle cx="{ox}" cy="{oy}" r="{swell:.1f}" fill="none" stroke="{LIP}" stroke-width="1.8" opacity="0.5"/>
       </g>
     </g>'''
+
+# ------------------------------------------------------------------ #
+# Headroom: states the table channel can still express, without hue.
+# ------------------------------------------------------------------ #
+
+def pocket_state(w, h, state='open'):
+    """A pocket in one of its states. Brightness, geometry, motion — never hue."""
+    pr = 22 if state != 'wide' else 30
+    ft, t, jaw = 15, 9, 11
+    swell = pr + ft * 0.52
+    ox, oy = ft + 10, ft + 10
+    cid = _uid('ps')
+    bar = ''
+    if state == 'shut':
+        bar = (f'<line x1="{ox-pr*0.95:.1f}" y1="{oy+pr*0.95:.1f}" x2="{ox+pr*0.95:.1f}" y2="{oy-pr*0.95:.1f}" '
+               f'stroke="{LIP}" stroke-width="5" stroke-linecap="round"/>')
+    badge = ''
+    if state == 'badged':
+        badge = (f'<circle cx="{ox+pr*0.95:.1f}" cy="{oy+pr*0.95:.1f}" r="6" fill="#05070a" stroke="{GOOD}" stroke-width="1.6"/>'
+                 f'<circle cx="{ox+pr*0.95:.1f}" cy="{oy+pr*0.95:.1f}" r="2.4" fill="{GOOD}"/>')
+    return f'''<g>
+      <clipPath id="{cid}"><rect x="0" y="0" width="{w}" height="{h}" rx="6"/></clipPath>
+      <g clip-path="url(#{cid})">
+        <rect x="0" y="0" width="{w}" height="{h}" fill="{FRAME}"/>
+        <circle cx="{ox}" cy="{oy}" r="{swell:.1f}" fill="{FRAME}"/>
+        <rect x="{ox}" y="{oy}" width="{w-ox}" height="{h-oy}" fill="{FELT}"/>
+        <g transform="translate({ox},{oy})">{_grid(w-ox, h-oy, 40)}</g>
+        <g transform="translate({ox},{oy})">
+          {_cushion(pr + jaw, 0, w - ox, 0, t, jaw, 'top')}
+          {_cushion(0, pr + jaw, 0, h - oy, t, jaw, 'left')}
+        </g>
+        {_mouth(ox, oy, pr, state == 'called')}
+        {bar}{badge}
+        <circle cx="{ox}" cy="{oy}" r="{swell:.1f}" fill="none" stroke="{LIP}" stroke-width="1.6" opacity="0.5"/>
+      </g>
+    </g>'''
+
+def wall_state(cx, cy, w, h, state='plain'):
+    """A wall. Ribs and a flex arc say 'bouncy'; a pip says what it pays."""
+    base = (f'<rect x="{cx-w/2}" y="{cy-h/2+h*0.18:.1f}" width="{w}" height="{h}" rx="3" fill="#05070a" opacity="0.6"/>'
+            f'<rect x="{cx-w/2}" y="{cy-h/2}" width="{w}" height="{h}" rx="3" fill="{CUSH}" stroke="{LIP}" stroke-width="1.6"/>')
+    ribs = ''
+    if state in ('bouncy', 'badged'):
+        n = max(3, int(w // 11))
+        step = w / (n + 1)
+        ribs = ''.join(
+            f'<line x1="{cx-w/2+step*(i+1):.1f}" y1="{cy-h/2+3:.1f}" x2="{cx-w/2+step*(i+1):.1f}" y2="{cy+h/2-3:.1f}" '
+            f'stroke="{LIP}" stroke-width="1.6" opacity="0.8"/>' for i in range(n))
+        ribs += (f'<path d="M{cx-w/2:.1f},{cy-h/2-5:.1f} Q{cx},{cy-h/2-11:.1f} {cx+w/2:.1f},{cy-h/2-5:.1f}" '
+                 f'fill="none" stroke="{LIP}" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.6"/>')
+    pip = ''
+    if state == 'badged':
+        pip = (f'<circle cx="{cx+w/2-5:.1f}" cy="{cy+h/2+5:.1f}" r="6" fill="#05070a" stroke="{GOOD}" stroke-width="1.6"/>'
+               f'<circle cx="{cx+w/2-5:.1f}" cy="{cy+h/2+5:.1f}" r="2.4" fill="{GOOD}"/>')
+    if state == 'moving':
+        pip = (f'<path d="M{cx+w/2+7:.1f},{cy-5:.1f} L{cx+w/2+15:.1f},{cy} L{cx+w/2+7:.1f},{cy+5:.1f} Z" fill="{LIP}"/>'
+               f'<path d="M{cx-w/2-7:.1f},{cy-5:.1f} L{cx-w/2-15:.1f},{cy} L{cx-w/2-7:.1f},{cy+5:.1f} Z" fill="{LIP}" opacity="0.4"/>')
+    return f'<g>{base}{ribs}{pip}</g>'
+
+def hazard_shape(kind, colour=None):
+    """Proof that the family rule is 'dashed and hollow', not 'a circle'."""
+    c = colour or BAD
+    dash = '9 7'
+    if kind == 'bar':
+        return (f'<rect x="8" y="34" width="128" height="26" rx="13" fill="{c}" opacity="0.08"/>'
+                f'<rect x="8" y="34" width="128" height="26" rx="13" fill="none" stroke="{c}" stroke-width="2.6" stroke-dasharray="{dash}"/>'
+                f'{glyph(72, 47, 20, c, "mine")}')
+    if kind == 'blob':
+        d = 'M26,58 C10,40 24,14 50,16 C70,17 78,4 100,12 C126,21 132,52 112,66 C92,80 44,80 26,58 Z'
+        return (f'<path d="{d}" fill="{c}" opacity="0.08"/>'
+                f'<path d="{d}" fill="none" stroke="{c}" stroke-width="2.6" stroke-dasharray="{dash}" stroke-linejoin="round"/>'
+                f'{glyph(70, 46, 20, c, "mine")}')
+    if kind == 'gate':
+        return (f'<rect x="18" y="8" width="9" height="78" rx="4" fill="{CUSH}" stroke="{LIP}" stroke-width="1.4"/>'
+                f'<rect x="117" y="8" width="9" height="78" rx="4" fill="{CUSH}" stroke="{LIP}" stroke-width="1.4"/>'
+                f'<rect x="27" y="34" width="90" height="26" fill="{c}" opacity="0.08"/>'
+                f'<line x1="27" y1="47" x2="117" y2="47" stroke="{c}" stroke-width="2.6" stroke-dasharray="{dash}"/>'
+                f'{glyph(72, 47, 20, c, "mine")}')
+    # lane
+    return (f'<rect x="8" y="10" width="46" height="76" rx="23" fill="{GOOD}" opacity="0.08"/>'
+            f'<rect x="8" y="10" width="46" height="76" rx="23" fill="none" stroke="{GOOD}" stroke-width="2.6" stroke-dasharray="{dash}"/>'
+            f'{glyph(31, 34, 18, GOOD, "x2")}{glyph(31, 64, 18, GOOD, "x2")}')

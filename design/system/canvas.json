@@ -34,6 +34,13 @@
       "y": 3180,
       "w": 1180,
       "h": 2020
+    },
+    {
+      "file": "Headroom.dc.html",
+      "x": 0,
+      "y": 5320,
+      "w": 1060,
+      "h": 2210
     }
   ],
   "annotations": [
@@ -42,7 +49,7 @@
       "x": 0,
       "y": -210,
       "w": 960,
-      "text": "Latest change is the tutorial: five boards, not seven, on the \"Five boards\" sheet at the bottom.\n\nBoard 01 is a real pot straight away. 03 has no card at all \u2014 four balls and three shots is the whole lesson. The 8-goes-last board is gone; it is a room banner now."
+      "text": "The fix in one line: form says what a thing IS, colour says what it DOES to your score.\n\nSheets, top to bottom: the palette allocation, the catalogue, the pocket architecture, the words, the five tutorial boards, and \u2014 last \u2014 Headroom, which answers the three questions about states, shapes and scale."
     }
   ],
   "launch": {
