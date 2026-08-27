@@ -136,15 +136,15 @@ boards = (
   board('01', 'pocket', board_svg('pocket'),
         'Knock the <b>3</b> in',
         'Press anywhere and pull back, like a cue.',
-        'The cue, the pocket and the one rule the game runs on, in a single shot. Everything is already on a straight line, so the only thing being tested is the gesture. <b>Hitting a ball never breaks it — a pocket is the only way one leaves.</b>')
+        'This board used to put the cue, the ball and the pocket on one straight line — and a square hit sends your own ball in behind it, so the first thing the game taught was how to scratch. It is an <i>angle</i> now, with the cue already resting on the potting line: pull straight back and it drops while your ball rolls clear. <b>Measured: 18 potting shots, none of them a scratch, at any power.</b>')
   + board('02', 'the angle', board_svg('angle'),
-        'Knock the <b>2</b> in <em>from an angle</em>',
-        'Aim at the ghost, not the ball. Slide it onto the far side.',
-        'The cue rests pointing straight at the ball, and straight is wrong. The player has to move off the obvious line themselves. <b>Measured window: 3.2° of aim, scratch-free at every power.</b>')
+        'Now <em>angle</em> it in',
+        'The white circle is where your ball will be when it touches the 2.',
+        'Same board, but the cue now rests pointing straight <i>at</i> the ball, so the player has to find the angle themselves. The copy names only what is on screen: it used to say "aim at the ghost" and "slide it", and nothing had ever told anyone what a ghost was. <b>Measured window: 3.2° of aim, scratch-free at every power.</b>')
   + board('03', 'the budget', board_svg('budget'),
         'Four balls. <em>Three shots.</em>',
-        'One shot has to knock two in.',
-        'No card explains the budget, because the budget explains itself: the numbers do not add up and the player has to find the shot that does. <b>The first board that requires a plan.</b>',
+        'Knock them all in. Watch how fast three shots goes.',
+        'This board used to demand two balls down in a <i>single</i> stroke, and brute-forcing every heading at every power found seven such shots in 2160 — the best re-tuned pair only widened that to 1.5°. Potting one ball already needs 1–3°; needing the follow-through to drop a second is a miracle, not a lesson. <b>The budget is now taught by counting: the rack stays down between strokes and the count is on screen.</b>',
         cues(3, 0, 'four balls'))
   + board('04', 'walls', board_svg('walls'),
         'The wall is <em>solid</em>',

@@ -78,33 +78,53 @@ const RULES = {
     facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
     cheer: 'That is the whole game',
     whiff: 'Missed the ball — line up on it first',
-    nudge: 'Your ball, the 3 and the pocket are already in a line. Just hit it.'
+    nudge: 'The cue is already pointing the right way. Just pull straight back.'
   },
 
+  // NO WORDS THE PLAYER HAS NOT BEEN GIVEN.
+  //
+  // This board used to say "aim at the ghost" and "slide it onto the far
+  // side". Nothing had ever told the player what a ghost was, and "slide it"
+  // names a gesture that does not exist — you turn the cue, you do not drag
+  // the circle. It says what is on screen: a white circle, and where to put
+  // it.
   angle: {
-    say: 'Knock the <b>2</b> in <em>from an angle</em>',
-    hint: 'Aim at the ghost, not the ball. Slide it onto the <em>far side</em>.',
+    say: 'Now <em>angle</em> it in',
+    hint: 'The <em>white circle</em> is where your ball will be when it touches the <b>2</b>. Turn until it sits on the far side.',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
     pot: (p) => (p.ball.number === 2 ? 'score' : null),
     cheer: 'Cut and in',
-    scold: 'Straight at it sends the 2 wide — hit more of its far side',
-    whiff: 'Missed — the white circle shows where contact happens',
-    nudge: 'Slide the white ghost onto the 2\'s far side, until it lines up with the lit pocket.'
+    scold: 'Straight at it sends the 2 wide — put the white circle further round',
+    whiff: 'Missed — the white circle shows where your ball touches the 2',
+    nudge: 'Turn until the white circle sits on the far side of the 2, lined up with the lit pocket.'
   },
 
+  // FOUR BALLS AND A BUDGET — TAUGHT BY COUNTING, NOT BY A GATE.
+  //
+  // This board used to demand two balls down in a SINGLE stroke. Brute-forcing
+  // every heading at every power through the real physics found seven such
+  // shots in 2160 — and the best re-tuned pair layout only widened that to a
+  // 1.5-degree window. Potting one ball already needs one to three degrees;
+  // needing the follow-through to drop a second one as well is a miracle, not
+  // a lesson. Worse, potting ONE ball matched no rule at all, so the shot the
+  // player had just made worked and the board said nothing.
+  //
+  // The budget is now taught the way it is actually felt: four balls go down
+  // over as many strokes as it takes, the count is on screen the whole time,
+  // and the third stroke is called out as the one the real room would have
+  // stopped at. The arithmetic does the teaching and nobody gets stranded.
   budget: {
-    // No explanation. Four balls and three shots IS the lesson.
     say: 'Four balls. <em>Three shots.</em>',
-    hint: 'The <b>1</b> and the <b>4</b> line up on the lit pocket. <em>Hit the 1 into the 4.</em>',
+    hint: 'Knock them all in. Watch how fast three shots goes.',
     spot: 'rack',
-    potsNeeded: 2,
+    clearRack: true,
     shots: 3,
-    cheer: 'Two in one — that is how the budget works',
-    scold: 'One at a time will not get there. Find the shot that takes two',
-    whiff: 'Missed — look for two balls lined up on the same pocket',
-    nudge: 'Hit the 1 on its left side so it runs into the 4.'
+    cheer: 'Rack cleared',
+    scold: 'Nothing down that time',
+    whiff: 'Missed everything — line up on a ball first',
+    nudge: 'Take the easiest one on the table. The lit pocket is the near one.'
   },
 
   // WALLS ARE FURNITURE, NOT A PUZZLE.
@@ -126,6 +146,7 @@ const RULES = {
     spot: 'first',
     hand: true,
     handDraw: 6.4,
+    pot: () => 'score',
     cheer: 'In — and the wall never got a say',
     scold: 'That is off the wall, not into the pocket',
     whiff: 'Missed the 3 — line up on it first',
@@ -152,6 +173,9 @@ export const LESSONS = lessonData.lessons.map((table) => ({
   goal: 1,
   rest: table.rest || { x: 0, z: -1 },
   call: table.call || null,
+  // A measured, scratch-free potting heading in degrees. The scratch demo
+  // swings the cue onto it so the fix is shown rather than described.
+  solve: table.solve,
   room: {
     id: `lesson-${table.id}`,
     name: table.name,
@@ -255,6 +279,10 @@ export class Tutorial {
     this.active = false;
     this.index = -1;
     this.done = 0;
+    /** Strokes spent on the current board — the budget the third lesson counts. */
+    this._strokes = 0;
+    /** Did the stroke that just resolved match any rule? */
+    this._scored = false;
 
     this._roomKey = null;
     this._needsRoom = false;
@@ -375,6 +403,8 @@ export class Tutorial {
   _enter(index) {
     this.index = index;
     this.done = 0;
+    this._strokes = 0;
+    this._scored = false;
     this._hits = 0;
     this._struck.clear();
     this._rejected = false;
@@ -454,6 +484,74 @@ export class Tutorial {
   _restAim() {
     const rest = this.lesson?.rest;
     this.input.setHeading(rest ? rest.x : 0, rest ? rest.z : -1);
+  }
+
+  /**
+   * Point at the easiest ball left, and light the pocket it belongs in.
+   *
+   * "Easiest" is the shortest ball-to-pocket run on the table, which is also
+   * the widest aim window — the angular tolerance of a pot falls off as one
+   * over that distance. So the advice the board gives is the advice the
+   * geometry supports, not a preference.
+   *
+   * @returns {string|null} the number to name, or null if there is nothing left
+   */
+  _guideNext() {
+    const pockets = this.rooms?.table?.pockets;
+    const rack = this.rooms.scriptedEnemies.filter((e) => e.alive && e.number > 0);
+    if (!pockets || !pockets.length || !rack.length) return null;
+    let best = null;
+    for (const ball of rack) {
+      for (const pocket of pockets) {
+        const d = Math.hypot(pocket.x - ball.x, pocket.z - ball.z);
+        if (!best || d < best.d) best = { d, ball, pocket };
+      }
+    }
+    if (!best) return null;
+    this.game.callPocket?.(best.pocket.slot);
+    return String(best.ball.number);
+  }
+
+  /**
+   * THE SCRATCH DEMONSTRATION.
+   *
+   * Three beats, on the real cue and the real preview — nothing here is a
+   * cartoon of the game:
+   *
+   *   0.0-0.9s  hold on the line that just scratched. The departure preview
+   *             is drawing itself red across the pocket, which is the whole
+   *             point: that red line was there before the shot too.
+   *   0.9-2.1s  swing to a line that pots and rolls clear. The player watches
+   *             the red go out as the angle opens up.
+   *   2.1-3.0s  hold on the safe line, then hand the cue back on that line.
+   *
+   * It gives way instantly to a thumb — the moment the player takes over, the
+   * demonstration has done its job and competing with them is noise.
+   */
+  _updateDemo(rawDt) {
+    const demo = this._demo;
+    if (!demo) return;
+    if (this.input.isAiming || this._launched || this._awaitingNext) {
+      this._demo = null;
+      return;
+    }
+    demo.t += rawDt;
+    const HOLD_BAD = 0.9;
+    const SWING = 1.2;
+    let k;
+    if (demo.t <= HOLD_BAD) k = 0;
+    else if (demo.t >= HOLD_BAD + SWING) k = 1;
+    else {
+      const u = (demo.t - HOLD_BAD) / SWING;
+      k = u * u * (3 - 2 * u); // smoothstep, so it reads as a hand turning
+    }
+    const x = demo.from.x + (demo.to.x - demo.from.x) * k;
+    const z = demo.from.z + (demo.to.z - demo.from.z) * k;
+    const len = Math.hypot(x, z) || 1;
+    this.input.setHeading(x / len, z / len);
+    // Leave the cue sitting on the safe line rather than snapping back to the
+    // lesson's rest heading: the demonstration ends where the shot should go.
+    if (demo.t > HOLD_BAD + SWING + 0.9) this._demo = null;
   }
 
   /* ---------------------------------------------------------------- *
@@ -657,6 +755,7 @@ export class Tutorial {
     // be re-projected on frames where nothing else about the lesson is running.
     this._updateSpot();
     this._updateHand();
+    this._updateDemo(rawDt);
 
     if (this._awaitingNext) return;
 
@@ -705,6 +804,10 @@ export class Tutorial {
       // from it. That used to pass anyway, off the bottom rail, teaching the
       // opposite of the control it was introducing.
       this._wrongWay = !!lesson.facing && this._awayFromRack(payload);
+      // Kept so a scratch can replay the shot that caused it before showing
+      // the angle that would not have.
+      this._lastAim = { x: payload.dirX ?? 0, z: payload.dirZ ?? -1 };
+      this._demo = null;
       // Taking the next shot is the only thing that clears the last one's
       // feedback. It used to expire on a 2.2s timer, which is not long enough
       // to read a sentence, look at the table and work out what it means — the
@@ -716,6 +819,7 @@ export class Tutorial {
       this._hits = 0;
       this._passes = 0;
       this._pots = 0;
+      this._scored = false;
       this._tookGreen = false;
       this._struck.clear();
       this._strikes.length = 0;
@@ -739,12 +843,9 @@ export class Tutorial {
     // on, because it is the thing the game is actually about.
     if (name === 'potted') {
       this._pots += 1;
-      // A board that asks for two in one shot is satisfied by the count, not
-      // by which ball — there is more than one pair that works.
-      if (lesson.potsNeeded) {
-        if (this._pots >= lesson.potsNeeded) this._score();
-        return;
-      }
+      // A rack-clearing board is judged when the stroke ends, not on each ball
+      // — a shot that drops two should read as one success, not two.
+      if (lesson.clearRack) return;
       if (!lesson.pot) return;
       const verdict = lesson.pot({ ...payload, tookGreen: this._tookGreen });
       if (verdict === 'score') this._score([payload.ball]);
@@ -754,9 +855,29 @@ export class Tutorial {
 
     // Knocking your own ball in fails the rep on every board. It is the one
     // mistake that is always a mistake, so it is always called by name.
+    // A SCRATCH IS THE BEST TEACHING MOMENT THE GAME HAS.
+    //
+    // It is the one mistake that is always a mistake, the player has just
+    // watched it happen, and the fix is a property of the shot they can see:
+    // hit the ball squarely and your own ball follows it in; hit it at an
+    // angle and yours rolls away instead. So the board does not just say so —
+    // it swings the cue from the line that scratched to a line that does not,
+    // and the departure preview turns from red to safe on the way. See _demo.
     if (name === 'scratch') {
       this._rejected = true;
-      this._setStatus(lesson.scratched || 'Scratch — your own ball went in. Take it again.', 'bad');
+      this._setStatus(
+        lesson.scratched ||
+          'Scratch — your ball followed it in. Watch: angle the shot and the red line turns away.',
+        'bad'
+      );
+      if (Number.isFinite(lesson.solve) && this._lastAim) {
+        const to = (lesson.solve * Math.PI) / 180;
+        this._demo = {
+          from: this._lastAim,
+          to: { x: Math.sin(to), z: -Math.cos(to) },
+          t: 0
+        };
+      }
       return;
     }
 
@@ -880,6 +1001,45 @@ export class Tutorial {
       else if (verdict === 'reject') this._rejected = true;
     }
 
+    // CLEAR THE RACK. Judged once per stroke, and the balls stay down between
+    // strokes — this is one long attempt, not a series of identical reps.
+    let counted = false;
+    if (stillIts && lesson.clearRack) {
+      counted = true;
+      const rack = this.rooms.scriptedEnemies;
+      const left = rack.filter((e) => e.alive).length;
+      if (left === 0) {
+        this._score();
+      } else if (this._pots > 0) {
+        // Only a stroke that PUT SOMETHING DOWN spends a shot. A tutorial that
+        // charges for misses turns its own arithmetic into a trap: the player
+        // runs out of budget while still learning the gesture the budget is
+        // supposed to be about.
+        this._strokes += 1;
+        const s = lesson.shots - this._strokes;
+        const next = this._guideNext();
+        this._setStatus(
+          `${left} left · ${s} shot${s === 1 ? '' : 's'} of your three${next ? ` · go for the ${next}` : ''}`,
+          s > 0 ? 'good' : 'bad'
+        );
+      } else {
+        const next = this._guideNext();
+        this._setStatus(
+          `Nothing down, so that one is free. ${left} left${next ? ` — go for the ${next}` : ''}`,
+          'bad'
+        );
+      }
+    }
+
+    // NO STROKE GOES UNANSWERED.
+    //
+    // Every rule above is opt-in, and a shot that matched none of them fell
+    // through in silence: the table reset, the card did not change, and a
+    // player who had just watched a ball drop was told nothing. Silence is
+    // indistinguishable from the game being broken, so the absence of a
+    // verdict IS a verdict.
+    if (stillIts && !counted && !this._scored && !this._rejected) this._rejected = true;
+
     if (stillIts && this._rejected) {
       // A shot that touched nothing is a different mistake from a shot that
       // touched some of it, and saying nothing at all — which is what a whiff
@@ -902,7 +1062,9 @@ export class Tutorial {
     this._wrongWay = false;
 
     this._homeBall();
-    this._reRack();
+    // A rack-clearing board keeps its progress: re-racking between strokes
+    // would hand back the very balls the player just spent shots on.
+    if (!lesson?.clearRack || this._awaitingNext) this._reRack();
     if (this._needsRoom) this._buildRoom();
   }
 
@@ -969,6 +1131,7 @@ export class Tutorial {
    */
   _score(kills = []) {
     const lesson = this.lesson;
+    this._scored = true;
     this.done += 1;
 
     for (const enemy of kills) {

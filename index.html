@@ -464,6 +464,8 @@
       .hud-card.visible {
         opacity: 1;
         transform: translate(-50%, 0);
+        /* The card carries the exit buttons now, so it has to take taps. */
+        pointer-events: auto;
       }
 
       .card-head { margin-bottom: 10px; }
@@ -542,12 +544,60 @@
         color: rgba(234, 246, 255, 0.6);
       }
 
+      /* THE EXIT BUTTONS. One per reward, stacked under the totals, each in
+         its own reward colour. A tap, not a trick shot. */
+      .card-choices {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .card-choice {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        width: 100%;
+        padding: 11px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--c, #7df9ff);
+        background: color-mix(in srgb, var(--c, #7df9ff) 12%, transparent);
+        font-family: inherit;
+        cursor: pointer;
+        pointer-events: auto;
+        text-align: left;
+        transition: background 0.15s ease, transform 0.12s ease;
+      }
+      .card-choice:hover { background: color-mix(in srgb, var(--c, #7df9ff) 22%, transparent); }
+      .card-choice:active { transform: scale(0.985); }
+      .card-choice .choice-name {
+        font-size: clamp(12px, 3.4vmin, 16px);
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--c, #7df9ff);
+      }
+      .card-choice .choice-detail {
+        font-size: clamp(9px, 2.4vmin, 12px);
+        font-weight: 600;
+        color: rgba(234, 246, 255, 0.7);
+        text-align: right;
+      }
+
 
       /* Banner */
       /* Long banner subs ran edge to edge and wrapped badly, clipping letters
          at both margins. */
       .hud-banner { padding-inline: 20px; }
       .banner-sub { max-width: 88%; margin-inline: auto; }
+      .banner-hint {
+        margin-top: 14px;
+        font-size: clamp(8px, 2.1vmin, 11px);
+        font-weight: 700;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: rgba(234, 246, 255, 0.4);
+      }
 
       .hud-banner {
         position: absolute;

@@ -49,7 +49,7 @@ import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
 import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
-import { HUD } from './ui/HUD.js';
+import { HUD, HOLD } from './ui/HUD.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -1380,14 +1380,15 @@ function completeRoom() {
   const result = rules.endRoom();
   audio.roomClear();
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
+  openExits();
   hud.showScorecard({
     level: game.level,
     filled: true,
     ledger: rules.ledger,
     roomScore: result.roomScore,
-    runScore: result.runScore
+    runScore: result.runScore,
+    choices: exitChoices()
   });
-  openExits();
 }
 
 /**
@@ -1411,27 +1412,55 @@ function failRoom() {
   }
   if (damage > 0 && !game.tutorialGuard) player.takeDamage(damage, game, 'loose');
 
+  openExits();
   hud.showScorecard({
     level: game.level,
     filled: false,
     ledger: rules.ledger,
     roomScore: result.roomScore,
     runScore: result.runScore,
-    penalty: { standing, damage }
+    penalty: { standing, damage },
+    choices: exitChoices()
   });
-  openExits();
 }
 
 function openExits(title, sub) {
   rooms.openExits();
-  hud.setDoors(
-    rooms.doors.map((door) => ({
-      x: door.x,
-      z: door.z + door.hh + 1.0,
-      text: doorLabelText(door),
-      color: cssHex(door.color)
-    }))
-  );
+}
+
+/** The reward name a button shows, short enough to be a label. */
+function doorName(door) {
+  switch (door.reward.id) {
+    case 'boon':
+      return 'Upgrade';
+    case 'repair':
+      return 'Repair';
+    case 'stroke':
+      return 'More shots';
+    case 'freeze':
+      return 'Freeze';
+    case 'ricochet':
+      return 'Bounce';
+    default:
+      return 'Onward';
+  }
+}
+
+/**
+ * One button per exit, in the exit's own colour.
+ *
+ * The doors still exist in the room — they are what carries the reward and
+ * decides the next level — but the player no longer has to shoot the cue ball
+ * into one, because at the end of a room there is no cue ball on the table to
+ * shoot. See HUD.showScorecard.
+ */
+function exitChoices() {
+  return rooms.doors.map((door) => ({
+    name: doorName(door),
+    detail: doorLabelText(door),
+    color: cssHex(door.color),
+    pick: () => handleDoorEntered(door)
+  }));
 }
 
 function handleRoomClear() {
@@ -1540,13 +1569,19 @@ function spawnZ() {
  * the contract — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
+  // EVERY ONE OF THESE INTRODUCES A RULE, so every one of them waits to be
+  // read. They are not reports on something the player just watched; they are
+  // the terms of the room, and a rule that scrolled past unread is a rule the
+  // player does not have.
   const lesson = TUTORIAL.lessons[game.level];
   if (lesson) {
-    hud.showBanner(lesson.title, lesson.sub, 2.6);
+    hud.showBanner(lesson.title, lesson.sub, HOLD);
     return;
   }
   const c = rules.contract;
-  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().contractText} · ${c.strokes} shots`, 2.4);
+  // The contract holds until it is tapped away. It is the terms of the room,
+  // not a report on something already watched, and it decides every shot.
+  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().contractText} · ${c.strokes} shots`, HOLD);
 }
 
 /** Everything a fresh start clears, minus the room itself. */
@@ -1679,12 +1714,38 @@ function refreshPrediction() {
 /** Heading when the current hold began; used to measure how far it turned. */
 let aimStartDir = null;
 
+// THE CONTRACT EATS ITS OWN DISMISSAL.
+//
+// A banner that waits for a tap has to consume that tap, or the same press
+// that dismisses it also starts an aim — and the player has read nothing and
+// is already pulling the cue back. Capture phase, before the input manager
+// ever sees it.
+stage.addEventListener(
+  'pointerdown',
+  (event) => {
+    if (!hud.bannerWaiting) return;
+    hud.hideBanner();
+    event.stopPropagation();
+    event.preventDefault();
+  },
+  { capture: true }
+);
+
 const input = new InputManager(stage, {
   camera,
   // Aiming is only possible while the table is frozen. During a stroke the
   // pointer means something else entirely — see the freeze tap below.
   isEnabled: () =>
-    game.running && player.alive && game.state !== 'modal' && !menuOpen && game.phase === 'aim',
+    game.running &&
+    player.alive &&
+    game.state !== 'modal' &&
+    // A cleared room is decided. The exits are buttons on the scorecard now,
+    // so there is nothing left to shoot at and a stray drag can only take the
+    // cue ball somewhere confusing.
+    game.state !== 'cleared' &&
+    !menuOpen &&
+    !hud.bannerWaiting &&
+    game.phase === 'aim',
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {

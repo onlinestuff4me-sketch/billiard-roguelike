@@ -31,6 +31,13 @@ function el(tag, className, parent) {
   return node;
 }
 
+/**
+ * Pass as a banner's duration to make it wait for a tap instead of a clock.
+ * Reserved for the contract, which the player has to READ before the room
+ * makes any sense.
+ */
+export const HOLD = Symbol('hold-until-dismissed');
+
 export class HUD {
   /**
    * @param {HTMLElement} layer the `#ui-layer` element
@@ -91,6 +98,10 @@ export class HUD {
     this.bannerTitle = el('div', 'banner-title', this.banner);
     this.bannerSub = el('div', 'banner-sub', this.banner);
     this.bannerTimer = 0;
+    /** A banner that waits for a tap rather than a clock. */
+    this.bannerHolds = false;
+    this.bannerHint = el('div', 'banner-hint', this.banner);
+    this.bannerHint.textContent = 'Tap anywhere to dismiss';
 
     /* ---------------- room scorecard ---------------- */
     this.card = el('div', 'hud-card', this.root);
@@ -100,6 +111,16 @@ export class HUD {
     this.cardLines = el('div', 'card-lines', this.card);
     this.cardTotals = el('div', 'card-totals', this.card);
     this.cardPrompt = el('div', 'card-prompt', this.card);
+    /**
+     * THE EXITS ARE BUTTONS.
+     *
+     * They used to be doors you shot the cue ball into, and that only works
+     * while there IS a cue ball on the table to shoot — at the end of a room
+     * there is not one to see, so the prompt asked for a gesture the player
+     * had no way to perform. A choice between named rewards is a choice
+     * between named rewards; it does not need a physics puzzle in front of it.
+     */
+    this.cardChoices = el('div', 'card-choices', this.card);
 
     /* ---------------- damage vignette ---------------- */
     this.damageVeil = el('div', 'hud-damage', this.root);
@@ -144,12 +165,27 @@ export class HUD {
     if (this.layer.classList.contains('coaching')) return;
     this.bannerTitle.textContent = title;
     this.bannerSub.textContent = sub;
-    this.bannerTimer = duration;
+    // A CONTRACT WAITS TO BE READ.
+    //
+    // Everything else a banner says is a report on something the player just
+    // watched happen, and a couple of seconds is plenty. The contract is the
+    // opposite: it is the terms of the room, arriving before anything has
+    // happened, and it decides every shot that follows. It holds until it is
+    // dismissed, and says so.
+    this.bannerHolds = duration === HOLD;
+    this.bannerTimer = this.bannerHolds ? 0 : duration;
+    this.bannerHint.style.display = this.bannerHolds ? '' : 'none';
     this.banner.classList.add('visible');
+  }
+
+  /** Is a hold-until-tapped banner up? */
+  get bannerWaiting() {
+    return this.bannerHolds && this.banner.classList.contains('visible');
   }
 
   hideBanner() {
     this.bannerTimer = 0;
+    this.bannerHolds = false;
     this.banner.classList.remove('visible');
   }
 
@@ -198,7 +234,36 @@ export class HUD {
     // The banner says the same thing the card's own header says, one layer
     // behind it. Two readouts of one event, overlapping, is worse than either.
     this.hideBanner();
-    this.cardPrompt.textContent = 'Shoot into an exit';
+
+    this.cardChoices.textContent = '';
+    const choices = data.choices || [];
+    this.cardPrompt.textContent = choices.length
+      ? choices.length > 1
+        ? 'Choose one'
+        : 'Carry on'
+      : '';
+    this.cardPrompt.style.display = choices.length ? '' : 'none';
+    for (const choice of choices) {
+      const button = el('button', 'card-choice', this.cardChoices);
+      button.type = 'button';
+      button.style.setProperty('--c', choice.color);
+      el('span', 'choice-name', button).textContent = choice.name;
+      el('span', 'choice-detail', button).textContent = choice.detail;
+      // The aim gesture begins on POINTERDOWN, so stopping the click is too
+      // late: the tap that picks an exit would also draw the cue back and fire
+      // a shot on release. Both ends of the gesture stop here.
+      for (const type of ['pointerdown', 'pointerup']) {
+        button.addEventListener(type, (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+      }
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        choice.pick();
+      });
+    }
     this.card.classList.add('visible');
   }
 
