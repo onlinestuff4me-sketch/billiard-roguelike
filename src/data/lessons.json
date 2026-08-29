@@ -50,23 +50,23 @@
       "id": "cut-combo",
       "name": "On An Angle",
       "rest": {
-        "x": 0.682,
-        "z": -0.731
+        "x": 0.731,
+        "z": -0.682
       },
-      "solve": 46.5,
+      "solve": 50.75,
       "call": "mr",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 6.6,
-          "z": -0.2,
+          "x": 6.0,
+          "z": -2.0,
           "number": 2
         },
         {
           "type": "solid",
-          "x": 5.0,
-          "z": 1.6,
+          "x": 4.0,
+          "z": 2.6,
           "number": 6
         }
       ]

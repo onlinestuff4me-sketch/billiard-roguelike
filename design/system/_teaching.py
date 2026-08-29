@@ -147,7 +147,7 @@ boards = (
   + board('03', 'the angled combination', board_svg('cut-combo'),
         'Now on an <em>angle</em>',
         'Hit the 6 on the side that sends it across into the 2.',
-        'Judged on the <b>hand-off</b>, not the pot: an angled combination pot measures at about 1.5°, which is tournament accuracy on a third board. The angle was eased after play-testing and the window went 2° → 3°.')
+        'Judged on the <b>hand-off</b>, not the pot: an angled combination pot measures at about 1.5°, which is tournament accuracy on a third board. The two balls were then pulled five units apart so the route is visible before it is played — which <i>widened</i> the window rather than narrowing it. <b>3.5°, from a rest 2° off it.</b>')
   + board('04', 'the bank', board_svg('bank'),
         'Go <em>round</em>, off the cushion',
         'Your cue starts pointed at the near cushion.',
