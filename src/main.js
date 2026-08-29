@@ -163,14 +163,50 @@ function buildComposer(width, height) {
  */
 const calledRings = [];
 
-/** Light one pocket by slot id, or none. */
-let calledSlot = null;
-function callPocket(slotId) {
-  calledSlot = slotId || null;
+/**
+ * Light the pockets the board is about — one, several, or none.
+ *
+ * A shot that ends in two different pockets has two goals, and pointing at
+ * only one of them describes half a plan. Accepts a slot id, an array of them,
+ * or null.
+ */
+let calledSlots = [];
+function callPocket(slots) {
+  calledSlots = slots == null ? [] : Array.isArray(slots) ? slots.filter(Boolean) : [slots];
   for (const entry of calledRings) {
-    const on = entry.slot === calledSlot;
+    const on = calledSlots.includes(entry.slot);
     entry.material.opacity = on ? 1 : 0;
     entry.halo.opacity = on ? 0.22 : 0;
+  }
+}
+
+/**
+ * CELEBRATIONS STACK.
+ *
+ * A pot is rarely one thing that happened. It can be a pot AND a bank AND a
+ * green AND a ball that touched two others, and each of those is a separate
+ * rung of the multiplier the player earned separately. Firing them as one
+ * number collapses four decisions into a single "+2,400" and throws away every
+ * bit of feedback about WHICH of them paid.
+ *
+ * So they arrive as beats, a quarter-second apart, each with its own note a
+ * step higher than the last. The run climbs, and the player hears their own
+ * plan being counted back to them.
+ */
+const beats = [];
+
+/** @param {Array<{at:number, run:() => void}>} steps seconds from now */
+function celebrate(steps) {
+  for (const step of steps) beats.push({ t: step.at, run: step.run });
+}
+
+function pumpCelebrations(rawDt) {
+  for (let i = beats.length - 1; i >= 0; i--) {
+    const beat = beats[i];
+    beat.t -= rawDt;
+    if (beat.t > 0) continue;
+    beats.splice(i, 1);
+    beat.run();
   }
 }
 
@@ -180,12 +216,12 @@ function callPocket(slotId) {
  * brightness step reads as a lighting accident at this scale.
  */
 function pulseCalledPocket(rawDt) {
-  if (!calledSlot) return;
+  if (!calledSlots.length) return;
   calledPulse += rawDt * 3.4;
   const wave = Math.sin(calledPulse);
   const glow = 0.72 + wave * 0.28;
   for (const entry of calledRings) {
-    if (entry.slot !== calledSlot) continue;
+    if (!calledSlots.includes(entry.slot)) continue;
     entry.material.opacity = glow;
     entry.halo.opacity = 0.2 + wave * 0.14;
   }
@@ -931,6 +967,7 @@ function beginStroke() {
   game.settleTimer = 0;
   game.chain.count = 0;
   game.launchHits = 0;
+  game.strokeTookGreen = false;
   rules.beginStroke();
   rooms.table.rearmForStroke();
 }
@@ -1154,9 +1191,13 @@ game.on = {
       return;
     }
 
+    const banks = rules.banks;
+    const touched = rules.ballsTouched;
+    const tookGreen = game.strokeTookGreen;
     const paid = rules.pot(ball.number);
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
 
+    // Beat one: the ball is in. Everything the shot ALSO did follows it.
     audio.chainNote(game.chain.count + 2);
     engine.hitStop(TIME.hitStopCrit);
     engine.zoomPunch();
@@ -1164,6 +1205,29 @@ game.on = {
     fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
     fx.burst(pocket.x, pocket.z, 24, PALETTE.lip, 12, 1.1);
     fx.floatText(pocket.x, pocket.z, `+${paid.value.toLocaleString()}`, 'crit');
+
+    const steps = [];
+    let note = game.chain.count + 3;
+    let at = 0.26;
+    const beat = (text, colour) => {
+      const when = at;
+      const tone = note;
+      steps.push({
+        at: when,
+        run: () => {
+          audio.chainNote(tone);
+          engine.zoomPunch(FEEL.zoomPunch * 0.5);
+          fx.shockwave(pocket.x, pocket.z, colour, 4.2, 0.34);
+          fx.floatText(pocket.x, pocket.z - 1.6 - when * 4, text, 'crit');
+        }
+      });
+      at += 0.26;
+      note += 1;
+    };
+    if (banks > 0) beat(`${banks} BANK${banks > 1 ? 'S' : ''} ×${1 + banks}`, PALETTE.player);
+    if (tookGreen) beat('GREEN ×2', PALETTE.good);
+    if (touched > 1) beat(`${touched} BALLS ×${touched}`, PALETTE.solid);
+    if (steps.length) celebrate(steps);
 
     removeBall(ball);
   },
@@ -1205,6 +1269,7 @@ game.on = {
     switch (object.kind) {
       case 'double': {
         const value = ladder('gold');
+        game.strokeTookGreen = true;
         audio.pyre?.();
         fx.floatText(object.x, object.z, `×${value}`, 'crit');
         return;
@@ -2094,6 +2159,7 @@ function frame(now) {
   attract(rawDt);
   tutorial.update(rawDt);
   pulseCalledPocket(rawDt);
+  pumpCelebrations(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 

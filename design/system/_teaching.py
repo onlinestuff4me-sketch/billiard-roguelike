@@ -5,7 +5,7 @@ EX = '''    .sheet { width: 1180px; }
     .pr { padding: 15px 16px 17px; border-radius: 6px; background: #080d12; border: 1px solid rgba(234,246,255,0.08); display: flex; flex-direction: column; gap: 6px; }
     .pr .h { font-size: 14px; font-weight: 700; color: #2ef2c4; line-height: 1.25; }
     .pr .d { font-size: 12.5px; font-weight: 500; line-height: 1.45; color: rgba(234,246,255,0.62); text-wrap: pretty; }
-    .boards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px 18px; }
+    .boards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px 18px; }
     .bd { display: flex; flex-direction: column; gap: 10px; }
     .bd .n { display: flex; align-items: baseline; gap: 8px; }
     .bd .n .i { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: rgba(234,246,255,0.3); }
@@ -88,7 +88,10 @@ def draw(lid):
     """One lesson board: the cue, the shot it teaches, and nothing else."""
     L = LESSONS[lid]
     call = L.get('call')
-    pk = POCKET[call]
+    calls = call if isinstance(call, list) else [call]
+    # The first called pocket is the one the drawn route ends in; the rest are
+    # lit because the board is about them too.
+    pk = POCKET[calls[0]]
     target = L['enemies'][0]
     # The ghost: where the cue ball's centre sits at contact for this pot.
     dx, dz = pk[0] - target['x'], pk[1] - target['z']
@@ -107,7 +110,7 @@ def draw(lid):
     for e in L['enemies']:
         out.append(ball(mx(e['x']), my(e['z']), mr(0.48) * GAIN, e['type'], str(e['number'])))
     out.append(cue_ball(mx(SPAWN[0]), my(SPAWN[1]), mr(0.48) * GAIN))
-    return ''.join(out), SLOT[call]
+    return ''.join(out), [SLOT[c] for c in calls]
 
 def board_svg(lid, px=190):
     contents, lit = draw(lid)
@@ -134,38 +137,30 @@ def cues(on, off, label):
 
 boards = (
   board('01', 'the cut', board_svg('angle'),
-        'Knock the <b>3</b> in',
-        'Press anywhere and pull back, like a cue.',
-        'The gesture, and nothing else. The cue already rests on the potting line, and the board is an <i>angle</i> so your own ball rolls clear instead of following the 3 in. <b>Measured window: 6.5°, the widest on the table.</b>')
-  + board('02', 'the ghost', board_svg('aim'),
-        'Now <em>find</em> the angle',
-        'The white circle is where your ball will be when it touches the 2.',
-        'Same board, but the cue now rests pointing straight <i>at</i> the ball, so the player finds the angle themselves. The copy names only what is on screen. <b>6.5°, from a rest 9° off it.</b>')
-  + board('03', 'your own ball', board_svg('position'),
-        'Watch where <em>you</em> end up',
-        'Red means your ball follows the 3 in. Angle it until the red clears.',
-        'The half of billiards nobody teaches you. The board opens parked on the square line, so the departure preview is <i>already red</i> before a thumb goes down — the mistake is shown before it is made. <b>6.5°.</b>')
-  + board('04', 'the combination', board_svg('combo'),
+        'Knock the <b>3</b> in, <em>on an angle</em>',
+        'The white circle is where your ball ends up — keep it off the pocket.',
+        'This was three boards: "knock it in", "find the angle" and "watch where you end up" all ran the same table with the same ball. Three identical tables in a row do not read as three lessons, they read as the game being stuck. <b>Measured window: 6.5°, from a rest 7° off it.</b>')
+  + board('02', 'the combination', board_svg('combo'),
         'Use the <b>4</b> as your cue',
-        'The 4 is in front of the 1. Hit the 4 and it puts the 1 in for you.',
-        'The first board where the object ball does the work. Both balls sit on the pocket line, so the idea arrives before the difficulty does. <b>Measured: the far ball drops across 4°.</b>')
-  + board('05', 'the angled combination', board_svg('cut-combo'),
+        'The 4 and the 1 line up on the lit pocket.',
+        'The first board where the object ball does the work. The two balls sit a proper distance apart now, so the hand-off is visibly a hand-off rather than a nudge. <b>The far ball drops across 4.5°.</b>')
+  + board('03', 'the angled combination', board_svg('cut-combo'),
         'Now on an <em>angle</em>',
-        'The 6 and the 2 do not line up. Hit the 6 on the side that sends it into the 2.',
-        'Judged on the <b>hand-off</b>, not the pot. Sweeping every heading at every power puts the angled combination pot at 1.5° — real, but tournament accuracy on a fifth board. Making the first ball reach the second is the lesson; dropping it too is a bonus the cheer notices. <b>Hand-off window: 2°.</b>')
-  + board('06', 'the bank', board_svg('bank'),
+        'Hit the 6 on the side that sends it across into the 2.',
+        'Judged on the <b>hand-off</b>, not the pot: an angled combination pot measures at about 1.5°, which is tournament accuracy on a third board. The angle was eased after play-testing and the window went 2° → 3°.')
+  + board('04', 'the bank', board_svg('bank'),
         'Go <em>round</em>, off the cushion',
-        'The wall blocks the 3. Shoot backwards into the near cushion.',
-        'Same reasoning: a banked pot measures at 1°. Using a cushion to reach a ball you could not otherwise touch is what a bank IS, so that is what is asked. The barrier makes it the only route. <b>Bank-and-strike window: 3.5°.</b>')
-  + board('07', 'the budget', board_svg('budget'),
+        'Your cue starts pointed at the near cushion.',
+        'The cue now rests <i>aimed at the wall it must use</i>, so the route is visible before the first attempt, and the 3 sits up off the side pocket with the corner called. Judged on bank-and-strike: a banked pot is a 1° shot. <b>Window: 2.5° from a rest 2° off it.</b>')
+  + board('05', 'the budget', board_svg('budget'),
         'Four balls. <em>Three shots.</em>',
-        'Knock them all in. Watch how fast three shots goes.',
-        'Taught by counting, not by a gate: this board used to demand two balls in a single stroke, and a brute-force sweep found seven such shots in 2160. The rack stays down between strokes and only a stroke that pots spends a shot.',
+        '<em>Both</em> lit pockets are yours.',
+        'Two pockets stay lit for the whole board, because the plan spans the strokes. The single stroke that drops one in the side AND one in the far corner was searched for and <b>does not exist</b> — after the first cut the cue has lost most of its speed and its departure is nearly fixed, so reaching a second ball twelve units away is a coincidence, not a plan.',
         cues(3, 0, 'four balls'))
-  + board('08', 'green &amp; red', board_svg('green-red'),
-        'Take the <em>green</em>. Miss the <b>red</b>.',
-        'Green is always good. Red always costs you.',
-        'Both colours on one table: the green sits <i>on</i> the line to the 2, the red beside it, so the law is learned as a pair and as a decision. <b>32 of the 39 scratch-free potting shots also collect the green.</b>')
+  + board('06', 'green &amp; red', board_svg('green-red'),
+        'The <b>red</b> is in the way',
+        'The lazy line runs over a mine. Go just above it, through the green.',
+        'The choice, in one table: the line you would take without looking is poisoned, and the line that pays is barely off it. The green was meant to sit behind a bank — measured, a route that banks, collects a pick-up and then pots is worth about a degree, so it is a thread instead. <b>4.5° wide, and it still costs you the easy line.</b>')
 )
 
 ramp = [

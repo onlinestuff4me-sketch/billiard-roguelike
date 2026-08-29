@@ -67,83 +67,53 @@ const HAND_RELEASE = 8.6;
  */
 const RULES = {
   /* ================================================================== *
-   * ACT I — THE CUE. You, one ball, and one pocket.
+   * ACT I — THE CUT. You, one ball, one pocket, and an angle.
    * ================================================================== */
 
+  // THIS USED TO BE THREE BOARDS. "Knock it in", "find the angle" and "watch
+  // where you end up" all ran on the same table with the same ball, and a
+  // second ball on one of them that did nothing. Three identical tables in a
+  // row do not read as three lessons; they read as the game being stuck. One
+  // board, and the departure line is taught by the line itself — it is drawn
+  // on every shot, and it turns red before the mistake rather than after.
   angle: {
-    say: 'Knock the <b>3</b> in',
-    hint: 'Press <em>anywhere</em> and pull back, like a cue.',
+    say: 'Knock the <b>3</b> in, <em>on an angle</em>',
+    hint: 'Press <em>anywhere</em> and pull back. The <em>white circle</em> is where your ball ends up — keep it off the pocket.',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
     pot: () => 'score',
     facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
-    cheer: 'That is the whole game',
-    whiff: 'Missed the ball — line up on it first',
-    nudge: 'The cue is already pointing the right way. Just pull straight back.'
-  },
-
-  // NO WORDS THE PLAYER HAS NOT BEEN GIVEN. It said "aim at the ghost" and
-  // "slide it onto the far side"; nothing had told them what a ghost was, and
-  // "slide it" names a gesture that does not exist. It says what is on screen.
-  aim: {
-    say: 'Now <em>find</em> the angle',
-    hint: 'The <em>white circle</em> is where your ball will be when it touches the <b>2</b>. Turn until it sits on the far side.',
-    spot: 'first',
-    hand: true,
-    handDraw: 6.4,
-    pot: (p) => (p.ball.number === 2 ? 'score' : null),
-    cheer: 'Cut and in',
-    scold: 'Straight at it sends the 2 wide — put the white circle further round',
-    whiff: 'Missed — the white circle shows where your ball touches the 2',
-    nudge: 'Turn until the white circle sits on the far side of the 2, lined up with the lit pocket.'
-  },
-
-  // THE HALF OF BILLIARDS NOBODY TEACHES YOU. Every board so far has been about
-  // the object ball; this one is about the cue. The board opens with the cue
-  // parked on the square line — the one that follows the 3 straight in — so the
-  // departure preview is already red before a thumb goes down.
-  position: {
-    say: 'Watch where <em>you</em> end up',
-    hint: 'The faint line is your own ball after the hit. <b>Red</b> means it follows the 3 in. Angle it until the red clears.',
-    spot: 'first',
-    pot: () => 'score',
     cheer: 'In, and you are still on the table',
-    scold: 'Nothing down — but the line was clear, so the idea landed',
-    whiff: 'Missed the 3 — line up on it first',
-    nudge: 'Turn a few degrees either way. The line goes pale the moment it misses the pocket.'
+    whiff: 'Missed the ball — line up on it first',
+    nudge: 'Turn until the white circle sits on the far side of the 3, lined up with the lit pocket.'
   },
 
   /* ================================================================== *
    * ACT II — TWO BALLS. The object ball becomes your cue.
    * ================================================================== */
 
-  // Measured: the far ball drops across a 4-degree window. That is the same
-  // order as the plain cut in Act I, so this one can be judged on the pot.
   combo: {
     say: 'Use the <b>4</b> as your cue',
-    hint: 'The <b>4</b> is in front of the <b>1</b>. Hit the 4 and it puts the 1 in for you.',
+    hint: 'The <b>4</b> and the <b>1</b> line up on the lit pocket. Hit the 4 and it puts the 1 in for you.',
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
     cheer: 'One ball moved another. That is a combination',
     scold: 'That was the 4 down, not the 1 — the 1 is the one at the pocket',
     whiff: 'Missed everything — line up on the 4 first',
-    nudge: 'Aim through the 4 at the 1. The two of them are already pointing at the lit pocket.'
+    nudge: 'Aim through the 4 at the 1. The two of them already point at the lit pocket.'
   },
 
-  // JUDGED ON THE PLAN, NOT THE POT.
-  //
-  // The same shot with the balls off the pocket line is a 1.5-degree pot,
-  // measured across every heading at every power — tournament accuracy, not a
-  // lesson. So the board asks for the thing it is actually teaching: make the
-  // first ball reach the second. Drop it as well and the cheer says so.
+  // JUDGED ON THE HAND-OFF, not the pot: measured across every heading at
+  // every power, the pot at the end of an angled combination is worth about a
+  // degree and a half. Making the first ball reach the second is the lesson.
   'cut-combo': {
     say: 'Now on an <em>angle</em>',
-    hint: 'The <b>6</b> and the <b>2</b> do not line up. Hit the 6 on the side that sends it into the 2.',
+    hint: 'The <b>6</b> and the <b>2</b> do not quite line up. Hit the 6 on the side that sends it across into the 2.',
     spot: 'rack',
     handoff: true,
     cheer: 'The 6 found the 2 — that is the shot',
-    scold: 'The 6 never reached the 2. Hit it further round its side',
+    scold: 'The 6 never reached the 2. Hit it a little further round its side',
     whiff: 'Missed the 6 — line up on it first',
     nudge: 'Put the white circle on the left of the 6, so the 6 runs across into the 2.'
   },
@@ -152,44 +122,58 @@ const RULES = {
    * ACT III — THE TABLE. Cushions, budget, and the felt.
    * ================================================================== */
 
-  // Also judged on the plan: a banked pot measures at one degree. Using the
-  // cushion to reach a ball you could not otherwise touch IS the lesson, and
-  // the barrier is there to make that the only route.
   bank: {
     say: 'Go <em>round</em>, off the cushion',
-    hint: 'The wall blocks the <b>3</b>. Shoot <em>backwards</em> into the near cushion and come back off it — a bank is worth more, too.',
+    hint: 'The wall blocks the <b>3</b>. Your cue starts pointed at the near cushion — bounce off it and come back up to the lit corner.',
     spot: 'first',
     bankThenHit: true,
-    cheer: 'Off the cushion and onto the 3',
-    scold: 'Straight at it is blocked. Turn right round and use the cushion behind you',
-    whiff: 'Nothing hit — the dashed line shows where the bounce goes. Follow it to the 3',
-    nudge: 'Aim down at the cushion below you. The dashed return line swings up to the 3.'
+    cheer: 'Off the cushion and onto the 3 — and a bank is worth more',
+    scold: 'Straight at it is blocked. Use the cushion behind you',
+    whiff: 'Nothing hit — the dashed line is the return path. Follow it to the 3',
+    nudge: 'Aim down into the cushion below you. The dashed line swings back up to the 3.'
   },
 
-  // The budget, taught by counting rather than by a gate. It used to demand two
-  // balls in a single stroke: seven such shots in 2160, measured.
+  // TWO POCKETS, LIT THROUGHOUT. The plan spans the strokes rather than living
+  // inside one of them: the 1 and the 4 belong to the side pocket, the 2 to the
+  // corner, and three shots is not enough to take them one at a time carelessly.
+  //
+  // The single stroke that drops one in the side AND one in the corner was
+  // searched for and does not exist — after the first cut the cue has lost most
+  // of its speed and its departure is nearly fixed, so reaching a second ball
+  // twelve units away at the right angle is a coincidence, not a plan. The
+  // board points at the first shot of the route instead, and keeps both goals
+  // on screen.
   budget: {
     say: 'Four balls. <em>Three shots.</em>',
-    hint: 'Knock them all in. Watch how fast three shots goes.',
+    hint: '<em>Both</em> lit pockets are yours. Start with the <b>1</b> into the <b>4</b> — the side pocket is the cheap one.',
     spot: 'rack',
     clearRack: true,
     shots: 3,
     cheer: 'Rack cleared',
     scold: 'Nothing down that time',
     whiff: 'Missed everything — line up on a ball first',
-    nudge: 'Take the easiest one on the table. The lit pocket is the near one.'
+    nudge: 'Aim through the 1 at the 4. Watch the faint line: it runs on to the 2.'
   },
 
+  // THE RED SITS ON THE LAZY LINE. The obvious route to the 2 runs straight
+  // over a mine; the green sits just off it. So the board is a choice between
+  // the line you would take without looking and the line that pays — which is
+  // the whole game stated on one table.
+  //
+  // The original design put the green behind a bank. Measured, a route that
+  // banks, collects a pick-up and then pots is worth about a degree, so it was
+  // built as a thread instead: 4.5 degrees wide, and it still costs you the
+  // easy line.
   'green-red': {
-    say: 'Take the <em>green</em>. Miss the <b>red</b>.',
-    hint: '<em>Green</em> is always good. <b>Red</b> always costs you.',
+    say: 'The <b>red</b> is in the way',
+    hint: 'The lazy line to the <b>2</b> runs straight over a <b>mine</b>. Go just above it and take the <em>green</em> instead.',
     spot: 'rack',
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
-    cheer: 'Green on the way, red left alone',
-    scold: 'In, but you missed the green — take the line that rolls over it',
-    whiff: 'Missed the ball. The green is on the way, not the target',
-    nudge: 'The green sits on the line to the 2. Aim so your ball rolls over it.'
+    cheer: 'Past the red, through the green, and in',
+    scold: 'In, but you missed the green — it pays double, and it is barely off your line',
+    whiff: 'Missed the 2. Thread between the red and the green',
+    nudge: 'Turn a few degrees up from the mine. The green is the next thing your line touches.'
   }
 };
 
@@ -535,7 +519,12 @@ export class Tutorial {
       }
     }
     if (!best) return null;
-    this.game.callPocket?.(best.pocket.slot);
+    // Keep the board's own called pockets lit and ADD the guided one. On a
+    // board whose whole point is that two pockets are in play, replacing them
+    // with a single suggestion throws the plan away to give a hint.
+    const board = this.lesson?.call;
+    const base = board == null ? [] : Array.isArray(board) ? board : [board];
+    this.game.callPocket?.([...new Set([...base, best.pocket.slot])]);
     return String(best.ball.number);
   }
 

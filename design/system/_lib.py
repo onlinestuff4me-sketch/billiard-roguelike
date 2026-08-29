@@ -198,7 +198,8 @@ def table(w, h, pr=31, ft=24, t=13, jaw=15, lit=None, extra=''):
         _cushion(w, pr + jaw, w, h / 2 - pr - jaw, t, jaw, 'right'),
         _cushion(w, h / 2 + pr + jaw, w, h - pr - jaw, t, jaw, 'right')
     ]
-    voids = [_mouth(cx, cy, pr, lit is not None and i == lit) for i, (cx, cy) in enumerate(centres)]
+    hot = set() if lit is None else ({lit} if isinstance(lit, int) else set(lit))
+    voids = [_mouth(cx, cy, pr, i in hot) for i, (cx, cy) in enumerate(centres)]
     return (f'{"".join(frame)}<rect x="0" y="0" width="{w}" height="{h}" fill="{FELT}"/>'
             f'{_grid(w, h)}{"".join(cushions)}{"".join(voids)}{"".join(outline)}{extra}')
 
