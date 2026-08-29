@@ -66,9 +66,11 @@ const HAND_RELEASE = 8.6;
  * whatever is in the way of it).
  */
 const RULES = {
-  pocket: {
-    // The gesture and the rule arrive together. A player who has only been
-    // told to hit a ball has not been told what the game is.
+  /* ================================================================== *
+   * ACT I — THE CUE. You, one ball, and one pocket.
+   * ================================================================== */
+
+  angle: {
     say: 'Knock the <b>3</b> in',
     hint: 'Press <em>anywhere</em> and pull back, like a cue.',
     spot: 'first',
@@ -81,15 +83,11 @@ const RULES = {
     nudge: 'The cue is already pointing the right way. Just pull straight back.'
   },
 
-  // NO WORDS THE PLAYER HAS NOT BEEN GIVEN.
-  //
-  // This board used to say "aim at the ghost" and "slide it onto the far
-  // side". Nothing had ever told the player what a ghost was, and "slide it"
-  // names a gesture that does not exist — you turn the cue, you do not drag
-  // the circle. It says what is on screen: a white circle, and where to put
-  // it.
-  angle: {
-    say: 'Now <em>angle</em> it in',
+  // NO WORDS THE PLAYER HAS NOT BEEN GIVEN. It said "aim at the ghost" and
+  // "slide it onto the far side"; nothing had told them what a ghost was, and
+  // "slide it" names a gesture that does not exist. It says what is on screen.
+  aim: {
+    say: 'Now <em>find</em> the angle',
     hint: 'The <em>white circle</em> is where your ball will be when it touches the <b>2</b>. Turn until it sits on the far side.',
     spot: 'first',
     hand: true,
@@ -101,20 +99,75 @@ const RULES = {
     nudge: 'Turn until the white circle sits on the far side of the 2, lined up with the lit pocket.'
   },
 
-  // FOUR BALLS AND A BUDGET — TAUGHT BY COUNTING, NOT BY A GATE.
+  // THE HALF OF BILLIARDS NOBODY TEACHES YOU. Every board so far has been about
+  // the object ball; this one is about the cue. The board opens with the cue
+  // parked on the square line — the one that follows the 3 straight in — so the
+  // departure preview is already red before a thumb goes down.
+  position: {
+    say: 'Watch where <em>you</em> end up',
+    hint: 'The faint line is your own ball after the hit. <b>Red</b> means it follows the 3 in. Angle it until the red clears.',
+    spot: 'first',
+    pot: () => 'score',
+    cheer: 'In, and you are still on the table',
+    scold: 'Nothing down — but the line was clear, so the idea landed',
+    whiff: 'Missed the 3 — line up on it first',
+    nudge: 'Turn a few degrees either way. The line goes pale the moment it misses the pocket.'
+  },
+
+  /* ================================================================== *
+   * ACT II — TWO BALLS. The object ball becomes your cue.
+   * ================================================================== */
+
+  // Measured: the far ball drops across a 4-degree window. That is the same
+  // order as the plain cut in Act I, so this one can be judged on the pot.
+  combo: {
+    say: 'Use the <b>4</b> as your cue',
+    hint: 'The <b>4</b> is in front of the <b>1</b>. Hit the 4 and it puts the 1 in for you.',
+    spot: 'rack',
+    pot: (p) => (p.ball.number === 1 ? 'score' : null),
+    cheer: 'One ball moved another. That is a combination',
+    scold: 'That was the 4 down, not the 1 — the 1 is the one at the pocket',
+    whiff: 'Missed everything — line up on the 4 first',
+    nudge: 'Aim through the 4 at the 1. The two of them are already pointing at the lit pocket.'
+  },
+
+  // JUDGED ON THE PLAN, NOT THE POT.
   //
-  // This board used to demand two balls down in a SINGLE stroke. Brute-forcing
-  // every heading at every power through the real physics found seven such
-  // shots in 2160 — and the best re-tuned pair layout only widened that to a
-  // 1.5-degree window. Potting one ball already needs one to three degrees;
-  // needing the follow-through to drop a second one as well is a miracle, not
-  // a lesson. Worse, potting ONE ball matched no rule at all, so the shot the
-  // player had just made worked and the board said nothing.
-  //
-  // The budget is now taught the way it is actually felt: four balls go down
-  // over as many strokes as it takes, the count is on screen the whole time,
-  // and the third stroke is called out as the one the real room would have
-  // stopped at. The arithmetic does the teaching and nobody gets stranded.
+  // The same shot with the balls off the pocket line is a 1.5-degree pot,
+  // measured across every heading at every power — tournament accuracy, not a
+  // lesson. So the board asks for the thing it is actually teaching: make the
+  // first ball reach the second. Drop it as well and the cheer says so.
+  'cut-combo': {
+    say: 'Now on an <em>angle</em>',
+    hint: 'The <b>6</b> and the <b>2</b> do not line up. Hit the 6 on the side that sends it into the 2.',
+    spot: 'rack',
+    handoff: true,
+    cheer: 'The 6 found the 2 — that is the shot',
+    scold: 'The 6 never reached the 2. Hit it further round its side',
+    whiff: 'Missed the 6 — line up on it first',
+    nudge: 'Put the white circle on the left of the 6, so the 6 runs across into the 2.'
+  },
+
+  /* ================================================================== *
+   * ACT III — THE TABLE. Cushions, budget, and the felt.
+   * ================================================================== */
+
+  // Also judged on the plan: a banked pot measures at one degree. Using the
+  // cushion to reach a ball you could not otherwise touch IS the lesson, and
+  // the barrier is there to make that the only route.
+  bank: {
+    say: 'Go <em>round</em>, off the cushion',
+    hint: 'The wall blocks the <b>3</b>. Shoot <em>backwards</em> into the near cushion and come back off it — a bank is worth more, too.',
+    spot: 'first',
+    bankThenHit: true,
+    cheer: 'Off the cushion and onto the 3',
+    scold: 'Straight at it is blocked. Turn right round and use the cushion behind you',
+    whiff: 'Nothing hit — the dashed line shows where the bounce goes. Follow it to the 3',
+    nudge: 'Aim down at the cushion below you. The dashed return line swings up to the 3.'
+  },
+
+  // The budget, taught by counting rather than by a gate. It used to demand two
+  // balls in a single stroke: seven such shots in 2160, measured.
   budget: {
     say: 'Four balls. <em>Three shots.</em>',
     hint: 'Knock them all in. Watch how fast three shots goes.',
@@ -125,32 +178,6 @@ const RULES = {
     scold: 'Nothing down that time',
     whiff: 'Missed everything — line up on a ball first',
     nudge: 'Take the easiest one on the table. The lit pocket is the near one.'
-  },
-
-  // WALLS ARE FURNITURE, NOT A PUZZLE.
-  //
-  // This lesson used to demand a BANK: the 3 sat behind the barrier, so the
-  // only way to it was off a cushion. Sweeping every heading at every power
-  // found exactly one shot in 2160 that potted — a banked pot needs better
-  // than half a degree of aim, because the cushion multiplies the error and
-  // the path to the ball is long. It was not a hard lesson, it was an
-  // unpassable one.
-  //
-  // The wall now stands beside the shot instead of across it: the pot is the
-  // widest direct window on the table (3.5 degrees, measured), and the wall is
-  // what the cue ball rebounds off on its way out. You learn that it is solid
-  // by watching it be solid, not by being locked out of the room.
-  walls: {
-    say: 'The wall is <em>solid</em>',
-    hint: 'Knock the <b>3</b> into the lit pocket. <em>Nothing</em> passes through a wall.',
-    spot: 'first',
-    hand: true,
-    handDraw: 6.4,
-    pot: () => 'score',
-    cheer: 'In — and the wall never got a say',
-    scold: 'That is off the wall, not into the pocket',
-    whiff: 'Missed the 3 — line up on it first',
-    nudge: 'The lit pocket is right beside the 3. Barely a cut.'
   },
 
   'green-red': {
@@ -1001,9 +1028,31 @@ export class Tutorial {
       else if (verdict === 'reject') this._rejected = true;
     }
 
+    // Did any rule below actually judge this stroke? See the "no stroke goes
+    // unanswered" gate at the end.
+    let counted = false;
+
+    // THE HAND-OFF. Cue reaches ball A, A reaches ball B. This is the whole
+    // content of a combination, and it is judged on its own because the pot at
+    // the end of an ANGLED one measures at a degree and a half — the shot is
+    // real, but requiring it would be requiring tournament accuracy of someone
+    // on their fifth board. Dropping it as well is a bonus the cheer notices.
+    if (stillIts && lesson.handoff) {
+      counted = true;
+      if (this._passes >= 1) this._score();
+      else this._rejected = true;
+    }
+
+    // THE BANK. Same reasoning: a banked pot measures at one degree. Using the
+    // cushion to reach a ball you could not otherwise touch is the lesson.
+    if (stillIts && lesson.bankThenHit) {
+      counted = true;
+      if (this._hits >= 1 && (this.player?.bouncesUsed ?? 0) >= 1) this._score();
+      else this._rejected = true;
+    }
+
     // CLEAR THE RACK. Judged once per stroke, and the balls stay down between
     // strokes — this is one long attempt, not a series of identical reps.
-    let counted = false;
     if (stillIts && lesson.clearRack) {
       counted = true;
       const rack = this.rooms.scriptedEnemies;

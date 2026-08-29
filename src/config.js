@@ -794,6 +794,37 @@ export const INPUT = {
    * 1/draw, and since a committed shot is drawn well back, the lever arm is
    * long precisely when accuracy matters.
    */
+  /**
+   * THE PAD FLOATS. THIS IS THE ONE THAT MATTERS.
+   *
+   * Anchoring the cue's pivot at the BALL is correct at a real table and wrong
+   * on a phone, for a reason that only shows up in play: to shoot away from a
+   * cushion your thumb has to be between the ball and that cushion, and near
+   * the rail there is no room for it — the very shot that needs the most care
+   * is the one you cannot comfortably hold.
+   *
+   * So the pivot is wherever you put your thumb down. Press anywhere, and a
+   * ghost pad appears there carrying the cue's own geometry: the ring is the
+   * full draw, the knob is the butt, and the line through the middle is the
+   * shot. Everything the ball-anchored version bought is kept — the shot still
+   * fires AWAY from the thumb, drawing back still loads it, and angular gain is
+   * still 1/draw, so a long pull is still a fine one.
+   *
+   * The pad also re-centres on the first movement out of the dead zone so the
+   * heading you had is the heading you keep: see InputManager._seatPad.
+   */
+  floatingPad: true,
+  /**
+   * The pad is a CONTROL, so it is measured in thumb-reach, not table units.
+   *
+   * Sizing it from `maxDraw` put a ring nearly the width of the screen on the
+   * felt — honest about the world and useless as a control. These are CSS
+   * pixels: `padRadiusPx` is the travel to a fully loaded cue, and the dead
+   * zone is how far the thumb may drift before the pad seats and the cue
+   * starts to steer.
+   */
+  padRadiusPx: 104,
+  padDeadZonePx: 13,
   /** Below this the direction is degenerate; the last good heading is held. */
   minAimRadius: 0.7,
   /** Draw distance (thumb → ball, world units) mapping to minimum power. */

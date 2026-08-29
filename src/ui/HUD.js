@@ -126,6 +126,22 @@ export class HUD {
     this.damageVeil = el('div', 'hud-damage', this.root);
     this.damageTimer = 0;
 
+    /* ---------------- the floating aim pad ---------------- */
+    /**
+     * The thumb's own control, drawn where the thumb is.
+     *
+     * It is not decoration: with a floating pivot the player cannot see what
+     * the cue is pivoting ABOUT unless it is drawn, and the whole reason the
+     * pad floats is that the pivot is no longer somewhere they can infer. Ring
+     * = the full draw. Knob = the butt of the cue. The line between them is the
+     * shot, mirrored under the thumb.
+     */
+    this.pad = el('div', 'aim-pad', this.root);
+    this.padRing = el('div', 'pad-ring', this.pad);
+    this.padFill = el('div', 'pad-fill', this.pad);
+    this.padLine = el('div', 'pad-line', this.pad);
+    this.padKnob = el('div', 'pad-knob', this.pad);
+
     /* ---------------- world-projected door labels ---------------- */
     this.doorLayer = el('div', 'hud-doors', this.root);
     this.doorLabels = [];
@@ -269,6 +285,32 @@ export class HUD {
 
   hideScorecard() {
     this.card.classList.remove('visible');
+  }
+
+  /**
+   * Place the aim pad, in stage pixels.
+   * @param {{px:number, py:number, kx:number, ky:number, radius:number,
+   *          power:number}|null} pad null hides it
+   */
+  setPad(pad) {
+    if (!pad) {
+      this.pad.classList.remove('show');
+      return;
+    }
+    const dx = pad.kx - pad.px;
+    const dy = pad.ky - pad.py;
+    const len = Math.hypot(dx, dy);
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const style = this.pad.style;
+    style.setProperty('--pad-x', `${pad.px.toFixed(1)}px`);
+    style.setProperty('--pad-y', `${pad.py.toFixed(1)}px`);
+    style.setProperty('--pad-r', `${pad.radius.toFixed(1)}px`);
+    style.setProperty('--knob-x', `${dx.toFixed(1)}px`);
+    style.setProperty('--knob-y', `${dy.toFixed(1)}px`);
+    style.setProperty('--line-len', `${len.toFixed(1)}px`);
+    style.setProperty('--line-rot', `${angle.toFixed(2)}deg`);
+    style.setProperty('--pad-power', pad.power.toFixed(3));
+    this.pad.classList.add('show');
   }
 
   /** Render the owned-boon chips. Only rebuilds when the build changes. */

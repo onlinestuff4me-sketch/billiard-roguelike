@@ -33,6 +33,7 @@ import {
   CHAIN,
   ENEMY,
   FEEL,
+  INPUT,
   BOONS,
   INJECTOR,
   RULES,
@@ -1622,6 +1623,34 @@ function startRun() {
  * Input wiring
  * ------------------------------------------------------------------ */
 
+/**
+ * Put the ghost pad under the thumb.
+ *
+ * The pad's geometry is in world units so it tracks the table exactly, and is
+ * projected with the same camera maths the coach spotlight and door labels use.
+ * It draws only once the pad is SEATED — before that the gesture is still
+ * inside the dead zone and there is no pivot to show yet.
+ */
+function showPad(aim) {
+  const pad = INPUT.floatingPad ? aim.pad : null;
+  if (!pad) {
+    hud.setPad(null);
+    return;
+  }
+  // Client pixels to stage-local pixels. No camera involved: the pad is a
+  // control under the thumb, and it must not scale, drift or rotate with the
+  // table it happens to be drawn over.
+  const rect = uiLayer.getBoundingClientRect();
+  hud.setPad({
+    px: pad.x - rect.left,
+    py: pad.y - rect.top,
+    kx: pad.knobX - rect.left,
+    ky: pad.knobY - rect.top,
+    radius: pad.radius,
+    power: clamp(pad.power, 0, 1)
+  });
+}
+
 /** The speed this shot would leave the cue at, given how long it is held. */
 function launchSpeed() {
   return (
@@ -1762,12 +1791,14 @@ const input = new InputManager(stage, {
   onAimUpdate: (aim) => {
     noteAimPower(aim);
     player.updateAim(aim);
+    showPad(aim);
     if (aim.valid) refreshPrediction();
     else player.hideTrajectory();
   },
   onAimCancel: () => {
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
+    hud.setPad(null);
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.cancelAim();
@@ -1775,6 +1806,7 @@ const input = new InputManager(stage, {
   onRelease: (aim) => {
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
+    hud.setPad(null);
     if (aimStartDir) {
       const dot = clamp(aimStartDir.x * aim.dirX + aimStartDir.z * aim.dirZ, -1, 1);
       game.lastTurn = (Math.acos(dot) * 180) / Math.PI;
@@ -1790,6 +1822,7 @@ const input = new InputManager(stage, {
   },
   onFlick: (aim) => {
     uiLayer.classList.remove('aiming');
+    hud.setPad(null);
     // THERE IS NO FREE MOVE.
     //
     // The dash used to be a no-cost reposition, which is fine when the threat
