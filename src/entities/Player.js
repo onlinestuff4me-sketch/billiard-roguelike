@@ -257,12 +257,18 @@ class AimRenderer {
     this.group.add(this.dashes);
 
     // 3. Carom deflection cone.
-    this.conePositions = new Float32Array(18);
+    // Two legs, each allowed one bank, plus headroom. See main.js
+    // projectObjectPath — the object ball's route is a chain, not a stub.
+    this.conePositions = new Float32Array(8 * 6);
     this.coneGeo = new THREE.BufferGeometry();
     this.coneGeo.setAttribute('position', new THREE.BufferAttribute(this.conePositions, 3));
     this.coneGeo.setDrawRange(0, 0);
+    // WHOSE PATH IS WHOSE. The cue's own route is drawn in the player's cyan;
+    // the route of the balls it sends is drawn in the rack's amber. Two lines
+    // in the same colour crossing the same table is the one place this palette
+    // cannot afford to be tidy.
     this.coneMat = new THREE.LineBasicMaterial({
-      color: PALETTE.aim,
+      color: PALETTE.solid,
       transparent: true,
       opacity: 0.9,
       depthWrite: false
@@ -459,16 +465,28 @@ class AimRenderer {
       const L = TRAJECTORY.caromConeLength;
       const ox = h.body ? h.body.x : h.x;
       const oz = h.body ? h.body.z : h.z;
-      // ONE line, not a fan of three.
+      // ONE line, not a fan of three — the collision solver is deterministic,
+      // so this is a promise rather than a hedge.
       //
-      // The fan was three lines at +/-6.9 degrees, and the config comment
-      // beside it admitted the reason was emphasis rather than uncertainty:
-      // the collision solver is deterministic, so this line is a promise. Three
-      // of them read as a hedge the game is not making, and under a thumb that
-      // is moving them live they are three times the noise in the one moment
-      // the player is trying to read cause and effect.
-      this.conePositions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
-      this.coneGeo.setDrawRange(0, 2);
+      // And it is the WHOLE route where one is supplied: a combination is two
+      // collisions, and a board whose lesson is "the 6 runs into the 2 and the
+      // 2 goes in the corner" has to draw the second half of that sentence.
+      const legs = context.objectPath;
+      let n = 0;
+      if (legs && legs.length) {
+        for (const leg of legs) {
+          for (const seg of leg.segs) {
+            if ((n + 1) * 6 > this.conePositions.length) break;
+            this.conePositions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
+            n += 1;
+          }
+        }
+      }
+      if (!n) {
+        this.conePositions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
+        n = 1;
+      }
+      this.coneGeo.setDrawRange(0, n * 2);
       this.coneGeo.attributes.position.needsUpdate = true;
       this.cone.visible = true;
 

@@ -66,15 +66,21 @@ export function speedAfterDistance(v0, dist) {
   return Math.max(0, v - RULES.creepDrag * s);
 }
 
-/** How far a body still travels before it is slow enough to have stopped. */
-export function carryDistance(v0) {
+/**
+ * How far a body still travels before it is slow enough to have stopped.
+ *
+ * @param {number} v0
+ * @param {number} [drag] the body's own fast-regime drag. The cue ball uses
+ *   PLAYER.dragLaunched; a knocked object ball is heavier on the felt and uses
+ *   PHYSICS.knockedDrag, which is why the object-ball preview would be wrong
+ *   if it borrowed the cue's number.
+ */
+export function carryDistance(v0, drag = PLAYER.dragLaunched) {
   const floor = RULES.staticTable ? RULES.settleSpeed : PLAYER.settleSpeed;
   if (v0 <= floor) return 0;
-  if (!RULES.staticTable) return (v0 - floor) / PLAYER.dragLaunched;
+  if (!RULES.staticTable) return (v0 - floor) / drag;
   if (v0 <= RULES.creepSpeed) return (v0 - floor) / RULES.creepDrag;
-  return (
-    (v0 - RULES.creepSpeed) / PLAYER.dragLaunched + (RULES.creepSpeed - floor) / RULES.creepDrag
-  );
+  return (v0 - RULES.creepSpeed) / drag + (RULES.creepSpeed - floor) / RULES.creepDrag;
 }
 
 /**

@@ -1415,6 +1415,27 @@
           0 6px 0 rgba(0, 0, 0, 0.35),
           0 12px 44px rgba(46, 242, 196, 0.35);
       }
+      /* A COMPLETED LESSON IS NOT A LIVE TABLE.
+         The card stops fading out of the way on touch, because there is no
+         shot left to get out of the way of, and a completion state that
+         vanished when you touched the screen was the main reason the finished
+         board still looked playable. */
+      #ui-layer.aiming #coach.done.show {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
+      #ui-layer.aiming #coach.done.show .next { pointer-events: auto; }
+      /* And the felt behind it dims, so the eye goes to the one live control. */
+      #coach.done::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: rgba(5, 7, 10, 0.42);
+        z-index: -1;
+        pointer-events: none;
+        animation: doneVeil 0.4s ease both;
+      }
+      @keyframes doneVeil { from { opacity: 0; } to { opacity: 1; } }
       #coach .say { text-wrap: balance; }
       #coach .step {
         font-size: clamp(8px, 2.1vmin, 10px);

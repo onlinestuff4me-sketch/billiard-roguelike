@@ -836,6 +836,7 @@ export class Tutorial {
       this._passes = 0;
       this._pots = 0;
       this._scored = false;
+      this._pendingScore = null;
       this._tookGreen = false;
       this._struck.clear();
       this._strikes.length = 0;
@@ -863,8 +864,14 @@ export class Tutorial {
       // — a shot that drops two should read as one success, not two.
       if (lesson.clearRack) return;
       if (!lesson.pot) return;
+      // A REP IS JUDGED WHEN IT IS OVER, NOT WHILE IT IS STILL HAPPENING.
+      //
+      // Scoring the instant a ball dropped meant a stroke that potted the right
+      // ball AND then scratched was already a pass, with the Next button up,
+      // before the cue ball had finished rolling. The verdict is held until the
+      // table stops, where `_resolveShot` can see everything the stroke did.
       const verdict = lesson.pot({ ...payload, tookGreen: this._tookGreen });
-      if (verdict === 'score') this._score([payload.ball]);
+      if (verdict === 'score') this._pendingScore = [payload.ball];
       else if (verdict === 'reject') this._rejected = true;
       return;
     }
@@ -922,6 +929,11 @@ export class Tutorial {
         this._rejected = true;
       }
     }
+  }
+
+  /** Is a finished lesson waiting for the player to press Next? */
+  get awaitingNext() {
+    return this.active && this._awaitingNext;
   }
 
   /** Was this shot fired more than 90 degrees away from the rack? */
@@ -1069,6 +1081,14 @@ export class Tutorial {
       }
     }
 
+    // The held pot verdict. A scratch anywhere in the stroke takes it away —
+    // that is the whole reason it was held.
+    if (stillIts && this._pendingScore && !this._rejected) {
+      counted = true;
+      this._score(this._pendingScore);
+    }
+    this._pendingScore = null;
+
     // NO STROKE GOES UNANSWERED.
     //
     // Every rule above is opt-in, and a shot that matched none of them fell
@@ -1099,10 +1119,22 @@ export class Tutorial {
     this._rejected = false;
     this._wrongWay = false;
 
-    this._homeBall();
-    // A rack-clearing board keeps its progress: re-racking between strokes
-    // would hand back the very balls the player just spent shots on.
-    if (!lesson?.clearRack || this._awaitingNext) this._reRack();
+    // A RACK-CLEARING BOARD IS ONE LONG ATTEMPT, NOT A SERIES OF REPS.
+    //
+    // Every other board resets between attempts, which is right: they are the
+    // same shot practised until it lands. This one is a rack being cleared over
+    // three strokes, and teleporting the cue ball back to the spawn after each
+    // one throws away the position the player just played for — and does it
+    // silently, which is exactly how it was reported ("it resets my cue without
+    // telling me why"). The cue stays where it stopped, like it would at a
+    // table, and only goes home when the attempt itself is over.
+    const inProgress = lesson?.clearRack && !this._awaitingNext && !this._rejected;
+    if (!inProgress) {
+      this._homeBall();
+      this._reRack();
+    } else {
+      this._restAim();
+    }
     if (this._needsRoom) this._buildRoom();
   }
 
@@ -1199,14 +1231,28 @@ export class Tutorial {
     this._launched = false;
     this.el.classList.add('done');
 
+    // A FINISHED LESSON HAS TO LOOK FINISHED.
+    //
+    // It used to keep its own instruction on the card and simply grow a Next
+    // button underneath, so the board still read as a live table with an extra
+    // control on it — the player could not tell whether they had passed, and
+    // whether they were meant to shoot again. The card now says the lesson is
+    // over, in the lesson's own words of praise, and the table stops taking
+    // shots (see Tutorial.awaitingNext, read by the input gate).
     const last = this.index + 1 >= LESSONS.length;
     if (last) {
       this.stepEl.textContent = 'Tutorial complete';
       this.sayEl.textContent = 'You know enough to play';
-      this.hintEl.textContent = 'Next ones move — and they hit back.';
+      this.hintEl.textContent = 'The next tables move — and they hit back.';
       this.countEl.hidden = true;
     } else {
-      this._render();
+      // Clear the correction line FIRST: an empty status restores the lesson's
+      // own hint, which would put the instruction back under the congratulation.
+      this._setStatus('', null);
+      this.stepEl.textContent = `Lesson ${this.index + 1} complete`;
+      this.sayEl.innerHTML = this.lesson?.cheer || 'Nicely done';
+      this.hintEl.textContent = 'That is the lesson. Take the next one when you are ready.';
+      this.hintEl.classList.remove('good', 'bad');
     }
     this.skipEl.hidden = true;
     this.nextEl.hidden = false;

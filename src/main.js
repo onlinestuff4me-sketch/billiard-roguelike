@@ -900,15 +900,71 @@ function speedRatio(speed, lo = 0.35, hi = 2.2) {
  * always because a target consumed it — never because something hit it hard
  * enough.
  */
-function removeBall(ball) {
+/** Balls part-way down a pocket, shrinking and dropping. */
+const sinking = [];
+
+/**
+ * A POT SHOULD LOOK LIKE THE BALL WENT IN.
+ *
+ * It used to be a shatter: the ball vanished in a burst of its own colour, at
+ * the pocket, on the same frame the score text appeared over the top of it. The
+ * one moment the whole game is about was the one moment you could not see.
+ *
+ * The ball now falls INTO the mouth — pulled to the pocket centre, shrinking
+ * and dropping below the felt over a fifth of a second — and the score text is
+ * thrown clear of the pocket rather than sitting on it.
+ */
+function sinkBall(ball, pocket) {
+  const group = ball.group;
+  if (!group) return;
+  // The sweep disposes a dead body on the very next frame, so the sink takes
+  // ownership of it for the length of the animation. See sweepEntities.
+  ball.sinking = true;
+  sinking.push({
+    ball,
+    group,
+    t: 0,
+    life: 0.24,
+    fromX: ball.x,
+    fromZ: ball.z,
+    toX: pocket ? pocket.x : ball.x,
+    toZ: pocket ? pocket.z : ball.z,
+    baseY: group.position.y
+  });
+}
+
+function pumpSinking(rawDt) {
+  for (let i = sinking.length - 1; i >= 0; i--) {
+    const s = sinking[i];
+    s.t += rawDt;
+    const k = Math.min(s.t / s.life, 1);
+    // Accelerating: it is falling, not fading.
+    const ease = k * k;
+    s.group.position.x = s.fromX + (s.toX - s.fromX) * ease;
+    s.group.position.z = s.fromZ + (s.toZ - s.fromZ) * ease;
+    s.group.position.y = s.baseY - ease * 2.4;
+    s.group.scale.setScalar(Math.max(0.08, 1 - ease * 0.9));
+    if (k >= 1) {
+      s.ball.sinking = false;
+      sinking.splice(i, 1);
+    }
+  }
+}
+
+function removeBall(ball, pocket) {
   // Idempotent: a pot removes the ball, and the lesson director may then score
   // the same ball. Two shatter bursts for one pot is a tell that the game does
   // not know what happened.
   if (!ball || !ball.alive) return;
   ball.alive = false;
   audio.enemyDeath();
-  fx.burst(ball.x, ball.z, 20, ENEMY_COLOR[ball.type], 11, 1.5);
-  fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], ball.radius * 4.5, 0.36);
+  if (pocket) {
+    sinkBall(ball, pocket);
+    fx.shockwave(pocket.x, pocket.z, ENEMY_COLOR[ball.type], ball.radius * 3.2, 0.3);
+  } else {
+    fx.burst(ball.x, ball.z, 20, ENEMY_COLOR[ball.type], 11, 1.5);
+    fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], ball.radius * 4.5, 0.36);
+  }
 }
 
 /**
@@ -1197,14 +1253,29 @@ game.on = {
     const paid = rules.pot(ball.number);
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
 
-    // Beat one: the ball is in. Everything the shot ALSO did follows it.
+    // THE TEXT GOES WHERE THE BALL IS NOT.
+    //
+    // Every pocket is in a corner or against a rail, so a label centred on one
+    // sits directly over the ball dropping into it — the score covered the very
+    // event it was reporting. Each beat is thrown back toward the middle of the
+    // table, along the line from the pocket to the centre, and stacked further
+    // in as the run climbs.
+    const inward = (() => {
+      const len = Math.hypot(pocket.x, pocket.z) || 1;
+      return { x: -pocket.x / len, z: -pocket.z / len };
+    })();
+    const away = (n) => ({
+      x: pocket.x + inward.x * (2.6 + n * 1.5),
+      z: pocket.z + inward.z * (2.6 + n * 1.5)
+    });
+
     audio.chainNote(game.chain.count + 2);
     engine.hitStop(TIME.hitStopCrit);
     engine.zoomPunch();
     engine.shake(10);
     fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
-    fx.burst(pocket.x, pocket.z, 24, PALETTE.lip, 12, 1.1);
-    fx.floatText(pocket.x, pocket.z, `+${paid.value.toLocaleString()}`, 'crit');
+    const head = away(0);
+    fx.floatText(head.x, head.z, `+${paid.value.toLocaleString()}`, 'crit');
 
     const steps = [];
     let note = game.chain.count + 3;
@@ -1212,13 +1283,14 @@ game.on = {
     const beat = (text, colour) => {
       const when = at;
       const tone = note;
+      const spot = away(steps.length + 1);
       steps.push({
         at: when,
         run: () => {
           audio.chainNote(tone);
           engine.zoomPunch(FEEL.zoomPunch * 0.5);
-          fx.shockwave(pocket.x, pocket.z, colour, 4.2, 0.34);
-          fx.floatText(pocket.x, pocket.z - 1.6 - when * 4, text, 'crit');
+          fx.shockwave(spot.x, spot.z, colour, 3.4, 0.3);
+          fx.floatText(spot.x, spot.z, text, 'crit');
         }
       });
       at += 0.26;
@@ -1229,7 +1301,7 @@ game.on = {
     if (touched > 1) beat(`${touched} BALLS ×${touched}`, PALETTE.solid);
     if (steps.length) celebrate(steps);
 
-    removeBall(ball);
+    removeBall(ball, pocket);
   },
 
   /** The cue ball down a pocket. The stroke pays nothing. */
@@ -1784,6 +1856,95 @@ function projectCuePath(prediction) {
   );
 }
 
+/**
+ * WHAT HAPPENS TO EVERY BALL, NOT JUST YOURS.
+ *
+ * A combination is two collisions and the player has to see both before they
+ * commit. The object-ball line used to be a single stub of fixed length that
+ * said "it goes that way" and stopped — so on a board whose entire lesson is
+ * "the 6 runs across into the 2, and the 2 goes in the corner", the second
+ * half of the sentence was never drawn.
+ *
+ * This runs the chain: the struck ball's real post-impulse velocity, marched
+ * through the same predictor for as far as it actually carries under its own
+ * drag; and if it reaches another ball, that ball's departure too. Two links is
+ * the limit on purpose — a third is below the noise floor of a real shot, and
+ * drawing it would be promising precision the table does not have.
+ *
+ * @returns {Array<{segs:Array, ball:object|null}>} legs, nearest first
+ */
+function projectObjectPath(prediction) {
+  const legs = [];
+  const first = prediction?.hit;
+  if (!first || !first.body || !prediction.caromDir) return legs;
+
+  const last = prediction.segments[prediction.segments.length - 1];
+  if (!last) return legs;
+  let dx = last.bx - last.ax;
+  let dz = last.bz - last.az;
+  const dl = Math.hypot(dx, dz);
+  if (dl < 1e-5) return legs;
+  dx /= dl;
+  dz /= dl;
+
+  const arrival = speedAfterDistance(launchSpeed(), prediction.totalDistance);
+  let struck = first.body;
+  let nx = first.nx;
+  let nz = first.nz;
+  let vx = dx * arrival;
+  let vz = dz * arrival;
+  let strikerMass = player.mass;
+  let exclude = [struck];
+
+  for (let link = 0; link < 2; link += 1) {
+    const vn = vx * nx + vz * nz;
+    if (vn <= 0) break;
+    const invA = 1 / strikerMass;
+    const invB = 1 / (struck.mass || 1);
+    const j = (-(1 + PHYSICS.ballRestitution) * vn) / (invA + invB);
+    // The struck ball starts at rest, so its whole velocity is the impulse.
+    const bx = -j * invB * nx;
+    const bz = -j * invB * nz;
+    const speed = Math.hypot(bx, bz);
+    const carry = carryDistance(speed, PHYSICS.knockedDrag);
+    if (carry < TRAJECTORY.minDraw) break;
+
+    const path = physics.predictTrajectory(
+      { x: struck.x, z: struck.z },
+      { x: bx / speed, z: bz / speed },
+      {
+        // No banks on an object leg. A struck ball that reaches a cushion is
+        // past the part of the shot the player is choosing, and drawing its
+        // rebound turns a two-line answer into a scribble across the table.
+        maxBounces: 0,
+        radius: struck.radius,
+        maxDistance: carry,
+        bodies: game.enemies.filter((b) => !exclude.includes(b))
+      }
+    );
+    legs.push({ segs: path.segments, ball: struck });
+
+    // Hand on to the next ball, if this one reaches one.
+    const next = path.hit;
+    if (!next || !next.body) break;
+    const leg = path.segments[path.segments.length - 1];
+    let ex = leg.bx - leg.ax;
+    let ez = leg.bz - leg.az;
+    const el = Math.hypot(ex, ez) || 1;
+    ex /= el;
+    ez /= el;
+    const at = speedAfterDistance(speed, path.totalDistance);
+    strikerMass = struck.mass || 1;
+    struck = next.body;
+    nx = next.nx;
+    nz = next.nz;
+    vx = ex * at;
+    vz = ez * at;
+    exclude = [...exclude, struck];
+  }
+  return legs;
+}
+
 function refreshPrediction() {
   if (!player.alive) return;
   const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
@@ -1801,26 +1962,27 @@ function refreshPrediction() {
   player.showTrajectory(prediction, {
     pockets: rooms.table.pockets,
     power: player.aimPower,
-    cuePath: projectCuePath(prediction)
+    cuePath: projectCuePath(prediction),
+    objectPath: projectObjectPath(prediction)
   });
 }
 
 /** Heading when the current hold began; used to measure how far it turned. */
 let aimStartDir = null;
 
-// THE CONTRACT EATS ITS OWN DISMISSAL.
+// THE DISMISSING PRESS IS ALSO THE FIRST AIM.
 //
-// A banner that waits for a tap has to consume that tap, or the same press
-// that dismisses it also starts an aim — and the player has read nothing and
-// is already pulling the cue back. Capture phase, before the input manager
-// ever sees it.
+// This used to swallow the tap so a player could not read nothing and shoot
+// immediately. But the banner already waits indefinitely — the tap IS the
+// signal that they are done reading — and eating it meant the first press
+// after every room did nothing at all. That does not read as "banner
+// dismissed", it reads as the controls having stopped working, which is
+// exactly how it was reported. The press clears the banner and goes on to
+// start the aim, so the game answers every touch.
 stage.addEventListener(
   'pointerdown',
-  (event) => {
-    if (!hud.bannerWaiting) return;
-    hud.hideBanner();
-    event.stopPropagation();
-    event.preventDefault();
+  () => {
+    if (hud.bannerWaiting) hud.hideBanner();
   },
   { capture: true }
 );
@@ -1838,7 +2000,9 @@ const input = new InputManager(stage, {
     // cue ball somewhere confusing.
     game.state !== 'cleared' &&
     !menuOpen &&
-    !hud.bannerWaiting &&
+    // A finished lesson is FINISHED: the table stops taking shots so the
+    // completion card is not competing with a live cue.
+    !tutorial?.awaitingNext &&
     game.phase === 'aim',
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
@@ -2098,7 +2262,9 @@ window.addEventListener('blur', () => input.cancel());
 function sweepEntities() {
   for (let i = game.enemies.length - 1; i >= 0; i--) {
     const enemy = game.enemies[i];
-    if (!enemy.alive) {
+    // A body still dropping into a pocket keeps its mesh until it is out of
+    // sight; disposing it on the frame it died is what made a pot a vanishing.
+    if (!enemy.alive && !enemy.sinking) {
       enemy.dispose();
       game.enemies.splice(i, 1);
     }
@@ -2160,6 +2326,7 @@ function frame(now) {
   tutorial.update(rawDt);
   pulseCalledPocket(rawDt);
   pumpCelebrations(rawDt);
+  pumpSinking(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 
