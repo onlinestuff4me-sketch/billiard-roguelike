@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap">
+  <style>
+    body { margin: 0; font-family: 'Rajdhani','Chakra Petch','Segoe UI','Helvetica Neue',Arial,sans-serif; background: #05070a; color: #eaf6ff; }
+    a { color: #35f2ff; } a:hover { color: #8ffcff; }
+    .sheet { padding: 34px 36px 40px; }
+    .kicker { font-size: 11px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; color: #1d6f7a; }
+    h1 { font-size: 34px; font-weight: 700; margin: 8px 0 6px; letter-spacing: -.01em; }
+    h2 { font-size: 15px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #2ef2c4; margin: 34px 0 14px; }
+    .lede { font-size: 15px; line-height: 1.5; color: rgba(234,246,255,.62); max-width: 68ch; text-wrap: pretty; }
+    .row { display: flex; gap: 22px; align-items: flex-start; }
+    .frames { display: flex; gap: 20px; flex-wrap: wrap; }
+    .fr { display: flex; flex-direction: column; gap: 9px; width: 300px; }
+    .fr .cap { font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #1d6f7a; }
+    .fr .note { font-size: 12.5px; line-height: 1.45; color: rgba(234,246,255,.55); text-wrap: pretty; }
+    
+    .goals { display: grid; grid-template-columns: repeat(1, minmax(0,1fr)); gap: 10px; }
+    .goal { display: flex; gap: 14px; padding: 15px 17px; border-radius: 8px;
+             background: #080d12; border: 1px solid rgba(234,246,255,.08); }
+    .gn { font-size: 22px; font-weight: 700; color: #1d6f7a; line-height: 1; min-width: 26px; }
+    .gt { font-size: 16px; font-weight: 700; color: #eaf6ff; }
+    .gb { font-size: 13.5px; line-height: 1.45; color: rgba(234,246,255,.6); margin-top: 4px; text-wrap: pretty; }
+    .gtest { margin-top: 9px; font-size: 12.5px; color: #2ef2c4; display: flex; gap: 8px; align-items: baseline; }
+    .gtest span { font-size: 9.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+                   color: #7c8794; white-space: nowrap; }
+    .rules { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .rule { padding: 13px 15px; border-radius: 6px; background: #05070a;
+             border-left: 2px solid #2ef2c4; }
+    .rh { font-size: 13.5px; font-weight: 700; color: #2ef2c4; }
+    .rd { font-size: 12.5px; line-height: 1.45; color: rgba(234,246,255,.6); margin-top: 4px; text-wrap: pretty; }
+    .mx { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .mx th { text-align: left; font-size: 9.5px; font-weight: 700; letter-spacing: .18em;
+              text-transform: uppercase; color: #7c8794; padding: 0 12px 8px 0; }
+    .mx td { font-size: 13px; color: rgba(234,246,255,.72); padding: 9px 12px 9px 0;
+              border-top: 1px solid rgba(234,246,255,.08); vertical-align: top; }
+    .mx td b { color: #eaf6ff; }
+    .pick { margin-top: 26px; padding: 18px 20px; border-radius: 8px;
+             background: rgba(46,242,196,.06); border: 1px solid rgba(46,242,196,.3); }
+
+  </style>
+</helmet>
+<div class="sheet">
+<span class="kicker">Sink the Rack &middot; coaching system</span>
+<h1>Teaching one shot at a time</h1>
+<p class="lede">Six boards, each with one idea on it. What follows is what a coached board owes the player, the rules that follow from it, and three directions for the component that carries it. Every board is already measured for playability by <code style="color:#35f2ff">npm&nbsp;run&nbsp;verify</code>; this is about whether the player can <em>understand</em> the board, which no sweep can tell us.</p>
+
+<h2>What a board owes the player</h2>
+<div class="goals">
+<div class="goal"><span class="gn">1</span><div><div class="gt">One line, and it names the target and the pocket</div><div class="gb">The instruction is a single sentence a player can hold while aiming. Not a paragraph, not two facts, not a rule and an example. If a board needs two sentences, the board is teaching two things and should be two boards.</div><div class="gtest"><span>Passes when</span>A stranger can restate the goal after reading it once.</div></div></div>
+<div class="goal"><span class="gn">2</span><div><div class="gt">The board points, it does not describe</div><div class="gb">A highlighted region says which pieces the sentence is about, the lit pocket says where they go, and where a route is worth showing, the guide line shows it &mdash; including the ricochet and what happens to each ball after contact.</div><div class="gtest"><span>Passes when</span>Cover the text and the goal is still guessable from the table alone.</div></div></div>
+<div class="goal"><span class="gn">3</span><div><div class="gt">Coaching stays up until the player acts, and never covers the act</div><div class="gb">The instruction is readable for as long as it is needed and out of the way for as long as the shot lasts. Nothing expires on a timer; nothing sits on the felt the shot will cross.</div><div class="gtest"><span>Passes when</span>At every moment of a shot, both the words and the balls they name are visible.</div></div></div>
+<div class="goal"><span class="gn">4</span><div><div class="gt">A miss is explained, and the next attempt is coached</div><div class="gb">Failure states what happened in the player&rsquo;s terms &mdash; which ball, which pocket, what went in that should not have &mdash; and then shows, on the table, what to do differently. The board resets and the player goes again.</div><div class="gtest"><span>Passes when</span>The correction names a cause, not just an outcome, and the fix is visible on the felt.</div></div></div>
+<div class="goal"><span class="gn">5</span><div><div class="gt">Success is celebrated and clearly over</div><div class="gb">A passed board says so, in that lesson&rsquo;s own words, and offers exactly one thing to do next. The table stops accepting shots so the finished board cannot be mistaken for a live one.</div><div class="gtest"><span>Passes when</span>There is exactly one control on screen, and it moves forward.</div></div></div>
+</div>
+
+<h2>Rules that follow</h2>
+<div class="rules">
+<div class="rule"><div class="rh">One voice at a time</div><div class="rd">While a board is coaching, the HUD banner stands down. Two components reporting one event is worse than either alone.</div></div>
+<div class="rule"><div class="rh">Nothing expires</div><div class="rd">No coaching text is on a timer. It is replaced by the next thing that happens, or dismissed by the player.</div></div>
+<div class="rule"><div class="rh">Never a silent stroke</div><div class="rd">Every stroke gets a verdict. The absence of a response is indistinguishable from the game being broken, so the absence of a verdict is itself a verdict.</div></div>
+<div class="rule"><div class="rh">Judged at rest</div><div class="rd">A rep is judged when the table stops, not while it is still moving &mdash; so a stroke that pots and then scratches is a miss, and says why.</div></div>
+<div class="rule"><div class="rh">Two highlight colours, fixed</div><div class="rd">Bone-white is the called pocket. Green is a thing that helps you and the way forward. Red is a thing that costs you and a miss. Nothing else gets a highlight.</div></div>
+<div class="rule"><div class="rh">Say what is on screen</div><div class="rd">Only words for things the player can see and has been shown: the white circle, the lit pocket, the 4. No jargon the game has not taught.</div></div>
+</div>
+
+<h2>The four states</h2>
+<table class="mx">
+<tr><th style="width:120px">State</th><th style="width:180px">Trigger</th><th>What it must carry</th></tr>
+<tr><td><b>Instruct</b></td><td>Board loads</td><td>The one line, the highlighted region, the lit pocket, the resting aim placed near a real solution.</td></tr>
+<tr><td><b>Aiming</b></td><td>Thumb down</td><td>The instruction, still readable, out of the shot. The routes: your ball, the struck ball, and where each ends.</td></tr>
+<tr><td><b>Missed</b></td><td>Table at rest, rep not met</td><td>What happened, in one line. The line that was played, and the line to play instead. Board resets.</td></tr>
+<tr><td><b>Complete</b></td><td>Table at rest, rep met</td><td>The lesson&rsquo;s own praise, the felt dimmed, shots refused, one CTA forward.</td></tr>
+</table>
+
+<div class="pick">
+<div style="font-size:15px;font-weight:700;color:#2ef2c4;">Recommendation &mdash; Option C, the rail and the route</div>
+<p class="lede" style="margin-top:7px;">It is the only one of the three that satisfies goal 3 <em>by construction</em> rather than by animating out of the way, and it leans on the two pieces the game already has: the chained route lines and the called-pocket glow. Option A is the cheapest change and the weakest link between word and object; Option B is the strongest link and the most code, and its placement solve is the part most likely to misbehave on a board nobody authored. Worth stealing from B either way: the endpoint tags in C are its leader-line idea, minus the solve.</p>
+</div>
+</div></x-dc>
+</body>
+</html>
