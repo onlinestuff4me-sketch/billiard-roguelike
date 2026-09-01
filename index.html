@@ -352,17 +352,24 @@
         100% { transform: scale(1); }
       }
 
-      /* A lesson has no contract and no stroke budget, so both readouts would
-         be stating numbers nothing is enforcing. They fade in together with the
-         first real room. */
+      /* A lesson has no contract, no stroke budget and no way to be hurt, so
+         every one of these would be stating a number nothing is enforcing.
+         They fade in together with the first real room.
+
+         The hull bar joins them for a second reason as well: the table is
+         framed edge to edge, so the two far corner pockets sit UNDER this
+         band, and two of the six boards call one of them. A board that lights
+         a pocket to say "there" and then covers it has not pointed at
+         anything. With the readouts gone the corners are clear felt. */
       #ui-layer.coaching .hud-contract,
       #ui-layer.coaching .hud-strokes,
       #ui-layer.coaching .hud-score,
+      #ui-layer.coaching .hud-hp,
       #ui-layer.coaching .hud-freeze {
         opacity: 0;
         pointer-events: none;
       }
-      .hud-contract, .hud-strokes, .hud-score {
+      .hud-contract, .hud-strokes, .hud-score, .hud-hp {
         transition: opacity 0.45s ease;
       }
 
@@ -1304,128 +1311,147 @@
         100% { opacity: 0; transform: translate(0, 0) scale(1.35); }
       }
 
+      /* ---- the coaching band -------------------------------------- *
+         OPTION C: THE RAIL AND THE ROUTE. See docs/COACHING.md.
+
+         One sentence, on a strip of FIXED height pinned between the HUD and
+         the felt. It never moves, never fades and never overlaps the table,
+         which is the whole point: the card this replaces lived over the play
+         area at 12.5% and had to drop to nine per cent opacity the instant a
+         thumb went down, so the words were taken away at exactly the moment
+         the player might want to re-read them.
+
+         The vertical budget it belongs to:
+           0-11%    HUD band
+           11-19%   this band, fixed, whatever the state
+           28-64%   every rack, every target, every route
+           ~70%     the ball's spawn
+           70-100%  where the thumb goes
+
+         Four states — instruct, aiming, missed, complete — differ only in the
+         sentence and the colour. Nothing appears, nothing disappears, nothing
+         moves, so there is no animation to wait through and no layout shift to
+         re-find the words after.                                              */
       #coach {
         position: absolute;
-        left: 50%;
-        /* THE VERTICAL BUDGET. The card is up for the whole lesson, so where it
-           sits is a layout problem with only one answer.
-             0-10%   HUD band
-             12-20%  goal bar (lesson 2)
-             21-34%  this card
-             38-57%  the racks
-             ~70%    the ball's spawn
-             70-100% where the thumb goes
-           The foot of the screen looks free and is not: the cue model puts the
-           thumb below the ball, so a card down there hides the ball, the cue
-           and the player's own hand at once. It lives in the band above the
-           racks instead, and is capped so it can never grow into them. */
-        /* THE VERTICAL BUDGET, REVISED.
-             0-11%   HUD band
-             12-25%  this card, and it is CAPPED so it cannot grow past 25%
-             28-64%  every rack, every target, every route
-             ~70%    the ball's spawn
-             70-100% where the thumb goes
-           The card used to sit at 21% and grow downward, which put it over the
-           middle of the table on any lesson whose copy ran to two lines — so
-           the board covered the very thing it was describing. It is docked
-           under the HUD now, and it fades almost out the moment a thumb goes
-           down, so it can never be between the player and the shot. */
-        top: 12.5%;
-        bottom: auto;
-        /* The cap is the BAND, not the card. An instruction sizes itself to two
-           lines and lands near 10%; only the completion state — which adds the
-           Next button — needs the rest, and by then the rep is over so the
-           extra height costs the player nothing. Capping at 13% clipped that
-           button clean off the bottom of the card. */
-        max-height: 25%;
-        overflow: hidden;
-        transform: translate(-50%, 0) scale(0.94);
-        width: min(92%, 424px);
-        padding: 9px 14px 11px;
-        border-radius: 12px;
-        border: none;
-        /* Light card on a dark table. A dark card on dark felt has to shout to
-           be seen at all; a light one is legible at a glance and can therefore
-           be smaller and say less. */
-        background: #f2f4f6;
-        color: #12171d;
-        box-shadow:
-          0 6px 0 rgba(0, 0, 0, 0.35),
-          0 10px 30px rgba(0, 0, 0, 0.55);
-        text-align: left;
+        left: 0;
+        right: 0;
+        /* ANCHORED TO THE TABLE, NOT TO A PERCENTAGE.
+           The camera frames the arena edge to edge, so the felt has no margin
+           and there is exactly one horizontal strip of it with nothing in it:
+           between the bottom of the far corner pockets and the top of anything
+           a board can place. `--coach-top` is that strip's top edge, measured
+           from the live pocket geometry on every resize (see layoutBand in
+           main.js). The 11% fallback is what it works out to on a 9:16 phone —
+           it is here so the band still lands somewhere sane if it is ever
+           shown before a layout pass, not as the real answer. */
+          top: var(--coach-top, 11%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        /* FIXED HEIGHT, TWO LINES OF ROOM. The band's value is that it is
+           always the same shape in the same place; sizing it to its content
+           would give that away on the first board whose sentence wraps. Two
+           lines at this size is about 64 characters, which is the budget every
+           string in RULES is written to. */
+        height: 46px;
+        padding: 0 12px;
+        box-sizing: border-box;
+        background: rgba(5, 7, 10, 0.94);
+        border-top: 1px solid rgba(29, 111, 122, 0.35);
+        border-bottom: 1.5px solid rgba(29, 111, 122, 0.55);
         opacity: 0;
-        transition: opacity 0.22s ease, transform 0.22s ease, border-color 0.2s ease;
+        transition: opacity 0.22s ease, border-color 0.24s ease;
+        /* Pointer-transparent as a whole so it can never eat an aim; only the
+           Next button takes taps. */
         pointer-events: none;
         z-index: 40;
       }
-      /* Grows DOWNWARD from its anchor. This was still translate(-50%, -50%)
-         from when the card was vertically centred, so it rendered half its own
-         height above where it was placed — and got taller upward into whatever
-         was above it. That is what put it over the goal bar. */
-      #coach.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
-      /* Actions. The card itself is pointer-transparent so it never eats an aim;
-         only these two take taps, and both sit in the card band well clear of
-         the thumb zone below the ball. */
-      /* Gated on .show: a hidden card must not leave a live target behind.
-         opacity alone does not stop hit-testing. */
-      #coach.show .next,
-      #coach.show .skip {
-        pointer-events: auto;
-        font-family: inherit;
-        cursor: pointer;
-        border-radius: 999px;
+      #coach.show { opacity: 1; }
+
+      #coach .line {
+        flex: 1;
+        min-width: 0;
+        font-size: clamp(12px, 3.2vmin, 15px);
+        font-weight: 700;
+        line-height: 1.18;
+        letter-spacing: -0.005em;
+        color: var(--bone, #eaf6ff);
+        /* Two lines, then clip. A third would push the band's height around,
+           and a sentence needing three lines is the wrong sentence — the
+           endpoint tags on the felt carry what will not fit. */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-wrap: balance;
       }
+      /* THE SAME COLOUR ALLOCATION AS THE TABLE. A ball named in the sentence
+         takes the rack's amber and the good thing takes green, so the word and
+         the object it names are the same colour. Pocket names stay the band's
+         own bone-white, which is what a called pocket is lit in. */
+      #coach .line b {
+        font-weight: 800;
+        color: var(--amber, #ffb340);
+      }
+      #coach .line em {
+        font-style: normal;
+        font-weight: 800;
+        color: #2ef2c4;
+      }
+      #coach.bad .line { color: #ff8f7a; }
+      #coach.bad .line b,
+      #coach.bad .line em { color: #ff5a3d; }
+      #coach.good .line { color: #2ef2c4; }
+      #coach.good .line b,
+      #coach.good .line em { color: #2ef2c4; }
+
+      #coach.bad { border-bottom-color: #ff5a3d; }
+      #coach.good { border-bottom-color: #2ef2c4; }
+
+      /* Where the old card's "Lesson 2 of 6" eyebrow went. Two numerals,
+         because the sentence has the left side and a player two boards in
+         wants to know how many are left rather than read the phrase again. */
+      #coach .prog {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: #7c8794;
+        white-space: nowrap;
+      }
+      #coach .prog[hidden] { display: none; }
+
+      /* The CTA takes the progress chip's PLACE rather than sitting beside it:
+         on a finished board there is exactly one control, and it goes forward. */
       #coach .next {
         display: block;
-        margin: 10px auto 0;
-        padding: 9px 22px;
-        font-size: clamp(13px, 3.6vmin, 17px);
+        padding: 6px 15px;
+        font-family: inherit;
+        font-size: clamp(11.5px, 3vmin, 14px);
         font-weight: 800;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
         color: #04120e;
         background: #2ef2c4;
         border: none;
-        box-shadow: 0 0 26px rgba(46, 242, 196, 0.55);
+        border-radius: 999px;
+        cursor: pointer;
+        box-shadow: 0 0 22px rgba(46, 242, 196, 0.5);
         animation: nextPop 0.28s cubic-bezier(0.2, 1.4, 0.4, 1) both;
       }
+      /* Gated on .show: a hidden band must not leave a live target behind, and
+         opacity alone does not stop hit-testing. */
+      #coach.show .next { pointer-events: auto; }
       #coach .next:active { transform: scale(0.96); }
       #coach .next[hidden] { display: none; }
       @keyframes nextPop {
         from { transform: scale(0.7); opacity: 0; }
         to   { transform: scale(1); opacity: 1; }
       }
-      #coach .skip {
-        position: absolute;
-        top: 6px;
-        right: 8px;
-        padding: 3px 10px;
-        font-size: clamp(9.5px, 2.5vmin, 12px);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #8b95a1;
-        background: transparent;
-        border: 1px solid rgba(18, 23, 29, 0.18);
-      }
-      #coach .skip:active { color: #12171d; }
-      #coach .skip[hidden] { display: none; }
 
-      #coach.done {
-        box-shadow:
-          0 0 0 3px #2ef2c4,
-          0 6px 0 rgba(0, 0, 0, 0.35),
-          0 12px 44px rgba(46, 242, 196, 0.35);
-      }
-      /* A COMPLETED LESSON IS NOT A LIVE TABLE.
-         The card stops fading out of the way on touch, because there is no
-         shot left to get out of the way of, and a completion state that
-         vanished when you touched the screen was the main reason the finished
-         board still looked playable. */
-      #ui-layer.aiming #coach.done.show {
-        opacity: 1;
-        transform: translate(-50%, 0) scale(1);
-      }
-      #ui-layer.aiming #coach.done.show .next { pointer-events: auto; }
-      /* And the felt behind it dims, so the eye goes to the one live control. */
+      /* A COMPLETED LESSON IS NOT A LIVE TABLE. The felt behind dims so the eye
+         goes to the one live control, and the table stops taking shots (see
+         Tutorial.awaitingNext, read by the input gate). */
       #coach.done::after {
         content: '';
         position: fixed;
@@ -1436,114 +1462,81 @@
         animation: doneVeil 0.4s ease both;
       }
       @keyframes doneVeil { from { opacity: 0; } to { opacity: 1; } }
-      #coach .say { text-wrap: balance; }
-      #coach .step {
-        font-size: clamp(8px, 2.1vmin, 10px);
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        color: #7c8794;
-        margin-bottom: 2px;
-      }
 
-      /* THE CARD GETS OUT OF THE WAY OF THE SHOT.
-         The instant a thumb goes down the player is aiming, not reading, and
-         anything opaque over the felt is in the way. Fading rather than hiding
-         keeps the words recoverable at a glance without a reappearing flash on
-         every release. The spotlight scrim goes with it for the same reason. */
-      #ui-layer.aiming #coach.show {
-        opacity: 0.09;
-        transform: translate(-50%, -4px) scale(0.98);
-      }
-      #ui-layer.aiming #coach.show .next,
-      #ui-layer.aiming #coach.show .skip { pointer-events: none; }
+      /* The spotlight scrim still steps back while a thumb is down — it dims
+         the felt, and dim felt is useful while READING about the table and
+         squarely unhelpful while aiming across it. The band does not, because
+         it is not on the felt in the first place. */
       #ui-layer.aiming #coach-spot.show { opacity: 0.3; }
-      #coach-spot, #coach { transition: opacity 0.16s ease, transform 0.16s ease; }
-      #coach.done .step { color: #2ef2c4; }
-      #coach .say {
-        font-size: clamp(15px, 4vmin, 20px);
-        font-weight: 800;
-        line-height: 1.12;
-        letter-spacing: -0.01em;
-        color: #12171d;
-        text-wrap: balance;
-      }
-      /* The one word that matters, coloured — the whole reason these read fast. */
-      #coach .say em,
-      #coach .hint em {
-        font-style: normal;
-        color: #12a150;
-        font-weight: 800;
-      }
-      #coach .hint.good { color: #12a150; font-weight: 700; }
-      #coach .hint.bad { color: #d2402f; font-weight: 700; }
+      #coach-spot { transition: opacity 0.16s ease; }
 
-      #coach .say b,
-      #coach .hint b {
-        font-weight: 800;
-        color: #d2402f;
-      }
-      #coach .hint {
-        margin-top: 4px;
-        font-size: clamp(11px, 2.9vmin, 14px);
-        line-height: 1.3;
-        color: #3d4753;
-        text-wrap: balance;
-      }
-      #coach .hint:empty { display: none; }
-      #coach .count {
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 8px;
-        margin-top: 9px;
-      }
-      #coach .count[hidden] { display: none; }
-      #coach .pip {
-        width: 13px;
-        height: 13px;
-        border-radius: 50%;
-        border: 2px solid rgba(18, 23, 29, 0.25);
-      }
-      #coach .pip.on {
-        background: #2ef2c4;
-        border-color: #2ef2c4;
-        box-shadow: 0 0 12px rgba(46, 242, 196, 0.8);
-      }
-      #coach .tally {
-        margin-left: 6px;
-        font-size: clamp(12px, 3vmin, 15px);
-        font-weight: 700;
-        letter-spacing: 0.12em;
-        color: #3d4753;
-      }
-      /* Below the card, not inside it. Reserving a line for feedback that is
-         absent most of the time made the card permanently taller — and taller
-         again when a two-line scold appeared, which is exactly when it grew
-         over the ball the lesson was about. Hung underneath, the card's height
-         no longer depends on whether anything is being said. */
-      #coach .status {
+      /* THE WAY OUT LIVES IN THE HUD, NOT IN THE BAND.
+         The band has room for one sentence and one control, and the control
+         has to be the one that moves forward; a way out beside it at the same
+         size is a way out that gets pressed by mistake. The HUD's score,
+         contract and stroke readouts are all hidden during a lesson, so this
+         corner is free. */
+      #coach-skip {
         position: absolute;
-        /* Tight to the card. At 6px the status BOX (full card width, though the
-           text inside it is centred and stops well short) grazed the far ball's
-           top edge by 0.2px on a 344px-wide screen when a scold wrapped to two
-           lines. Nothing was actually covered, but that is luck, not margin. */
-        top: calc(100% + 2px);
-        left: 0;
-        right: 0;
-        font-size: clamp(11.5px, 3.0vmin, 15px);
-        font-weight: 700;
-        opacity: 0;
-        transition: opacity 0.18s ease;
-        text-wrap: balance;
-        text-shadow:
-          0 0 10px rgba(5, 7, 10, 0.95),
-          0 1px 3px rgba(5, 7, 10, 0.95);
+        /* TOP CENTRE, not a corner. The two far corner pockets live in the
+           corners of this band — that is the whole reason the hull readout is
+           hidden during a lesson — so a control parked in either one is a
+           control sitting in a pocket. The middle of the top edge is the only
+           part of it that is never table. */
+        top: calc(var(--hud-pad) + 1px);
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 11px;
+        font-family: inherit;
+        font-size: clamp(9px, 2.4vmin, 11px);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #6c7784;
+        background: rgba(5, 7, 10, 0.5);
+        border: 1px solid rgba(234, 246, 255, 0.14);
+        border-radius: 999px;
+        cursor: pointer;
+        pointer-events: auto;
+        z-index: 41;
       }
-      #coach .status.show { opacity: 1; }
-      #coach .status.good { color: #2ef2c4; }
-      #coach .status.bad { color: var(--amber); }
-      #coach .status.good { color: #2ef2c4; }
-      #coach .status.bad { color: var(--amber); }
+      #coach-skip:active { color: var(--bone); }
+      #coach-skip[hidden] { display: none; }
+
+      /* ---- endpoint tags ------------------------------------------- *
+         The per-aim half of the instruction: what the route currently drawn
+         actually DOES, named at the point it ends. Two shots that look almost
+         identical on the felt — one that drops the 1 and one that leaves it an
+         inch short — draw the same picture, and the difference is the shot.
+
+         Colour is the channel of the ball whose route ends there: cyan for
+         yours, amber for a rack ball; bone-white at a pocket, which is what a
+         called pocket is lit in; red when that pocket is about to eat your own
+         ball.                                                                */
+      #coach-tags {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 38;
+      }
+      .coach-tag {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        padding: 2px 6px;
+        border-radius: 5px;
+        font-size: clamp(8.5px, 2.2vmin, 10px);
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+        background: rgba(5, 7, 10, 0.9);
+        border: 1px solid currentColor;
+        opacity: 0;
+        transition: opacity 0.12s ease;
+      }
+      .coach-tag.show { opacity: 1; }
+      .coach-tag.cue { color: var(--cyan); }
+      .coach-tag.rack { color: var(--amber); }
+      .coach-tag.pocket { color: var(--bone); }
+      .coach-tag.bad { color: #ff5a3d; }
       @media (prefers-reduced-motion: reduce) {
         .menu-title .ln { animation: none; }
       }

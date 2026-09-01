@@ -54,13 +54,19 @@ const HAND_RELEASE = 8.6;
  * while the table settles, `clearsRack` scores the whole rack going down in one
  * launch, and `shot` judges the launch once the rep is over.
  *
- * `say` and `hint` are MARKUP, not text. One idea per card is easier to hold
- * when one word carries it, so the target is red (`<b>`) and the gesture is
- * green (`<em>`) — the same two colours on every lesson, so the colour itself
- * is readable before the sentence is. Never more than one of each per line:
- * highlighting everything highlights nothing.
+ * `say` is MARKUP, not text, and it is ONE SENTENCE — the coaching band holds
+ * a fixed two lines and nothing else, so a board that needs a paragraph is a
+ * board teaching two things. The markup is the game's own colour allocation,
+ * not decoration: `<b>` names a ball and takes the rack's amber, `<em>` names
+ * the good thing or the way through and takes green, and plain ink is the
+ * band's bone-white — the same white the called pocket is lit in, so a pocket
+ * named in the sentence and the pocket glowing on the felt read as one thing.
  *
- * `spot` names what the card is talking about, and the spotlight dims the rest
+ * `nudge` is the same sentence's second attempt. Nothing here can be failed,
+ * but a board you cannot fail and cannot do either is a wall, so after two
+ * honest misses the nudge replaces the instruction with the actual answer.
+ *
+ * `spot` names what the band is talking about, and the spotlight dims the rest
  * of the table around it — 'player', 'goal', 'first' (the ball nearest the
  * cue), 'rack' (all of them in one shape) or 'blocked' (the rack together with
  * whatever is in the way of it).
@@ -77,16 +83,15 @@ const RULES = {
   // board, and the departure line is taught by the line itself — it is drawn
   // on every shot, and it turns red before the mistake rather than after.
   angle: {
-    say: 'Knock the <b>3</b> in, <em>on an angle</em>',
-    hint: 'Press <em>anywhere</em> and pull back. The <em>white circle</em> is where your ball ends up — keep it off the pocket.',
+    say: '<em>Pull back</em> and sink the <b>3</b> in the side pocket',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
     pot: () => 'score',
     facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
     cheer: 'In, and you are still on the table',
-    whiff: 'Missed the ball — line up on it first',
-    nudge: 'Turn until the white circle sits on the far side of the 3, lined up with the lit pocket.'
+    whiff: 'Your line went past the 3 — put it through the middle of the ball',
+    nudge: 'Line the <b>3</b> up with the lit pocket, then pull back from below your ball.'
   },
 
   /* ================================================================== *
@@ -94,28 +99,26 @@ const RULES = {
    * ================================================================== */
 
   combo: {
-    say: 'Use the <b>4</b> as your cue',
-    hint: 'The <b>4</b> and the <b>1</b> line up on the lit pocket. Hit the 4 and it puts the 1 in for you.',
+    say: 'Sink the <b>1</b> in the side pocket, off the <b>4</b>',
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
     cheer: 'One ball moved another. That is a combination',
-    scold: 'That was the 4 down, not the 1 — the 1 is the one at the pocket',
-    whiff: 'Missed everything — line up on the 4 first',
-    nudge: 'Aim through the 4 at the 1. The two of them already point at the lit pocket.'
+    scold: 'You put the 4 down, not the 1 — the 1 is the one by the pocket',
+    whiff: 'You aimed past the 4 — aim through it, at the 1 behind it',
+    nudge: 'Aim <em>through</em> the <b>4</b> at the <b>1</b>. Those two already point at the lit pocket.'
   },
 
   // JUDGED ON THE HAND-OFF, not the pot: measured across every heading at
   // every power, the pot at the end of an angled combination is worth about a
   // degree and a half. Making the first ball reach the second is the lesson.
   'cut-combo': {
-    say: 'Now on an <em>angle</em>',
-    hint: 'The <b>6</b> and the <b>2</b> do not quite line up. Hit the 6 on the side that sends it across into the 2.',
+    say: 'Cut the <b>6</b> across into the <b>2</b>, toward the side pocket',
     spot: 'rack',
     handoff: true,
     cheer: 'The 6 found the 2 — that is the shot',
-    scold: 'The 6 never reached the 2. Hit it a little further round its side',
-    whiff: 'Missed the 6 — line up on it first',
-    nudge: 'Put the white circle on the left of the 6, so the 6 runs across into the 2.'
+    scold: 'You hit the 6 too full, so it went straight — catch it further round its side',
+    whiff: 'You aimed past the 6 — the shot starts on that ball',
+    nudge: 'Put your white circle on the <em>left</em> of the <b>6</b>, so the 6 runs across into the 2.'
   },
 
   /* ================================================================== *
@@ -123,14 +126,13 @@ const RULES = {
    * ================================================================== */
 
   bank: {
-    say: 'Go <em>round</em>, off the cushion',
-    hint: 'The wall blocks the <b>3</b>. Your cue starts pointed at the near cushion — bounce off it and come back up to the lit corner.',
+    say: 'The wall blocks the <b>3</b> — <em>bounce</em> off the cushion below you',
     spot: 'first',
     bankThenHit: true,
     cheer: 'Off the cushion and onto the 3 — and a bank is worth more',
-    scold: 'Straight at it is blocked. Use the cushion behind you',
-    whiff: 'Nothing hit — the dashed line is the return path. Follow it to the 3',
-    nudge: 'Aim down into the cushion below you. The dashed line swings back up to the 3.'
+    scold: 'You went straight at it and the wall took the shot — go down into the cushion instead',
+    whiff: 'Your line came back short of the 3 — aim further down the cushion',
+    nudge: 'Aim <em>down</em> into the cushion below you. The dashed line swings back up to the <b>3</b>.'
   },
 
   // TWO POCKETS, LIT THROUGHOUT. The plan spans the strokes rather than living
@@ -144,15 +146,14 @@ const RULES = {
   // board points at the first shot of the route instead, and keeps both goals
   // on screen.
   budget: {
-    say: 'Four balls. <em>Three shots.</em>',
-    hint: '<em>Both</em> lit pockets are yours. Start with the <b>1</b> into the <b>4</b> — the side pocket is the cheap one.',
+    say: 'Clear four balls in <em>three shots</em> — the <b>1</b> into the <b>4</b> first',
     spot: 'rack',
     clearRack: true,
     shots: 3,
     cheer: 'Rack cleared',
-    scold: 'Nothing down that time',
-    whiff: 'Missed everything — line up on a ball first',
-    nudge: 'Aim through the 1 at the 4. Watch the faint line: it runs on to the 2.'
+    scold: 'Nothing down — a stroke that pockets nothing costs you nothing, so go again',
+    whiff: 'You touched nothing — start the shot on a ball',
+    nudge: 'Aim <em>through</em> the <b>1</b> at the <b>4</b>, into the side pocket. Both lit pockets are yours.'
   },
 
   // THE RED SITS ON THE LAZY LINE. The obvious route to the 2 runs straight
@@ -165,15 +166,14 @@ const RULES = {
   // built as a thread instead: 4.5 degrees wide, and it still costs you the
   // easy line.
   'green-red': {
-    say: 'The <b>red</b> is in the way',
-    hint: 'The lazy line to the <b>2</b> runs straight over a <b>mine</b>. Go just above it and take the <em>green</em> instead.',
+    say: 'Thread to the <b>2</b> through the <em>green</em>, not over the red',
     spot: 'rack',
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
     cheer: 'Past the red, through the green, and in',
-    scold: 'In, but you missed the green — it pays double, and it is barely off your line',
-    whiff: 'Missed the 2. Thread between the red and the green',
-    nudge: 'Turn a few degrees up from the mine. The green is the next thing your line touches.'
+    scold: 'In, but your line went under the green — it pays double and it is barely off the lazy route',
+    whiff: 'Your line missed the 2 — thread it between the red and the green',
+    nudge: 'Turn a few degrees <em>up</em> from the red. The <em>green</em> is the next thing your line touches.'
   }
 };
 
@@ -247,23 +247,56 @@ export class Tutorial {
     this.layer.appendChild(this.trackEl);
     this.layer.appendChild(this.handEl);
 
+    // THE BAND. One sentence, on a strip of fixed height pinned above the
+    // felt, and nothing else — see docs/COACHING.md.
+    //
+    // What this replaces was a light card floating over the table at 12.5%,
+    // capped at a quarter of the screen, which faded to nine per cent opacity
+    // the instant a thumb went down so it would stop covering the shot. That
+    // is the whole problem stated as a workaround: the words were in the play
+    // area, so they had to be taken away exactly when the player might want to
+    // re-read them. The band is not in the play area, so it never moves, never
+    // fades, and never has to choose between being readable and being clear of
+    // the balls. Four states — instruct, aiming, missed, complete — are the
+    // same strip in the same place, in three colours.
     const el = document.createElement('div');
     el.id = 'coach';
     el.innerHTML =
-      '<button class="skip" type="button">Skip</button>' +
-      '<div class="step"></div><div class="say"></div><div class="hint"></div>' +
-      '<div class="count" hidden></div>' +
-      '<button class="next" type="button" hidden></button>' +
-      '<div class="status"></div>';
+      '<div class="line"></div>' +
+      '<div class="prog"></div>' +
+      '<button class="next" type="button" hidden></button>';
     this.el = el;
-    this.stepEl = el.querySelector('.step');
-    this.sayEl = el.querySelector('.say');
-    this.hintEl = el.querySelector('.hint');
-    this.countEl = el.querySelector('.count');
-    this.statusEl = el.querySelector('.status');
+    this.lineEl = el.querySelector('.line');
+    this.progEl = el.querySelector('.prog');
     this.nextEl = el.querySelector('.next');
-    this.skipEl = el.querySelector('.skip');
     this.layer.appendChild(el);
+
+    // Skip lives in the HUD band above, not in the coaching band. The band has
+    // room for one sentence and one control, and the control has to be the one
+    // that moves forward; a way out sitting next to it at the same size is a
+    // way out that gets pressed by mistake. The HUD's score, contract and
+    // stroke readouts are all hidden during a lesson, so that corner is free.
+    const skip = document.createElement('button');
+    skip.id = 'coach-skip';
+    skip.type = 'button';
+    skip.textContent = 'Skip';
+    // Hidden until a lesson starts. The button it replaces lived inside the
+    // card, which was opacity 0 before the tutorial ran; this one is its own
+    // element on the layer, so without this it is a live control over the
+    // menu and over normal play.
+    skip.hidden = true;
+    this.skipEl = skip;
+    this.layer.appendChild(skip);
+
+    // ENDPOINT TAGS. The band says what the board is; these say what THIS aim
+    // does — where your ball ends up, where the ball you are about to move
+    // ends up, and whether either of those is a pocket. They are the half of
+    // the instruction that changes on every frame of the drag, which is
+    // exactly the half a fixed sentence cannot carry.
+    this.tagEl = document.createElement('div');
+    this.tagEl.id = 'coach-tags';
+    this.layer.appendChild(this.tagEl);
+    this._tagNodes = [];
 
     // Bound to pointerdown, not click, and the event stops here.
     //
@@ -312,6 +345,8 @@ export class Tutorial {
     /** True once a lesson is finished and the Next button is showing. */
     this._awaitingNext = false;
     this._misses = 0;
+    /** Has this board been missed enough times to swap the hint for the answer? */
+    this._nudging = false;
   }
 
   /* ---------------------------------------------------------------- *
@@ -398,10 +433,11 @@ export class Tutorial {
     // Emptied rather than left holding the last lesson's text: the card stays
     // in the DOM for a possible replay, and is otherwise one class toggle away
     // from reappearing over live play.
-    this.stepEl.textContent = '';
-    this.sayEl.textContent = '';
-    this.hintEl.textContent = '';
-    this._setStatus('', null);
+    this.lineEl.textContent = '';
+    this.progEl.textContent = '';
+    this.progEl.hidden = false;
+    this.el.classList.remove('good', 'bad');
+    this._hideTags();
   }
 
   _finish() {
@@ -420,6 +456,7 @@ export class Tutorial {
     this._struck.clear();
     this._rejected = false;
     this._misses = 0;
+    this._nudging = false;
     // Entering a lesson means one is running, so nothing may still be waiting
     // on a Next press. Only start() and the Next handler cleared this, which
     // held for the live flow but left _enter unable to restart a lesson — it
@@ -700,6 +737,64 @@ export class Tutorial {
   }
 
   /**
+   * ENDPOINT TAGS: the per-aim half of the instruction.
+   *
+   * The band is fixed and says what the board is. These say what the shot
+   * currently drawn would DO — "→ SIDE POCKET" at the end of the rack ball's
+   * route, "YOUR BALL" or "SCRATCH" at the end of yours. The geometry is
+   * computed in main.js beside the routes they annotate (`game.aimTags`), so a
+   * tag and the line under it can never disagree.
+   *
+   * Only while aiming: with no thumb down there is no route, and a tag with no
+   * line under it is a label for nothing. That also means they cost the
+   * instruct state nothing — goal 2's guide line is optional, and here it is
+   * the player who opts in by touching the screen.
+   */
+  _updateTags() {
+    const cam = this.engine?.camera;
+    const tags = this.input.isAiming && !this._awaitingNext ? this.game.aimTags : null;
+    if (!tags || !tags.length || !cam || !this.layer.clientWidth) {
+      this._hideTags();
+      return;
+    }
+
+    const w = this.layer.clientWidth;
+    const h = this.layer.clientHeight;
+    const visX = (cam.right - cam.left) / cam.zoom;
+    const visZ = (cam.top - cam.bottom) / cam.zoom;
+
+    for (let i = 0; i < tags.length; i += 1) {
+      let node = this._tagNodes[i];
+      if (!node) {
+        node = document.createElement('div');
+        node.className = 'coach-tag';
+        this.tagEl.appendChild(node);
+        this._tagNodes[i] = node;
+      }
+      const tag = tags[i];
+      const px = ((tag.x - cam.position.x) / visX + 0.5) * w;
+      const py = ((tag.z - cam.position.z) / visZ + 0.5) * h;
+      node.textContent = tag.text;
+      node.className = `coach-tag show ${tag.tone}`;
+      // Clamped inside the layer, and by the tag's OWN measured width. A route
+      // that ends hard against a rail or in a corner pocket puts its endpoint
+      // within a few pixels of the edge, and a label centred there runs off
+      // the screen — which is how the scratch float text used to read
+      // "CRATCH".
+      const half = node.offsetWidth / 2 + 4;
+      node.style.left = `${Math.min(Math.max(px, half), w - half).toFixed(1)}px`;
+      node.style.top = `${Math.min(Math.max(py, 14), h - 14).toFixed(1)}px`;
+    }
+    for (let i = tags.length; i < this._tagNodes.length; i += 1) {
+      this._tagNodes[i].className = 'coach-tag';
+    }
+  }
+
+  _hideTags() {
+    for (const node of this._tagNodes) node.className = 'coach-tag';
+  }
+
+  /**
    * Drive the ghost hand.
    *
    * The demonstration is the real thing, not a cartoon of it: the press point
@@ -771,6 +866,7 @@ export class Tutorial {
     // be re-projected on frames where nothing else about the lesson is running.
     this._updateSpot();
     this._updateHand();
+    this._updateTags();
     this._updateDemo(rawDt);
 
     if (this._awaitingNext) return;
@@ -841,6 +937,7 @@ export class Tutorial {
       this._struck.clear();
       this._strikes.length = 0;
       this._rejected = false;
+      this._scratched = null;
       return;
     }
 
@@ -888,19 +985,14 @@ export class Tutorial {
     // and the departure preview turns from red to safe on the way. See _demo.
     if (name === 'scratch') {
       this._rejected = true;
-      this._setStatus(
+      // Held, not written. The verdict for a stroke is written once, when the
+      // table has stopped — and this one has to survive that write, because a
+      // scratch is a more specific fact than anything the board's own scold
+      // can say. Writing it here meant `_resolveShot` overwrote the sharpest
+      // correction the game has with the generic one a moment later.
+      this._scratched =
         lesson.scratched ||
-          'Scratch — your ball followed it in. Watch: angle the shot and the red line turns away.',
-        'bad'
-      );
-      if (Number.isFinite(lesson.solve) && this._lastAim) {
-        const to = (lesson.solve * Math.PI) / 180;
-        this._demo = {
-          from: this._lastAim,
-          to: { x: Math.sin(to), z: -Math.cos(to) },
-          t: 0
-        };
-      }
+        'Scratch — your ball followed the shot in. Angle it, and yours rolls clear instead.';
       return;
     }
 
@@ -1102,22 +1194,30 @@ export class Tutorial {
       // A shot that touched nothing is a different mistake from a shot that
       // touched some of it, and saying nothing at all — which is what a whiff
       // used to get — is indistinguishable from the game being broken.
-      const line = this._wrongWay
-        ? lesson.facing
-        : this._hits === 0 && lesson.whiff
-          ? lesson.whiff
-          : lesson.scold || 'Not quite — go again';
+      const line = this._scratched
+        ? this._scratched
+        : this._wrongWay
+          ? lesson.facing
+          : this._hits === 0 && lesson.whiff
+            ? lesson.whiff
+            : lesson.scold || 'Not quite — go again';
       this._setStatus(line, 'bad');
       this._misses += 1;
       // Nothing here can be failed, but something you cannot fail and cannot
-      // do either is just a wall. After a couple of honest attempts the hint
-      // stops being evocative and starts being the actual instruction.
-      if (this._misses >= 2 && lesson.nudge) {
-        this.hintEl.textContent = lesson.nudge;
-      }
+      // do either is just a wall. After a couple of honest attempts the
+      // evocative sentence gives way to the actual instruction — and it is not
+      // shown NEXT TO the correction, it REPLACES the board's line from now
+      // on. The band holds one sentence, and the one that earns the space
+      // after two misses is the one with the answer in it.
+      if (this._misses >= 2 && lesson.nudge) this._nudging = true;
     }
+
+    // Kept, because the reset below needs to know how the stroke went and the
+    // per-stroke flags are about to be cleared for the next one.
+    const missed = this._rejected;
     this._rejected = false;
     this._wrongWay = false;
+    this._scratched = null;
 
     // A RACK-CLEARING BOARD IS ONE LONG ATTEMPT, NOT A SERIES OF REPS.
     //
@@ -1128,12 +1228,35 @@ export class Tutorial {
     // silently, which is exactly how it was reported ("it resets my cue without
     // telling me why"). The cue stays where it stopped, like it would at a
     // table, and only goes home when the attempt itself is over.
-    const inProgress = lesson?.clearRack && !this._awaitingNext && !this._rejected;
+    const inProgress = lesson?.clearRack && !this._awaitingNext && !missed;
     if (!inProgress) {
       this._homeBall();
       this._reRack();
     } else {
       this._restAim();
+    }
+
+    // SHOW THE FIX, DO NOT ONLY NAME IT.
+    //
+    // This used to run on a scratch alone, which is the one miss where the
+    // mistake is unmissable anyway — the player just watched their own ball
+    // disappear. Every OTHER miss is the one where they cannot see what went
+    // wrong, because the difference between the line they played and the line
+    // that works is two degrees of a thing they cannot replay.
+    //
+    // So on any miss that put the cue back on its spawn, the demonstration
+    // runs: hold on the heading that just failed, then swing to a measured
+    // solution, on the real cue with the real preview redrawing itself the
+    // whole way. It gives way the instant a thumb goes down. A board mid-way
+    // through a rack is skipped, because `solve` is measured from the spawn
+    // and the cue is not there.
+    if (missed && !inProgress && Number.isFinite(lesson?.solve) && this._lastAim) {
+      const to = (lesson.solve * Math.PI) / 180;
+      this._demo = {
+        from: this._lastAim,
+        to: { x: Math.sin(to), z: -Math.cos(to) },
+        t: 0
+      };
     }
     if (this._needsRoom) this._buildRoom();
   }
@@ -1151,7 +1274,12 @@ export class Tutorial {
     this.fx.burst(at.x, at.z, 44, 0xff3d6e, 19, 1.6);
     this.fx.burst(at.x, at.z, 26, 0xfff6d8, 26, 1.1);
     this.fx.burst(at.x, at.z, 16, 0x2ef2c4, 13, 1.8);
-    this.fx.floatText?.(at.x, at.z, this.lesson?.cheer || 'CLEARED', 'crit');
+    // NO WORDS HERE. This used to throw the lesson's whole cheer across the
+    // felt in celebration type — which, now that the cheers are sentences
+    // rather than labels, ran off both edges of the screen ("AND YOU ARE
+    // STILL ON THE TABL") and said the same thing the band was already
+    // saying, twice as loud and half legible. The band has the words; the
+    // felt has the fireworks. One voice.
     this.engine?.shake?.(20);
     this.engine?.zoomPunch?.();
     this.game.audio?.roomClear?.();
@@ -1230,6 +1358,13 @@ export class Tutorial {
     this._awaitingNext = true;
     this._launched = false;
     this.el.classList.add('done');
+    // Nothing is left to aim at. The last preview stayed on the felt through
+    // the whole completion state, which is the single loudest way a finished
+    // board goes on looking like a live one — dimming the table behind a CTA
+    // does not help while a bright cue line is still drawn across it.
+    this.player.hideTrajectory?.();
+    this.game.aimTags = null;
+    this._hideTags();
 
     // A FINISHED LESSON HAS TO LOOK FINISHED.
     //
@@ -1240,23 +1375,16 @@ export class Tutorial {
     // over, in the lesson's own words of praise, and the table stops taking
     // shots (see Tutorial.awaitingNext, read by the input gate).
     const last = this.index + 1 >= LESSONS.length;
-    if (last) {
-      this.stepEl.textContent = 'Tutorial complete';
-      this.sayEl.textContent = 'You know enough to play';
-      this.hintEl.textContent = 'The next tables move — and they hit back.';
-      this.countEl.hidden = true;
-    } else {
-      // Clear the correction line FIRST: an empty status restores the lesson's
-      // own hint, which would put the instruction back under the congratulation.
-      this._setStatus('', null);
-      this.stepEl.textContent = `Lesson ${this.index + 1} complete`;
-      this.sayEl.innerHTML = this.lesson?.cheer || 'Nicely done';
-      this.hintEl.textContent = 'That is the lesson. Take the next one when you are ready.';
-      this.hintEl.classList.remove('good', 'bad');
-    }
+    // The lesson's own words of praise, not a generic one — "one ball moved
+    // another" tells the player what they have just learned to do, which
+    // "complete" does not.
+    this._say(last ? 'You know enough to play' : this.lesson?.cheer || 'Nicely done', 'good');
     this.skipEl.hidden = true;
+    // The CTA takes the progress chip's place rather than being added beside
+    // it: exactly one control on screen, and it moves forward.
+    this.progEl.hidden = true;
     this.nextEl.hidden = false;
-    this.nextEl.textContent = last ? 'Start playing \u2192' : 'Next lesson \u2192';
+    this.nextEl.textContent = last ? 'Start playing \u2192' : 'Next \u2192';
   }
 
   _advance() {
@@ -1270,6 +1398,7 @@ export class Tutorial {
     // last lesson's "Start playing" press re-armed Skip on its way out and left
     // it live over the running game.
     this.skipEl.hidden = false;
+    this.progEl.hidden = false;
     this.el.classList.remove('done');
     this._enter(this.index + 1);
   }
@@ -1281,30 +1410,28 @@ export class Tutorial {
   _render() {
     const lesson = this.lesson;
     if (!lesson) return;
-    this.stepEl.textContent = `Lesson ${this.index + 1} of ${LESSONS.length}`;
-    // innerHTML, deliberately: lesson copy carries <em>/<b> so the one word
-    // that matters is coloured. Nothing here is player-supplied — every string
-    // is a constant in RULES above — so there is nothing to escape.
-    this.sayEl.innerHTML = lesson.say;
-    this.hintEl.innerHTML = lesson.hint;
-
-    if (lesson.showCount) {
-      this.countEl.hidden = false;
-      this.countEl.textContent = '';
-      for (let i = 0; i < lesson.goal; i++) {
-        const pip = document.createElement('span');
-        pip.className = i < this.done ? 'pip on' : 'pip';
-        this.countEl.appendChild(pip);
-      }
-      const tally = document.createElement('span');
-      tally.className = 'tally';
-      tally.textContent = `${this.done} / ${lesson.goal}`;
-      this.countEl.appendChild(tally);
-    } else {
-      this.countEl.hidden = true;
-    }
-
+    // The progress chip is where the old card's "Lesson 2 of 6" eyebrow went.
+    // It is two numerals because the band's left side is spoken for, and
+    // because a player two boards in wants to know how many are left, not to
+    // read the phrase again.
+    this.progEl.textContent = `${this.index + 1} / ${LESSONS.length}`;
+    this._say(lesson.say, null);
     this.el.classList.add('show');
+  }
+
+  /**
+   * Write the band. One entry point for all four states, because the states
+   * differ only in the sentence and the colour — nothing appears, nothing
+   * disappears, and nothing moves.
+   *
+   * innerHTML, deliberately: lesson copy carries <em>/<b> so the one word that
+   * matters is coloured. Nothing here is player-supplied — every string is a
+   * constant in RULES above — so there is nothing to escape.
+   */
+  _say(html, tone) {
+    this.lineEl.innerHTML = html || '';
+    this.el.classList.remove('good', 'bad');
+    if (tone) this.el.classList.add(tone);
   }
 
   /**
@@ -1316,14 +1443,13 @@ export class Tutorial {
    * same position, and nothing hides them but the next attempt.
    */
   _setStatus(text, tone) {
-    this.statusEl.classList.remove('show', 'good', 'bad');
-    this.hintEl.classList.remove('good', 'bad');
     if (!text) {
-      if (this.lesson) this.hintEl.innerHTML = this.lesson.hint || '';
+      // Empty is not blank — it is the board's own instruction, back. A band
+      // with nothing in it would read as the lesson having ended.
+      this._say(this._nudging && this.lesson?.nudge ? this.lesson.nudge : this.lesson?.say, null);
       return;
     }
-    this.hintEl.textContent = text;
-    if (tone) this.hintEl.classList.add(tone);
+    this._say(text, tone);
   }
 
   dispose() {
@@ -1332,6 +1458,8 @@ export class Tutorial {
     this.ringEl.remove();
     this.handEl.remove();
     this.trackEl.remove();
+    this.skipEl.remove();
+    this.tagEl.remove();
   }
 }
 

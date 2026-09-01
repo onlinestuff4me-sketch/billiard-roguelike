@@ -732,8 +732,16 @@ function createFX() {
         // A pot or a scratch happens AT a pocket, and every pocket is in a
         // corner or hard against a rail — so the unclamped label runs off the
         // edge exactly when it matters most ("SCRATCH" read as "CRATCH").
-        // Half the label's own width is the margin.
-        const half = t.el.offsetWidth * 0.5 + 6;
+        //
+        // Half the label's own width is the margin AT REST, and the label is
+        // not at rest: it is drawn `scale(1 + (1 - progress) * 0.25)`, which
+        // is where it is widest at the moment it appears — so the first and
+        // loudest frames of a scratch were still overhanging the edge by an
+        // eighth of the word. The margin is the peak width, not the resting
+        // one. `offsetWidth` can also read 0 before the element has laid out;
+        // an estimate from the string keeps that frame on screen too.
+        const rest = t.el.offsetWidth || t.el.textContent.length * 11;
+        const half = rest * 0.5 * 1.25 + 6;
         const px = clamp((scratch.x * 0.5 + 0.5) * w, half, w - half);
         const py = (-scratch.y * 0.5 + 0.5) * h - progress * FEEL.floatText.rise;
         t.el.style.transform = `translate(${px}px, ${py}px) translate(-50%, -50%) scale(${
@@ -1945,6 +1953,107 @@ function projectObjectPath(prediction) {
   return legs;
 }
 
+/**
+ * WHERE A DRAWN ROUTE ENDS, IN WORDS.
+ *
+ * A line tells the player the direction of an outcome; it does not tell them
+ * the outcome. Two shots that look almost identical on the felt — one that
+ * drops the 1 in the side pocket and one that leaves it an inch short — draw
+ * the same picture, and the difference is the whole shot. So each route gets a
+ * small tag at its far end naming where it goes.
+ *
+ * These are the words the coaching band does not have room for. The band holds
+ * one sentence about the board; the tags hold the per-aim consequences, and
+ * they update on every frame of the drag because they are read off the same
+ * prediction the lines are drawn from.
+ *
+ * COLOUR IS THE SAME ALLOCATION AS EVERYWHERE ELSE. A tag takes the channel of
+ * the ball whose route it ends — cyan for yours, amber for a rack ball —
+ * except at a pocket, where it takes the pocket's own bone-white, or red when
+ * the pocket in question is about to eat your own ball.
+ */
+const POCKET_NAME = {
+  tl: 'FAR CORNER',
+  tr: 'FAR CORNER',
+  ml: 'SIDE POCKET',
+  mr: 'SIDE POCKET',
+  bl: 'NEAR CORNER',
+  br: 'NEAR CORNER'
+};
+
+/**
+ * The pocket a path runs into, or null. Closest approach to a finite segment,
+ * the same test Player.js uses to turn the departure line red — a shared
+ * predicate, so the tag and the line can never disagree about a scratch.
+ */
+function pathPocket(segments, pockets) {
+  if (!segments || !pockets) return null;
+  for (const seg of segments) {
+    const dx = seg.bx - seg.ax;
+    const dz = seg.bz - seg.az;
+    const len2 = dx * dx + dz * dz;
+    if (len2 < 1e-9) continue;
+    for (const pocket of pockets) {
+      const t = clamp(((pocket.x - seg.ax) * dx + (pocket.z - seg.az) * dz) / len2, 0, 1);
+      const cx = seg.ax + dx * t;
+      const cz = seg.az + dz * t;
+      if (Math.hypot(pocket.x - cx, pocket.z - cz) <= pocket.radius) return pocket;
+    }
+  }
+  return null;
+}
+
+/** The far end of a path, in world space. */
+function pathEnd(segments) {
+  const last = segments?.[segments.length - 1];
+  return last ? { x: last.bx, z: last.bz } : null;
+}
+
+/**
+ * Build the endpoint tags for the aim currently drawn.
+ *
+ * At most three, and usually two: your ball's departure, and the far end of
+ * the object chain. A leg that hands off to another ball gets no tag of its
+ * own — the next leg's tag is the answer, and tagging every link turns the
+ * felt into a list.
+ *
+ * @returns {Array<{x:number,z:number,text:string,tone:string}>}
+ */
+function aimTags(prediction, cuePath, objectPath) {
+  const tags = [];
+  const pockets = rooms.table.pockets;
+
+  // YOUR BALL. Where the cue ends up is the thing players learn last and need
+  // first — it is what turns one pot into a run, and it is what a scratch is.
+  const cueSegs = cuePath?.segments?.length ? cuePath.segments : prediction?.segments;
+  const cueEnd = pathEnd(cueSegs);
+  if (cueEnd) {
+    const down = pathPocket(cueSegs, pockets);
+    tags.push(
+      down
+        ? { ...cueEnd, text: 'SCRATCH', tone: 'bad' }
+        : { ...cueEnd, text: 'YOUR BALL', tone: 'cue' }
+    );
+  }
+
+  // THE RACK BALL, at the end of however far the chain carried. Only the last
+  // link is named; the ones before it are mid-sentence.
+  const lastLeg = objectPath?.[objectPath.length - 1];
+  if (lastLeg?.segs?.length) {
+    const end = pathEnd(lastLeg.segs);
+    const down = pathPocket(lastLeg.segs, pockets);
+    const number = lastLeg.ball?.number;
+    if (end) {
+      tags.push(
+        down
+          ? { ...end, text: `→ ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
+          : { ...end, text: number ? `${number} STOPS` : 'STOPS', tone: 'rack' }
+      );
+    }
+  }
+  return tags;
+}
+
 function refreshPrediction() {
   if (!player.alive) return;
   const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
@@ -1959,12 +2068,18 @@ function refreshPrediction() {
   });
   // The pockets go in so the preview can warn about a scratch: a line that
   // ends down a hole is the one prediction the player most needs in advance.
+  const cuePath = projectCuePath(prediction);
+  const objectPath = projectObjectPath(prediction);
   player.showTrajectory(prediction, {
     pockets: rooms.table.pockets,
     power: player.aimPower,
-    cuePath: projectCuePath(prediction),
-    objectPath: projectObjectPath(prediction)
+    cuePath,
+    objectPath
   });
+  // Read by the coaching layer, which is the only thing that draws them today.
+  // The geometry belongs here, next to the routes it describes; whether they
+  // are shown is a decision for whoever is teaching.
+  game.aimTags = aimTags(prediction, cuePath, objectPath);
 }
 
 /** Heading when the current hold began; used to measure how far it turned. */
@@ -2021,8 +2136,12 @@ const input = new InputManager(stage, {
     noteAimPower(aim);
     player.updateAim(aim);
     showPad(aim);
-    if (aim.valid) refreshPrediction();
-    else player.hideTrajectory();
+    if (aim.valid) {
+      refreshPrediction();
+    } else {
+      player.hideTrajectory();
+      game.aimTags = null;
+    }
   },
   onAimCancel: () => {
     uiLayer.classList.remove('aiming');
@@ -2089,6 +2208,36 @@ stage.addEventListener(
  * Resize handling
  * ------------------------------------------------------------------ */
 
+/**
+ * PUT THE COACHING BAND WHERE THERE IS NO TABLE.
+ *
+ * The camera frames the arena edge to edge — `viewHeight` is the arena's
+ * height, not the arena plus a margin — so the felt runs from the top of the
+ * layer to the bottom and the two far corner pockets sit up under the HUD.
+ * There is exactly one horizontal strip with nothing in it: below those
+ * corner pockets, above everything a board can place.
+ *
+ * The band is put there, measured rather than guessed. A percentage got it
+ * right on a 9:16 phone by arithmetic accident and would have drifted onto
+ * the felt on the next aspect ratio — and "it never overlaps play" is the one
+ * property the whole direction rests on, so it should be true by construction.
+ */
+function layoutBand() {
+  const pockets = rooms?.table?.pockets;
+  const h = uiLayer.clientHeight;
+  if (!pockets?.length || !h) return;
+  const visZ = (camera.top - camera.bottom) / camera.zoom;
+  const toY = (z) => ((z - camera.position.z) / visZ + 0.5) * h;
+  // The lowest edge of anything in the top row of pockets, plus a hair.
+  let floor = 0;
+  for (const p of pockets) {
+    const y = toY(p.z);
+    if (y > h * 0.25) continue; // not a far-side pocket
+    floor = Math.max(floor, y + (p.radius / visZ) * h * TABLE.pocket.mouthScale);
+  }
+  uiLayer.style.setProperty('--coach-top', `${Math.round(floor + 4)}px`);
+}
+
 function resize() {
   const { width, height } = layoutStage();
   const pr = Math.min(window.devicePixelRatio || 1, RENDER.maxPixelRatio);
@@ -2099,6 +2248,7 @@ function resize() {
     composer.setSize(width, height);
   }
   camera.updateProjectionMatrix();
+  layoutBand();
 }
 
 const initial = layoutStage();
@@ -2372,6 +2522,12 @@ function frame(now) {
     } else if (
       game.state === 'playing' &&
       player.alive &&
+      // A FINISHED LESSON HAS NO AIM. The resting preview is redrawn every
+      // frame, so hiding it once when the board completed lasted exactly one
+      // frame — and a bright cue line still lying across the felt is the
+      // loudest way a finished board goes on looking playable, dimmed table
+      // and CTA notwithstanding.
+      !tutorial?.awaitingNext &&
       player.state === PLAYER_STATE.IDLE
     ) {
       // THE CUE AT REST.

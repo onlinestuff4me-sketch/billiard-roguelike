@@ -25,7 +25,7 @@
   </style>
 </helmet>
 <div class="sheet">
-<span class="kicker">Option C &middot; recommended</span>
+<span class="kicker" style="color:#2ef2c4">Option C &middot; built</span>
 <h1>The rail and the route</h1>
 <p class="lede">One line of type on a fixed band above the felt, and everything else carried by <b>the routes already drawn on the table</b>: the aim line, the ricochet, the ball's own path, each ending in a small tag that names where it goes. The band never moves and never overlaps play, so it needs no fade, no collapse and no placement solve.</p>
 <h2>The four states</h2>
@@ -38,8 +38,10 @@
 <h2>Why / why not</h2>
 <div class="row" style="margin-top:2px;">
   <p class="lede" style="flex:1"><b style="color:#2ef2c4">For.</b> Satisfies &ldquo;never obstruct the table&rdquo; by construction rather than by animation. One component, four states, no placement logic. The route drawing and the called-pocket glow already exist &mdash; this mostly wires up what is built.</p>
-  <p class="lede" style="flex:1"><b style="color:#ff5a3d">Against.</b> One line is a hard budget; a board that needs two sentences cannot have them, and the endpoint tags have to carry the rest. The band costs a fixed 44px whether or not the lesson needs it.</p>
+  <p class="lede" style="flex:1"><b style="color:#ff5a3d">Against.</b> One line is a hard budget; a board that needs two sentences cannot have them, and the endpoint tags have to carry the rest. The band costs a fixed 46px whether or not the lesson needs it.</p>
 </div>
+<h2>As built</h2>
+<p class="lede">Shipped across all six boards &mdash; see <b>docs/COACHING.md</b>. Three things changed on contact with the real table. The band holds <b>two wrapped lines</b> of one sentence rather than one visual line: at 390px a sentence with any substance wraps, and a 64-character budget with a fixed height is the honest version of the same rule. Its position is <b>measured from the live pocket geometry</b> on every resize, not set as a percentage &mdash; the camera frames the felt edge to edge, so there is exactly one empty strip and it has to be found rather than guessed. And the <b>hull readout hides during a lesson</b>, because the two far corner pockets live under it and two boards call one of them.</p>
 </div></x-dc>
 </body>
 </html>
