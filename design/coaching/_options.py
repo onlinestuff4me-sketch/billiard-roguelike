@@ -34,21 +34,21 @@ optA = head('Option A', '')
 optA += f'''<div class="sheet">
 <span class="kicker">Option A</span>
 <h1>The docked card</h1>
-<p class="lede">Today's card, made honest. The words stay in the band under the HUD and never enter the play area; while a thumb is down they collapse to a <b>single readable line</b> instead of fading to nine percent, so the instruction is legible at the exact moment it is being followed. The felt carries the focus ring and the lit pocket.</p>
+<p class="lede">Today's card, made honest. The words stay in the band under the HUD, clear of everything but the topmost sliver of felt; while a thumb is down they collapse to a <b>single readable line</b> instead of fading to nine percent, so the instruction is legible at the exact moment it is being followed. The felt carries the focus ring and the lit pocket.</p>
 <h2>The four states</h2>
 <div class="frames">
 {frame('1 · Instruct',
   wrap(table(BALLS, CUE, lit=LIT, ring=(.63,.44,58), routes=[]),
-       cardA('Lesson 2 of 6','Use the <b style="color:'+BAD+'">4</b> to sink the <b style="color:'+BAD+'">1</b>','Both line up on the lit pocket. Hit the 4.')),
+       cardA('Lesson 2 of 6','Sink the <b style="color:'+BAD+'">1</b> in the side pocket','Hit the <b>4</b> into it &mdash; they already line up.')),
   'Full card. Ring around the pair the sentence is about, pocket lit. Nothing on the felt the shot needs.')}
 {frame('2 · Aiming',
   wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_CUE, ROUTE_BALL, ROUTE_IN]),
-       cardA('','Hit the <b>4</b> into the <b>1</b>','',compact=True)),
+       cardA('','Sink the <b>1</b> in the side pocket','',compact=True)),
   'One line, pinned to the top edge. The ring drops away — the routes now say what the ring said, and say it better.')}
 {frame('3 · Missed',
-  wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_BAD]),
+  wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_BAD, ('ghost',(.44,.58),(.82,.30)), ('ghost',(.82,.30),(1,.5))]),
        cardA('Try again','The <b style="color:'+BAD+'">4</b> went in, not the <b style="color:'+BAD+'">1</b>','Aim through the 4 <b>at the 1</b>, not at the pocket.','bad')),
-  'Red edge, names what happened, and the felt draws the line that was played so the mistake is visible, not just described.')}
+  'Red edge, names what happened, and the felt draws both lines &mdash; the one played in red, the one to play in ghost. The fix is shown, not only described.')}
 {frame('4 · Complete',
   wrap(table([(.44,.58,'4','solid')], CUE, lit=LIT, dim=True),
        cardA('Lesson 2 complete','One ball moved another','That is a combination.','good','Next lesson →')),
@@ -56,8 +56,8 @@ optA += f'''<div class="sheet">
 </div>
 <h2>Why / why not</h2>
 <div class="row" style="margin-top:2px;">
-  <p class="lede" style="flex:1"><b style="color:{GOOD}">For.</b> Cheapest to build — it is the component that already exists. Copy has room for two lines, so a board can explain itself. The collapse-to-one-line is a small, contained change.</p>
-  <p class="lede" style="flex:1"><b style="color:{BAD}">Against.</b> The words are always somewhere the eye is not. The player reads at the top, then looks down to act, and the link between sentence and object is theirs to make. The band costs 13–25% of the screen permanently.</p>
+  <p class="lede" style="flex:1"><b style="color:{GOOD}">For.</b> Cheapest to build — it is the component that already exists. Room for a second line on the boards that genuinely need one &mdash; though goal 1 says most should not want it. The collapse-to-one-line is a small, contained change.</p>
+  <p class="lede" style="flex:1"><b style="color:{BAD}">Against.</b> The words are always somewhere the eye is not. The player reads at the top, then looks down to act, and the link between sentence and object is theirs to make. The band costs 13–25% of the screen permanently, and its lower edge does sit over the first few pixels of felt.</p>
 </div>
 </div>'''
 write('OptionA.dc.html', optA + TAIL)

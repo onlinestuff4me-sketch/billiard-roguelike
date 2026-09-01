@@ -1,9 +1,33 @@
 {
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1000, "h": 1720 },
-    { "file": "OptionA.dc.html", "x": 1120, "y": 0, "w": 1420, "h": 1010 },
-    { "file": "OptionB.dc.html", "x": 1120, "y": 1130, "w": 1420, "h": 1010 },
-    { "file": "OptionC.dc.html", "x": 1120, "y": 2260, "w": 1420, "h": 1010 }
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1000,
+      "h": 1720
+    },
+    {
+      "file": "OptionA.dc.html",
+      "x": 1120,
+      "y": 0,
+      "w": 1420,
+      "h": 1010
+    },
+    {
+      "file": "OptionB.dc.html",
+      "x": 1120,
+      "y": 1180,
+      "w": 1420,
+      "h": 1010
+    },
+    {
+      "file": "OptionC.dc.html",
+      "x": 1120,
+      "y": 2360,
+      "w": 1420,
+      "h": 1010
+    }
   ],
   "annotations": [
     {
@@ -11,8 +35,10 @@
       "x": 0,
       "y": -230,
       "w": 1000,
-      "text": "Left: what a coached board owes the player, and the rules that follow.\n\nRight, top to bottom: three directions for the component that carries it — A the docked card, B the on-felt callout, C the rail and the route. Each shows the same board (the combination) in all four states.\n\nC is the recommendation. Read the why/why-not under each before deciding."
+      "text": "Left: what a coached board owes the player, and the rules that follow.\n\nRight, top to bottom: three directions for the component that carries it \u2014 A the docked card, B the on-felt callout, C the rail and the route. Each shows the same board (the combination) in all four states.\n\nC is the recommendation. Read the why/why-not under each before deciding."
     }
   ],
-  "launch": { "view": "canvas" }
+  "launch": {
+    "view": "canvas"
+  }
 }

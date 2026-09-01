@@ -25,26 +25,27 @@ optB += f'''<div class="sheet">
 <div class="frames">
 {frame('1 &middot; Instruct',
   wrap(table(BALLS, CUE, lit=LIT),
-       chip(.30,.30,'Hit the <b style="color:'+SOLID+'">4</b> into the <b style="color:'+SOLID+'">1</b>', anchor=(.44,.58))),
+       chip(.30,.28,'Sink the <b style="color:'+SOLID+'">1</b> in the side pocket, off the <b style="color:'+SOLID+'">4</b>', anchor=(.44,.58))),
   'The chip sits in dead space and points at the ball. Placement is computed from the board &mdash; it goes where no route will run.')}
 {frame('2 &middot; Aiming',
   wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_CUE, ROUTE_BALL, ROUTE_IN]),
        chip(.24,.16,'into the <b style="color:'+SOLID+'">1</b>', anchor=None, wide=104)),
   'It shrinks and slides clear of the drawn route rather than fading. Still on the felt, still readable, never on the line.')}
 {frame('3 &middot; Missed',
-  wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_BAD]),
-       chip(.70,.64,'The <b style="color:'+BAD+'">4</b> went in, not the <b style="color:'+BAD+'">1</b>','bad', anchor=(1,.5))),
-  'The correction appears WHERE it happened &mdash; tethered to the pocket that took the wrong ball. The reason is placed, not just written.')}
+  wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_BAD, ('ghost',(.44,.58),(.82,.30)), ('ghost',(.82,.30),(1,.5))]),
+       chip(.66,.80,'You aimed at the pocket. Aim <b style="color:'+GOOD+'">through the 4 at the 1</b>.','bad', anchor=(.44,.58))),
+  'The correction is tethered to the ball that was mis-hit, names the cause rather than the outcome, and the ghost route beside it is the line to play instead.')}
 {frame('4 &middot; Complete',
   wrap(table([(.44,.58,'4','solid')], CUE, lit=LIT, dim=True),
-       chip(.5,.42,'<div style="font-size:14px;font-weight:700;color:'+GOOD+'">Lesson 2 complete</div>'
+       chip(.5,.40,'<div style="font-size:13px;font-weight:700;color:'+GOOD+'">One ball moved another</div>'
+            '<div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(234,246,255,.5);margin-top:3px">Lesson 2 complete</div>'
             '<div style="margin-top:7px;padding:7px 16px;border-radius:999px;background:'+GOOD+';color:#04120e;font-size:13px;font-weight:800;">Next lesson &rarr;</div>','good', wide=190)),
   'The chip becomes the CTA in place. One object the whole lesson through: instruction, correction, reward.')}
 </div>
 <h2>Why / why not</h2>
 <div class="row" style="margin-top:2px;">
   <p class="lede" style="flex:1"><b style="color:{GOOD}">For.</b> Strongest possible link between word and object &mdash; the sentence is attached to the ball. Frees the whole top band. The correction can be placed at the scene of the mistake, which no card can do.</p>
-  <p class="lede" style="flex:1"><b style="color:{BAD}">Against.</b> Text on felt competes with the balls, and every chip needs a placement solve per board and per aim &mdash; the most code of the three, and the most that can go wrong on a table we have not authored. Copy must be very short.</p>
+  <p class="lede" style="flex:1"><b style="color:{BAD}">Against.</b> It trades the focus ring for the tether &mdash; one ball gets pointed at, a region does not &mdash; so a board about a pair is harder to frame. Text on felt competes with the balls, and every chip needs a placement solve per board and per aim: the most code of the three, and the most that can go wrong on a table nobody authored.</p>
 </div>
 </div>'''
 write('OptionB.dc.html', optB + TAIL)
@@ -77,16 +78,16 @@ optC += f'''<div class="sheet">
 <div class="frames">
 {frame('1 &middot; Instruct',
   wrap(table(BALLS, CUE, lit=LIT, ring=(.63,.44,58)),
-       band('Sink the <b style="color:'+SOLID+'">1</b> using the <b style="color:'+SOLID+'">4</b>')),
+       band('Sink the <b style="color:'+SOLID+'">1</b> in the side pocket, off the <b style="color:'+SOLID+'">4</b>')),
   'One sentence, one fixed place. The ring says which pair, the lit pocket says where.')}
 {frame('2 &middot; Aiming',
   wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_CUE, ROUTE_BALL, ROUTE_IN]),
-       band('Sink the <b style="color:'+SOLID+'">1</b> using the <b style="color:'+SOLID+'">4</b>')
+       band('Sink the <b style="color:'+SOLID+'">1</b> in the side pocket, off the <b style="color:'+SOLID+'">4</b>')
        + tag(.80,.68,'&rarr; SIDE POCKET', SOLID) + tag(.22,.93,'YOUR BALL', CYAN)),
   'Unchanged &mdash; it was never in the way. The routes take over the explaining, and the tags name each endpoint so the plan reads without prose.')}
 {frame('3 &middot; Missed',
   wrap(table(BALLS, CUE, lit=LIT, routes=[ROUTE_BAD, ('ghost',(.44,.58),(.82,.30))]),
-       band('The <b>4</b> went in, not the <b>1</b>','bad')
+       band('You aimed at the pocket, not through the <b>4</b>','bad')
        + tag(.70,.40,'AIM HERE INSTEAD', GOOD)),
   'Band turns red and states the fact. On the felt: what was played in red, what to play in ghost &mdash; the fix is shown beside the mistake.')}
 {frame('4 &middot; Complete',

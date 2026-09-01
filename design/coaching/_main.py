@@ -43,7 +43,7 @@ s += f'''<div class="sheet">
 
 <h2>What a board owes the player</h2>
 <div class="goals">
-{goal('1','One line, and it names the target and the pocket',
+{goal('1','One line, naming the ball and the pocket',
       'The instruction is a single sentence a player can hold while aiming. Not a paragraph, not two facts, not a rule and an example. If a board needs two sentences, the board is teaching two things and should be two boards.',
       'A stranger can restate the goal after reading it once.')}
 {goal('2','The board points, it does not describe',
@@ -63,15 +63,15 @@ s += f'''<div class="sheet">
 <h2>Rules that follow</h2>
 <div class="rules">
 {rule('One voice at a time',
-      'While a board is coaching, the HUD banner stands down. Two components reporting one event is worse than either alone.')}
+      'While a board is coaching, the HUD banner stands down. Two voices on one event are worse than either alone.')}
 {rule('Nothing expires',
       'No coaching text is on a timer. It is replaced by the next thing that happens, or dismissed by the player.')}
 {rule('Never a silent stroke',
-      'Every stroke gets a verdict. The absence of a response is indistinguishable from the game being broken, so the absence of a verdict is itself a verdict.')}
+      'Every stroke is answered, including one that matched no rule &mdash; it is told so. Silence after a shot is indistinguishable from the game being broken.')}
 {rule('Judged at rest',
       'A rep is judged when the table stops, not while it is still moving &mdash; so a stroke that pots and then scratches is a miss, and says why.')}
-{rule('Two highlight colours, fixed',
-      'Bone-white is the called pocket. Green is a thing that helps you and the way forward. Red is a thing that costs you and a miss. Nothing else gets a highlight.')}
+{rule('Three highlights, and only three',
+      'Layered on top of the table&rsquo;s own channels &mdash; your ball cyan, the rack amber &mdash; a board may add exactly three. Bone-white is the called pocket. Green is help, and the way forward. Red is a cost, and a miss. Nothing else may be highlighted.')}
 {rule('Say what is on screen',
       'Only words for things the player can see and has been shown: the white circle, the lit pocket, the 4. No jargon the game has not taught.')}
 </div>

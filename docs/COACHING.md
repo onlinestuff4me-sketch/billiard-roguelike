@@ -44,18 +44,19 @@ mistaken for a live one.
 ## Rules that follow
 
 - **One voice at a time.** While a board is coaching, the HUD banner stands
-  down. Two components reporting one event is worse than either alone.
+  down. Two voices on one event are worse than either alone.
 - **Nothing expires.** No coaching text is on a timer. It is replaced by the
   next thing that happens, or dismissed by the player.
-- **Never a silent stroke.** Every stroke gets a verdict. The absence of a
-  response is indistinguishable from the game being broken, so the absence of a
-  verdict is itself a verdict.
+- **Never a silent stroke.** Every stroke is answered, including one that
+  matched no rule — it is told so. The absence of a response is
+  indistinguishable from the game being broken.
 - **Judged at rest.** A rep is judged when the table stops, not while it is
   still moving — so a stroke that pots and then scratches is a miss, and says
   why.
-- **Two highlight colours, fixed.** Bone-white is the called pocket. Green is a
-  thing that helps you and the way forward. Red is a thing that costs you and a
-  miss. Nothing else gets a highlight.
+- **Three highlights, and only three.** Bone-white is the called pocket. Green
+  is a thing that helps you and the way forward. Red is a thing that costs you
+  and a miss. These layer on top of the table's own channels — cyan is always
+  your ball, amber always the rack — and nothing else gets a highlight.
 - **Say what is on screen.** Only words for things the player can see and has
   been shown: the white circle, the lit pocket, the 4. No jargon the game has
   not taught.
