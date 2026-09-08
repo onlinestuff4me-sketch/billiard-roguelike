@@ -33,8 +33,11 @@ import {
   CHAIN,
   ENEMY,
   FEEL,
+  INPUT,
   BOONS,
   INJECTOR,
+  RULES,
+  TABLE,
   TUTORIAL,
   PROGRESSION
 } from './config.js';
@@ -42,10 +45,12 @@ import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { AudioManager } from './core/AudioManager.js';
 import { Player, PLAYER_STATE } from './entities/Player.js';
-import { PhysicsSystem } from './systems/PhysicsSystem.js';
+import { PhysicsSystem, carryDistance, speedAfterDistance } from './systems/PhysicsSystem.js';
 import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager } from './systems/RoomManager.js';
-import { HUD } from './ui/HUD.js';
+import { Rules } from './systems/Rules.js';
+import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
+import { HUD, HOLD } from './ui/HUD.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -138,6 +143,91 @@ function buildComposer(width, height) {
  * Static table geometry
  * ------------------------------------------------------------------ */
 
+/**
+ * The table, as architecture.
+ *
+ * Pockets are not drawn on the felt — they are cut into it. The frame is one
+ * continuous band that SWELLS into a full circle at each pocket, and the
+ * cushions BREAK, their ends splaying open into the mouth, exactly as a real
+ * table's jaws do. All of it is static: identical in every room, built once,
+ * and drawn only in the table's own materials so it can never compete with a
+ * mint pick-up or a red hazard for the player's glance.
+ *
+ * The drawn mouth is deliberately wider than the capture radius the physics
+ * uses. A ball that looks like it is going in, goes in — the visual promise
+ * has to be more generous than the rule, never less.
+ */
+/**
+ * Live handles on each pocket's "called" ring, so a contract or a lesson can
+ * point at one. Brightness is the only channel a pocket has.
+ */
+const calledRings = [];
+
+/**
+ * Light the pockets the board is about — one, several, or none.
+ *
+ * A shot that ends in two different pockets has two goals, and pointing at
+ * only one of them describes half a plan. Accepts a slot id, an array of them,
+ * or null.
+ */
+let calledSlots = [];
+function callPocket(slots) {
+  calledSlots = slots == null ? [] : Array.isArray(slots) ? slots.filter(Boolean) : [slots];
+  for (const entry of calledRings) {
+    const on = calledSlots.includes(entry.slot);
+    entry.material.opacity = on ? 1 : 0;
+    entry.halo.opacity = on ? 0.22 : 0;
+  }
+}
+
+/**
+ * CELEBRATIONS STACK.
+ *
+ * A pot is rarely one thing that happened. It can be a pot AND a bank AND a
+ * green AND a ball that touched two others, and each of those is a separate
+ * rung of the multiplier the player earned separately. Firing them as one
+ * number collapses four decisions into a single "+2,400" and throws away every
+ * bit of feedback about WHICH of them paid.
+ *
+ * So they arrive as beats, a quarter-second apart, each with its own note a
+ * step higher than the last. The run climbs, and the player hears their own
+ * plan being counted back to them.
+ */
+const beats = [];
+
+/** @param {Array<{at:number, run:() => void}>} steps seconds from now */
+function celebrate(steps) {
+  for (const step of steps) beats.push({ t: step.at, run: step.run });
+}
+
+function pumpCelebrations(rawDt) {
+  for (let i = beats.length - 1; i >= 0; i--) {
+    const beat = beats[i];
+    beat.t -= rawDt;
+    if (beat.t > 0) continue;
+    beats.splice(i, 1);
+    beat.run();
+  }
+}
+
+/**
+ * The called pocket breathes. Six identical mouths is exactly the point of the
+ * architecture, so the one being pointed at has to move to be found — a static
+ * brightness step reads as a lighting accident at this scale.
+ */
+function pulseCalledPocket(rawDt) {
+  if (!calledSlots.length) return;
+  calledPulse += rawDt * 3.4;
+  const wave = Math.sin(calledPulse);
+  const glow = 0.72 + wave * 0.28;
+  for (const entry of calledRings) {
+    if (!calledSlots.includes(entry.slot)) continue;
+    entry.material.opacity = glow;
+    entry.halo.opacity = 0.2 + wave * 0.14;
+  }
+}
+let calledPulse = 0;
+
 function buildTable(target) {
   const table = new THREE.Group();
   table.name = 'table';
@@ -178,36 +268,199 @@ function buildTable(target) {
     )
   );
 
-  const t = ARENA.railThickness;
-  const railMat = new THREE.MeshStandardMaterial({
-    color: PALETTE.rail,
-    roughness: 0.6,
-    metalness: 0.35,
-    emissive: new THREE.Color(PALETTE.railGlow),
-    emissiveIntensity: 0.22
+  const slots = pocketSlots();
+  const frameT = ARENA.railThickness * 2.1;
+  const cushT = ARENA.railThickness;
+
+  /* -- the frame: one continuous band, swelling at every pocket ------- */
+  const frameMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.frame,
+    roughness: 0.65,
+    metalness: 0.3,
+    emissive: new THREE.Color(PALETTE.lip),
+    emissiveIntensity: 0.1
   });
-  const railSpecs = [
-    { w: ARENA.width + t * 2, d: t, x: 0, z: -ARENA.halfH - t / 2 },
-    { w: ARENA.width + t * 2, d: t, x: 0, z: ARENA.halfH + t / 2 },
-    { w: t, d: ARENA.height, x: -ARENA.halfW - t / 2, z: 0 },
-    { w: t, d: ARENA.height, x: ARENA.halfW + t / 2, z: 0 }
+  const frameSpecs = [
+    { w: ARENA.width + frameT * 2, d: frameT, x: 0, z: -ARENA.halfH - frameT / 2 },
+    { w: ARENA.width + frameT * 2, d: frameT, x: 0, z: ARENA.halfH + frameT / 2 },
+    { w: frameT, d: ARENA.height, x: -ARENA.halfW - frameT / 2, z: 0 },
+    { w: frameT, d: ARENA.height, x: ARENA.halfW + frameT / 2, z: 0 }
   ];
-  for (const spec of railSpecs) {
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(spec.w, 0.9, spec.d), railMat);
-    rail.position.set(spec.x, 0.35, spec.z);
-    table.add(rail);
+  for (const spec of frameSpecs) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(spec.w, 0.5, spec.d), frameMat);
+    band.position.set(spec.x, 0.2, spec.z);
+    table.add(band);
   }
 
-  const outline = new THREE.LineLoop(
-    new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-ARENA.halfW, 0.02, -ARENA.halfH),
-      new THREE.Vector3(ARENA.halfW, 0.02, -ARENA.halfH),
-      new THREE.Vector3(ARENA.halfW, 0.02, ARENA.halfH),
-      new THREE.Vector3(-ARENA.halfW, 0.02, ARENA.halfH)
-    ]),
-    new THREE.LineBasicMaterial({ color: PALETTE.railGlow, transparent: true, opacity: 0.75 })
-  );
-  table.add(outline);
+  /* -- cushions: broken runs whose ends splay into the mouths --------- */
+  const cushMat = new THREE.MeshStandardMaterial({
+    color: PALETTE.cushion,
+    roughness: 0.5,
+    metalness: 0.25,
+    emissive: new THREE.Color(PALETTE.lip),
+    emissiveIntensity: 0.62
+  });
+
+  /**
+   * A cushion run as an extruded trapezoid. `quad` is four world-space
+   * (x, z) corners; the outer pair are longer than the inner pair, which is
+   * what makes the end flare open toward the pocket.
+   */
+  const cushion = (quad, height = 0.72) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(quad[0][0], -quad[0][1]);
+    for (let i = 1; i < quad.length; i++) shape.lineTo(quad[i][0], -quad[i][1]);
+    shape.closePath();
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false });
+    geo.rotateX(-Math.PI / 2);
+    return new THREE.Mesh(geo, cushMat);
+  };
+
+  const mouth = (slot) => (slot.radius ?? TABLE.pocket.radius) * TABLE.pocket.mouthScale;
+  const jawOf = (slot) => mouth(slot) * TABLE.pocket.jaw;
+  const [tl, tr, ml, mr, bl, br] = slots;
+  const gapX = (a) => mouth(a) + jawOf(a);
+  const W = ARENA.halfW;
+  const H = ARENA.halfH;
+
+  // Long rails (left and right) are interrupted by the side pockets, so each
+  // becomes two runs; the short rails are one run each.
+  const runs = [
+    // top
+    [[tl.x + gapX(tl), -H], [tr.x - gapX(tr), -H], [tr.x - gapX(tr) - jawOf(tr), -H + cushT], [tl.x + gapX(tl) + jawOf(tl), -H + cushT]],
+    // bottom
+    [[bl.x + gapX(bl), H], [bl.x + gapX(bl) + jawOf(bl), H - cushT], [br.x - gapX(br) - jawOf(br), H - cushT], [br.x - gapX(br), H]],
+    // left, above and below the side pocket
+    [[-W, -H + gapX(tl)], [-W + cushT, -H + gapX(tl) + jawOf(tl)], [-W + cushT, ml.z - gapX(ml) - jawOf(ml)], [-W, ml.z - gapX(ml)]],
+    [[-W, ml.z + gapX(ml)], [-W + cushT, ml.z + gapX(ml) + jawOf(ml)], [-W + cushT, H - gapX(bl) - jawOf(bl)], [-W, H - gapX(bl)]],
+    // right, likewise
+    [[W, -H + gapX(tr)], [W, mr.z - gapX(mr)], [W - cushT, mr.z - gapX(mr) - jawOf(mr)], [W - cushT, -H + gapX(tr) + jawOf(tr)]],
+    [[W, mr.z + gapX(mr)], [W, H - gapX(br)], [W - cushT, H - gapX(br) - jawOf(br)], [W - cushT, mr.z + gapX(mr) + jawOf(mr)]]
+  ];
+  for (const quad of runs) table.add(cushion(quad));
+
+  /* -- the pockets themselves ----------------------------------------- *
+   *
+   * ONE ARC, ONE ORIENTATION, SIX POCKETS.
+   *
+   * Drawn as a full circle these were being cropped by whatever happened to
+   * sit over them — a corner pocket overlapped two frame bands, a side pocket
+   * one — so every mouth had a different bite taken out of it and none of it
+   * meant anything. The arc is authored now: 300 degrees, with the 60-degree
+   * gap always facing the middle of the table. That is the throat the ball
+   * comes in through, so the opening points at where the ball comes from, and
+   * every pocket reads identically wherever it sits.
+   *
+   * The whole assembly is lifted above the cushions so nothing can crop it.
+   * The camera looks straight down, so height is only draw order; the inset
+   * read comes from the void and the arc, not from depth.
+   */
+  const lip = new THREE.Color(PALETTE.lip);
+  const bright = new THREE.Color(PALETTE.aim);
+  const GAP = Math.PI / 3;           // 60 degrees of opening
+  const SWEEP = Math.PI * 2 - GAP;   // 300 degrees of rim
+
+  for (const slot of slots) {
+    const m = mouth(slot);
+
+    // The gap faces the centre of the table. atan2 is taken in the same frame
+    // RingGeometry uses (theta from +x, counter-clockwise in XY before the
+    // -90° rotation puts it flat), which is why z is negated here.
+    const toCentre = Math.atan2(-(0 - slot.z), 0 - slot.x);
+    const start = toCentre + GAP / 2;
+
+    const swell = new THREE.Mesh(
+      new THREE.CircleGeometry(m + frameT * TABLE.pocket.swell, 44),
+      frameMat
+    );
+    swell.rotation.x = -Math.PI / 2;
+    swell.position.set(slot.x, 0.78, slot.z);
+    table.add(swell);
+
+    // The void. Absence reads faster than any colour.
+    const hole = new THREE.Mesh(
+      new THREE.CircleGeometry(m, 40),
+      new THREE.MeshBasicMaterial({ color: PALETTE.void })
+    );
+    hole.rotation.x = -Math.PI / 2;
+    hole.position.set(slot.x, 0.82, slot.z);
+    table.add(hole);
+
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(m * 1.02, m * 1.44, 44, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: lip,
+        transparent: true,
+        opacity: 0.24,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.set(slot.x, 0.84, slot.z);
+    table.add(halo);
+
+    // The lit mouth, in the pale end of the table's own teal: a pocket has to
+    // pull the eye, and the frame it sits in is deliberately dark.
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(m * 0.95, m * 1.05, 48, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: bright,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(slot.x, 0.86, slot.z);
+    table.add(ring);
+
+    // The called state: the contract names this pocket. Brightness and nothing
+    // else — no hue, because hue belongs to the felt objects.
+    const called = new THREE.Mesh(
+      new THREE.RingGeometry(m * 0.86, m * 1.2, 48, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(PALETTE.bone),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    called.rotation.x = -Math.PI / 2;
+    called.position.set(slot.x, 0.88, slot.z);
+    table.add(called);
+
+    // A soft outer bloom on the same arc. The rim alone reads at the pocket
+    // but not from the far end of the table, which is exactly where the player
+    // is looking from when they need to know which one is being pointed at.
+    const callHalo = new THREE.Mesh(
+      new THREE.RingGeometry(m * 1.15, m * 1.75, 48, 1, start, SWEEP),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(PALETTE.bone),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    callHalo.rotation.x = -Math.PI / 2;
+    callHalo.position.set(slot.x, 0.84, slot.z);
+    table.add(callHalo);
+
+    calledRings.push({
+      slot: slot.slot,
+      x: slot.x,
+      z: slot.z,
+      material: called.material,
+      halo: callHalo.material
+    });
+  }
 
   target.add(table);
   return table;
@@ -476,7 +729,20 @@ function createFX() {
         }
         const progress = 1 - t.life / t.maxLife;
         scratch.set(t.x, 0.7, t.z).project(camera);
-        const px = (scratch.x * 0.5 + 0.5) * w;
+        // A pot or a scratch happens AT a pocket, and every pocket is in a
+        // corner or hard against a rail — so the unclamped label runs off the
+        // edge exactly when it matters most ("SCRATCH" read as "CRATCH").
+        //
+        // Half the label's own width is the margin AT REST, and the label is
+        // not at rest: it is drawn `scale(1 + (1 - progress) * 0.25)`, which
+        // is where it is widest at the moment it appears — so the first and
+        // loudest frames of a scratch were still overhanging the edge by an
+        // eighth of the word. The margin is the peak width, not the resting
+        // one. `offsetWidth` can also read 0 before the element has laid out;
+        // an estimate from the string keeps that frame on screen too.
+        const rest = t.el.offsetWidth || t.el.textContent.length * 11;
+        const half = rest * 0.5 * 1.25 + 6;
+        const px = clamp((scratch.x * 0.5 + 0.5) * w, half, w - half);
         const py = (-scratch.y * 0.5 + 0.5) * h - progress * FEEL.floatText.rise;
         t.el.style.transform = `translate(${px}px, ${py}px) translate(-50%, -50%) scale(${
           1 + (1 - progress) * 0.25
@@ -520,6 +786,26 @@ const game = {
   running: false,
   /** 'playing' | 'cleared' | 'modal' | 'dead' */
   state: 'playing',
+  /**
+   * THE CLOCK.
+   *
+   * 'aim'     the table is frozen solid. Nothing integrates, nothing decides
+   *           anything, the player has all the time in the world.
+   * 'resolve' a stroke is running. Physics owns the table until it settles.
+   *
+   * A freeze flips 'resolve' back to 'aim' WITHOUT ending the stroke, which is
+   * the whole trick: the multiplier, the bodies and their velocities all stay
+   * exactly where they were.
+   */
+  phase: 'aim',
+  /** True from the release that opens a stroke until the table settles. */
+  midStroke: false,
+  strokeTimer: 0,
+  settleTimer: 0,
+  /** Boon offers earned by potting into an upgrade pocket. */
+  pendingBoons: 0,
+  /** Extra strokes per room, won at a door. */
+  strokeBonus: 0,
   chain: { count: 0, timer: 0, best: 0 },
   /** Hits landed during the current launch (drives Break Pulse). */
   launchHits: 0,
@@ -534,6 +820,13 @@ const game = {
 
 const boons = new BoonSystem(game);
 game.boons = boons;
+
+const rules = new Rules();
+game.rules = rules;
+game.callPocket = callPocket;
+// A handle for the console and for automated smoke runs. Read-only in spirit:
+// nothing in the game reads it back.
+if (typeof window !== 'undefined') window.__game = game;
 
 const rooms = new RoomManager(game, {
   onRoomClear: handleRoomClear,
@@ -550,69 +843,55 @@ game.rooms = rooms;
 const ENEMY_COLOR = {
   solid: PALETTE.solid,
   stripe: PALETTE.stripe,
-  heavy: PALETTE.heavy
+  heavy: PALETTE.bone
 };
 
 /** Step the cascade multiplier and play its pentatonic note. */
-function chainStep() {
-  const idx = Math.min(game.chain.count, CHAIN.multipliers.length - 1);
-  const mult = CHAIN.multipliers[idx];
+/**
+ * One step of the multiplier ladder, with the note that goes with it.
+ *
+ * Every rung — a bank, a ball touched, a ball down — routes through here, so
+ * the escalating pentatonic run and the number on screen can never disagree
+ * about how deep the stroke is.
+ */
+function ladder(kind) {
+  if (!game.midStroke) return rules.multiplier;
+  let value;
+  if (kind === 'bank') value = rules.bank();
+  else if (kind === 'gold') value = rules.gold();
+  else value = rules.touch();
   game.chain.count += 1;
-  game.chain.timer = CHAIN.window;
   game.chain.best = Math.max(game.chain.best, game.chain.count);
   audio.chainNote(game.chain.count - 1);
-  return mult;
+  return value;
 }
 
 /**
- * The one scoring phrase in the game: what you just did, and what it paid.
- * `3 HITS  ×1.8`.
+ * The one scoring phrase in the game: what the stroke is worth right now.
+ * `×6  ·  1 BANK · 2 BALLS`
  */
-function hitCallout(count) {
-  const idx = clamp(count - 1, 0, CHAIN.multipliers.length - 1);
-  const mult = CHAIN.multipliers[idx];
-  return `${count} HITS  \u00d7${mult}`;
+function multCallout() {
+  const parts = [];
+  if (rules.banks) parts.push(`${rules.banks} BANK${rules.banks > 1 ? 'S' : ''}`);
+  if (rules.ballsTouched) parts.push(`${rules.ballsTouched} BALL${rules.ballsTouched > 1 ? 'S' : ''}`);
+  return parts.join(' · ');
 }
 
 /**
  * The moment the draw runs out.
  *
- * Full power was a state — a gold cue that pulses — with no event marking
- * arrival, so there was nothing to feel and nothing to stop pulling at. Power
- * is the hidden requirement in most of the tutorial, so the top of the range
- * now announces itself once, loudly, the frame it is reached.
+ * Power no longer decides whether anything breaks — nothing breaks from being
+ * hit any more — so max power now means the one thing it still honestly means:
+ * this is as far as the cue goes.
  */
 let wasMaxed = false;
 
-/**
- * The power at which a direct hit SHATTERS a basic ball.
- *
- * Derived, not typed: a first strike does `strikeDamage x speedRatio` (the chain
- * multiplier is still 1.0 on contact one), so the shatter point is wherever that
- * first reaches a solid's hp. Hard-coding it as a second constant meant the
- * callout drifted away from the mechanic — it announced at 0.985 while the ball
- * actually broke from 0.892, so between those two the shot shattered and the
- * game said nothing.
- *
- * Now MAX POWER means one specific, learnable thing: this shot breaks a basic
- * ball in one.
- */
-const SHATTER_POWER = (() => {
-  const need = ENEMY.solid.hp / PLAYER.strikeDamage;          // required speedRatio
-  const speed = need * PLAYER.referenceSpeed;                 // required impact speed
-  const p = (speed - PLAYER.launchSpeedMin) / (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin);
-  return clamp(p, PLAYER.minPower, 1);
-})();
-
 function noteAimPower(aim) {
-  const maxed = (aim?.power ?? 0) >= SHATTER_POWER;
+  const maxed = (aim?.power ?? 0) >= 0.97;
   if (maxed && !wasMaxed) {
     const p = player;
-    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.carom, 3.4, 0.3);
-    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.carom, 13, 0.6);
-    fx.burst(p.x, p.z, 10, PALETTE.spark, 9, 0.45);
-    // Below the ball, not above it: above is where the beam is, and gold text
-    // on a gold beam is not a callout.
+    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.bone, 3.4, 0.3);
+    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.bone, 13, 0.6);
     fx.floatText(p.x, p.z + 1.9, 'MAX POWER', 'crit');
     engine.shake(5);
     audio.bumper?.();
@@ -620,37 +899,89 @@ function noteAimPower(aim) {
   wasMaxed = maxed;
 }
 
-function chainMultiplier() {
-  const idx = clamp(game.chain.count - 1, 0, CHAIN.multipliers.length - 1);
-  return CHAIN.multipliers[idx];
-}
-
 function speedRatio(speed, lo = 0.35, hi = 2.2) {
   return clamp(speed / PLAYER.referenceSpeed, lo, hi);
 }
 
-function killEnemy(enemy) {
+/**
+ * Take a ball off the table. This is the ONLY way a ball leaves, and it is
+ * always because a target consumed it — never because something hit it hard
+ * enough.
+ */
+/** Balls part-way down a pocket, shrinking and dropping. */
+const sinking = [];
+
+/**
+ * A POT SHOULD LOOK LIKE THE BALL WENT IN.
+ *
+ * It used to be a shatter: the ball vanished in a burst of its own colour, at
+ * the pocket, on the same frame the score text appeared over the top of it. The
+ * one moment the whole game is about was the one moment you could not see.
+ *
+ * The ball now falls INTO the mouth — pulled to the pocket centre, shrinking
+ * and dropping below the felt over a fifth of a second — and the score text is
+ * thrown clear of the pocket rather than sitting on it.
+ */
+function sinkBall(ball, pocket) {
+  const group = ball.group;
+  if (!group) return;
+  // The sweep disposes a dead body on the very next frame, so the sink takes
+  // ownership of it for the length of the animation. See sweepEntities.
+  ball.sinking = true;
+  sinking.push({
+    ball,
+    group,
+    t: 0,
+    life: 0.24,
+    fromX: ball.x,
+    fromZ: ball.z,
+    toX: pocket ? pocket.x : ball.x,
+    toZ: pocket ? pocket.z : ball.z,
+    baseY: group.position.y
+  });
+}
+
+function pumpSinking(rawDt) {
+  for (let i = sinking.length - 1; i >= 0; i--) {
+    const s = sinking[i];
+    s.t += rawDt;
+    const k = Math.min(s.t / s.life, 1);
+    // Accelerating: it is falling, not fading.
+    const ease = k * k;
+    s.group.position.x = s.fromX + (s.toX - s.fromX) * ease;
+    s.group.position.z = s.fromZ + (s.toZ - s.fromZ) * ease;
+    s.group.position.y = s.baseY - ease * 2.4;
+    s.group.scale.setScalar(Math.max(0.08, 1 - ease * 0.9));
+    if (k >= 1) {
+      s.ball.sinking = false;
+      sinking.splice(i, 1);
+    }
+  }
+}
+
+function removeBall(ball, pocket) {
+  // Idempotent: a pot removes the ball, and the lesson director may then score
+  // the same ball. Two shatter bursts for one pot is a tell that the game does
+  // not know what happened.
+  if (!ball || !ball.alive) return;
+  ball.alive = false;
   audio.enemyDeath();
-  fx.burst(enemy.x, enemy.z, 20, ENEMY_COLOR[enemy.type], 11, 1.5);
-  fx.shockwave(enemy.x, enemy.z, ENEMY_COLOR[enemy.type], enemy.radius * 4.5, 0.36);
-  player.addFocus(FOCUS.onKill);
+  if (pocket) {
+    sinkBall(ball, pocket);
+    fx.shockwave(pocket.x, pocket.z, ENEMY_COLOR[ball.type], ball.radius * 3.2, 0.3);
+  } else {
+    fx.burst(ball.x, ball.z, 20, ENEMY_COLOR[ball.type], 11, 1.5);
+    fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], ball.radius * 4.5, 0.36);
+  }
 }
 
 /**
- * The single damage funnel. Boons, fields and zaps all route through here so
- * kills are handled exactly once, in exactly one place.
+ * Damage is still in the game, but it no longer decides what breaks — it only
+ * decides how long the run lasts. Kept as a funnel so boons and hazards have
+ * one door to come through.
  */
 function dealDamage(enemy, amount, opts = {}) {
   if (!enemy || !enemy.alive) return { dealt: 0, killed: false };
-  // A lesson target that must survive being hit — the ball you knock into the
-  // goal, the ball you cannon into another — is flagged invulnerable.
-  //
-  // Note this is per-body and NOT a blanket block on the whole lesson room. The
-  // cue ball only passes through something it has killed (PhysicsSystem), so
-  // making every target unkillable meant the ball bounced off each one instead
-  // of piercing it, and the chain lessons quietly taught different physics from
-  // the game they were introducing. Chain targets die normally; a failed rep
-  // re-racks the whole set instead.
   if (enemy.invulnerable) return { dealt: 0, killed: false, blocked: true };
   const result = enemy.takeDamage(amount, {
     ...opts,
@@ -659,178 +990,236 @@ function dealDamage(enemy, amount, opts = {}) {
   if (!opts.silent && result.dealt > 0) {
     fx.burst(enemy.x, enemy.z, 4, ENEMY_COLOR[enemy.type], 5, 0.5);
   }
-  if (result.killed) killEnemy(enemy);
+  if (result.killed) removeBall(enemy);
   return result;
 }
 game.dealDamage = dealDamage;
 
 /**
- * Kill outright, bypassing the damage funnel — and therefore bypassing the
- * tutorial guard above. The lesson director is the only thing allowed to use
- * it, because it is the only thing that knows whether a rep counted.
+ * Kill outright, bypassing the damage funnel. The lesson director is the only
+ * thing allowed to use it, because it is the only thing that knows whether a
+ * rep counted.
  */
 game.forceKill = (enemy) => {
   if (!enemy || !enemy.alive) return;
-  // Force means force: a target still inside its spawn telegraph shrugs damage
-  // off, which would make a lesson's kill silently fail to happen.
   if (enemy.state === ENEMY_STATE.SPAWNING) {
     enemy.state = ENEMY_STATE.ACTIVE;
     enemy.spawnTimer = 0;
   }
-  const result = enemy.takeDamage(enemy.hp + 1);
-  if (result.killed) killEnemy(enemy);
+  removeBall(enemy);
 };
 game.tutorialGuard = null;
 
-/**
- * final = base × speedRatio × damageMult × bankBonus × firstHitBonus
- * (backstab and shield mitigation are applied inside Enemy.takeDamage)
- *
- * THE CHAIN IS NOT IN THIS PRODUCT ANY MORE, DELIBERATELY.
- *
- * It used to multiply damage, which made every later contact in a launch hit
- * HARDER than the first even though the cue was slower — contact 2 did 44 into a
- * 34hp solid where contact 1 did 36. One max-power shot therefore destroyed a
- * whole line, and "knock this ball into that one" became impossible to author
- * without flagging bodies unkillable.
- *
- * With the chain paying points instead, the cue's own speed decides everything:
- * contact 1 at full power breaks a solid (35.7), contact 2 does not (31.7), so
- * it survives and carries on into the next ball. That IS the mechanic — shatter
- * the first, ride through, hand off — and it now falls out of the physics rather
- * than being staged with an immortality flag.
- */
-function strikeDamage(speed) {
-  let damage = PLAYER.strikeDamage * speedRatio(speed) * player.stats.damageMult;
-  if (player.bouncesUsed > 0) {
-    damage *= 1 + player.stats.bankDamageBonus * player.bouncesUsed;
+/* ------------------------------------------------------------------ *
+ * The stroke
+ * ------------------------------------------------------------------ */
+
+/** Is every body on the table at rest? */
+function tableSettled() {
+  if (player.alive && player.speed > RULES.settleSpeed) return false;
+  for (const ball of game.enemies) {
+    if (ball.alive && ball.speed > RULES.settleSpeed) return false;
   }
-  if (game.launchHits === 0) damage *= 1 + player.stats.firstHitBonus;
-  damage *= 1 + game.pyreBonus;
-  return damage;
+  return true;
+}
+
+/** Open a stroke: the ladder resets, the gold rings come back. */
+function beginStroke() {
+  game.midStroke = true;
+  game.phase = 'resolve';
+  game.strokeTimer = 0;
+  game.settleTimer = 0;
+  game.chain.count = 0;
+  game.launchHits = 0;
+  game.strokeTookGreen = false;
+  rules.beginStroke();
+  rooms.table.rearmForStroke();
+}
+
+/** Resume a frozen stroke. Same stroke, same ladder — no reset, no cost. */
+function resumeStroke() {
+  game.phase = 'resolve';
+  game.settleTimer = 0;
+}
+
+/**
+ * The table has stopped. Bank what the stroke paid, spend one from the budget,
+ * and ask the contract whether the room is over.
+ */
+function finishStroke() {
+  game.midStroke = false;
+  game.phase = 'aim';
+  game.settleTimer = 0;
+
+  // Shooting into a door is not a shot off the budget. The room is already decided; the
+  // exit shot must not be able to bankrupt you.
+  if (game.state === 'cleared') return;
+  // Neither is a lesson rep. A tutorial with a budget is a tutorial you can
+  // fail, and every board here is meant to be repeatable until it lands.
+  if (game.tutorialGuard) {
+    rules.resetStroke();
+    rooms.table.rearmForStroke();
+    return;
+  }
+
+  const summary = rules.endStroke();
+  if (summary.voided) {
+    fx.floatText(player.x, player.z - 2.4, `VOID −${summary.lost.toLocaleString()}`, 'splat');
+  } else if (summary.paid > 0) {
+    fx.floatText(player.x, player.z - 2.4, `+${summary.paid.toLocaleString()}`, 'crit');
+  }
+
+  if (rules.filled) {
+    completeRoom();
+  } else if (rules.strokesLeft <= 0) {
+    failRoom();
+  } else if (rules.strokesLeft === 1) {
+    hud.showBanner('Last shot', `${rules.contract.rack - rules.ballsDown} still on the table`, 1.8);
+  }
+}
+
+/**
+ * Freeze: stop the table mid-stroke and re-aim from wherever the cue ball got
+ * to. Costs a charge, never a stroke — and every other ball keeps the velocity
+ * it had, so releasing again resumes exactly the shot you interrupted.
+ */
+function tryFreeze() {
+  if (game.phase !== 'resolve' || !game.midStroke) return false;
+  if (game.state === 'modal' || !player.alive) return false;
+  if (!rules.spendFreeze()) {
+    fx.floatText(player.x, player.z - 2.2, 'NO FREEZE', 'block');
+    return false;
+  }
+  game.phase = 'aim';
+  // The cue ball stops where it is; it is about to be re-aimed from here.
+  player.vx = 0;
+  player.vz = 0;
+  player.endLaunch();
+  input.setHeading(0, -1);
+  engine.zoomPunch();
+  engine.shake(4);
+  audio.focusEnter?.();
+  fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
+  fx.floatText(player.x, player.z - 2.2, 'FREEZE', 'crit');
+  hud.showBanner('Freeze', 'Re-aim — this does not cost a shot', 1.6);
+  return true;
+}
+game.tryFreeze = tryFreeze;
+
+/**
+ * A live pocket pays double, then fires the ball straight back out at you.
+ *
+ * The ball is kept rather than replaced: it is marked spent — no number, no
+ * value, no longer part of the contract — so it counts once, comes back as a
+ * pure hazard, and can still carom into whatever is in its way. Which is the
+ * risk you accepted when you chose that pocket.
+ */
+function kickBack(source) {
+  // The kicker takes the nearest ball on the table and sends it at you. It
+  // does not consume it — the ball is still worth its number if you can get it
+  // down — but while it is travelling it is the one thing on a static table
+  // that can hurt you.
+  let target = null;
+  let best = Infinity;
+  for (const ball of game.enemies) {
+    if (!ball.alive) continue;
+    const d = Math.hypot(ball.x - source.x, ball.z - source.z);
+    if (d < best) {
+      best = d;
+      target = ball;
+    }
+  }
+  if (!target) return;
+
+  const dx = player.x - target.x;
+  const dz = player.z - target.z;
+  const len = Math.hypot(dx, dz) || 1;
+  target.applyKnock((dx / len) * KICKBACK_SPEED, (dz / len) * KICKBACK_SPEED);
+  target.vx = (dx / len) * KICKBACK_SPEED;
+  target.vz = (dz / len) * KICKBACK_SPEED;
+  target.hostile = true;
+
+  fx.shockwave(target.x, target.z, PALETTE.bad, 5, 0.45);
+  fx.floatText(target.x, target.z, 'INCOMING', 'splat');
 }
 
 game.on = {
   /* --- the cue strike ------------------------------------------------ */
+  /**
+   * Contact, not damage.
+   *
+   * The cue ball no longer carries a damage number: hitting a ball moves it,
+   * full stop. What the strike buys is a rung on the ladder and, if the line
+   * was good, a ball on its way to a pocket. Returning an empty result is what
+   * tells the physics layer to resolve a real two-body impulse rather than
+   * passing through a corpse.
+   */
   cueStrike({ player: p, enemy, x, z, speed, banked }) {
-    chainStep();
-    const result = dealDamage(enemy, strikeDamage(speed), {
-      fromX: p.x,
-      fromZ: p.z,
-      banked,
-      source: 'cue',
-      silent: true
-    });
     game.launchHits += 1;
-    // `killed` matters to the director: a lesson about shattering a ball has
-    // to tell a shatter from a hit that merely moved it.
+
+    // A ball fired back out of a live pocket is the one thing on a static
+    // table that can still hurt you.
+    if (enemy.hostile) {
+      if (!game.tutorialGuard && speed > 8) p.takeDamage(RULES.damage.kickback, game, enemy);
+      enemy.hostile = false;
+    } else {
+      ladder('touch');
+    }
+
     tutorial.notify('hit', {
       enemy,
       banked,
       index: game.launchHits,
       bounces: p.bouncesUsed,
-      killed: !!result.killed
+      killed: false
     });
 
-    // Chaining is the point of the game, so it gets the loudest feedback in it.
-    // Every extra body in one launch escalates the callout, pays Focus back and
-    // punches the camera — the mechanic teaches itself by being celebrated.
-    if (game.launchHits >= 2) {
-      fx.floatText(p.x, p.z - 2.4, hitCallout(game.launchHits), 'crit');
-      fx.shockwave(x, z, PALETTE.carom, 5.5 + game.launchHits * 0.6, 0.4);
-      engine.zoomPunch();
-      audio.chainNote(game.launchHits);
-      p.addFocus(TUTORIAL.praiseFocus);
+    if (rules.multiplier > 1 && game.midStroke) {
+      fx.floatText(p.x, p.z - 2.4, `×${rules.multiplier}  ${multCallout()}`, 'crit');
+      fx.shockwave(x, z, PALETTE.good, 4.4 + game.launchHits * 0.5, 0.36);
     }
 
-    engine.hitStop(result.backstab ? TIME.hitStopCrit : TIME.hitStop);
+    engine.hitStop(TIME.hitStop);
     engine.shake(speed * enemy.mass * 0.9);
     audio.impact(clamp(speed / PLAYER.launchSpeed, 0, 1));
     fx.burst(x, z, 10, ENEMY_COLOR[enemy.type], speed * 0.45);
 
-    if (result.backstab) {
-      audio.backstab();
-      engine.zoomPunch();
-      fx.floatText(x, z, 'BACKSTAB', 'crit');
-    } else if (result.shielded) {
-      fx.floatText(x, z, 'SHIELDED', 'block');
-    }
-
-
-    p.addFocus(FOCUS.onChainHit);
-    boons.onImpact({ player: p, enemy, x, z, speed, banked, result });
-    return result;
+    boons.onImpact({ player: p, enemy, x, z, speed, banked, result: {} });
+    return {};
   },
 
-  /* --- the carom ----------------------------------------------------- */
+  /* --- ball into ball ------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
     tutorial.notify('pass', { striker, target, x, z, speed });
-    chainStep();
-    const scale = clamp(speed / PLAYER.referenceSpeed, 0.4, 2.0);
-    // Same rule as the cue strike: speed decides lethality, the chain pays points.
-    const damage = PHYSICS.caromDamage * scale * player.stats.damageMult;
-    // An object ball counts as a banked hit: it ignores frontal shields.
-    dealDamage(target, damage, {
-      fromX: striker.x,
-      fromZ: striker.z,
-      banked: true,
-      source: 'carom',
-      silent: true
-    });
-    dealDamage(striker, damage * 0.55, { source: 'carom', silent: true });
+    ladder('touch');
 
     engine.hitStop(TIME.hitStopCrit);
     engine.shake(speed * 2.6);
     engine.zoomPunch();
     audio.carom();
-    // "CAROM" is a billiards term, not a score. What the player wants to know
-    // is what they just did and what it paid, so the callout says exactly that.
-    fx.floatText(x, z, hitCallout(game.chain.count), 'carom');
-    fx.burst(x, z, 24, PALETTE.carom, speed * 0.7, 1.2);
-    fx.shockwave(x, z, PALETTE.carom, 4.2, 0.45);
-    player.addFocus(FOCUS.onCarom);
+    fx.floatText(x, z, `×${rules.multiplier}`, 'carom');
+    fx.burst(x, z, 24, PALETTE.good, speed * 0.7, 1.2);
+    fx.shockwave(x, z, PALETTE.good, 4.2, 0.45);
 
     boons.onImpact({ player, enemy: target, x, z, speed, banked: true, result: null });
   },
 
-  /* --- the wall-splat ------------------------------------------------ */
-  wallSplat({ enemy, x, z, nx, nz, speed }) {
-    // A WALL IS NOT A CHAIN LINK.
-    //
-    // This called chainStep(), so a ball bouncing around a closed box climbed
-    // the counter on its own. A three-ball rack was seen ending on `10 HITS
-    // x2.5` — six of those hits were splats nobody aimed. The number measured
-    // how long things kept moving, not what the player did, which made it
-    // useless as a skill signal and unteachable as a lesson.
-    //
-    // The splat still hits hard and still scales with a chain that is already
-    // running; it just cannot extend one. HITS now counts contacts you caused.
-    const scale = clamp(speed / PHYSICS.wallSplatSpeed, 1, 2.4);
-    dealDamage(enemy, PHYSICS.wallSplatDamage * scale, {
-      source: 'splat',
-      silent: true
-    });
-
-    engine.hitStop(TIME.hitStopCrit);
-    engine.shake(speed * 2.1);
-    engine.zoomPunch(FEEL.zoomPunch * 0.7);
+  /* --- a ball meeting a rail hard ------------------------------------ */
+  /**
+   * A wall-splat used to shatter the ball. It cannot any more — rails do not
+   * destroy anything — so what is left is the sound and the shove, which is
+   * exactly what a ball slamming a cushion should be.
+   */
+  wallSplat({ enemy, x, z, speed }) {
     audio.wallSplat();
-    fx.floatText(x, z, 'SPLAT!', 'splat');
-    fx.spray(x, z, 18, ENEMY_COLOR[enemy.type], speed * 0.8, nx, nz);
-    player.addFocus(FOCUS.onWallSplat);
+    engine.hitStop(TIME.hitStop);
+    engine.shake(speed * 1.4);
+    fx.burst(x, z, 12, ENEMY_COLOR[enemy.type], speed * 0.4, 0.9);
   },
 
-  /**
-   * The discharge. Until now a shot had a death effect and an impact effect but
-   * nothing at all at the muzzle, so the brightest moment near the enemy was
-   * its charge ring switching off — the table got dimmer at the exact instant
-   * it fired, and the bullet read as having appeared rather than been shot.
-   */
   enemyFired({ x, z, dirX, dirZ }) {
-    fx.burst(x, z, 9, PALETTE.projectile, 9, 0.34);
-    fx.shockwave(x, z, PALETTE.projectile, 1.5, 0.16);
-    // A short spit of sparks down the barrel line, so the shot has a direction
-    // even in the frame before the bullet has travelled anywhere.
+    fx.burst(x, z, 9, PALETTE.bad, 9, 0.34);
+    fx.shockwave(x, z, PALETTE.bad, 1.5, 0.16);
     fx.burst(x + dirX * 0.5, z + dirZ * 0.5, 5, PALETTE.spark, 13, 0.22);
     engine.shake(1.6);
   },
@@ -840,24 +1229,195 @@ game.on = {
     fx.burst(x, z, 3, ENEMY_COLOR[enemy.type], speed * 0.25, 0.6);
   },
 
+  /* --- pockets -------------------------------------------------------- */
+  /**
+   * A ball goes down. This is the whole game in one function.
+   */
+  potted({ ball, pocket }) {
+    if (!ball.alive) return;
+
+    // An unnumbered body is not part of the contract and pays nothing.
+    if (ball.number <= 0) {
+      removeBall(ball);
+      return;
+    }
+
+    // The 8 down early under an "8 last" contract: a foul. It comes back and
+    // the shot it happened on pays nothing.
+    if (rules.isFoul(ball.number)) {
+      rules.scratch();
+      audio.playerHurt();
+      engine.shake(9);
+      fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
+      fx.floatText(ball.x, ball.z, 'THE 8 GOES LAST', 'splat');
+      hud.showBanner('Too early', 'The 8 goes last — back on the table', 1.8);
+      rooms.respot(ball);
+      return;
+    }
+
+    const banks = rules.banks;
+    const touched = rules.ballsTouched;
+    const tookGreen = game.strokeTookGreen;
+    const paid = rules.pot(ball.number);
+    tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
+
+    // THE TEXT GOES WHERE THE BALL IS NOT.
+    //
+    // Every pocket is in a corner or against a rail, so a label centred on one
+    // sits directly over the ball dropping into it — the score covered the very
+    // event it was reporting. Each beat is thrown back toward the middle of the
+    // table, along the line from the pocket to the centre, and stacked further
+    // in as the run climbs.
+    const inward = (() => {
+      const len = Math.hypot(pocket.x, pocket.z) || 1;
+      return { x: -pocket.x / len, z: -pocket.z / len };
+    })();
+    const away = (n) => ({
+      x: pocket.x + inward.x * (2.6 + n * 1.5),
+      z: pocket.z + inward.z * (2.6 + n * 1.5)
+    });
+
+    audio.chainNote(game.chain.count + 2);
+    engine.hitStop(TIME.hitStopCrit);
+    engine.zoomPunch();
+    engine.shake(10);
+    fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
+    const head = away(0);
+    fx.floatText(head.x, head.z, `+${paid.value.toLocaleString()}`, 'crit');
+
+    const steps = [];
+    let note = game.chain.count + 3;
+    let at = 0.26;
+    const beat = (text, colour) => {
+      const when = at;
+      const tone = note;
+      const spot = away(steps.length + 1);
+      steps.push({
+        at: when,
+        run: () => {
+          audio.chainNote(tone);
+          engine.zoomPunch(FEEL.zoomPunch * 0.5);
+          fx.shockwave(spot.x, spot.z, colour, 3.4, 0.3);
+          fx.floatText(spot.x, spot.z, text, 'crit');
+        }
+      });
+      at += 0.26;
+      note += 1;
+    };
+    if (banks > 0) beat(`${banks} BANK${banks > 1 ? 'S' : ''} ×${1 + banks}`, PALETTE.player);
+    if (tookGreen) beat('GREEN ×2', PALETTE.good);
+    if (touched > 1) beat(`${touched} BALLS ×${touched}`, PALETTE.solid);
+    if (steps.length) celebrate(steps);
+
+    removeBall(ball, pocket);
+  },
+
+  /** The cue ball down a pocket. The stroke pays nothing. */
+  scratch({ player: p, pocket }) {
+    if (!game.midStroke && game.state !== 'cleared') return;
+    if (p.scratchGuard > 0) return;
+    p.scratchGuard = 0.6;
+    rules.scratch();
+    audio.playerHurt();
+    engine.shake(14);
+    engine.zoomPunch();
+    fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 7, 0.55);
+    fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
+    hud.showBanner('Scratch', 'Your own ball went in — this shot pays nothing', 1.9);
+    // Back to the spot, at rest. The stroke ends here.
+    p.vx = 0;
+    p.vz = 0;
+    p.placeAt(rooms.layout.spawn.x, spawnZ());
+    tutorial.notify('scratch', { pocket });
+  },
+
+  /* --- the lit objects ------------------------------------------------ */
+  /**
+   * A pick-up or a hazard. One form, two meanings: mint helps you, red costs
+   * you. Only the cue ball triggers them — an object ball rolling over a mine
+   * would make routing unreadable, and half the point of the felt is that YOUR
+   * ball's path is the thing you are choosing.
+   */
+  objectHit({ object, body, isCue }) {
+    if (!object.armed || !isCue) return;
+    rooms.table.consume(object);
+    const colour = object.good ? PALETTE.good : PALETTE.bad;
+    fx.shockwave(object.x, object.z, colour, 5, 0.42);
+    fx.burst(object.x, object.z, 18, colour, 12, 0.9);
+    tutorial.notify('object', { object });
+
+    switch (object.kind) {
+      case 'double': {
+        const value = ladder('gold');
+        game.strokeTookGreen = true;
+        audio.pyre?.();
+        fx.floatText(object.x, object.z, `×${value}`, 'crit');
+        return;
+      }
+      case 'freeze': {
+        const charges = rules.grantFreeze();
+        audio.boonPick?.();
+        engine.zoomPunch();
+        fx.floatText(object.x, object.z, `FREEZE ×${charges}`, 'crit');
+        hud.showBanner('Freeze', 'Tap while the table is still moving', 2);
+        return;
+      }
+      case 'upgrade': {
+        game.pendingBoons += 1;
+        audio.boonPick?.();
+        fx.floatText(object.x, object.z, 'UPGRADE', 'crit');
+        return;
+      }
+      case 'shot': {
+        rules.strokesLeft += 1;
+        audio.boonPick?.();
+        fx.floatText(object.x, object.z, '+1 SHOT', 'crit');
+        return;
+      }
+      case 'kicker': {
+        audio.wallSplat();
+        engine.shake(12);
+        engine.zoomPunch();
+        fx.floatText(object.x, object.z, 'KICKER', 'splat');
+        kickBack(object);
+        return;
+      }
+      case 'mine':
+      default: {
+        audio.wallSplat();
+        engine.shake(14);
+        engine.zoomPunch();
+        if (!game.tutorialGuard) player.takeDamage(RULES.damage.mine, game, 'mine');
+        fx.floatText(object.x, object.z, 'MINE', 'splat');
+      }
+    }
+  },
+
   /* --- player events ------------------------------------------------- */
   playerRebound(event) {
     const { player: p, x, z, speed, kind } = event;
     audio.rebound(clamp(speed / PLAYER.launchSpeed, 0, 1));
     engine.shake(speed * 0.4);
 
+    // EVERY RAIL IS A RUNG.
+    //
+    // Banking is the cheapest way to build a multiplier and the most skilful,
+    // so it pays on contact rather than on some later condition. A dying kiss
+    // does not count — but the bar sits just under the creep threshold, since
+    // below that a ball is already being dragged to a stop and cannot ladder
+    // its way up on cushions for free.
+    if (speed > RULES.creepSpeed - 1) ladder('bank');
+
     if (kind === 'bumper') {
-      // Kinetic bumper: amplify, refund the bounce, keep the pinball alive.
       const current = Math.hypot(p.vx, p.vz) || 1;
       const target = Math.max(current * INJECTOR.bumper.boost, INJECTOR.bumper.minOut);
       const scale = target / current;
       p.vx *= scale;
       p.vz *= scale;
       if (INJECTOR.bumper.refundsBounce) p.bouncesUsed = Math.max(0, p.bouncesUsed - 1);
-      p.addFocus(INJECTOR.bumper.focus);
       audio.bumper();
-      fx.burst(x, z, 12, PALETTE.bumper, 11, 0.8);
-      fx.shockwave(x, z, PALETTE.bumper, 2.6, 0.3);
+      fx.burst(x, z, 12, PALETTE.lip, 11, 0.8);
+      fx.shockwave(x, z, PALETTE.lip, 2.6, 0.3);
     } else {
       fx.burst(x, z, 5, PALETTE.railGlow, speed * 0.3, 0.6);
     }
@@ -866,9 +1426,6 @@ game.on = {
   },
 
   playerLaunch(event) {
-    // The release is the payoff for the wind-up, so it scales with it: a
-    // fully-charged shot gets a bigger burst, a ring, a camera punch and a
-    // brief freeze, while a quick tap still snaps cleanly without ceremony.
     const p = event.power ?? 1;
     audio.slingshot(p);
     fx.burst(event.x, event.z, 8 + Math.round(p * 16), PALETTE.player, event.speed * 0.3, 0.7);
@@ -884,27 +1441,20 @@ game.on = {
       dirX: event.dirX ?? 0,
       dirZ: event.dirZ ?? 0
     });
-    game.launchHits = 0;
-    game.pyreBonus = 0;
     boons.onLaunch(event);
   },
 
   playerDash() {
     audio.rebound(0.4);
-    game.launchHits = 0;
-    game.pyreBonus = 0;
   },
 
   playerTouched({ player: p, enemy }) {
-    // Lessons are practice, not a fight: a target you are still learning to
-    // hit does not get to chip away at you while you work it out.
     if (game.tutorialGuard) return;
-    // The tutorial's targets could not touch you, so the hull bar has never
-    // moved once. Its first movement should not be a 63% drop taken while
-    // standing still reading the banner that explains enemies move.
     if (game.graceTimer > 0) return;
     if (p.touchTimer > 0) return;
-    if (p.takeDamage(enemy.config.contactDamage, game, enemy)) {
+    if (!enemy.hostile) return;
+    enemy.hostile = false;
+    if (p.takeDamage(RULES.damage.kickback, game, enemy)) {
       p.touchTimer = PLAYER.touchInterval;
     }
   },
@@ -923,13 +1473,11 @@ game.on = {
     fx.burst(player.x, player.z, 40, PALETTE.player, 16, 2);
     game.state = 'dead';
     game.deathTimer = 2.4;
-    hud.showBanner('Run Over', `Reached room ${game.level} · best chain ${game.chain.best}`, 2.4);
+    hud.showBanner('Run Over', `Room ${game.level} · ${rules.runScore.toLocaleString()} points`, 2.4);
   },
 
   projectileHit({ projectile, player: p }) {
-    fx.burst(projectile.x, projectile.z, 8, PALETTE.projectile, 7, 0.7);
-    // A lesson shows you the shot; it does not charge you for it. The impact
-    // still lands and still reads, but a tutorial you can lose is not one.
+    fx.burst(projectile.x, projectile.z, 8, PALETTE.bad, 7, 0.7);
     if (game.tutorialGuard) {
       hud.flashDamage();
       engine.shake(6);
@@ -939,36 +1487,9 @@ game.on = {
   },
 
   projectileExpired({ projectile }) {
-    fx.burst(projectile.x, projectile.z, 4, PALETTE.projectile, 4, 0.5);
+    fx.burst(projectile.x, projectile.z, 4, PALETTE.bad, 4, 0.5);
   },
 
-  /* --- environmental injectors --------------------------------------- */
-  zoneEnter({ zone, player: p }) {
-    if (zone.kind !== 'pyre') return;
-    if (p.pyreTimer > 0 || p.state !== PLAYER_STATE.LAUNCHED) return;
-    const current = Math.hypot(p.vx, p.vz);
-    if (current < 1) return;
-    const target = Math.min(current * INJECTOR.pyre.boost, INJECTOR.pyre.maxSpeed);
-    const scale = target / current;
-    p.vx *= scale;
-    p.vz *= scale;
-    p.pyreTimer = INJECTOR.pyre.cooldown;
-    game.pyreBonus = INJECTOR.pyre.damageBonus;
-    audio.pyre();
-    fx.shockwave(zone.x, zone.z, PALETTE.pyre, 4, 0.36);
-    fx.burst(zone.x, zone.z, 14, PALETTE.pyre, 12, 0.9);
-    fx.floatText(zone.x, zone.z, 'AMPLIFIED', 'crit');
-  },
-
-  hazardTick({ player: p, dt }) {
-    if (p.invulnerable || !p.alive) return;
-    game.hazardAccum += INJECTOR.hazard.dps * dt;
-    if (game.hazardAccum >= 4) {
-      const damage = game.hazardAccum;
-      game.hazardAccum = 0;
-      p.takeDamage(damage, game, 'hazard');
-    }
-  }
 };
 
 /* ------------------------------------------------------------------ *
@@ -982,10 +1503,10 @@ function doorLabelText(door) {
       return `${door.phase} boon`;
     case 'repair':
       return `+${PROGRESSION.healAmount} hull`;
-    case 'focus':
-      return `+${PROGRESSION.statRewards.focusMax.toFixed(1)}s focus`;
-    case 'power':
-      return `+${Math.round(PROGRESSION.statRewards.damage * 100)}% damage`;
+    case 'stroke':
+      return `+${PROGRESSION.statRewards.stroke} shot every room`;
+    case 'freeze':
+      return `+${PROGRESSION.statRewards.freeze} freeze`;
     case 'ricochet':
       return `+${PROGRESSION.statRewards.bounce} bounce`;
     default:
@@ -995,26 +1516,108 @@ function doorLabelText(door) {
 
 const cssHex = (value) => `#${value.toString(16).padStart(6, '0')}`;
 
-function handleRoomClear() {
+/**
+ * The contract is filled. Pay for every stroke left in the budget — the skill
+ * income — put the scorecard up, and open the exits.
+ */
+function completeRoom() {
+  if (game.state === 'cleared') return;
   game.state = 'cleared';
+  const result = rules.endRoom();
   audio.roomClear();
-  player.addFocus(FOCUS.onRoomClear);
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
-  hud.showBanner('Room Clear', 'Shoot into an exit', 2.4);
-  hud.setDoors(
-    rooms.doors.map((door) => ({
-      x: door.x,
-      // Labels sit below the gate so they never collide with the HUD band.
-      z: door.z + door.hh + 1.0,
-      text: doorLabelText(door),
-      color: cssHex(door.color)
-    }))
-  );
+  openExits();
+  hud.showScorecard({
+    level: game.level,
+    filled: true,
+    ledger: rules.ledger,
+    roomScore: result.roomScore,
+    runScore: result.runScore,
+    choices: exitChoices()
+  });
+}
+
+/**
+ * Out of strokes with balls still standing. The rack breaks loose and every
+ * ball left takes a bite out of the hull — then the exits open anyway. A bad
+ * room costs you the next few rooms, not the run on the spot.
+ */
+function failRoom() {
+  if (game.state === 'cleared') return;
+  game.state = 'cleared';
+  const standing = rooms.ballsRemaining;
+  const damage = standing * RULES.damage.looseBall;
+  const result = rules.endRoom();
+
+  audio.playerDeath?.();
+  engine.shake(18);
+  engine.zoomPunch(FEEL.zoomPunch * 1.6);
+  for (const ball of game.enemies) {
+    if (!ball.alive || ball.number <= 0) continue;
+    fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], 4.5, 0.5);
+  }
+  if (damage > 0 && !game.tutorialGuard) player.takeDamage(damage, game, 'loose');
+
+  openExits();
+  hud.showScorecard({
+    level: game.level,
+    filled: false,
+    ledger: rules.ledger,
+    roomScore: result.roomScore,
+    runScore: result.runScore,
+    penalty: { standing, damage },
+    choices: exitChoices()
+  });
+}
+
+function openExits(title, sub) {
+  rooms.openExits();
+}
+
+/** The reward name a button shows, short enough to be a label. */
+function doorName(door) {
+  switch (door.reward.id) {
+    case 'boon':
+      return 'Upgrade';
+    case 'repair':
+      return 'Repair';
+    case 'stroke':
+      return 'More shots';
+    case 'freeze':
+      return 'Freeze';
+    case 'ricochet':
+      return 'Bounce';
+    default:
+      return 'Onward';
+  }
+}
+
+/**
+ * One button per exit, in the exit's own colour.
+ *
+ * The doors still exist in the room — they are what carries the reward and
+ * decides the next level — but the player no longer has to shoot the cue ball
+ * into one, because at the end of a room there is no cue ball on the table to
+ * shoot. See HUD.showScorecard.
+ */
+function exitChoices() {
+  return rooms.doors.map((door) => ({
+    name: doorName(door),
+    detail: doorLabelText(door),
+    color: cssHex(door.color),
+    pick: () => handleDoorEntered(door)
+  }));
+}
+
+function handleRoomClear() {
+  // Kept for the RoomManager handler contract; the contract decides clears now.
+  completeRoom();
 }
 
 function handleDoorEntered(door) {
   audio.doorOpen();
   hud.setDoors([]);
+  hud.hideScorecard();
   fx.shockwave(door.x, door.z, door.color, 6, 0.5);
   fx.burst(door.x, door.z, 22, door.color, 12, 1.2);
 
@@ -1028,17 +1631,17 @@ function handleDoorEntered(door) {
       player.heal(PROGRESSION.healAmount);
       hud.showBanner('Repaired', `+${PROGRESSION.healAmount} hull`, 1.6);
       break;
-    case 'focus':
-      boons.addRunBonus({ focusMax: PROGRESSION.statRewards.focusMax });
-      hud.showBanner('Focus Up', `+${PROGRESSION.statRewards.focusMax.toFixed(1)}s bullet-time`, 1.6);
+    case 'stroke':
+      game.strokeBonus += PROGRESSION.statRewards.stroke;
+      hud.showBanner('More Shots', `+${PROGRESSION.statRewards.stroke} shot every room`, 1.8);
       break;
-    case 'power':
-      boons.addRunBonus({ damageMult: 1 + PROGRESSION.statRewards.damage });
-      hud.showBanner('Power Up', `+${Math.round(PROGRESSION.statRewards.damage * 100)}% damage`, 1.6);
+    case 'freeze':
+      rules.grantFreeze(PROGRESSION.statRewards.freeze);
+      hud.showBanner('Freeze', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
       break;
     case 'ricochet':
       boons.addRunBonus({ maxBounces: PROGRESSION.statRewards.bounce });
-      hud.showBanner('Ricochet', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
+      hud.showBanner('Bounce', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
       break;
     default:
       break;
@@ -1061,6 +1664,11 @@ function openBoonModal(phase) {
         hud.setBuild(boons.owned);
       }
       engine.resume();
+      if (game.pendingBoons > 0) {
+        game.pendingBoons -= 1;
+        openBoonModal(null);
+        return;
+      }
       advanceRoom();
     },
     { level: game.level, phase }
@@ -1068,41 +1676,58 @@ function openBoonModal(phase) {
 }
 
 function advanceRoom() {
+  // An upgrade pocket buys a boon pick, cashed on the way out of the room.
+  if (game.pendingBoons > 0) {
+    game.pendingBoons -= 1;
+    openBoonModal(null);
+    return;
+  }
+
   game.level += 1;
   game.chain.count = 0;
-  game.chain.timer = 0;
   game.launchHits = 0;
-  game.pyreBonus = 0;
-  game.hazardAccum = 0;
+  game.pendingBoons = 0;
   boons.clearFields();
   fx.clearTexts();
   hud.setDoors([]);
+  hud.hideScorecard();
 
   rooms.generate(game.level);
+  callPocket(null);
+  rules.beginRoom(game.level, game.strokeBonus
+    ? { strokes: rooms.contract.strokes + game.strokeBonus }
+    : null);
   player.placeAt(rooms.layout.spawn.x, spawnZ());
-  player.addFocus(player.focusMax);
   game.state = 'playing';
-  // Every room opens facing 12 o'clock. Carrying the last room's heading over
-  // meant arriving already pointed at a wall for no reason the player chose,
-  // and a fixed start is one less thing to re-read on entry.
+  game.phase = 'aim';
+  game.midStroke = false;
   input.setHeading(0, -1);
   showRoomBanner();
 }
 
-/**
- * Lead with the lesson while there is still one to teach, and only fall back to
- * the layout name once the player is past the tutorial rooms — by then the
- * table's shape is the interesting thing about a new room.
- */
 /** Spawn height: PLAYER.spawnFromBottom of the table, measured up from the bottom. */
 function spawnZ() {
   return ARENA.halfH - ARENA.height * PLAYER.spawnFromBottom;
 }
 
+/**
+ * Lead with the lesson while there is still one to teach, and otherwise state
+ * the contract — which is the one thing the player has to know to play.
+ */
 function showRoomBanner() {
+  // EVERY ONE OF THESE INTRODUCES A RULE, so every one of them waits to be
+  // read. They are not reports on something the player just watched; they are
+  // the terms of the room, and a rule that scrolled past unread is a rule the
+  // player does not have.
   const lesson = TUTORIAL.lessons[game.level];
-  if (lesson) hud.showBanner(lesson.title, lesson.sub, 2.6);
-  else hud.showBanner(`Room ${game.level}`, rooms.layout.name, 1.5);
+  if (lesson) {
+    hud.showBanner(lesson.title, lesson.sub, HOLD);
+    return;
+  }
+  const c = rules.contract;
+  // The contract holds until it is tapped away. It is the terms of the room,
+  // not a report on something already watched, and it decides every shot.
+  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().contractText} · ${c.strokes} shots`, HOLD);
 }
 
 /** Everything a fresh start clears, minus the room itself. */
@@ -1112,24 +1737,28 @@ function resetRunState() {
   hud.setBuild(boons.owned);
   game.level = PROGRESSION.startRoom;
   game.chain.count = 0;
-  game.chain.timer = 0;
   game.chain.best = 0;
   game.launchHits = 0;
-  game.pyreBonus = 0;
-  game.hazardAccum = 0;
+  game.pendingBoons = 0;
+  game.strokeBonus = 0;
   game.state = 'playing';
+  game.phase = 'aim';
+  game.midStroke = false;
   game.graceTimer = 0;
   hud.setDoors([]);
+  hud.hideScorecard();
+  rules.runScore = 0;
+  rules.freezeCharges = 0;
 }
 
 function startRun() {
   resetRunState();
   game.graceTimer = TUTORIAL.graceSeconds;
-  // Leaving the tutorial (or never entering it) hands the room back to the
-  // normal rules, including the ones that can hurt you.
   game.tutorialGuard = null;
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
+  callPocket(null);
+  rules.beginRoom(game.level);
   player.respawn(rooms.layout.spawn.x, spawnZ());
   input.setHeading(0, -1);
   showRoomBanner();
@@ -1139,6 +1768,292 @@ function startRun() {
  * Input wiring
  * ------------------------------------------------------------------ */
 
+/**
+ * Put the ghost pad under the thumb.
+ *
+ * The pad's geometry is in world units so it tracks the table exactly, and is
+ * projected with the same camera maths the coach spotlight and door labels use.
+ * It draws only once the pad is SEATED — before that the gesture is still
+ * inside the dead zone and there is no pivot to show yet.
+ */
+function showPad(aim) {
+  const pad = INPUT.floatingPad ? aim.pad : null;
+  if (!pad) {
+    hud.setPad(null);
+    return;
+  }
+  // Client pixels to stage-local pixels. No camera involved: the pad is a
+  // control under the thumb, and it must not scale, drift or rotate with the
+  // table it happens to be drawn over.
+  const rect = uiLayer.getBoundingClientRect();
+  hud.setPad({
+    px: pad.x - rect.left,
+    py: pad.y - rect.top,
+    kx: pad.knobX - rect.left,
+    ky: pad.knobY - rect.top,
+    radius: pad.radius,
+    power: clamp(pad.power, 0, 1)
+  });
+}
+
+/** The speed this shot would leave the cue at, given how long it is held. */
+function launchSpeed() {
+  return (
+    (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * player.aimPower) *
+    player.stats.launchSpeedMult
+  );
+}
+
+/**
+ * WHERE THE CUE BALL ACTUALLY ENDS UP.
+ *
+ * Not a tangent ray — the real thing. Take the speed the cue still has when it
+ * arrives at the object ball, run the SAME two-body impulse the collision will
+ * run (`resolveBallImpulse`, mass 1.6 against a 1.0 solid, restitution 0.96),
+ * and march the resulting velocity back through the same predictor that drew
+ * the approach, for exactly as far as that speed carries under drag.
+ *
+ * The 90° tangent is a special case of this — equal masses, perfect
+ * restitution — and the cue ball is heavier than everything it hits, so it
+ * always drifts forward of the tangent. Drawing the special case was the bug.
+ *
+ * @returns {{segments: Array}|null} null when the departure is not worth drawing
+ */
+function projectCuePath(prediction) {
+  const hit = prediction?.hit;
+  if (!hit || !hit.body) return null;
+  const last = prediction.segments[prediction.segments.length - 1];
+  if (!last) return null;
+
+  // Speed at contact: what is left of the launch after coasting to the ball.
+  const arrival = speedAfterDistance(launchSpeed(), prediction.totalDistance);
+  if (arrival <= 0) return null;
+
+  let dx = last.bx - last.ax;
+  let dz = last.bz - last.az;
+  const dl = Math.hypot(dx, dz);
+  if (dl < 1e-5) return null;
+  dx /= dl;
+  dz /= dl;
+
+  const vx = dx * arrival;
+  const vz = dz * arrival;
+  const vn = vx * hit.nx + vz * hit.nz;
+  if (vn <= 0) return null;
+
+  const invA = 1 / player.mass;
+  const invB = 1 / (hit.body.mass || 1);
+  const j = (-(1 + PHYSICS.ballRestitution) * vn) / (invA + invB);
+  const ox = vx + j * invA * hit.nx;
+  const oz = vz + j * invA * hit.nz;
+  const outSpeed = Math.hypot(ox, oz);
+
+  const carry = carryDistance(outSpeed);
+  if (carry < TRAJECTORY.minDraw) return null;
+
+  return physics.predictTrajectory(
+    { x: hit.x, z: hit.z },
+    { x: ox / outSpeed, z: oz / outSpeed },
+    {
+      radius: player.radius,
+      maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
+      maxDistance: carry,
+      // The ball we just struck is leaving; it is not in our way any more.
+      bodies: game.enemies.filter((b) => b !== hit.body)
+    }
+  );
+}
+
+/**
+ * WHAT HAPPENS TO EVERY BALL, NOT JUST YOURS.
+ *
+ * A combination is two collisions and the player has to see both before they
+ * commit. The object-ball line used to be a single stub of fixed length that
+ * said "it goes that way" and stopped — so on a board whose entire lesson is
+ * "the 6 runs across into the 2, and the 2 goes in the corner", the second
+ * half of the sentence was never drawn.
+ *
+ * This runs the chain: the struck ball's real post-impulse velocity, marched
+ * through the same predictor for as far as it actually carries under its own
+ * drag; and if it reaches another ball, that ball's departure too. Two links is
+ * the limit on purpose — a third is below the noise floor of a real shot, and
+ * drawing it would be promising precision the table does not have.
+ *
+ * @returns {Array<{segs:Array, ball:object|null}>} legs, nearest first
+ */
+function projectObjectPath(prediction) {
+  const legs = [];
+  const first = prediction?.hit;
+  if (!first || !first.body || !prediction.caromDir) return legs;
+
+  const last = prediction.segments[prediction.segments.length - 1];
+  if (!last) return legs;
+  let dx = last.bx - last.ax;
+  let dz = last.bz - last.az;
+  const dl = Math.hypot(dx, dz);
+  if (dl < 1e-5) return legs;
+  dx /= dl;
+  dz /= dl;
+
+  const arrival = speedAfterDistance(launchSpeed(), prediction.totalDistance);
+  let struck = first.body;
+  let nx = first.nx;
+  let nz = first.nz;
+  let vx = dx * arrival;
+  let vz = dz * arrival;
+  let strikerMass = player.mass;
+  let exclude = [struck];
+
+  for (let link = 0; link < 2; link += 1) {
+    const vn = vx * nx + vz * nz;
+    if (vn <= 0) break;
+    const invA = 1 / strikerMass;
+    const invB = 1 / (struck.mass || 1);
+    const j = (-(1 + PHYSICS.ballRestitution) * vn) / (invA + invB);
+    // The struck ball starts at rest, so its whole velocity is the impulse.
+    const bx = -j * invB * nx;
+    const bz = -j * invB * nz;
+    const speed = Math.hypot(bx, bz);
+    const carry = carryDistance(speed, PHYSICS.knockedDrag);
+    if (carry < TRAJECTORY.minDraw) break;
+
+    const path = physics.predictTrajectory(
+      { x: struck.x, z: struck.z },
+      { x: bx / speed, z: bz / speed },
+      {
+        // No banks on an object leg. A struck ball that reaches a cushion is
+        // past the part of the shot the player is choosing, and drawing its
+        // rebound turns a two-line answer into a scribble across the table.
+        maxBounces: 0,
+        radius: struck.radius,
+        maxDistance: carry,
+        bodies: game.enemies.filter((b) => !exclude.includes(b))
+      }
+    );
+    legs.push({ segs: path.segments, ball: struck });
+
+    // Hand on to the next ball, if this one reaches one.
+    const next = path.hit;
+    if (!next || !next.body) break;
+    const leg = path.segments[path.segments.length - 1];
+    let ex = leg.bx - leg.ax;
+    let ez = leg.bz - leg.az;
+    const el = Math.hypot(ex, ez) || 1;
+    ex /= el;
+    ez /= el;
+    const at = speedAfterDistance(speed, path.totalDistance);
+    strikerMass = struck.mass || 1;
+    struck = next.body;
+    nx = next.nx;
+    nz = next.nz;
+    vx = ex * at;
+    vz = ez * at;
+    exclude = [...exclude, struck];
+  }
+  return legs;
+}
+
+/**
+ * WHERE A DRAWN ROUTE ENDS, IN WORDS.
+ *
+ * A line tells the player the direction of an outcome; it does not tell them
+ * the outcome. Two shots that look almost identical on the felt — one that
+ * drops the 1 in the side pocket and one that leaves it an inch short — draw
+ * the same picture, and the difference is the whole shot. So each route gets a
+ * small tag at its far end naming where it goes.
+ *
+ * These are the words the coaching band does not have room for. The band holds
+ * one sentence about the board; the tags hold the per-aim consequences, and
+ * they update on every frame of the drag because they are read off the same
+ * prediction the lines are drawn from.
+ *
+ * COLOUR IS THE SAME ALLOCATION AS EVERYWHERE ELSE. A tag takes the channel of
+ * the ball whose route it ends — cyan for yours, amber for a rack ball —
+ * except at a pocket, where it takes the pocket's own bone-white, or red when
+ * the pocket in question is about to eat your own ball.
+ */
+const POCKET_NAME = {
+  tl: 'FAR CORNER',
+  tr: 'FAR CORNER',
+  ml: 'SIDE POCKET',
+  mr: 'SIDE POCKET',
+  bl: 'NEAR CORNER',
+  br: 'NEAR CORNER'
+};
+
+/**
+ * The pocket a path runs into, or null. Closest approach to a finite segment,
+ * the same test Player.js uses to turn the departure line red — a shared
+ * predicate, so the tag and the line can never disagree about a scratch.
+ */
+function pathPocket(segments, pockets) {
+  if (!segments || !pockets) return null;
+  for (const seg of segments) {
+    const dx = seg.bx - seg.ax;
+    const dz = seg.bz - seg.az;
+    const len2 = dx * dx + dz * dz;
+    if (len2 < 1e-9) continue;
+    for (const pocket of pockets) {
+      const t = clamp(((pocket.x - seg.ax) * dx + (pocket.z - seg.az) * dz) / len2, 0, 1);
+      const cx = seg.ax + dx * t;
+      const cz = seg.az + dz * t;
+      if (Math.hypot(pocket.x - cx, pocket.z - cz) <= pocket.radius) return pocket;
+    }
+  }
+  return null;
+}
+
+/** The far end of a path, in world space. */
+function pathEnd(segments) {
+  const last = segments?.[segments.length - 1];
+  return last ? { x: last.bx, z: last.bz } : null;
+}
+
+/**
+ * Build the endpoint tags for the aim currently drawn.
+ *
+ * At most three, and usually two: your ball's departure, and the far end of
+ * the object chain. A leg that hands off to another ball gets no tag of its
+ * own — the next leg's tag is the answer, and tagging every link turns the
+ * felt into a list.
+ *
+ * @returns {Array<{x:number,z:number,text:string,tone:string}>}
+ */
+function aimTags(prediction, cuePath, objectPath) {
+  const tags = [];
+  const pockets = rooms.table.pockets;
+
+  // YOUR BALL. Where the cue ends up is the thing players learn last and need
+  // first — it is what turns one pot into a run, and it is what a scratch is.
+  const cueSegs = cuePath?.segments?.length ? cuePath.segments : prediction?.segments;
+  const cueEnd = pathEnd(cueSegs);
+  if (cueEnd) {
+    const down = pathPocket(cueSegs, pockets);
+    tags.push(
+      down
+        ? { ...cueEnd, text: 'SCRATCH', tone: 'bad' }
+        : { ...cueEnd, text: 'YOUR BALL', tone: 'cue' }
+    );
+  }
+
+  // THE RACK BALL, at the end of however far the chain carried. Only the last
+  // link is named; the ones before it are mid-sentence.
+  const lastLeg = objectPath?.[objectPath.length - 1];
+  if (lastLeg?.segs?.length) {
+    const end = pathEnd(lastLeg.segs);
+    const down = pathPocket(lastLeg.segs, pockets);
+    const number = lastLeg.ball?.number;
+    if (end) {
+      tags.push(
+        down
+          ? { ...end, text: `→ ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
+          : { ...end, text: number ? `${number} STOPS` : 'STOPS', tone: 'rack' }
+      );
+    }
+  }
+  return tags;
+}
+
 function refreshPrediction() {
   if (!player.alive) return;
   const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
@@ -1146,21 +2061,68 @@ function refreshPrediction() {
     // Never preview more banks than the launch can actually survive — the
     // prediction lines are a promise, not a suggestion.
     maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
+    // Nor more DISTANCE than the launch can survive. A preview that runs 46
+    // units when the shot only carries 12 promises a shot nobody played.
+    maxDistance: Math.min(TRAJECTORY.maxDistance, carryDistance(launchSpeed())),
     bodies: game.enemies
   });
-  player.showTrajectory(prediction);
+  // The pockets go in so the preview can warn about a scratch: a line that
+  // ends down a hole is the one prediction the player most needs in advance.
+  const cuePath = projectCuePath(prediction);
+  const objectPath = projectObjectPath(prediction);
+  player.showTrajectory(prediction, {
+    pockets: rooms.table.pockets,
+    power: player.aimPower,
+    cuePath,
+    objectPath
+  });
+  // Read by the coaching layer, which is the only thing that draws them today.
+  // The geometry belongs here, next to the routes it describes; whether they
+  // are shown is a decision for whoever is teaching.
+  game.aimTags = aimTags(prediction, cuePath, objectPath);
 }
 
 /** Heading when the current hold began; used to measure how far it turned. */
 let aimStartDir = null;
 
+// THE DISMISSING PRESS IS ALSO THE FIRST AIM.
+//
+// This used to swallow the tap so a player could not read nothing and shoot
+// immediately. But the banner already waits indefinitely — the tap IS the
+// signal that they are done reading — and eating it meant the first press
+// after every room did nothing at all. That does not read as "banner
+// dismissed", it reads as the controls having stopped working, which is
+// exactly how it was reported. The press clears the banner and goes on to
+// start the aim, so the game answers every touch.
+stage.addEventListener(
+  'pointerdown',
+  () => {
+    if (hud.bannerWaiting) hud.hideBanner();
+  },
+  { capture: true }
+);
+
 const input = new InputManager(stage, {
   camera,
+  // Aiming is only possible while the table is frozen. During a stroke the
+  // pointer means something else entirely — see the freeze tap below.
   isEnabled: () =>
-    game.running && player.alive && game.state !== 'modal' && !menuOpen,
+    game.running &&
+    player.alive &&
+    game.state !== 'modal' &&
+    // A cleared room is decided. The exits are buttons on the scorecard now,
+    // so there is nothing left to shoot at and a stray drag can only take the
+    // cue ball somewhere confusing.
+    game.state !== 'cleared' &&
+    !menuOpen &&
+    // A finished lesson is FINISHED: the table stops taking shots so the
+    // completion card is not competing with a live cue.
+    !tutorial?.awaitingNext &&
+    game.phase === 'aim',
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
+    uiLayer.classList.add('aiming');
     const h = input.heading;
     aimStartDir = { x: h.x, z: h.z };
     game.lastTurn = 0;
@@ -1173,17 +2135,26 @@ const input = new InputManager(stage, {
   onAimUpdate: (aim) => {
     noteAimPower(aim);
     player.updateAim(aim);
-    if (aim.valid) refreshPrediction();
-    else player.hideTrajectory();
+    showPad(aim);
+    if (aim.valid) {
+      refreshPrediction();
+    } else {
+      player.hideTrajectory();
+      game.aimTags = null;
+    }
   },
   onAimCancel: () => {
+    uiLayer.classList.remove('aiming');
     wasMaxed = false;
+    hud.setPad(null);
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.cancelAim();
   },
   onRelease: (aim) => {
+    uiLayer.classList.remove('aiming');
     wasMaxed = false;
+    hud.setPad(null);
     if (aimStartDir) {
       const dot = clamp(aimStartDir.x * aim.dirX + aimStartDir.z * aim.dirZ, -1, 1);
       game.lastTurn = (Math.acos(dot) * 180) / Math.PI;
@@ -1192,17 +2163,80 @@ const input = new InputManager(stage, {
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.launch(aim, game);
+    // A release either opens a stroke or resumes the one a freeze interrupted.
+    // Resuming keeps the ladder, the budget and every other ball's velocity.
+    if (game.midStroke) resumeStroke();
+    else beginStroke();
   },
   onFlick: (aim) => {
+    uiLayer.classList.remove('aiming');
+    hud.setPad(null);
+    // THERE IS NO FREE MOVE.
+    //
+    // The dash used to be a no-cost reposition, which is fine when the threat
+    // is real-time and fatal when the budget is strokes: you could walk the
+    // cue ball anywhere for nothing. A flick is now simply a soft shot, and it
+    // costs the same one stroke every other shot does.
     engine.setBulletTime(false);
     player.cancelAim();
-    player.dash(aim.dirX, aim.dirZ, game);
+    player.launch({ ...aim, power: PLAYER.minPower }, game);
+    if (game.midStroke) resumeStroke();
+    else beginStroke();
   }
 });
+
+/**
+ * THE FREEZE TAP.
+ *
+ * While a stroke is resolving the pointer does not aim — it stops the table.
+ * The gesture is deliberately the same one that aims, because it is the same
+ * instinct ("I want to do something about this") and the game already knows
+ * which of the two you can mean from the phase it is in.
+ */
+stage.addEventListener(
+  'pointerdown',
+  (event) => {
+    if (!game.running || menuOpen || game.state === 'modal') return;
+    if (game.phase !== 'resolve') return;
+    event.preventDefault();
+    tryFreeze();
+  },
+  { passive: false }
+);
 
 /* ------------------------------------------------------------------ *
  * Resize handling
  * ------------------------------------------------------------------ */
+
+/**
+ * PUT THE COACHING BAND WHERE THERE IS NO TABLE.
+ *
+ * The camera frames the arena edge to edge — `viewHeight` is the arena's
+ * height, not the arena plus a margin — so the felt runs from the top of the
+ * layer to the bottom and the two far corner pockets sit up under the HUD.
+ * There is exactly one horizontal strip with nothing in it: below those
+ * corner pockets, above everything a board can place.
+ *
+ * The band is put there, measured rather than guessed. A percentage got it
+ * right on a 9:16 phone by arithmetic accident and would have drifted onto
+ * the felt on the next aspect ratio — and "it never overlaps play" is the one
+ * property the whole direction rests on, so it should be true by construction.
+ */
+function layoutBand() {
+  const pockets = rooms?.table?.pockets;
+  const h = uiLayer.clientHeight;
+  if (!pockets?.length || !h) return;
+  const visZ = (camera.top - camera.bottom) / camera.zoom;
+  const toY = (z) => ((z - camera.position.z) / visZ + 0.5) * h;
+  // The lowest edge of anything in the top row of pockets, plus a hair.
+  let floor = 0;
+  for (const p of pockets) {
+    const y = toY(p.z);
+    if (y > h * 0.25) continue; // not a far-side pocket
+    floor = Math.max(floor, y + (p.radius / visZ) * h * TABLE.pocket.mouthScale);
+  }
+  uiLayer.style.setProperty('--coach-top', `${Math.round(floor + 4)}px`);
+}
 
 function resize() {
   const { width, height } = layoutStage();
@@ -1214,6 +2248,7 @@ function resize() {
     composer.setSize(width, height);
   }
   camera.updateProjectionMatrix();
+  layoutBand();
 }
 
 const initial = layoutStage();
@@ -1241,8 +2276,10 @@ const tutorial = new Tutorial({
   resetRun: resetRunState,
   finish: () => startRun()
 });
+if (typeof window !== 'undefined') game.tutorial = tutorial;
 const menuMain = document.getElementById('menu-main');
 const menuSettings = document.getElementById('menu-settings');
+const menuModes = document.getElementById('menu-modes');
 const $ = (id) => document.getElementById(id);
 
 /**
@@ -1286,6 +2323,7 @@ function openMenu() {
   uiLayer.classList.add('attract');
   menuMain.hidden = false;
   menuSettings.hidden = true;
+  menuModes.hidden = true;
   showTutorialState();
 }
 
@@ -1309,6 +2347,30 @@ $('btn-settings').addEventListener('click', () => {
 });
 $('set-back').addEventListener('click', () => {
   menuSettings.hidden = true;
+  menuMain.hidden = false;
+});
+// MODES. Each mode is its own built page, so choosing one is a navigation and
+// not a state change — `#mode-classic` is a plain link and needs no handler.
+// The card for the mode already running is inert; it is there to say what you
+// have, not to be pressed.
+// The one-file build has no sibling pages to switch to, so it does not offer
+// the door.
+//
+// This has to be the BARE identifier. Vite's `define` substitutes identifiers,
+// not member expressions, so the first version of this read
+// `globalThis.__SINGLE_FILE__`, was never substituted, read undefined, and
+// left the button showing in exactly the build it was written to hide it in.
+// The `typeof` guard survives a config that forgets to define it, and is
+// itself substituted down to a constant in every build that does.
+if (typeof __SINGLE_FILE__ !== 'undefined' && __SINGLE_FILE__) {
+  $('btn-modes').hidden = true;
+}
+$('btn-modes').addEventListener('click', () => {
+  menuMain.hidden = true;
+  menuModes.hidden = false;
+});
+$('mode-back').addEventListener('click', () => {
+  menuModes.hidden = true;
   menuMain.hidden = false;
 });
 $('btn-mute').addEventListener('click', () => {
@@ -1376,7 +2438,9 @@ window.addEventListener('blur', () => input.cancel());
 function sweepEntities() {
   for (let i = game.enemies.length - 1; i >= 0; i--) {
     const enemy = game.enemies[i];
-    if (!enemy.alive) {
+    // A body still dropping into a pocket keeps its mesh until it is out of
+    // sight; disposing it on the frame it died is what made a pot a vanishing.
+    if (!enemy.alive && !enemy.sinking) {
       enemy.dispose();
       game.enemies.splice(i, 1);
     }
@@ -1406,12 +2470,21 @@ function simulate(dt, rawDt, aiming) {
 
   if (game.graceTimer > 0) game.graceTimer -= dt;
 
-  if (game.chain.timer > 0) {
-    game.chain.timer -= dt;
-    if (game.chain.timer <= 0) game.chain.count = 0;
+  // THE STROKE ENDS WHEN THE TABLE STOPS, NOT WHEN A TIMER RUNS OUT.
+  //
+  // A short grace after everything settles keeps a ball that is still creeping
+  // toward a pocket from having its pot stolen by the bookkeeping.
+  if (game.midStroke) {
+    game.strokeTimer += dt;
+    if (tableSettled()) {
+      game.settleTimer += dt;
+      if (game.settleTimer >= RULES.settleGrace) finishStroke();
+    } else {
+      game.settleTimer = 0;
+    }
+    // A ball trapped in a bumper loop must not be able to hang the room.
+    if (game.midStroke && game.strokeTimer > RULES.strokeTimeout) finishStroke();
   }
-
-  rooms.update(dt, game);
 }
 
 let last = performance.now();
@@ -1427,20 +2500,22 @@ function frame(now) {
 
   attract(rawDt);
   tutorial.update(rawDt);
+  pulseCalledPocket(rawDt);
+  pumpCelebrations(rawDt);
+  pumpSinking(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 
-  // Running out of Focus kicks you back to real time but does not cancel the
-  // aim — you can still take the shot, you just lose the planning window.
-  if (aiming && player.focus <= 0 && engine.inBulletTime) engine.setBulletTime(false);
-  if (aiming && !engine.inBulletTime && player.focus > FOCUS.minToAim) engine.setBulletTime(true);
-
   if (game.running) {
+    // Pockets shimmer and doors pulse whether or not the table is moving —
+    // a frozen table still has to look alive.
+    rooms.update(rawDt, game);
+
     if (game.state === 'dead') {
       game.deathTimer -= rawDt;
       if (game.deathTimer <= 0) startRun();
-    } else if (dt > 0) {
-      simulate(dt, rawDt, aiming && engine.inBulletTime);
+    } else if (game.phase === 'resolve' && dt > 0) {
+      simulate(dt, rawDt, false);
     } else if (game.state !== 'modal') {
       // Frozen (hit-stop): keep presentation alive, skip simulation.
       player.update(0, rawDt, game, aiming && engine.inBulletTime);
@@ -1473,6 +2548,12 @@ function frame(now) {
     } else if (
       game.state === 'playing' &&
       player.alive &&
+      // A FINISHED LESSON HAS NO AIM. The resting preview is redrawn every
+      // frame, so hiding it once when the board completed lasted exactly one
+      // frame — and a bright cue line still lying across the felt is the
+      // loudest way a finished board goes on looking playable, dimmed table
+      // and CTA notwithstanding.
+      !tutorial?.awaitingNext &&
       player.state === PLAYER_STATE.IDLE
     ) {
       // THE CUE AT REST.
@@ -1497,21 +2578,17 @@ function frame(now) {
       player.hideTrajectory();
     }
 
+    const snapshot = rules.snapshot();
     hud.update(
       {
         hp: player.hp,
         maxHp: player.maxHp,
-        focus: player.focus,
-        focusMax: player.focusMax,
         level: game.level,
-        waveIndex: rooms.waveIndex,
-        waveCount: rooms.cleared ? 0 : rooms.waves.length,
         layout: rooms.layout ? rooms.layout.name : '',
-        enemies: game.enemies.length,
-        chain: game.chain.count,
-        chainMult: chainMultiplier(),
-        chainTimer: game.chain.timer,
-        chainWindow: CHAIN.window
+        phase: game.phase,
+        midStroke: game.midStroke,
+        cleared: game.state === 'cleared',
+        ...snapshot
       },
       rawDt
     );

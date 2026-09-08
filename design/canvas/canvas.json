@@ -1,0 +1,18 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 410, "h": 1000 },
+    { "file": "RoomEnd.dc.html", "x": 510, "y": 0, "w": 410, "h": 1000 },
+    { "file": "Freeze.dc.html", "x": 1020, "y": 0, "w": 620, "h": 1000 },
+    { "file": "Scoring.dc.html", "x": 0, "y": 1120, "w": 1000, "h": 1060 }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -180,
+      "w": 1000,
+      "text": "The synthesis: a static puzzle rack, a contract that includes its own stroke budget, and score coming from pots + strokes saved + multipliers picked up + multipliers earned.\n\nTwo things worth arguing with before I build it: the stroke ramp numbers on the scoring board, and whether \"freeze\" means what the Freeze board says it means."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

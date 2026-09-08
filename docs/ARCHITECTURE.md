@@ -79,9 +79,12 @@ billiard-roguelike/
     │   ├── Player.js          cue-ball state, focus gauge, ribbon trail
     │   └── Enemy.js           archetypes: Solid · Stripe · Heavy Eight-Ball
     ├── systems/
-    │   ├── PhysicsSystem.js   sweeps · rebounds · caroms · trajectory prediction
+    │   ├── PhysicsSystem.js   sweeps · rebounds · caroms · pockets · prediction
+    │   ├── Rules.js           contracts · stroke budget · multiplier ladder · score
+    │   ├── Table.js           six typed pockets · gold rings · gates · cells · mines
+    │   ├── Tutorial.js        the six teaching boards
     │   ├── BoonSystem.js      4-phase hook registry · build state · offer roller
-    │   └── RoomManager.js     layout pool · threat director · injectors · doors
+    │   └── RoomManager.js     layout pool · racking · doors
     └── ui/
         ├── HUD.js             health · radial focus · room · combo · door labels
         └── BoonModal.js       3-card reward overlay
@@ -111,6 +114,11 @@ requestAnimationFrame(now)
 
 **Real time vs scaled time.** Two clocks exist and mixing them is the classic bug
 source, so the split is explicit:
+
+**The stroke phase.** `game.phase` is `'aim'` or `'resolve'`, and it is the switch
+the static table hangs on: `simulate()` is only called while a stroke is resolving.
+A freeze flips `'resolve'` back to `'aim'` *without* ending the stroke, so the
+multiplier, the budget and every body's velocity survive untouched.
 
 | Uses **real** time | Uses **scaled** time |
 | --- | --- |

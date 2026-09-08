@@ -1,0 +1,277 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
+  <style>
+    body {
+      margin: 0;
+      background: #05070a;
+      color: #eaf6ff;
+      font-family: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #35f2ff; }
+    a:hover { color: #8ffcff; }
+    .board {
+      box-sizing: border-box;
+      padding: 26px 25px 28px;
+      background: #05070a;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #35f2ff; }
+    .title { margin: 0; font-size: 29px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
+    .lede { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.46; color: rgba(234,246,255,0.62); text-wrap: pretty; }
+    .lede b { color: rgba(234,246,255,0.92); font-weight: 600; }
+    .lede em { font-style: normal; color: #ffe27a; font-weight: 600; }
+
+    .stage {
+      width: 360px; height: 640px;
+      align-self: center; position: relative;
+      border-radius: 7px; overflow: hidden; background: #0a1a24;
+      box-shadow: 0 0 0 1px rgba(29,111,122,0.45), 0 18px 44px rgba(0,0,0,0.6);
+    }
+    .stage svg { display: block; }
+    .hud { position: absolute; inset: 0; }
+    .lbl { font-size: 8.5px; font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(234,246,255,0.55); }
+
+    .top { position: absolute; top: 13px; left: 13px; right: 13px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .objective { display: flex; flex-direction: column; gap: 4px; padding: 7px 11px 8px; border-radius: 4px; background: rgba(5,7,10,0.74); border-left: 2px solid #35f2ff; }
+    .objective .goal { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; color: #eaf6ff; }
+    .objective .goal em { font-style: normal; color: #ffb340; }
+    .prog { display: flex; align-items: center; gap: 6px; }
+    .pips { display: flex; gap: 3px; }
+    .pip { width: 11px; height: 3px; border-radius: 2px; background: rgba(53,242,255,0.22); }
+    .pip.on { background: #35f2ff; }
+    .prog .n { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: rgba(234,246,255,0.55); }
+    .score { text-align: right; display: flex; flex-direction: column; gap: 1px; }
+    .score .v { font-size: 26px; font-weight: 700; line-height: 0.95; color: #eaf6ff; }
+
+    .strokes { position: absolute; top: 116px; left: 13px; display: flex; flex-direction: column; gap: 5px; padding: 7px 11px 9px; border-radius: 4px; background: rgba(5,7,10,0.74); border-left: 2px solid #ffe27a; }
+    .strokes .lbl { color: rgba(255,226,122,0.8); }
+    .cues { display: flex; gap: 5px; align-items: flex-end; }
+    .cue { width: 5px; height: 22px; border-radius: 2px; background: #ffe27a; }
+    .cue.spent { background: rgba(255,226,122,0.16); }
+    .strokes .n { font-size: 9.5px; font-weight: 600; letter-spacing: 0.14em; color: rgba(234,246,255,0.5); }
+
+    .mult { position: absolute; top: 270px; right: 13px; padding: 8px 11px 9px; border-radius: 5px; background: rgba(5,7,10,0.8); border: 1px solid rgba(255,226,122,0.42); text-align: right; display: flex; flex-direction: column; gap: 2px; }
+    .mult .v { font-size: 30px; font-weight: 700; line-height: 0.9; color: #ffe27a; }
+    .mult .parts { font-size: 8.5px; font-weight: 600; letter-spacing: 0.11em; color: rgba(234,246,255,0.6); }
+
+    .bottom { position: absolute; left: 13px; right: 13px; bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .meter { display: flex; flex-direction: column; gap: 4px; }
+    .meter.right { align-items: flex-end; }
+    .hpbar { display: flex; gap: 2px; }
+    .hpseg { width: 15px; height: 4px; border-radius: 1px; background: #35f2ff; }
+    .hpseg.off { background: rgba(53,242,255,0.18); }
+    .frz { display: flex; gap: 4px; align-items: center; }
+    .frzd { width: 9px; height: 9px; transform: rotate(45deg); border: 1.4px solid rgba(53,242,255,0.3); }
+    .frzd.on { background: #35f2ff; border-color: #35f2ff; }
+    .meter.dim .lbl { color: rgba(234,246,255,0.3); }
+
+    .foot { display: flex; flex-direction: column; gap: 9px; margin-top: 2px; }
+    .rule { height: 1px; background: rgba(234,246,255,0.12); }
+    .row { display: flex; gap: 11px; align-items: baseline; }
+    .row .k { flex: 0 0 62px; font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #35f2ff; }
+    .row.risk .k { color: #ff5a3d; }
+    .row.gold .k { color: #ffe27a; }
+    .row p { margin: 0; font-size: 12.5px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+    .row p b { color: #eaf6ff; font-weight: 700; }
+    .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
+    .panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+    .pan { display: flex; flex-direction: column; gap: 10px; }
+    .mini { width: 170px; height: 302px; border-radius: 5px; overflow: hidden; background: #0a1a24; box-shadow: 0 0 0 1px rgba(29,111,122,0.4); position: relative; }
+    .mini svg { display: block; }
+    .chip { position: absolute; top: 8px; left: 8px; padding: 3px 7px; border-radius: 3px; font-size: 8px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; background: rgba(5,7,10,0.82); }
+    .chip.plan { color: rgba(234,246,255,0.72); border: 1px solid rgba(234,246,255,0.25); }
+    .chip.live { color: #ff5a3d; border: 1px solid rgba(255,90,61,0.55); }
+    .chip.frz { color: #35f2ff; border: 1px solid rgba(53,242,255,0.6); }
+    .pan h4 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #eaf6ff; }
+    .pan p { margin: 0; font-size: 12.5px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .pan.hot h4 { color: #35f2ff; }
+    .earn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .way { padding: 16px 18px 18px; border-radius: 5px; background: #080d12; border: 1px solid rgba(53,242,255,0.24); display: flex; flex-direction: column; gap: 8px; }
+    .way h5 { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #35f2ff; }
+    .way p { margin: 0; font-size: 13px; font-weight: 500; line-height: 1.45; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+  </style>
+</helmet>
+
+<div class="board" style="width: 620px; min-height: 1000px;">
+  <div class="tag">The earned power</div>
+  <h2 class="title">Freeze is not how the game works.<br>It is what you win.</h2>
+  <p class="lede">Between strokes the table is already frozen, so there is nothing to slow down. The thing worth earning is the <em>other</em> freeze — stopping the table <b>mid-stroke</b>, while the cue ball is still travelling, and re-aiming from wherever it has got to.</p>
+
+  <div class="panels">
+    <div class="pan">
+      <div class="mini">
+      <svg width="170" height="302" viewBox="0 0 360 640" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+        <radialGradient id="vgP" cx="50%" cy="46%" r="72%">
+          <stop offset="0%" stop-color="#0b3a2e"/>
+          <stop offset="62%" stop-color="#0a3529"/>
+          <stop offset="100%" stop-color="#06231d"/>
+        </radialGradient>
+        </defs>
+      <rect x="0" y="0" width="360" height="640" fill="#0a1a24"/>
+      <rect x="1" y="1" width="358" height="638" fill="none" stroke="#1d6f7a" stroke-width="1.4" opacity="0.5"/>
+      <rect x="11" y="11" width="338" height="618" rx="3" fill="url(#vgP)"/>
+      <g stroke="#14624c" stroke-width="0.9" opacity="0.28">
+        <line x1="95.5" y1="11" x2="95.5" y2="629"/>
+        <line x1="180" y1="11" x2="180" y2="629"/>
+        <line x1="264.5" y1="11" x2="264.5" y2="629"/>
+        <line x1="11" y1="165.5" x2="349" y2="165.5"/>
+        <line x1="11" y1="320" x2="349" y2="320"/>
+        <line x1="11" y1="474.5" x2="349" y2="474.5"/>
+      </g>
+
+        <circle cx="24" cy="24" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="336" cy="24" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="24" cy="616" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="336" cy="616" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <g>
+          <circle cx="200" cy="340" r="15" fill="none" stroke="#ff5a3d" stroke-width="2" stroke-dasharray="4 3"/>
+          <line x1="200" y1="330" x2="200" y2="350" stroke="#ff5a3d" stroke-width="2.4"/>
+          <line x1="190" y1="340" x2="210" y2="340" stroke="#ff5a3d" stroke-width="2.4"/>
+        </g>
+        <line x1="180" y1="480" x2="152" y2="322" stroke="#35f2ff" stroke-width="3" opacity="0.9"/>
+        <circle cx="150" cy="312" r="13" fill="none" stroke="#8ffcff" stroke-width="2" stroke-dasharray="4 4"/>
+        <line x1="150" y1="300" x2="130" y2="60" stroke="#4a8fa5" stroke-width="2.6" stroke-dasharray="7 5" opacity="0.85"/>
+        <g transform="translate(150,300)"><rect x="-13" y="-13" width="26" height="26" rx="3" fill="#ff3d6e"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#2b0410" text-anchor="middle">4</text></g>
+        <g transform="translate(250,240)"><polygon points="-6,-13 6,-13 13,-6 13,6 6,13 -6,13 -13,6 -13,-6" fill="#a05cff"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#180432" text-anchor="middle">6</text></g>
+        <g transform="translate(110,200)"><rect x="-13" y="-13" width="26" height="26" rx="3" fill="#ff3d6e"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#2b0410" text-anchor="middle">2</text></g>
+        <g transform="translate(180,480)"><circle r="19" fill="#35f2ff" opacity="0.12"/><circle r="13" fill="#35f2ff"/><circle r="5.5" fill="#d9feff"/></g>
+      </svg>
+        <div class="chip plan">Plan · no clock</div>
+      </div>
+      <h4>Plan</h4>
+      <p>Static rack. No timer, no drain, nothing walking at you. Read the whole table and commit.</p>
+    </div>
+    <div class="pan">
+      <div class="mini">
+      <svg width="170" height="302" viewBox="0 0 360 640" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+        <radialGradient id="vgL" cx="50%" cy="46%" r="72%">
+          <stop offset="0%" stop-color="#0b3a2e"/>
+          <stop offset="62%" stop-color="#0a3529"/>
+          <stop offset="100%" stop-color="#06231d"/>
+        </radialGradient>
+        </defs>
+      <rect x="0" y="0" width="360" height="640" fill="#0a1a24"/>
+      <rect x="1" y="1" width="358" height="638" fill="none" stroke="#1d6f7a" stroke-width="1.4" opacity="0.5"/>
+      <rect x="11" y="11" width="338" height="618" rx="3" fill="url(#vgL)"/>
+      <g stroke="#14624c" stroke-width="0.9" opacity="0.28">
+        <line x1="95.5" y1="11" x2="95.5" y2="629"/>
+        <line x1="180" y1="11" x2="180" y2="629"/>
+        <line x1="264.5" y1="11" x2="264.5" y2="629"/>
+        <line x1="11" y1="165.5" x2="349" y2="165.5"/>
+        <line x1="11" y1="320" x2="349" y2="320"/>
+        <line x1="11" y1="474.5" x2="349" y2="474.5"/>
+      </g>
+
+        <circle cx="24" cy="24" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="336" cy="24" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="24" cy="616" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="336" cy="616" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <g>
+          <circle cx="200" cy="340" r="15" fill="none" stroke="#ff5a3d" stroke-width="2" stroke-dasharray="4 3"/>
+          <line x1="200" y1="330" x2="200" y2="350" stroke="#ff5a3d" stroke-width="2.4"/>
+          <line x1="190" y1="340" x2="210" y2="340" stroke="#ff5a3d" stroke-width="2.4"/>
+        </g>
+        <line x1="180" y1="480" x2="186" y2="410" stroke="#1fd7ff" stroke-width="9" opacity="0.16" stroke-linecap="round"/>
+        <line x1="182" y1="450" x2="186" y2="410" stroke="#1fd7ff" stroke-width="5" opacity="0.32" stroke-linecap="round"/>
+        <g transform="translate(128,268) rotate(-18)"><rect x="-13" y="-13" width="26" height="26" rx="3" fill="#ff3d6e"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#2b0410" text-anchor="middle">4</text></g>
+        <line x1="146" y1="288" x2="168" y2="316" stroke="#ff3d6e" stroke-width="3" opacity="0.35"/>
+        <g transform="translate(250,240)"><polygon points="-6,-13 6,-13 13,-6 13,6 6,13 -6,13 -13,6 -13,-6" fill="#a05cff"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#180432" text-anchor="middle">6</text></g>
+        <g transform="translate(110,200)"><rect x="-13" y="-13" width="26" height="26" rx="3" fill="#ff3d6e"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#2b0410" text-anchor="middle">2</text></g>
+        <line x1="186" y1="410" x2="197" y2="358" stroke="#ff5a3d" stroke-width="2.6" stroke-dasharray="6 5" opacity="0.9"/>
+        <g transform="translate(186,410)"><circle r="19" fill="#35f2ff" opacity="0.12"/><circle r="13" fill="#35f2ff"/><circle r="5.5" fill="#d9feff"/></g>
+      </svg>
+        <div class="chip live">Resolving · live</div>
+      </div>
+      <h4>Resolve</h4>
+      <p>Release and physics takes it. The 4 is away, but the cue is drifting onto a mine and you have no say.</p>
+    </div>
+    <div class="pan hot">
+      <div class="mini">
+      <svg width="170" height="302" viewBox="0 0 360 640" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+        <radialGradient id="vgF" cx="50%" cy="46%" r="72%">
+          <stop offset="0%" stop-color="#0b3a2e"/>
+          <stop offset="62%" stop-color="#0a3529"/>
+          <stop offset="100%" stop-color="#06231d"/>
+        </radialGradient>
+        </defs>
+      <rect x="0" y="0" width="360" height="640" fill="#0a1a24"/>
+      <rect x="1" y="1" width="358" height="638" fill="none" stroke="#1d6f7a" stroke-width="1.4" opacity="0.5"/>
+      <rect x="11" y="11" width="338" height="618" rx="3" fill="url(#vgF)"/>
+      <g stroke="#14624c" stroke-width="0.9" opacity="0.28">
+        <line x1="95.5" y1="11" x2="95.5" y2="629"/>
+        <line x1="180" y1="11" x2="180" y2="629"/>
+        <line x1="264.5" y1="11" x2="264.5" y2="629"/>
+        <line x1="11" y1="165.5" x2="349" y2="165.5"/>
+        <line x1="11" y1="320" x2="349" y2="320"/>
+        <line x1="11" y1="474.5" x2="349" y2="474.5"/>
+      </g>
+
+        <circle cx="24" cy="24" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="336" cy="24" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="24" cy="616" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <circle cx="336" cy="616" r="14" fill="#05070a" stroke="#35f2ff" stroke-width="1.6"/>
+        <g>
+          <circle cx="200" cy="340" r="15" fill="none" stroke="#ff5a3d" stroke-width="2" stroke-dasharray="4 3"/>
+          <line x1="200" y1="330" x2="200" y2="350" stroke="#ff5a3d" stroke-width="2.4"/>
+          <line x1="190" y1="340" x2="210" y2="340" stroke="#ff5a3d" stroke-width="2.4"/>
+        </g>
+        <line x1="180" y1="480" x2="186" y2="410" stroke="#1fd7ff" stroke-width="9" opacity="0.16" stroke-linecap="round"/>
+        <line x1="182" y1="450" x2="186" y2="410" stroke="#1fd7ff" stroke-width="5" opacity="0.32" stroke-linecap="round"/>
+        <g transform="translate(128,268) rotate(-18)"><rect x="-13" y="-13" width="26" height="26" rx="3" fill="#ff3d6e"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#2b0410" text-anchor="middle">4</text></g>
+        <line x1="146" y1="288" x2="168" y2="316" stroke="#ff3d6e" stroke-width="3" opacity="0.35"/>
+        <g transform="translate(250,240)"><polygon points="-6,-13 6,-13 13,-6 13,6 6,13 -6,13 -13,6 -13,-6" fill="#a05cff"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#180432" text-anchor="middle">6</text></g>
+        <g transform="translate(110,200)"><rect x="-13" y="-13" width="26" height="26" rx="3" fill="#ff3d6e"/><text class="svgtext" x="0" y="6" font-size="15" font-weight="700" fill="#2b0410" text-anchor="middle">2</text></g>
+        <rect x="11" y="11" width="338" height="618" rx="3" fill="#35f2ff" opacity="0.07"/>
+        <rect x="13" y="13" width="334" height="614" rx="3" fill="none" stroke="#35f2ff" stroke-width="2.4" opacity="0.55"/>
+        <line x1="186" y1="410" x2="238" y2="258" stroke="#35f2ff" stroke-width="3" opacity="0.95"/>
+        <circle cx="240" cy="252" r="13" fill="none" stroke="#8ffcff" stroke-width="2" stroke-dasharray="4 4"/>
+        <line x1="252" y1="238" x2="330" y2="40" stroke="#4a8fa5" stroke-width="2.6" stroke-dasharray="7 5" opacity="0.9"/>
+        <g transform="translate(186,410)"><circle r="30" fill="#35f2ff" opacity="0.12"/><circle r="21" fill="#35f2ff" opacity="0.2"/><circle r="13" fill="#35f2ff"/><circle r="5.5" fill="#d9feff"/></g>
+      </svg>
+        <div class="chip frz">Freeze · 2 left</div>
+      </div>
+      <h4>Freeze</h4>
+      <p>Spend a charge: the table stops dead. Re-aim off the cue ball where it sits and release again — <b>no stroke spent.</b></p>
+    </div>
+  </div>
+
+  <div class="earn">
+    <div class="way">
+      <h5>Earn it on the table</h5>
+      <p>A freeze cell sits somewhere on the felt. Shoot the cue ball into it and you carry <b>3 charges</b> forward. It costs you a stroke and a good position to go and get it — that is the trade.</p>
+    </div>
+    <div class="way">
+      <h5>Earn it at the door</h5>
+      <p>Freeze is also a boon offer between rooms, competing head-on with the multiplier and stroke-refund picks. Taking it means not taking those.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="rule"></div>
+    <div class="row">
+      <span class="k">Why here</span>
+      <p>Freeze-and-re-aim is the best-feeling thing in the game, so it makes a poor default and a superb prize. Moving it behind a cost also means the base game can be honestly, calmly static — the tension moves into the stroke budget where it belongs.</p>
+    </div>
+    <div class="row risk">
+      <span class="k">Check me</span>
+      <p>This reads your "freeze time on the next 3 shots" as <b>mid-flight</b> freezing, since between strokes nothing is moving to freeze. If you meant something else by it, say so and I will redraw this board.</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

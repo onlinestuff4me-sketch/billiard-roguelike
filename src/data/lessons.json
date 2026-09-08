@@ -1,215 +1,177 @@
 {
   "$schema": "./lessons.schema.md",
-  "note": "Tutorial lesson tables. Read by Tutorial.js and editable in the level tool at /tool. Geometry only \u2014 what each lesson ASKS FOR, and how it is judged, lives in RULES in src/systems/Tutorial.js keyed by the same id. Every ball is mortal: a basic solid takes two hits, and only a max-power direct hit breaks it in one. A lesson that needs a ball to survive being hit asks for a softer shot rather than flagging the body unkillable. Coordinates are world units: x in [-9,9], z in [-16,16], -z is up-screen. The ball spawns at (0, 6.4) and the instruction card covers roughly z -10.1 to -5.6, so racks belong in z -5.0 to 5.5.",
+  "note": "Geometry only. What each board asks for lives in RULES in src/systems/Tutorial.js, keyed by the same id. `call` names the pocket the board lights up.",
   "lessons": [
     {
-      "id": "aim",
-      "name": "First Contact",
+      "id": "angle",
+      "name": "The Angle",
       "rest": {
-        "x": 0,
-        "z": -1
+        "x": 0.568,
+        "z": -0.823
       },
+      "solve": 25.8,
+      "call": "mr",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 0,
-          "z": -1.0
-        }
-      ]
-    },
-    {
-      "id": "goal",
-      "name": "Into The Goal",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -2.0
-        }
-      ],
-      "goal": {
-        "x": 0,
-        "z": -11.8,
-        "hw": 5.2,
-        "hh": 1.1
-      }
-    },
-    {
-      "id": "pass-straight",
-      "name": "The Hand-Off",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 1.4
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -3.0
-        }
-      ]
-    },
-    {
-      "id": "pass-angled",
-      "name": "The Cut",
-      "rest": {
-        "x": 0.1973,
-        "z": -0.9803
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 2.4,
-          "z": -1.0
-        },
-        {
-          "type": "solid",
-          "x": 4.88,
-          "z": -1.77
-        }
-      ]
-    },
-    {
-      "id": "pass-three",
-      "name": "Straight Through",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 2.4
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -0.2
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -2.8
-        }
-      ]
-    },
-    {
-      "id": "power",
-      "name": "Straight Through",
-      "rest": {
-        "x": 0,
-        "z": -1
-      },
-      "obstacles": [],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 3.0
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": 0.4
-        },
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -2.2
-        }
-      ]
-    },
-    {
-      "id": "bank-1",
-      "name": "Off The Rail",
-      "rest": {
-        "x": 0.8942,
-        "z": -0.4478
-      },
-      "obstacles": [
-        {
-          "type": "box",
-          "x": 0,
+          "x": 2.0,
           "z": 3.5,
-          "hw": 3.0,
-          "hh": 0.5
-        }
-      ],
-      "enemies": [
-        {
-          "type": "solid",
-          "x": 0,
-          "z": -2.0
+          "number": 3
         }
       ]
     },
     {
-      "id": "bank-2",
-      "name": "Off The Rail Again",
+      "id": "combo",
+      "name": "Ball On Ball",
       "rest": {
-        "x": -0.8942,
-        "z": -0.4478
+        "x": 0.793,
+        "z": -0.609
       },
-      "obstacles": [
-        {
-          "type": "box",
-          "x": 0,
-          "z": 3.5,
-          "hw": 3.0,
-          "hh": 0.5
-        }
-      ],
+      "solve": 52.5,
+      "call": "mr",
+      "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 0,
-          "z": -2.0
+          "x": 5.6,
+          "z": 1.4,
+          "number": 1
+        },
+        {
+          "type": "solid",
+          "x": 2.6,
+          "z": 4.2,
+          "number": 4
         }
       ]
     },
     {
-      "id": "bank-two-rails",
-      "name": "The Long Way",
+      "id": "cut-combo",
+      "name": "On An Angle",
       "rest": {
-        "x": 0.9517,
-        "z": -0.307
+        "x": 0.731,
+        "z": -0.682
       },
-      "obstacles": [
+      "solve": 50.75,
+      "call": "mr",
+      "obstacles": [],
+      "enemies": [
         {
-          "type": "box",
-          "x": 0,
+          "type": "solid",
+          "x": 6.0,
+          "z": -2.0,
+          "number": 2
+        },
+        {
+          "type": "solid",
+          "x": 4.0,
           "z": 2.6,
-          "hw": 4.4,
-          "hh": 0.5
-        },
+          "number": 6
+        }
+      ]
+    },
+    {
+      "id": "bank",
+      "name": "Off The Cushion",
+      "rest": {
+        "x": -0.139,
+        "z": 0.99
+      },
+      "solve": 193.75,
+      "call": "tl",
+      "obstacles": [
         {
           "type": "box",
-          "x": 4.6,
-          "z": -1.6,
-          "hw": 0.5,
-          "hh": 2.6
+          "x": 1.0,
+          "z": 1.4,
+          "hw": 4.2,
+          "hh": 0.4
         }
       ],
       "enemies": [
         {
           "type": "solid",
-          "x": 6.6,
-          "z": 0.6
+          "x": -6.6,
+          "z": -8.5,
+          "number": 3
+        }
+      ]
+    },
+    {
+      "id": "budget",
+      "name": "Four Balls, Three Shots",
+      "rest": {
+        "x": 0.438,
+        "z": -0.899
+      },
+      "solve": 26.0,
+      "call": [
+        "mr",
+        "tr"
+      ],
+      "obstacles": [],
+      "enemies": [
+        {
+          "type": "solid",
+          "x": 2.6,
+          "z": 2.6,
+          "number": 1
+        },
+        {
+          "type": "solid",
+          "x": 5.0,
+          "z": 1.4,
+          "number": 4
+        },
+        {
+          "type": "solid",
+          "x": 6.4,
+          "z": -10.6,
+          "number": 2
+        },
+        {
+          "type": "stripe",
+          "x": -5.5,
+          "z": 1.0,
+          "number": 6
+        }
+      ]
+    },
+    {
+      "id": "green-red",
+      "name": "Green And Red",
+      "rest": {
+        "x": -0.839,
+        "z": -0.545
+      },
+      "solve": 299.0,
+      "call": "ml",
+      "obstacles": [],
+      "enemies": [
+        {
+          "type": "solid",
+          "x": -7.0,
+          "z": 2.0,
+          "number": 2
+        },
+        {
+          "type": "stripe",
+          "x": 2.5,
+          "z": 0.0,
+          "number": 5
+        }
+      ],
+      "objects": [
+        {
+          "kind": "mine",
+          "x": -3.6,
+          "z": 4.4
+        },
+        {
+          "kind": "double",
+          "x": -2.4,
+          "z": 3.0
         }
       ]
     }

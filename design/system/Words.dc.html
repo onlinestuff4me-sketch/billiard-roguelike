@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
+  <style>
+    body {
+      margin: 0;
+      background: #05070a;
+      color: #eaf6ff;
+      font-family: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #35f2ff; }
+    a:hover { color: #8ffcff; }
+    .sheet { box-sizing: border-box; background: #05070a; padding: 34px 36px 38px; display: flex; flex-direction: column; gap: 26px; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #2ef2c4; }
+    .title { margin: 6px 0 0; font-size: 33px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
+    .lede { margin: 9px 0 0; max-width: 780px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .lede b { color: #eaf6ff; font-weight: 700; }
+    .lede em { font-style: normal; color: #2ef2c4; font-weight: 600; }
+    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #2ef2c4; }
+    .panel { padding: 20px 22px 22px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.3); display: flex; flex-direction: column; gap: 13px; }
+    .panel p { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+    .panel p b { color: #eaf6ff; font-weight: 700; }
+    .rule { height: 1px; background: rgba(234,246,255,0.12); }
+    .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
+    .sheet { width: 900px; }
+    .nouns { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+    .noun { padding: 14px 15px 16px; border-radius: 6px; background: #080d12; border-top: 2px solid var(--c); border-left: 1px solid rgba(234,246,255,0.07); border-right: 1px solid rgba(234,246,255,0.07); border-bottom: 1px solid rgba(234,246,255,0.07); display: flex; flex-direction: column; gap: 5px; }
+    .noun .w { font-size: 20px; font-weight: 700; color: #eaf6ff; line-height: 1; }
+    .noun .v { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); }
+    .noun .n { font-size: 12.5px; font-weight: 500; line-height: 1.4; color: rgba(234,246,255,0.6); }
+    .verbs { display: flex; flex-wrap: wrap; gap: 9px; }
+    .verb { padding: 6px 12px; border-radius: 999px; background: rgba(46,242,196,0.09); border: 1px solid rgba(46,242,196,0.3); font-size: 13.5px; font-weight: 700; color: #eaf6ff; }
+    .verb span { color: rgba(234,246,255,0.5); font-weight: 500; }
+    .swap { display: flex; flex-direction: column; }
+    .srow { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 8px 4px; border-bottom: 1px solid rgba(234,246,255,0.08); align-items: baseline; }
+    .srow:last-child { border-bottom: 0; }
+    .srow.hd span { font-size: 9.5px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+    .srow.hd .bad { color: #ff5a3d; }
+    .srow.hd .good { color: #2ef2c4; }
+    .srow .bad { font-size: 14px; font-weight: 500; color: rgba(234,246,255,0.4); text-decoration: line-through; text-decoration-color: rgba(255,90,61,0.5); }
+    .srow .good { font-size: 14px; font-weight: 600; color: #eaf6ff; }
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+    .cardex { padding: 12px 14px; border-radius: 5px; background: #05070a; border-left: 2px solid #2ef2c4; }
+    .cardex .l1 { font-size: 15px; font-weight: 700; color: #eaf6ff; line-height: 1.25; }
+    .cardex .l1 b { color: #ff5a3d; font-weight: 700; }
+    .cardex .l1 em { font-style: normal; color: #2ef2c4; }
+    .cardex .l2 { margin-top: 4px; font-size: 12.5px; font-weight: 500; line-height: 1.4; color: rgba(234,246,255,0.58); }
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <div class="tag">Table language · the words</div>
+    <h2 class="title">Say it the way you would say it out loud</h2>
+    <p class="lede">Every instruction uses a word a player already owns before they start. <b>Hit</b>, <b>shoot</b>, <b>knock in</b>, <b>bounce</b> — no billiards vocabulary, no invented nouns, and no second word for anything.</p>
+  </div>
+
+  <div class="nouns">
+    <div class="noun" style="--c: #ffb340"><span class="w">Ball</span><span class="v">you hit it</span><span class="n">Called by its number when one matters: <b>the 8</b>. Never "enemy", never "target".</span></div>
+    <div class="noun" style="--c: #35f2ff"><span class="w">Cue ball</span><span class="v">the one you shoot</span><span class="n">Or just <b>your ball</b>. The blue one.</span></div>
+    <div class="noun" style="--c: #1d6f7a"><span class="w">Pocket</span><span class="v">you knock balls in</span><span class="n">Six of them, always the same six. Never "goal", never "hole".</span></div>
+    <div class="noun" style="--c: #2ef2c4"><span class="w">Green</span><span class="v">hit it</span><span class="n">The pick-ups, named by what they do: <b>the double</b>, <b>the freeze</b>, <b>the extra shot</b>.</span></div>
+    <div class="noun" style="--c: #ff5a3d"><span class="w">Red</span><span class="v">stay off it</span><span class="n">The hazards, likewise: <b>the mine</b>, <b>the kicker</b>.</span></div>
+    <div class="noun" style="--c: #1d6f7a"><span class="w">Wall</span><span class="v">you bounce off it</span><span class="n">Rails, pillars and bumpers are all walls. One word covers all three.</span></div>
+  </div>
+
+  <div class="panel">
+    <h3>The verbs</h3>
+    <div class="verbs">
+      <span class="verb">shoot <span>— what you do</span></span>
+      <span class="verb">hit <span>— your ball touches anything</span></span>
+      <span class="verb">knock in <span>— a ball goes down a pocket</span></span>
+      <span class="verb">bounce <span>— anything comes off a wall</span></span>
+      <span class="verb">save <span>— shots you did not spend</span></span>
+    </div>
+    <p><b>Knock in</b> rather than sink or pot: both of those have to be taught before they can be used, and "knock it in" is what a person says while pointing at a table. <b>Bounce</b> rather than bank, for the same reason — bank is the correct billiards word and half the audience does not have it.</p>
+    <p>The one place jargon survives is <b>foul</b>, for knocking your own ball in, because there is no shorter way to say "that shot pays nothing" and every sport already uses it.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Copy fixes, current build</h3>
+    <div class="swap"><div class="srow hd"><span class="bad">Never</span><span class="good">Always</span></div><div class="srow"><span class="bad">Sink it / pot it</span><span class="good">Knock it in</span></div><div class="srow"><span class="bad">Drive through / run through the pad</span><span class="good">Hit the double</span></div><div class="srow"><span class="bad">Cut one in</span><span class="good">Knock one in from an angle</span></div><div class="srow"><span class="bad">Bank off the rail</span><span class="good">Bounce off a wall</span></div><div class="srow"><span class="bad">Scratch</span><span class="good">Knock your own ball in — a foul</span></div><div class="srow"><span class="bad">Enemy / target / object ball</span><span class="good">Ball, or its number: <b>the 8</b></span></div><div class="srow"><span class="bad">Pad / ring / zone / injector / pickup</span><span class="good">Green: <b>the double</b>, <b>the freeze</b></span></div><div class="srow"><span class="bad">Hazard strip / trap / obstacle</span><span class="good">Red: <b>the mine</b>, <b>the kicker</b></span></div><div class="srow"><span class="bad">Goal / lit bar / hole</span><span class="good">Pocket</span></div><div class="srow"><span class="bad">Chain / combo</span><span class="good">Multiplier</span></div><div class="srow"><span class="bad">Launch / release / slingshot</span><span class="good">Shoot</span></div></div>
+  </div>
+
+  <div class="panel">
+    <h3>Every lesson card, and the one rule that is not a card</h3>
+    <div class="cards">
+      <div class="cardex"><div class="l1">Knock the <b>3</b> in</div><div class="l2">Press anywhere and pull back, like a cue.</div></div>
+      <div class="cardex"><div class="l1">Knock the <b>2</b> in <em>from an angle</em></div><div class="l2">Hit its far side. The white circle is where your ball ends up.</div></div>
+      <div class="cardex"><div class="l1">Four balls. <em>Three shots.</em></div><div class="l2">One shot has to knock two in.</div></div>
+      <div class="cardex"><div class="l1"><em>Go round</em> the barrier</div><div class="l2">The <b>3</b> is blocked. Bounce off a side wall.</div></div>
+      <div class="cardex"><div class="l1">Take the <em>green</em>. Miss the <b>red</b>.</div><div class="l2">Green is always good. Red is always bad.</div></div>
+      <div class="cardex"><div class="l1">Don&#39;t knock <b>your own ball</b> in</div><div class="l2">That is a foul: the shot pays nothing and you start again from the spot.</div></div>
+    </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>How to write one</h3>
+    <p><b>One instruction, imperative, naming one thing.</b> Everything else goes on the second line, and the second line carries exactly one fact.</p>
+    <p><b>Two highlights at most</b>: the thing (red) and the action (green) — the same two colours on every card, so the colour is readable before the sentence is. And they are the same two colours the felt uses, which is not a coincidence: red on a card and red on the table both mean "this one".</p>
+    <p><b>Never a word the player has not met.</b> If a card needs a new noun, that card is the board that introduces it, and it is the only new noun on it.</p>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -14,7 +14,7 @@
  */
 
 import * as THREE from 'three';
-import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA } from '../config.js';
+import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA, RULES } from '../config.js';
 
 export const ENEMY_STATE = {
   SPAWNING: 'spawning',
@@ -55,6 +55,94 @@ function geometry(key, factory) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Ball numbers
+ *
+ * Every ball on the table carries a number, because the contract talks about
+ * them by name ("the 8 last") and because the number IS the ball's value. The
+ * digit rides as a camera-facing sprite rather than being baked into the
+ * silhouette, so shape still means behaviour and the number means worth —
+ * two channels, never one doing both jobs.
+ * ------------------------------------------------------------------ */
+
+const NUMBER_TEXTURES = new Map();
+
+let STRIPE_TEXTURE = null;
+
+/** The stripe band, circle-clipped so it never overhangs the ball. */
+function stripeTexture() {
+  if (STRIPE_TEXTURE) return STRIPE_TEXTURE;
+  const size = 128;
+  const c = size / 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.beginPath();
+  ctx.arc(c, c, c * 0.98, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = `#${PALETTE.stripe.toString(16).padStart(6, '0')}`;
+  ctx.fillRect(0, c - size * 0.29, size, size * 0.58);
+  STRIPE_TEXTURE = new THREE.CanvasTexture(canvas);
+  STRIPE_TEXTURE.anisotropy = 4;
+  return STRIPE_TEXTURE;
+}
+
+/**
+ * The digit sits on a disc of the BALL'S OWN COLOUR, not on a bone one.
+ *
+ * A light disc was the obvious choice and the wrong one: bloom is thresholded
+ * at 0.34, so a near-white puck haloed harder than anything else on the table
+ * and every ball turned into a glowing blob with a number lost inside it. A
+ * disc that matches the body adds no luminance at all, and a near-black digit
+ * on it reads at 60px on a phone.
+ */
+function numberTexture(number, hex) {
+  const key = `${number}:${hex}`;
+  if (NUMBER_TEXTURES.has(key)) return NUMBER_TEXTURES.get(key);
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  // An outlined numeral, no disc behind it. A light puck haloed harder than
+  // anything else under a 0.34 bloom threshold; a puck in the ball's colour
+  // just read as a hole. A heavy near-black stroke filled bone survives both,
+  // against amber, violet-on-bone and black alike.
+  ctx.font = `700 ${size * 0.7}px Rajdhani, "Segoe UI", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  const x = size / 2;
+  const y = size / 2 + size * 0.02;
+
+  // THREE PASSES, BECAUSE THE BALL UNDERNEATH IS LIT.
+  //
+  // A hard outline alone was not enough: an emissive ball blooms outward past
+  // its own silhouette and eats a one-pixel stroke from behind. A soft dark
+  // halo goes down first to push the glow away from the glyph, then the hard
+  // outline gives it an edge, then the fill.
+  ctx.shadowColor = 'rgba(3, 5, 8, 0.95)';
+  ctx.shadowBlur = size * 0.16;
+  ctx.lineWidth = size * 0.2;
+  ctx.strokeStyle = 'rgba(3, 5, 8, 0.85)';
+  ctx.strokeText(String(number), x, y);
+  ctx.strokeText(String(number), x, y);
+  ctx.shadowBlur = 0;
+
+  ctx.lineWidth = size * 0.14;
+  ctx.strokeStyle = 'rgba(4, 6, 10, 0.98)';
+  ctx.strokeText(String(number), x, y);
+
+  ctx.fillStyle = hex;
+  ctx.fillText(String(number), x, y);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.anisotropy = 4;
+  NUMBER_TEXTURES.set(key, texture);
+  return texture;
+}
+
+/* ------------------------------------------------------------------ *
  * Enemy
  * ------------------------------------------------------------------ */
 
@@ -72,6 +160,13 @@ export class Enemy {
 
     this.parent = parent;
     this.type = type;
+    /**
+     * The ball's number, and therefore its worth. Zero until a rack assigns
+     * one — an unnumbered body is a legacy enemy and pays nothing.
+     */
+    this.number = 0;
+    this.value = 0;
+    this.numberSprite = null;
     /**
      * Set by scripted (tutorial) rooms: hold position instead of steering.
      * Holding still is not the same as being harmless — a frozen shooter still
@@ -143,35 +238,83 @@ export class Enemy {
 
     let bodyGeo;
     let color;
+    // THE RACK IS ITS OWN CHANNEL.
+    //
+    // Solids are amber, stripes are a bone body with a violet band, the 8 is
+    // black. None of them is red or mint, because a ball is neither good nor
+    // bad — those two hues belong to the felt objects, and red can only mean
+    // danger if nothing else on the table is wearing it.
     if (this.type === 'solid') {
-      const s = cfg.radius * 1.55;
-      bodyGeo = geometry('solid', () => new THREE.BoxGeometry(s, s, s));
+      bodyGeo = geometry('solid', () => new THREE.SphereGeometry(cfg.radius, 20, 14));
       color = PALETTE.solid;
     } else if (this.type === 'stripe') {
-      bodyGeo = geometry(
-        'stripe',
-        () => new THREE.CylinderGeometry(cfg.radius, cfg.radius, cfg.radius * 1.5, 8)
-      );
-      color = PALETTE.stripe;
+      bodyGeo = geometry('stripe', () => new THREE.SphereGeometry(cfg.radius, 20, 14));
+      color = PALETTE.stripeBody;
     } else {
-      bodyGeo = geometry(
-        'heavy',
-        () => new THREE.CylinderGeometry(cfg.radius, cfg.radius, cfg.radius * 1.2, 24)
-      );
-      color = PALETTE.heavy;
+      bodyGeo = geometry('heavy', () => new THREE.SphereGeometry(cfg.radius, 20, 14));
+      color = PALETTE.eight;
     }
 
     this.baseColor = new THREE.Color(color);
+    // The heavy is nearly four times the area of a solid, so the same emissive
+    // intensity puts four times as much light through the bloom pass and the
+    // whole body whites out — taking the number with it. Under the old rules
+    // that was merely bright; now the 8 is the ball the contract names, and an
+    // unreadable 8 makes "the 8 last" unplayable.
+    // The 8 is a dark ball and stays dark: it reads by contrast against the
+    // felt, not by glow. Stripes are bone-bodied and would white out at the
+    // same intensity a solid needs.
+    const emissive = this.type === 'heavy' ? 0.05 : this.type === 'stripe' ? 0.08 : 0.45;
     this.material = new THREE.MeshStandardMaterial({
       color,
       emissive: new THREE.Color(color),
-      emissiveIntensity: 0.55,
+      emissiveIntensity: emissive,
       roughness: 0.4,
       metalness: 0.2
     });
     this.body = new THREE.Mesh(bodyGeo, this.material);
     this.body.position.y = cfg.radius * 0.85;
     this.group.add(this.body);
+
+    // A real stripe: a coloured band across a bone ball, so the word names
+    // something you can see rather than something you were told.
+    //
+    // It has to be a DECAL, not a band of geometry. The camera looks straight
+    // down, and an equatorial ring around a sphere is edge-on from up there —
+    // invisible. A flat texture on the ball's top face is the only version
+    // that reads from the angle the game is actually played at.
+    if (this.type === 'stripe') {
+      const band = new THREE.Mesh(
+        new THREE.PlaneGeometry(cfg.radius * 2, cfg.radius * 2),
+        new THREE.MeshBasicMaterial({
+          map: stripeTexture(),
+          transparent: true,
+          depthWrite: false
+        })
+      );
+      band.rotation.x = -Math.PI / 2;
+      band.position.y = cfg.radius * 1.74;
+      this.group.add(band);
+      this.bandMesh = band;
+    }
+
+    // The 8 keeps a thin bone rim so a dark ball still has an edge on dark felt.
+    if (this.type === 'heavy') {
+      const rim = new THREE.Mesh(
+        new THREE.RingGeometry(cfg.radius * 0.86, cfg.radius, 24),
+        new THREE.MeshBasicMaterial({
+          color: PALETTE.bone,
+          transparent: true,
+          opacity: 0.5,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      );
+      rim.rotation.x = -Math.PI / 2;
+      rim.position.y = cfg.radius * 1.7;
+      this.group.add(rim);
+    }
 
     // Ground marker so bodies read against the dark felt.
     this.markerMat = new THREE.MeshBasicMaterial({
@@ -190,13 +333,20 @@ export class Enemy {
     this.group.add(this.marker);
 
     // Heavy: a 180° frontal shield band. Local +Z is "forward".
-    if (this.type === 'heavy') {
+    //
+    // THE SHIELD IS GONE ON A STATIC TABLE.
+    //
+    // It existed to mitigate damage, and damage no longer decides whether a
+    // ball leaves the table — a pocket does. Keeping a near-white band that
+    // means nothing would be worse than cosmetic: it is the brightest thing in
+    // the scene, and it was drowning the one number the contract names.
+    if (!RULES.staticTable && this.type === 'heavy') {
       const shieldGeo = geometry(
         'shield',
         () => new THREE.TorusGeometry(cfg.radius * 1.2, 0.11, 8, 26, Math.PI)
       );
       this.shieldMat = new THREE.MeshBasicMaterial({
-        color: PALETTE.shield,
+        color: PALETTE.bone,
         transparent: true,
         opacity: 0.9,
         blending: THREE.AdditiveBlending,
@@ -232,11 +382,14 @@ export class Enemy {
     // was doing nothing, and the shot arrived from a silhouette that had never
     // pointed anywhere. A barrel is the whole fix: it makes the facing visible,
     // gives the wind-up somewhere to happen, and gives the bullet an origin.
-    if (this.type === 'stripe') {
+    // On a static table a stripe never fires, so the barrel is a violet stalk
+    // hanging off a ball that does nothing with it — noise on the one glyph the
+    // player has to read at a glance. Same call as the 8's shield.
+    if (this.type === 'stripe' && !RULES.staticTable) {
       this.gun = new THREE.Group();
       this.gunMat = new THREE.MeshStandardMaterial({
         color: PALETTE.stripe,
-        emissive: new THREE.Color(PALETTE.projectile),
+        emissive: new THREE.Color(PALETTE.bad),
         emissiveIntensity: 0.18,
         roughness: 0.35,
         metalness: 0.5
@@ -256,7 +409,7 @@ export class Enemy {
       // The muzzle glows as the shot builds, so the charge reads as energy
       // arriving at the place the bullet will leave from.
       this.muzzleMat = new THREE.MeshBasicMaterial({
-        color: PALETTE.projectile,
+        color: PALETTE.bad,
         transparent: true,
         opacity: 0.04,
         blending: THREE.AdditiveBlending,
@@ -277,10 +430,10 @@ export class Enemy {
       this.group.add(this.gun);
     }
 
-    // Stripe: closing charge ring.
-    if (this.type === 'stripe') {
+    // Stripe: closing charge ring. Nothing to charge on a static table.
+    if (this.type === 'stripe' && !RULES.staticTable) {
       this.chargeMat = new THREE.MeshBasicMaterial({
-        color: PALETTE.projectile,
+        color: PALETTE.bad,
         transparent: true,
         opacity: 0,
         blending: THREE.AdditiveBlending,
@@ -309,6 +462,39 @@ export class Enemy {
 
   get isThreat() {
     return this.alive && this.state === ENEMY_STATE.ACTIVE;
+  }
+
+  /**
+   * Give this ball its number. The sprite is added once and follows the body,
+   * so re-numbering (a re-rack, a re-spot) is cheap.
+   */
+  setNumber(number) {
+    this.number = number;
+    this.value = number * 100;
+    // Deliberately wider than the body: at this camera scale a numeral
+    // confined to the silhouette is about ten pixels tall on a phone.
+    const scale = Math.max(1.15, this.radius * 2.5);
+    // Bone on every ball. The band, not the numeral, is what says "stripe";
+    // violet ink on a bone body over a violet band was the least legible
+    // combination on the table, and legibility outranks consistency here.
+    const ink = PALETTE.bone;
+    const hex = `#${ink.toString(16).padStart(6, '0')}`;
+    if (!this.numberSprite) {
+      this.numberSprite = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: numberTexture(number, hex),
+          transparent: true,
+          depthWrite: false
+        })
+      );
+      this.group.add(this.numberSprite);
+    } else {
+      this.numberSprite.material.map = numberTexture(number, hex);
+      this.numberSprite.material.needsUpdate = true;
+    }
+    this.numberSprite.scale.set(scale, scale, scale);
+    this.numberSprite.position.set(0, this.radius * 2.1, 0);
+    return this;
   }
 
   /** Knocked bodies above the carom threshold are lethal to their own side. */
@@ -428,6 +614,14 @@ export class Enemy {
         break;
 
       case ENEMY_STATE.ACTIVE:
+        // ON A STATIC TABLE A BALL DOES NOTHING ON ITS OWN.
+        //
+        // No pursuit, no range-keeping, no wind-up, no shot. It sits where the
+        // last stroke left it until the next one moves it. This is the single
+        // switch the whole "nothing moves between shots" promise hangs on, so
+        // it is checked here rather than being spread across three behaviours
+        // that each have to remember to opt out.
+        if (RULES.staticTable) break;
         // A frozen enemy still collides, still gets knocked, still dies — it
         // just does not drive. The tutorial racks its targets in exact spots
         // and a lesson that walks away from its own diagram teaches nothing.
@@ -685,11 +879,11 @@ export class Enemy {
       // A slow pulse separates "dangerous" from "inert" in peripheral vision,
       // which is where these usually are while you line a shot up.
       const pulse = 0.42 + Math.sin(performance.now() / 300 + this.x) * 0.1;
-      this.markerMat.color.setHex(PALETTE.hazard);
+      this.markerMat.color.setHex(PALETTE.bad);
       this.markerMat.opacity = pulse;
       this.marker.scale.setScalar(1);
     } else if (knocked) {
-      this.markerMat.color.setHex(PALETTE.carom);
+      this.markerMat.color.setHex(PALETTE.bone);
       this.markerMat.opacity = 0.6;
       this.marker.scale.setScalar(1.18);
     } else {
@@ -776,7 +970,7 @@ export class Projectile {
     /** Held at the muzzle for one frame so the shot is seen to leave the gun. */
     this.spawnFrame = true;
 
-    this.material = new THREE.MeshBasicMaterial({ color: PALETTE.projectile });
+    this.material = new THREE.MeshBasicMaterial({ color: PALETTE.bad });
     this.mesh = new THREE.Mesh(
       geometry('projectile', () => new THREE.SphereGeometry(1, 10, 8)),
       this.material
@@ -785,7 +979,7 @@ export class Projectile {
     this.mesh.position.set(x, radius + 0.2, z);
 
     this.haloMat = new THREE.MeshBasicMaterial({
-      color: PALETTE.projectile,
+      color: PALETTE.bad,
       transparent: true,
       opacity: 0.4,
       blending: THREE.AdditiveBlending,

@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
+  <style>
+    body {
+      margin: 0;
+      background: #05070a;
+      color: #eaf6ff;
+      font-family: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #35f2ff; }
+    a:hover { color: #8ffcff; }
+    .sheet { box-sizing: border-box; background: #05070a; padding: 34px 36px 38px; display: flex; flex-direction: column; gap: 26px; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #2ef2c4; }
+    .title { margin: 6px 0 0; font-size: 33px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
+    .lede { margin: 9px 0 0; max-width: 780px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .lede b { color: #eaf6ff; font-weight: 700; }
+    .lede em { font-style: normal; color: #2ef2c4; font-weight: 600; }
+    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #2ef2c4; }
+    .panel { padding: 20px 22px 22px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.3); display: flex; flex-direction: column; gap: 13px; }
+    .panel p { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+    .panel p b { color: #eaf6ff; font-weight: 700; }
+    .rule { height: 1px; background: rgba(234,246,255,0.12); }
+    .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
+    .sheet { width: 960px; }
+    .group { display: flex; flex-direction: column; gap: 13px; }
+    .ghead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .ghead .gname { font-size: 20px; font-weight: 700; color: #eaf6ff; }
+    .ghead .gsays { font-size: 12.5px; font-weight: 500; color: rgba(234,246,255,0.5); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .card {
+      padding: 14px 14px 16px; border-radius: 6px; background: #080d12;
+      border: 1px solid rgba(234,246,255,0.08); border-top: 2px solid var(--c);
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .card .art { display: flex; justify-content: center; align-items: center; height: 84px; }
+    .card h4 { margin: 0; font-size: 14px; font-weight: 700; color: #eaf6ff; }
+    .card .does { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--c); }
+    .card p { margin: 0; font-size: 12.5px; font-weight: 500; line-height: 1.4; color: rgba(234,246,255,0.6); text-wrap: pretty; }
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <div class="tag">Table language · the catalogue</div>
+    <h2 class="title">Everything on the felt, drawn once</h2>
+    <p class="lede">Twelve things. Read down a column and the family form holds; read across and only the glyph changes. Nothing here shares a hue with anything in another group.</p>
+  </div>
+
+  <div class="group">
+    <div class="ghead"><span class="gname">Balls</span><span class="gsays">Raised · solid · numbered — you hit them</span></div>
+    <div class="grid"><div class="card" style="--c: #ffb340"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="42" cy="64.1" rx="22.8" ry="6.7" fill="#05070a" opacity="0.55"/><circle cx="42" cy="42" r="24" fill="#ffb340"/><text class="svgtext" x="42" y="50.6" font-size="24.5" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="3.6" paint-order="stroke" text-anchor="middle">3</text></g></svg></div><h4>Solid</h4><div class="does">Balls 1 – 4</div><p>Amber all through. The light ones, and the cheap ones.</p></div><div class="card" style="--c: #a05cff"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="42" cy="64.1" rx="22.8" ry="6.7" fill="#05070a" opacity="0.55"/><clipPath id="st42_42_24"><circle cx="42" cy="42" r="24"/></clipPath><circle cx="42" cy="42" r="24" fill="#eaf6ff"/><rect x="18" y="27.1" width="48" height="29.8" fill="#a05cff" clip-path="url(#st42_42_24)"/><text class="svgtext" x="42" y="50.6" font-size="24.5" font-weight="700" fill="#eaf6ff" stroke="#180432" stroke-width="3.6" paint-order="stroke" text-anchor="middle">6</text></g></svg></div><h4>Stripe</h4><div class="does">Balls 5 – 7</div><p>Bone with a violet band, like a real striped ball. Heavier, worth more.</p></div><div class="card" style="--c: #eaf6ff"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="42" cy="65.9" rx="24.7" ry="7.3" fill="#05070a" opacity="0.55"/><circle cx="42" cy="42" r="26" fill="#14181f"/><circle cx="42" cy="42" r="26" fill="none" stroke="#eaf6ff" stroke-width="2.3" opacity="0.55"/><text class="svgtext" x="42" y="51.4" font-size="26.5" font-weight="700" fill="#eaf6ff" stroke="#05070a" stroke-width="3.9" paint-order="stroke" text-anchor="middle">8</text></g></svg></div><h4>The 8</h4><div class="does">Always last</div><p>Black. Impossible to confuse with anything, which is the point — the contract names it.</p></div><div class="card" style="--c: #35f2ff"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g><ellipse cx="42" cy="63.2" rx="21.8" ry="6.4" fill="#05070a" opacity="0.5"/><circle cx="42" cy="42" r="31.1" fill="#35f2ff" opacity="0.14"/><circle cx="42" cy="42" r="23" fill="#35f2ff"/><circle cx="42" cy="42" r="9.2" fill="#d9feff"/></g></svg></div><h4>Cue ball</h4><div class="does">You</div><p>The only unnumbered ball, and the only cyan object on the table.</p></div></div>
+  </div>
+
+  <div class="group">
+    <div class="ghead"><span class="gname">Pick-ups</span><span class="gsays">Mint · flat · dashed — hit them on purpose</span></div>
+    <div class="grid"><div class="card" style="--c: #2ef2c4"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="42" cy="42" r="23.8" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="42" cy="42" r="27" fill="none" stroke="#2ef2c4" stroke-width="3.0" stroke-dasharray="9.7 7.0" stroke-linecap="round"/>
+      <text class="svgtext" x="42" y="49.0" font-size="21.1" font-weight="700" fill="#2ef2c4" text-anchor="middle">&#215;2</text>
+    </g></svg></div><h4>Double</h4><div class="does">Doubles the shot</div><p>Comes back every stroke. The only pick-up that does.</p></div><div class="card" style="--c: #2ef2c4"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="42" cy="42" r="23.8" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="42" cy="42" r="27" fill="none" stroke="#2ef2c4" stroke-width="3.0" stroke-dasharray="9.7 7.0" stroke-linecap="round"/>
+      <path d="M42,30.119999999999997 L53.88,42 L42,53.88 L30.119999999999997,42 Z" fill="none" stroke="#2ef2c4" stroke-width="3.2"/><path d="M42,36.5 L47.5,42 L42,47.5 L36.5,42 Z" fill="#2ef2c4"/>
+    </g></svg></div><h4>Freeze</h4><div class="does">3 charges</div><p>Lets you stop the table mid-shot and aim again.</p></div><div class="card" style="--c: #2ef2c4"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="42" cy="42" r="23.8" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="42" cy="42" r="27" fill="none" stroke="#2ef2c4" stroke-width="3.0" stroke-dasharray="9.7 7.0" stroke-linecap="round"/>
+      <path d="M30.119999999999997,46.0 L42,36.1 L53.88,46.0" fill="none" stroke="#2ef2c4" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M30.119999999999997,52.7 L42,42.7 L53.88,52.7" fill="none" stroke="#2ef2c4" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </g></svg></div><h4>Upgrade</h4><div class="does">A free pick</div><p>Adds a boon choice at the door on the way out.</p></div><div class="card" style="--c: #2ef2c4"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="42" cy="42" r="23.8" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="42" cy="42" r="27" fill="none" stroke="#2ef2c4" stroke-width="3.0" stroke-dasharray="9.7 7.0" stroke-linecap="round"/>
+      <rect x="34.6" y="30.119999999999997" width="4.3" height="23.8" rx="2.2" fill="#2ef2c4"/><line x1="44.1" y1="42" x2="53.3" y2="42" stroke="#2ef2c4" stroke-width="3.5" stroke-linecap="round"/><line x1="48.7" y1="37.5" x2="48.7" y2="46.5" stroke="#2ef2c4" stroke-width="3.5" stroke-linecap="round"/>
+    </g></svg></div><h4>Extra shot</h4><div class="does">+1 this room</div><p>One more shot in the budget. Worth most when the budget is tight.</p></div></div>
+  </div>
+
+  <div class="group">
+    <div class="ghead"><span class="gname">Hazards, and the table itself</span><span class="gsays">Red · flat · dashed — stay off them · teal — architecture</span></div>
+    <div class="grid"><div class="card" style="--c: #ff5a3d"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="42" cy="42" r="23.8" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="42" cy="42" r="27" fill="none" stroke="#ff5a3d" stroke-width="3.0" stroke-dasharray="9.7 7.0" stroke-linecap="round"/>
+      <path d="M42,29.5 L53.88,50.6 L30.119999999999997,50.6 Z" fill="none" stroke="#ff5a3d" stroke-width="3.5" stroke-linejoin="round"/><line x1="42" y1="38.7" x2="42" y2="44.4" stroke="#ff5a3d" stroke-width="3.2" stroke-linecap="round"/><circle cx="42" cy="47.5" r="1.8" fill="#ff5a3d"/>
+    </g></svg></div><h4>Mine</h4><div class="does">Costs you hull</div><p>Only bites the cue ball. The other balls roll over it safely.</p></div><div class="card" style="--c: #ff5a3d"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <circle cx="42" cy="42" r="23.8" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="42" cy="42" r="27" fill="none" stroke="#ff5a3d" stroke-width="3.0" stroke-dasharray="9.7 7.0" stroke-linecap="round"/>
+      <path d="M50.9,30.119999999999997 L32.5,42 L50.9,53.88 Z" fill="#ff5a3d"/><line x1="53.3" y1="31.3" x2="53.3" y2="52.7" stroke="#ff5a3d" stroke-width="3.2" stroke-linecap="round"/>
+    </g></svg></div><h4>Kicker</h4><div class="does">Fires a ball at you</div><p>Hit it and the nearest ball comes back at speed. Ruins position, and can cost hull.</p></div><div class="card" style="--c: #1d6f7a"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g><rect x="15.0" y="26.9" width="54" height="19" rx="3" fill="#05070a" opacity="0.6"/><rect x="15.0" y="23.5" width="54" height="19" rx="3" fill="#123040" stroke="#1d6f7a" stroke-width="1.6"/></g><g><rect x="27.0" y="58.5" width="30" height="14" rx="3" fill="#05070a" opacity="0.6"/><rect x="27.0" y="56.0" width="30" height="14" rx="3" fill="#123040" stroke="#1d6f7a" stroke-width="1.6"/></g></svg></div><h4>Wall</h4><div class="does">A rung each</div><p>Rails, pillars and bumpers are all the same thing: something to bounce off, and every bounce is worth more.</p></div><div class="card" style="--c: #1d6f7a"><div class="art"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc1"><rect x="0" y="0" width="84" height="84" rx="7"/></clipPath>
+      <g clip-path="url(#cc1)">
+        <rect x="0" y="0" width="84" height="84" fill="#0a1a24"/>
+        <circle cx="25" cy="25" r="31.8" fill="#0a1a24"/>
+        <rect x="25" y="25" width="59" height="59" fill="#0b3a2e"/>
+        <g transform="translate(25,25)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"><line x1="58" y1="0" x2="58" y2="59"/><line x1="0" y1="58" x2="59" y2="58"/></g></g>
+        <g transform="translate(25,25)">
+          <polygon points="24,0 70,0 59,10 35,10" fill="#123040"/><line x1="35" y1="10" x2="59" y2="10" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,24 0,70 10,59 10,35" fill="#123040"/><line x1="10" y1="35" x2="10" y2="59" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="25" cy="25" r="29.3" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="25" cy="25" r="24" fill="#04060a"/>
+        <circle cx="25" cy="25" r="24" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="25" cy="25" r="22.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="25" cy="25" r="31.8" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg></div><h4>Pocket</h4><div class="does">Pays the number</div><p>Six, identical, always in the same six places. The only hole in the table.</p></div></div>
+  </div>
+
+  <div class="panel">
+    <h3>Two notes for whoever builds this</h3>
+    <p><b>Every glyph must survive being small.</b> These are drawn at about 55 screen pixels on a phone, over a bloomed table. Each one is a single closed silhouette with no interior detail finer than a tenth of its width — the warning triangle is the only pointed shape on the felt, and the double is the only one that is type rather than a drawing.</p>
+    <p><b>Amber solids sit next to nothing.</b> The old red solids were twenty degrees of hue from hazard red, and on a bloomed table that gap closed. Amber is far from both mint and red, so the balls no longer borrow meaning from the semantic palette — which is what lets red mean <em>only</em> danger.</p>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

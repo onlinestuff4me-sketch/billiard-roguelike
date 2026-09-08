@@ -10,7 +10,37 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA } from '../config.js';
+import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES } from '../config.js';
+
+const clamp = (value, lo, hi) => Math.min(Math.max(value, lo), hi);
+
+/**
+ * Does the cue ball's departure line run into a pocket? Tested as a segment
+ * against each pocket's capture circle, not just the endpoint — a line that
+ * passes through a mouth on its way somewhere else is still a scratch.
+ */
+/**
+ * Does this leg of the cue ball's projected path pass down a pocket?
+ *
+ * Closest approach from a point to a finite segment. It has to be the segment
+ * and not the infinite ray, because the path now STOPS where the ball stops:
+ * a pocket sitting beyond the end of the roll is not a scratch, and warning
+ * about one was the loudest way the old preview lied.
+ */
+function segmentScratches(seg, pockets) {
+  if (!pockets || !pockets.length) return false;
+  const dx = seg.bx - seg.ax;
+  const dz = seg.bz - seg.az;
+  const len2 = dx * dx + dz * dz;
+  if (len2 < 1e-9) return false;
+  for (const pocket of pockets) {
+    const t = clamp(((pocket.x - seg.ax) * dx + (pocket.z - seg.az) * dz) / len2, 0, 1);
+    const cx = seg.ax + dx * t;
+    const cz = seg.az + dz * t;
+    if (Math.hypot(pocket.x - cx, pocket.z - cz) <= pocket.radius) return true;
+  }
+  return false;
+}
 
 export const PLAYER_STATE = {
   IDLE: 'idle',
@@ -227,12 +257,18 @@ class AimRenderer {
     this.group.add(this.dashes);
 
     // 3. Carom deflection cone.
-    this.conePositions = new Float32Array(18);
+    // Two legs, each allowed one bank, plus headroom. See main.js
+    // projectObjectPath — the object ball's route is a chain, not a stub.
+    this.conePositions = new Float32Array(8 * 6);
     this.coneGeo = new THREE.BufferGeometry();
     this.coneGeo.setAttribute('position', new THREE.BufferAttribute(this.conePositions, 3));
     this.coneGeo.setDrawRange(0, 0);
+    // WHOSE PATH IS WHOSE. The cue's own route is drawn in the player's cyan;
+    // the route of the balls it sends is drawn in the rack's amber. Two lines
+    // in the same colour crossing the same table is the one place this palette
+    // cannot afford to be tidy.
     this.coneMat = new THREE.LineBasicMaterial({
-      color: PALETTE.carom,
+      color: PALETTE.solid,
       transparent: true,
       opacity: 0.9,
       depthWrite: false
@@ -241,16 +277,19 @@ class AimRenderer {
     this.cone.frustumCulled = false;
     this.group.add(this.cone);
 
-    // 4. Cue-ball tangent line — the 90° rule.
-    //    On a cut, the striking ball leaves perpendicular to the object ball's
-    //    departure. Drawing it is what turns "why did I end up there?" into a
-    //    decision you make before releasing, and it is the single most useful
-    //    aid real pool players train with.
-    this.tangentPositions = new Float32Array(6);
+    // 4. The cue ball's own departure path — where YOU end up.
+    //    A polyline, not a ray: it is the projected velocity marched through
+    //    the table for the distance the shot actually carries, so it banks off
+    //    rails and stops where the ball stops. Turning "why did I end up
+    //    there?" into a decision made before releasing is the single most
+    //    useful aid real pool players train with, and it only works if the
+    //    line is the truth. See main.js `projectCuePath`.
+    //    Room for one segment per previewed bank, plus the first.
+    this.tangentPositions = new Float32Array((TRAJECTORY.previewBounces + 2) * 6);
     this.tangentGeo = new THREE.BufferGeometry();
     this.tangentGeo.setAttribute('position', new THREE.BufferAttribute(this.tangentPositions, 3));
     this.tangentGeo.setDrawRange(0, 0);
-    this.tangentMat = new THREE.LineBasicMaterial({
+    this.tangentMat = new THREE.LineDashedMaterial({
       color: PALETTE.player,
       transparent: true,
       opacity: 0.75,
@@ -313,7 +352,8 @@ class AimRenderer {
    * @param {object} player
    * @param {number} power 0..1
    */
-  show(prediction, player, power, charge = 1) {
+  show(prediction, player, power, charge = 1, context = {}) {
+    const power0 = power;
     this.group.visible = true;
     const y = 0.12;
     const segments = prediction.segments;
@@ -337,7 +377,7 @@ class AimRenderer {
       const wBase =
         (TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * power) *
         (1 + over * 0.45);
-      const hue = new THREE.Color(prediction.hit ? PALETTE.carom : PALETTE.aim);
+      const hue = new THREE.Color(prediction.hit ? PALETTE.aim : PALETTE.aim);
       const t = performance.now() / 1000;
 
       for (let i = 0; i < SLICES; i++) {
@@ -386,7 +426,7 @@ class AimRenderer {
       this.primaryMat.opacity = 0.45 + 0.5 * power;
       // The line states outright whether this shot connects: gold means it
       // lands on a body, cyan means it does not. No counting pixels.
-      this.primaryMat.color.setHex(prediction.hit ? PALETTE.carom : PALETTE.aim);
+      this.primaryMat.color.setHex(prediction.hit ? PALETTE.aim : PALETTE.aim);
     } else {
       this.primary.visible = false;
     }
@@ -425,16 +465,28 @@ class AimRenderer {
       const L = TRAJECTORY.caromConeLength;
       const ox = h.body ? h.body.x : h.x;
       const oz = h.body ? h.body.z : h.z;
-      // ONE line, not a fan of three.
+      // ONE line, not a fan of three — the collision solver is deterministic,
+      // so this is a promise rather than a hedge.
       //
-      // The fan was three lines at +/-6.9 degrees, and the config comment
-      // beside it admitted the reason was emphasis rather than uncertainty:
-      // the collision solver is deterministic, so this line is a promise. Three
-      // of them read as a hedge the game is not making, and under a thumb that
-      // is moving them live they are three times the noise in the one moment
-      // the player is trying to read cause and effect.
-      this.conePositions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
-      this.coneGeo.setDrawRange(0, 2);
+      // And it is the WHOLE route where one is supplied: a combination is two
+      // collisions, and a board whose lesson is "the 6 runs into the 2 and the
+      // 2 goes in the corner" has to draw the second half of that sentence.
+      const legs = context.objectPath;
+      let n = 0;
+      if (legs && legs.length) {
+        for (const leg of legs) {
+          for (const seg of leg.segs) {
+            if ((n + 1) * 6 > this.conePositions.length) break;
+            this.conePositions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
+            n += 1;
+          }
+        }
+      }
+      if (!n) {
+        this.conePositions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
+        n = 1;
+      }
+      this.coneGeo.setDrawRange(0, n * 2);
       this.coneGeo.attributes.position.needsUpdate = true;
       this.cone.visible = true;
 
@@ -443,13 +495,26 @@ class AimRenderer {
       this.marker.visible = true;
       this.marker.position.set(h.x, y, h.z);
 
-      // Tangent = perpendicular to the object ball's line, taking whichever of
-      // the two perpendiculars the cue ball is already travelling towards.
+      // THE TANGENT LINE TELLS THE TRUTH ABOUT ITS OWN CONFIDENCE.
+      //
+      // It used to be drawn at a fixed 4.6 units whatever the shot, and that
+      // is where the preview was lying: on a near-full-ball hit the cue ball
+      // keeps almost nothing and stops dead, while the line still promised a
+      // full-length departure. For equal masses the cue leaves along the
+      // tangent with exactly the tangential share of its speed — sin of the
+      // cut angle — so that number is both the length AND the confidence.
+      //
+      // Thin cut  -> the cue keeps most of its speed, the direction is stable,
+      //              and the line is long, bright and near-solid.
+      // Full hit  -> the cue barely moves and a degree of aim error swings the
+      //              departure wildly. The line is short, faint and broken,
+      //              which is not a hedge — it is what actually happens.
       const last = segments[segments.length - 1];
       let inX = last ? last.bx - last.ax : 0;
       let inZ = last ? last.bz - last.az : 0;
       const inLen = Math.hypot(inX, inZ);
-      if (inLen > 1e-5) {
+      const path = context.cuePath;
+      if (inLen > 1e-5 && path && path.segments.length) {
         inX /= inLen;
         inZ /= inLen;
         let tx = -cd.z;
@@ -458,17 +523,47 @@ class AimRenderer {
           tx = -tx;
           tz = -tz;
         }
-        const TL = TRAJECTORY.tangentLength;
-        this.tangentPositions.set([h.x, y, h.z, h.x + tx * TL, y, h.z + tz * TL]);
-        this.tangentGeo.setDrawRange(0, 2);
+
+        // WHAT THE LINE SAYS vs HOW LOUDLY IT SAYS IT.
+        //
+        // The path itself is solved physics — length, direction and banks all
+        // come from `projectCuePath`. What is left for the drawing to express
+        // is how much a small aim error would move that path, and the honest
+        // measure of that is the tangential share of the hit: sin(cut angle).
+        // On a thin cut the departure is stable, so the line is bright and
+        // near-solid. On a near-full hit a degree of aim swings the outcome
+        // wildly, so it falls apart into faint wide-gapped dashes. The line is
+        // never lying about WHERE — only about how sure it is.
+        const share = clamp(Math.abs(inX * tx + inZ * tz), 0, 1);
+
+        let n = 0;
+        let scratch = false;
+        for (const seg of path.segments) {
+          if ((n + 1) * 6 > this.tangentPositions.length) break;
+          this.tangentPositions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
+          n += 1;
+          if (!scratch) scratch = segmentScratches(seg, context.pockets);
+        }
+        this.tangentGeo.setDrawRange(0, n * 2);
         this.tangentGeo.attributes.position.needsUpdate = true;
-        this.tangent.visible = true;
+        this.tangent.computeLineDistances();
+        this.tangentMat.color.setHex(scratch ? PALETTE.bad : PALETTE.aimGhost);
+        this.tangentMat.opacity = scratch ? 0.95 : 0.25 + share * 0.7;
+        // Confident lines are nearly solid; unconfident ones fall apart.
+        this.tangentMat.dashSize = 0.12 + share * 1.15;
+        this.tangentMat.gapSize = 0.5 - share * 0.34;
+        this.tangent.visible = n > 0;
       } else {
+        // Empty the draw range too, not just the visibility flag: the buffer
+        // still holds the last path, and anything that turns the line back on
+        // would draw a shot from three aims ago.
+        this.tangentGeo.setDrawRange(0, 0);
         this.tangent.visible = false;
       }
     } else {
       this.cone.visible = false;
       this.marker.visible = false;
+      this.tangentGeo.setDrawRange(0, 0);
       this.tangent.visible = false;
     }
 
@@ -494,9 +589,9 @@ class AimRenderer {
     // like it is straining, not idling.
     const beat = maxed ? 0.55 + 0.45 * Math.sin(performance.now() / 42) : 0;
 
-    this.pullMat.color.setHex(maxed ? PALETTE.carom : PALETTE.aim);
+    this.pullMat.color.setHex(maxed ? PALETTE.aim : PALETTE.aim);
     this.pullMat.opacity = maxed ? 0.85 + 0.15 * beat : 0.35 + 0.5 * power;
-    this.anchorMat.color.setHex(maxed ? PALETTE.carom : PALETTE.player);
+    this.anchorMat.color.setHex(maxed ? PALETTE.aim : PALETTE.player);
     this.anchor.scale.setScalar((0.7 + power * 0.9) * (maxed ? 1.6 + 0.5 * beat : 1));
   }
 
@@ -562,6 +657,7 @@ export class Player {
     this.dashCooldown = 0;
     this.flashTimer = 0;
     this.touchTimer = 0;
+    this.scratchGuard = 0;
     this.pyreTimer = 0;
 
     // --- aim ---
@@ -640,6 +736,10 @@ export class Player {
   }
 
   get canAim() {
+    // Aiming is free on a static table. There is nothing to slow down between
+    // strokes, so there is nothing to charge for — the budget that limits you
+    // is the stroke count, not a gauge that drains while you think.
+    if (RULES.staticTable) return this.alive;
     return this.alive && this.focus >= FOCUS.minToAim;
   }
 
@@ -810,7 +910,9 @@ export class Player {
    */
   update(dt, rawDt, game, aimingActive) {
     // --- Focus economy runs on REAL time: slow-mo must feel expensive. ---
-    if (aimingActive && this.state === PLAYER_STATE.AIMING) {
+    if (RULES.staticTable) {
+      this.focus = this.focusMax;
+    } else if (aimingActive && this.state === PLAYER_STATE.AIMING) {
       this.focus = Math.max(0, this.focus - FOCUS.drainPerSecond * rawDt);
     } else if (this.focus < this.focusMax) {
       this.focus = Math.min(
@@ -824,6 +926,9 @@ export class Player {
     if (this.flashTimer > 0) this.flashTimer -= rawDt;
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
     if (this.touchTimer > 0) this.touchTimer -= dt;
+    // Stops one scratch being reported on every sub-step while the cue ball
+    // is still sitting inside the pocket's capture radius.
+    if (this.scratchGuard > 0) this.scratchGuard -= rawDt;
     if (this.pyreTimer > 0) this.pyreTimer -= dt;
 
     if (this.state === PLAYER_STATE.DASHING) {
@@ -872,15 +977,15 @@ export class Player {
     // so it now changes colour as well: cyan halo = armed and safe, amber ring
     // = you can be hit.
     const armed = this.invulnerable;
-    this.haloMat.color.setHex(armed ? PALETTE.player : PALETTE.heavy);
+    this.haloMat.color.setHex(armed ? PALETTE.player : PALETTE.aimGhost);
     this.haloMat.opacity = armed ? 0.55 + Math.sin(performance.now() / 60) * 0.2 : 0.34;
     this.halo.scale.setScalar(armed ? 1.15 : 1);
   }
 
   /** Draw the aim layers from a fresh prediction. */
-  showTrajectory(prediction) {
+  showTrajectory(prediction, context = {}) {
     this.prediction = prediction;
-    this.aimRenderer.show(prediction, this, this.aimPower, this.aimCharge);
+    this.aimRenderer.show(prediction, this, this.aimPower, this.aimCharge, context);
   }
 
   hideTrajectory() {

@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap">
+  <style>
+    body {
+      margin: 0;
+      background: #05070a;
+      color: #eaf6ff;
+      font-family: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #35f2ff; }
+    a:hover { color: #8ffcff; }
+    .sheet { box-sizing: border-box; background: #05070a; padding: 34px 36px 38px; display: flex; flex-direction: column; gap: 26px; }
+    .tag { font-size: 10px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: #2ef2c4; }
+    .title { margin: 6px 0 0; font-size: 33px; font-weight: 700; line-height: 1.02; color: #eaf6ff; }
+    .lede { margin: 9px 0 0; max-width: 780px; font-size: 15px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.66); text-wrap: pretty; }
+    .lede b { color: #eaf6ff; font-weight: 700; }
+    .lede em { font-style: normal; color: #2ef2c4; font-weight: 600; }
+    h3 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: #2ef2c4; }
+    .panel { padding: 20px 22px 22px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.3); display: flex; flex-direction: column; gap: 13px; }
+    .panel p { margin: 0; font-size: 13.5px; font-weight: 500; line-height: 1.5; color: rgba(234,246,255,0.7); text-wrap: pretty; }
+    .panel p b { color: #eaf6ff; font-weight: 700; }
+    .rule { height: 1px; background: rgba(234,246,255,0.12); }
+    .svgtext { font-family: 'Rajdhani', 'Segoe UI', Arial, sans-serif; }
+    .sheet { width: 1000px; }
+    .split { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: start; }
+    .details { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+    .det { display: flex; flex-direction: column; gap: 9px; }
+    .det .cap { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #1d6f7a; }
+    .det .cap b { color: #8ffcff; font-weight: 700; }
+    .det p { margin: 0; font-size: 12.5px; font-weight: 500; line-height: 1.42; color: rgba(234,246,255,0.6); text-wrap: pretty; }
+    .rules { display: flex; flex-direction: column; gap: 0; }
+    .rl { display: grid; grid-template-columns: 172px 1fr; gap: 18px; padding: 12px 4px; border-bottom: 1px solid rgba(234,246,255,0.09); align-items: baseline; }
+    .rl:last-child { border-bottom: 0; }
+    .rl .k { font-size: 13.5px; font-weight: 700; color: #8ffcff; line-height: 1.3; }
+    .rl .v { font-size: 13.5px; font-weight: 500; line-height: 1.45; color: rgba(234,246,255,0.68); text-wrap: pretty; }
+    .rl .v b { color: #eaf6ff; font-weight: 700; }
+    .states { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+    .st { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 6px; background: #080d12; border: 1px solid rgba(29,111,122,0.3); }
+    .st .txt { display: flex; flex-direction: column; gap: 3px; }
+    .st .h { font-size: 14px; font-weight: 700; color: #eaf6ff; }
+    .st .d { font-size: 12.5px; font-weight: 500; line-height: 1.4; color: rgba(234,246,255,0.58); }
+  </style>
+</helmet>
+
+<div class="sheet">
+  <div>
+    <div class="tag">Table language · the architecture</div>
+    <h2 class="title">Pockets are not on the table. They are cut into it.</h2>
+    <p class="lede">A pocket should be the most obviously permanent thing on screen — a piece of the furniture that was there before the rack was set and will be there after it is cleared. So the <b>frame swells outward around every pocket</b> and the <b>cushions break and flare into the mouth</b>, exactly as they do on a real table. You are not looking at a lit target painted on the felt; you are looking at a hole with a railing round it.</p>
+  </div>
+
+  <div class="split">
+    <div><svg width="408" height="628" viewBox="0 0 408 628" xmlns="http://www.w3.org/2000/svg"><g transform="translate(34,34)"><rect x="-24" y="-24" width="388" height="608" rx="16.8" fill="#0a1a24"/><circle cx="0" cy="0" r="43.5" fill="#0a1a24"/><circle cx="340" cy="0" r="43.5" fill="#0a1a24"/><circle cx="0" cy="280.0" r="43.5" fill="#0a1a24"/><circle cx="340" cy="280.0" r="43.5" fill="#0a1a24"/><circle cx="0" cy="560" r="43.5" fill="#0a1a24"/><circle cx="340" cy="560" r="43.5" fill="#0a1a24"/><rect x="0" y="0" width="340" height="560" fill="#0b3a2e"/><g stroke="#14624c" stroke-width="0.9" opacity="0.24"><line x1="52" y1="0" x2="52" y2="560"/><line x1="104" y1="0" x2="104" y2="560"/><line x1="156" y1="0" x2="156" y2="560"/><line x1="208" y1="0" x2="208" y2="560"/><line x1="260" y1="0" x2="260" y2="560"/><line x1="312" y1="0" x2="312" y2="560"/><line x1="0" y1="52" x2="340" y2="52"/><line x1="0" y1="104" x2="340" y2="104"/><line x1="0" y1="156" x2="340" y2="156"/><line x1="0" y1="208" x2="340" y2="208"/><line x1="0" y1="260" x2="340" y2="260"/><line x1="0" y1="312" x2="340" y2="312"/><line x1="0" y1="364" x2="340" y2="364"/><line x1="0" y1="416" x2="340" y2="416"/><line x1="0" y1="468" x2="340" y2="468"/><line x1="0" y1="520" x2="340" y2="520"/></g><polygon points="31,0 309,0 294,13 46,13" fill="#123040"/><line x1="46" y1="13" x2="294" y2="13" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/><polygon points="31,560 309,560 294,547 46,547" fill="#123040"/><line x1="46" y1="547" x2="294" y2="547" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/><polygon points="0,31 0,249.0 13,234.0 13,46" fill="#123040"/><line x1="13" y1="46" x2="13" y2="234.0" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/><polygon points="0,311.0 0,529 13,514 13,326.0" fill="#123040"/><line x1="13" y1="326.0" x2="13" y2="514" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/><polygon points="340,31 340,249.0 327,234.0 327,46" fill="#123040"/><line x1="327" y1="46" x2="327" y2="234.0" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/><polygon points="340,311.0 340,529 327,514 327,326.0" fill="#123040"/><line x1="327" y1="326.0" x2="327" y2="514" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/><circle cx="0" cy="0" r="38.4" fill="#1d6f7a" opacity="0.11"/><circle cx="0" cy="0" r="31" fill="#04060a"/><circle cx="0" cy="0" r="31" fill="none" stroke="#1d6f7a" stroke-width="2.6" opacity="0.92"/><circle cx="0" cy="0" r="30.8" fill="none" stroke="#8ffcff" stroke-width="1" opacity="0.3"/><circle cx="340" cy="0" r="38.4" fill="#1d6f7a" opacity="0.11"/><circle cx="340" cy="0" r="31" fill="#04060a"/><circle cx="340" cy="0" r="31" fill="none" stroke="#1d6f7a" stroke-width="2.6" opacity="0.92"/><circle cx="340" cy="0" r="30.8" fill="none" stroke="#8ffcff" stroke-width="1" opacity="0.3"/><circle cx="0" cy="280.0" r="38.4" fill="#1d6f7a" opacity="0.11"/><circle cx="0" cy="280.0" r="31" fill="#04060a"/><circle cx="0" cy="280.0" r="31" fill="none" stroke="#1d6f7a" stroke-width="2.6" opacity="0.92"/><circle cx="0" cy="280.0" r="30.8" fill="none" stroke="#8ffcff" stroke-width="1" opacity="0.3"/><circle cx="340" cy="280.0" r="38.4" fill="#1d6f7a" opacity="0.11"/><circle cx="340" cy="280.0" r="31" fill="#04060a"/><circle cx="340" cy="280.0" r="31" fill="none" stroke="#1d6f7a" stroke-width="2.6" opacity="0.92"/><circle cx="340" cy="280.0" r="30.8" fill="none" stroke="#8ffcff" stroke-width="1" opacity="0.3"/><circle cx="0" cy="560" r="38.4" fill="#1d6f7a" opacity="0.11"/><circle cx="0" cy="560" r="31" fill="#04060a"/><circle cx="0" cy="560" r="31" fill="none" stroke="#1d6f7a" stroke-width="2.6" opacity="0.92"/><circle cx="0" cy="560" r="30.8" fill="none" stroke="#8ffcff" stroke-width="1" opacity="0.3"/><circle cx="340" cy="560" r="38.4" fill="#1d6f7a" opacity="0.11"/><circle cx="340" cy="560" r="31" fill="#04060a"/><circle cx="340" cy="560" r="31" fill="none" stroke="#1d6f7a" stroke-width="2.6" opacity="0.92"/><circle cx="340" cy="560" r="30.8" fill="none" stroke="#8ffcff" stroke-width="1" opacity="0.3"/><rect x="-24" y="-24" width="388" height="608" rx="16.8" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><circle cx="0" cy="0" r="43.5" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><circle cx="340" cy="0" r="43.5" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><circle cx="0" cy="280.0" r="43.5" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><circle cx="340" cy="280.0" r="43.5" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><circle cx="0" cy="560" r="43.5" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><circle cx="340" cy="560" r="43.5" fill="none" stroke="#1d6f7a" stroke-width="1.5" opacity="0.42"/><g>
+      <circle cx="246" cy="330" r="22.9" fill="#2ef2c4" opacity="0.08"/>
+      <circle cx="246" cy="330" r="26" fill="none" stroke="#2ef2c4" stroke-width="2.9" stroke-dasharray="9.4 6.8" stroke-linecap="round"/>
+      <text class="svgtext" x="246" y="336.8" font-size="20.3" font-weight="700" fill="#2ef2c4" text-anchor="middle">&#215;2</text>
+    </g><g>
+      <circle cx="84" cy="246" r="21.1" fill="#ff5a3d" opacity="0.08"/>
+      <circle cx="84" cy="246" r="24" fill="none" stroke="#ff5a3d" stroke-width="2.6" stroke-dasharray="8.6 6.2" stroke-linecap="round"/>
+      <path d="M84,234.9 L94.56,253.6 L73.44,253.6 Z" fill="none" stroke="#ff5a3d" stroke-width="3.1" stroke-linejoin="round"/><line x1="84" y1="243.0" x2="84" y2="248.1" stroke="#ff5a3d" stroke-width="2.9" stroke-linecap="round"/><circle cx="84" cy="250.9" r="1.6" fill="#ff5a3d"/>
+    </g><g><ellipse cx="96" cy="131.6" rx="16.1" ry="4.8" fill="#05070a" opacity="0.55"/><circle cx="96" cy="116" r="17" fill="#ffb340"/><text class="svgtext" x="96" y="122.1" font-size="17.3" font-weight="700" fill="#eaf6ff" stroke="#2a1500" stroke-width="2.5" paint-order="stroke" text-anchor="middle">2</text></g><g><ellipse cx="238" cy="191.6" rx="16.1" ry="4.8" fill="#05070a" opacity="0.55"/><clipPath id="st238_176_17"><circle cx="238" cy="176" r="17"/></clipPath><circle cx="238" cy="176" r="17" fill="#eaf6ff"/><rect x="221" y="165.5" width="34" height="21.1" fill="#a05cff" clip-path="url(#st238_176_17)"/><text class="svgtext" x="238" y="182.1" font-size="17.3" font-weight="700" fill="#eaf6ff" stroke="#180432" stroke-width="2.5" paint-order="stroke" text-anchor="middle">6</text></g><g><ellipse cx="150" cy="309.5" rx="18.1" ry="5.3" fill="#05070a" opacity="0.55"/><circle cx="150" cy="292" r="19" fill="#14181f"/><circle cx="150" cy="292" r="19" fill="none" stroke="#eaf6ff" stroke-width="1.7" opacity="0.55"/><text class="svgtext" x="150" y="298.8" font-size="19.4" font-weight="700" fill="#eaf6ff" stroke="#05070a" stroke-width="2.9" paint-order="stroke" text-anchor="middle">8</text></g><g><ellipse cx="176" cy="461.6" rx="16.1" ry="4.8" fill="#05070a" opacity="0.5"/><circle cx="176" cy="446" r="23.0" fill="#35f2ff" opacity="0.14"/><circle cx="176" cy="446" r="17" fill="#35f2ff"/><circle cx="176" cy="446" r="6.8" fill="#d9feff"/></g></g></svg></div>
+    <div style="display: flex; flex-direction: column; gap: 22px;">
+      <div class="details">
+        <div class="det">
+          <svg width="300" height="240" viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc1"><rect x="0" y="0" width="300" height="240" rx="7"/></clipPath>
+      <g clip-path="url(#cc1)">
+        <rect x="0" y="0" width="300" height="240" fill="#0a1a24"/>
+        <circle cx="46" cy="46" r="66.7" fill="#0a1a24"/>
+        <rect x="46" y="46" width="254" height="194" fill="#0b3a2e"/>
+        <g transform="translate(46,46)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"><line x1="58" y1="0" x2="58" y2="194"/><line x1="116" y1="0" x2="116" y2="194"/><line x1="174" y1="0" x2="174" y2="194"/><line x1="232" y1="0" x2="232" y2="194"/><line x1="0" y1="58" x2="254" y2="58"/><line x1="0" y1="116" x2="254" y2="116"/><line x1="0" y1="174" x2="254" y2="174"/></g></g>
+        <g transform="translate(46,46)">
+          <polygon points="48,0 280,0 254,22 74,22" fill="#123040"/><line x1="74" y1="22" x2="254" y2="22" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,48 0,220 22,194 22,74" fill="#123040"/><line x1="22" y1="74" x2="22" y2="194" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="46" cy="46" r="58.6" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="46" cy="46" r="48" fill="#04060a"/>
+        <circle cx="46" cy="46" r="48" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="46" cy="46" r="46.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="46" cy="46" r="66.7" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg>
+          <span class="cap">Corner · <b>the jaws</b></span>
+          <p>Both cushions stop short and their ends splay open, so the mouth is wider than the gap between the rails. The frame behind bulges into a full circle around the void.</p>
+        </div>
+        <div class="det">
+          <svg width="300" height="240" viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="sc2"><rect x="0" y="0" width="300" height="240" rx="7"/></clipPath>
+      <g clip-path="url(#sc2)">
+        <rect x="0" y="0" width="300" height="240" fill="#0a1a24"/>
+        <circle cx="46" cy="120.0" r="66.7" fill="#0a1a24"/>
+        <rect x="46" y="0" width="254" height="240" fill="#0b3a2e"/>
+        <g transform="translate(46,0)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"><line x1="58" y1="0" x2="58" y2="240"/><line x1="116" y1="0" x2="116" y2="240"/><line x1="174" y1="0" x2="174" y2="240"/><line x1="232" y1="0" x2="232" y2="240"/><line x1="0" y1="58" x2="254" y2="58"/><line x1="0" y1="116" x2="254" y2="116"/><line x1="0" y1="174" x2="254" y2="174"/><line x1="0" y1="232" x2="254" y2="232"/></g></g>
+        <g transform="translate(46,0)">
+          <polygon points="0,-26 0,72.0 22,46.0 22,0" fill="#123040"/><line x1="22" y1="0" x2="22" y2="46.0" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,168.0 0,266 22,240 22,194.0" fill="#123040"/><line x1="22" y1="194.0" x2="22" y2="240" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="46" cy="120.0" r="58.6" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="46" cy="120.0" r="48" fill="#04060a"/>
+        <circle cx="46" cy="120.0" r="48" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="46" cy="120.0" r="46.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="46" cy="120.0" r="66.7" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg>
+          <span class="cap">Side · <b>the break</b></span>
+          <p>The long cushion is interrupted rather than curved: two runs, two flared ends, and the frame swelling out behind. A break in a straight line reads from further away than a bend does.</p>
+        </div>
+      </div>
+
+      <div class="states">
+        <div class="st">
+          <svg width="82" height="82" viewBox="0 0 82 82" xmlns="http://www.w3.org/2000/svg"><g>
+      <clipPath id="cc3"><rect x="0" y="0" width="82" height="82" rx="7"/></clipPath>
+      <g clip-path="url(#cc3)">
+        <rect x="0" y="0" width="82" height="82" fill="#0a1a24"/>
+        <circle cx="25" cy="25" r="29.8" fill="#0a1a24"/>
+        <rect x="25" y="25" width="57" height="57" fill="#0b3a2e"/>
+        <g transform="translate(25,25)"><g stroke="#14624c" stroke-width="0.9" opacity="0.24"></g></g>
+        <g transform="translate(25,25)">
+          <polygon points="22,0 67,0 57,9 32,9" fill="#123040"/><line x1="32" y1="9" x2="57" y2="9" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+          <polygon points="0,22 0,67 9,57 9,32" fill="#123040"/><line x1="9" y1="32" x2="9" y2="57" stroke="#1d6f7a" stroke-width="1.7" opacity="0.85"/>
+        </g>
+        <circle cx="25" cy="25" r="26.8" fill="#1d6f7a" opacity="0.12"/>
+        <circle cx="25" cy="25" r="22" fill="#04060a"/>
+        <circle cx="25" cy="25" r="22" fill="none" stroke="#1d6f7a" stroke-width="4" opacity="0.95"/>
+        <circle cx="25" cy="25" r="20.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.4"/>
+        <circle cx="25" cy="25" r="29.8" fill="none" stroke="#1d6f7a" stroke-width="1.8" opacity="0.5"/>
+      </g>
+    </g></svg>
+          <span class="txt"><span class="h">Open</span><span class="d">How a pocket looks all the time. Teal lip, no hue, no pulse.</span></span>
+        </div>
+        <div class="st">
+          <svg width="82" height="82" viewBox="0 0 82 82" xmlns="http://www.w3.org/2000/svg"><circle cx="41" cy="41" r="31" fill="#eaf6ff" opacity="0.2"/><circle cx="41" cy="41" r="25" fill="#04060a"/><circle cx="41" cy="41" r="25" fill="none" stroke="#eaf6ff" stroke-width="3.4"/><circle cx="41" cy="41" r="23.4" fill="none" stroke="#8ffcff" stroke-width="1.4" opacity="0.7"/></svg>
+          <span class="txt"><span class="h">Called</span><span class="d">The one extra state. The lip goes bone-white when the contract names this pocket.</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>The rules that come with it</h3>
+    <div class="rules">
+      <div class="rl"><span class="k">All six are identical</span><span class="v">There are no pocket types any more. <b>Every pocket pays the ball's number</b>, at the multiplier you have built. Gold, upgrade and live pockets move onto the felt as pick-ups, where colour is allowed to mean something.</span></div>
+      <div class="rl"><span class="k">Colour never touches them</span><span class="v">A pocket is drawn in the table's own materials and nothing else. That is what stops it competing with the mint and red objects for the same glance — <b>the eye can look for "a hole" without parsing hue at all.</b></span></div>
+      <div class="rl"><span class="k">The mouth is bigger than the hole</span><span class="v">The flared jaws are wider than the capture radius, so a ball that <b>looks</b> like it is going in, goes in. The visual promise has to be more generous than the rule, never less.</span></div>
+      <div class="rl"><span class="k">Jaws do not rattle</span><span class="v">The throat is drawn, not simulated. A ball is taken when its centre reaches the capture radius, exactly as before — <b>no jaw bounces, no near-misses that the preview did not show.</b> The prediction lines have to keep telling the truth.</span></div>
+      <div class="rl"><span class="k">Position is the only name</span><span class="v">A contract that wants a specific pocket calls it by where it is — <b>"the 8 in a corner"</b> — because position is architecture too, and needs no colour to say it.</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>What this costs</h3>
+    <p>Choosing <b>which</b> pocket used to be a real decision — gold for the multiplier, live for the gamble. That decision moves to the felt: which route you take across it, and which pick-ups and hazards that route crosses. It is the better place for it, because the felt is where the ball actually travels and the rails are only where it ends up. But it is a genuine loss of one axis, and worth watching in play.</p>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

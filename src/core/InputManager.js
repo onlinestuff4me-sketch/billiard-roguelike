@@ -91,6 +91,8 @@ export class InputManager {
 
     this.aim = this._makeAim();
     this._world = { x: 0, z: 0 };
+    /** Where the floating pad is seated for this gesture, in world units. */
+    this._pad = null;
 
     this._onDown = this._handleDown.bind(this);
     this._onMove = this._handleMove.bind(this);
@@ -172,6 +174,39 @@ export class InputManager {
     return this.handlers.getAnchor?.() || { x: 0, z: 0 };
   }
 
+  /**
+   * The point the cue pivots about, in world units.
+   *
+   * On a floating pad that is wherever the thumb went down (see INPUT.floatingPad);
+   * otherwise it is the ball itself, which is the older ball-anchored scheme.
+   */
+  _pivot() {
+    if (INPUT.floatingPad && this._pad) return this._pad;
+    return this._anchor();
+  }
+
+  /**
+   * SEAT THE PAD SO THE HEADING SURVIVES THE FIRST NUDGE.
+   *
+   * A pad centred exactly on the touch point has no direction at zero draw, so
+   * the aim can only snap somewhere the moment the thumb leaves the dead zone —
+   * and on a table where a pot is worth one to three degrees, a snap is the
+   * difference between adjusting a shot and starting again.
+   *
+   * The fix costs nothing: on the frame the drag first clears the dead zone,
+   * put the pad where the CURRENT heading and the CURRENT thumb position agree,
+   * which is thumb + heading x draw. The aim does not move at all, and from
+   * there the pad is absolute — point it and the cue points with it. The pad
+   * ends up at most a dead zone away from where the thumb landed.
+   */
+  _seatPad(clientX, clientY, dist) {
+    // Screen space: the pad is a control, sized in thumb-reach.
+    this._pad = {
+      x: clientX + this._dirX * dist,
+      y: clientY + this._dirZ * dist
+    };
+  }
+
   /** Seed the persistent heading (the game calls this when the ball settles). */
   setHeading(x, z) {
     const len = Math.hypot(x, z);
@@ -184,14 +219,37 @@ export class InputManager {
     return { x: this._dirX, z: this._dirZ };
   }
 
-  /** The cue: thumb position, and the shot vector running through the ball. */
+  /** The cue: thumb position, and the shot vector running through the pivot. */
   _cue() {
-    const ball = this._anchor();
     const finger = this.screenToWorld(this.currentX, this.currentY, this._world);
+
+    if (INPUT.floatingPad) {
+      // Before the pad is seated the travel is measured from the touch point,
+      // so the dead zone means what it says; the heading is held meanwhile.
+      if (!this._pad) {
+        const raw = Math.hypot(this.startX - this.currentX, this.startY - this.currentY);
+        if (raw <= INPUT.padDeadZonePx) {
+          return { finger, draw: 0, ratio: 0, vx: 0, vz: 0, seated: false };
+        }
+        this._seatPad(this.currentX, this.currentY, raw);
+      }
+      const pad = this._pad;
+      // Screen +x is world +x; screen +y is world +z (the camera's up is -Z).
+      const vx = pad.x - this.currentX;
+      const vz = pad.y - this.currentY;
+      const px = Math.hypot(vx, vz);
+      const ratio = Math.min(px / INPUT.padRadiusPx, 1);
+      // Report the draw in world units anyway, so the cue shaft behind the ball
+      // is the same length it would have been under the ball-anchored scheme.
+      const draw = INPUT.minDraw + (INPUT.maxDraw - INPUT.minDraw) * ratio;
+      return { finger, draw, ratio, vx, vz, seated: true, pad, px };
+    }
+
+    const ball = this._anchor();
     // Thumb → ball, continued out the far side. This IS the shot direction.
     const vx = ball.x - finger.x;
     const vz = ball.z - finger.z;
-    return { finger, draw: Math.hypot(vx, vz), vx, vz };
+    return { finger, draw: Math.hypot(vx, vz), vx, vz, seated: true };
   }
 
   /**
@@ -231,7 +289,10 @@ export class InputManager {
     // from the ball loads the shot without touching the angle at all, which is
     // exactly the motion a player already makes at a real table.
     const span = Math.max(INPUT.maxDraw - INPUT.minDraw, 1e-4);
-    const t = Math.min(Math.max((cue.draw - INPUT.minDraw) / span, 0), 1);
+    const t =
+      cue.ratio !== undefined
+        ? cue.ratio
+        : Math.min(Math.max((cue.draw - INPUT.minDraw) / span, 0), 1);
     aim.power = PLAYER.minPower + (1 - PLAYER.minPower) * t;
     aim.charge = t;
 
@@ -241,8 +302,28 @@ export class InputManager {
     aim.dirZ = this._dirZ;
     aim.pullLength = cue.draw;
     // Where the butt of the cue sits, so the shaft can be drawn behind the ball.
-    aim.cueX = cue.finger.x;
-    aim.cueZ = cue.finger.z;
+    // On a floating pad the thumb is somewhere else entirely, so the shaft is
+    // placed by the shot instead: back down the line from the ball, by the draw.
+    if (INPUT.floatingPad) {
+      const ball = this._anchor();
+      aim.cueX = ball.x - this._dirX * cue.draw;
+      aim.cueZ = ball.z - this._dirZ * cue.draw;
+    } else {
+      aim.cueX = cue.finger.x;
+      aim.cueZ = cue.finger.z;
+    }
+    // The pad's own geometry, in CLIENT pixels — it is a control, not a thing
+    // on the table, so it never goes through the camera.
+    aim.pad = cue.pad
+      ? {
+          x: cue.pad.x,
+          y: cue.pad.y,
+          knobX: this.currentX,
+          knobY: this.currentY,
+          radius: INPUT.padRadiusPx,
+          power: cue.ratio ?? 0
+        }
+      : null;
     aim.pullX = 0;
     aim.pullZ = 0;
     aim.valid = true;
@@ -275,11 +356,15 @@ export class InputManager {
     this.holdTime = 0;
     this.state = STATE.AIMING;
 
+    // A fresh gesture gets a fresh pad. It is seated on the first movement out
+    // of the dead zone, not here, so that touching down never moves the aim.
+    this._pad = null;
+
     // Placing the cue defines the line at once — no easing in from the last
     // shot's heading, because you are putting a stick down, not nudging one.
     this._lastAimTime = this.startTime;
     const cue = this._cue();
-    if (cue.draw > INPUT.minAimRadius) {
+    if (cue.seated && cue.draw > INPUT.minAimRadius) {
       const inv = 1 / cue.draw;
       this._dirX = this._targetX = cue.vx * inv;
       this._dirZ = this._targetZ = cue.vz * inv;
@@ -361,6 +446,7 @@ export class InputManager {
     this.pointerId = null;
     this.state = STATE.IDLE;
     this.holdTime = 0;
+    this._pad = null;
   }
 
   /** Force-cancel any in-flight aim (used when a modal opens or the run ends). */

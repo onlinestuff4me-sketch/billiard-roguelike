@@ -19,7 +19,7 @@
  *   6. projectiles ↔ player / geometry
  */
 
-import { ARENA, PHYSICS, TIME, TRAJECTORY, PLAYER } from '../config.js';
+import { ARENA, PHYSICS, TIME, TRAJECTORY, PLAYER, RULES } from '../config.js';
 // Shared state vocabulary. Systems may read entity constants; entities never
 // import systems, which is what keeps the dependency graph acyclic.
 import { ENEMY_STATE } from '../entities/Enemy.js';
@@ -35,6 +35,52 @@ const EPS = 1e-6;
 export function reflect(vx, vz, nx, nz, restitution = 1) {
   const d = 2 * (vx * nx + vz * nz);
   return { x: (vx - d * nx) * restitution, z: (vz - d * nz) * restitution };
+}
+
+/**
+ * THE DRAG MODEL, SOLVED RATHER THAN STEPPED.
+ *
+ * `integrate` damps velocity exponentially (v *= e^-drag*h), and the integral
+ * of that is beautifully simple: the distance covered between two speeds is
+ * (v0 - v1) / drag. So speed and distance are LINEAR in each other inside one
+ * drag regime, and the preview never has to run the simulation to know where a
+ * body stops — it can solve for it.
+ *
+ * There are two regimes, because the creep assist forces drag up to
+ * `creepDrag` once a body drops below `creepSpeed` (see RULES.creepSpeed).
+ * Both functions below walk the fast regime first, then the creep regime.
+ */
+
+/** Speed remaining after coasting `dist` from `v0`. */
+export function speedAfterDistance(v0, dist) {
+  let v = v0;
+  let s = Math.max(0, dist);
+  if (RULES.staticTable && v > RULES.creepSpeed) {
+    const fast = (v - RULES.creepSpeed) / PLAYER.dragLaunched;
+    if (s <= fast) return v - PLAYER.dragLaunched * s;
+    s -= fast;
+    v = RULES.creepSpeed;
+  } else if (!RULES.staticTable) {
+    return Math.max(0, v - PLAYER.dragLaunched * s);
+  }
+  return Math.max(0, v - RULES.creepDrag * s);
+}
+
+/**
+ * How far a body still travels before it is slow enough to have stopped.
+ *
+ * @param {number} v0
+ * @param {number} [drag] the body's own fast-regime drag. The cue ball uses
+ *   PLAYER.dragLaunched; a knocked object ball is heavier on the felt and uses
+ *   PHYSICS.knockedDrag, which is why the object-ball preview would be wrong
+ *   if it borrowed the cue's number.
+ */
+export function carryDistance(v0, drag = PLAYER.dragLaunched) {
+  const floor = RULES.staticTable ? RULES.settleSpeed : PLAYER.settleSpeed;
+  if (v0 <= floor) return 0;
+  if (!RULES.staticTable) return (v0 - floor) / drag;
+  if (v0 <= RULES.creepSpeed) return (v0 - floor) / RULES.creepDrag;
+  return (v0 - RULES.creepSpeed) / drag + (RULES.creepSpeed - floor) / RULES.creepDrag;
 }
 
 /**
@@ -301,6 +347,55 @@ export class PhysicsSystem {
     }
 
     if (game.zones && game.zones.length) this.resolveZones(h, game);
+
+    // Pockets and felt objects are tested last, once every body is where this
+    // sub-step leaves it. A ball is taken by its CENTRE reaching a pocket, so
+    // the rails can keep reflecting normally and the trajectory preview stays
+    // exactly as trustworthy as it was.
+    if (game.table) this.resolveTable(game);
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Pockets and felt objects
+   * ---------------------------------------------------------------- */
+
+  /**
+   * The only place a ball can leave the table.
+   *
+   * Everything here reports upward through `game.on` and changes no rules
+   * itself — physics decides that a body arrived somewhere, the rules layer
+   * decides what that is worth.
+   */
+  resolveTable(game) {
+    const table = game.table;
+    const player = game.player;
+
+    if (player && player.alive) {
+      const pocket = table.pocketAt(player.x, player.z);
+      if (pocket) game.on?.scratch?.({ player, pocket });
+      else {
+        const objects = table.objectsAt(player.x, player.z, player.radius);
+        for (const object of objects) {
+          game.on?.objectHit?.({ object, body: player, isCue: true });
+        }
+      }
+    }
+
+    const enemies = game.enemies || [];
+    for (let i = 0; i < enemies.length; i++) {
+      const ball = enemies[i];
+      if (!ball.alive || ball.state === ENEMY_STATE.SPAWNING) continue;
+      const pocket = table.pocketAt(ball.x, ball.z);
+      if (pocket) {
+        game.on?.potted?.({ ball, pocket });
+        continue;
+      }
+      const objects = table.objectsAt(ball.x, ball.z, ball.radius);
+      for (const object of objects) {
+        game.on?.objectHit?.({ object, body: ball, isCue: false });
+        if (!ball.alive) break;
+      }
+    }
   }
 
   /**
@@ -350,7 +445,13 @@ export class PhysicsSystem {
   integrate(body, h) {
     body.x += body.vx * h;
     body.z += body.vz * h;
-    const drag = body.drag || 0;
+    let drag = body.drag || 0;
+    // The creep assist: a body too slow to reach anything stops being allowed
+    // to hold the stroke open. See RULES.creepSpeed.
+    if (RULES.staticTable) {
+      const speed = Math.hypot(body.vx, body.vz);
+      if (speed > 0 && speed < RULES.creepSpeed) drag = Math.max(drag, RULES.creepDrag);
+    }
     if (drag > 0) {
       const damp = Math.exp(-drag * h);
       body.vx *= damp;
@@ -632,7 +733,10 @@ export class PhysicsSystem {
     player.z += nz * (depth * 0.65 + PHYSICS.skin);
     enemy.x -= nx * depth * 0.35;
     enemy.z -= nz * depth * 0.35;
-    if (enemy.state === ENEMY_STATE.ACTIVE) {
+    // On a static table a resting ball is furniture, not a threat: rolling up
+    // against one costs you nothing. The only things that can hurt you are the
+    // ones a stroke set in motion.
+    if (enemy.state === ENEMY_STATE.ACTIVE && !RULES.staticTable) {
       game.on?.playerTouched?.({ player, enemy });
     }
   }
@@ -653,16 +757,25 @@ export class PhysicsSystem {
     const nz = dist > EPS ? dz / dist : 0;
     const depth = min - dist;
 
-    const aLethal = a.isLethalProjectile && a.caromCooldown <= 0;
-    const bLethal = b.isLethalProjectile && b.caromCooldown <= 0;
+    // Which body is doing the hitting: the faster one, whatever its state.
+    const striker = a.speed >= b.speed ? a : b;
+    const target = striker === a ? b : a;
+    const sx = striker === a ? nx : -nx; // striker → target
+    const sz = striker === a ? nz : -nz;
+    const speed = striker.speed;
 
-    if (aLethal || bLethal) {
-      const striker = aLethal && (!bLethal || a.speed >= b.speed) ? a : b;
-      const target = striker === a ? b : a;
-      const sx = striker === a ? nx : -nx; // striker → target
-      const sz = striker === a ? nz : -nz;
-      const speed = striker.speed;
+    // TWO BALLS ALWAYS EXCHANGE MOMENTUM.
+    //
+    // This used to happen only when the striker was above the carom threshold,
+    // which meant a slow ball nudging another simply pushed it apart without
+    // any transfer — fine when object balls were enemies, wrong on a billiard
+    // table, where a gentle kiss still moves the ball it kisses. The impulse is
+    // unconditional now; the *scoring* event is what stays gated on speed.
+    const impulse = this.resolveBallImpulse(striker, target, sx, sz, PHYSICS.ballRestitution);
+    if (impulse > 0 && target.alive) target.applyKnock(target.vx, target.vz);
 
+    const scoring = speed >= PHYSICS.caromMinSpeed && a.caromCooldown <= 0 && b.caromCooldown <= 0;
+    if (scoring && impulse > 0) {
       game.on?.carom?.({
         striker,
         target,
@@ -674,11 +787,6 @@ export class PhysicsSystem {
       });
       a.caromCooldown = 0.15;
       b.caromCooldown = 0.15;
-
-      // Object balls collide by the same rule the cue ball does, so a carom in
-      // the middle of a chain is as readable as the opening strike.
-      this.resolveBallImpulse(striker, target, sx, sz, PHYSICS.ballRestitution);
-      if (target.alive) target.applyKnock(target.vx, target.vz);
     }
 
     // Always separate so bodies never stack.

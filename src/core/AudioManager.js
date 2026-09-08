@@ -112,6 +112,21 @@ export class AudioManager {
     if (!this.ready) return;
     const ctx = this.ctx;
     const t0 = ctx.currentTime + delay;
+    // EVERY WebAudio SETTER THROWS ON A NON-FINITE NUMBER, and every one of
+    // these is called from inside a physics substep — so one bad number does
+    // not lose a note, it aborts the stroke mid-flight. Sound is never allowed
+    // to do that. One gate, all the values that reach a setter.
+    if (
+      !Number.isFinite(t0) ||
+      !Number.isFinite(freq) ||
+      (freqEnd !== null && !Number.isFinite(freqEnd)) ||
+      !Number.isFinite(duration) ||
+      !Number.isFinite(gain) ||
+      !Number.isFinite(attack) ||
+      !Number.isFinite(detune)
+    ) {
+      return;
+    }
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
 
@@ -258,6 +273,15 @@ export class AudioManager {
    */
   chainNote(index = 0) {
     const scale = AUDIO.scale;
+    // Negative indexes read off the front of the scale and yield undefined,
+    // which turns the frequency into NaN. The ladder is always at least one
+    // rung deep by the time it plays, so clamping is a guard, not a rule.
+    // Clamped at both ends. Negative indexes read off the front of the scale
+    // and yield undefined, which turns the frequency into NaN; and a ladder
+    // that keeps climbing forever walks the note out of the audible range and
+    // then out of float32 altogether. Five octaves is more escalation than any
+    // stroke will ever earn, and it tops out musically instead of silently.
+    index = Number.isFinite(index) ? Math.min(Math.max(0, Math.floor(index)), 24) : 0;
     const degree = index % scale.length;
     // The scale has five degrees, so this also implements "octave up every 5".
     const semis = scale[degree] + 12 * Math.floor(index / scale.length);
