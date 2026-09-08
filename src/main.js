@@ -2353,6 +2353,18 @@ $('set-back').addEventListener('click', () => {
 // not a state change — `#mode-classic` is a plain link and needs no handler.
 // The card for the mode already running is inert; it is there to say what you
 // have, not to be pressed.
+// The one-file build has no sibling pages to switch to, so it does not offer
+// the door.
+//
+// This has to be the BARE identifier. Vite's `define` substitutes identifiers,
+// not member expressions, so the first version of this read
+// `globalThis.__SINGLE_FILE__`, was never substituted, read undefined, and
+// left the button showing in exactly the build it was written to hide it in.
+// The `typeof` guard survives a config that forgets to define it, and is
+// itself substituted down to a constant in every build that does.
+if (typeof __SINGLE_FILE__ !== 'undefined' && __SINGLE_FILE__) {
+  $('btn-modes').hidden = true;
+}
 $('btn-modes').addEventListener('click', () => {
   menuMain.hidden = true;
   menuModes.hidden = false;

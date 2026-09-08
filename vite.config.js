@@ -11,6 +11,9 @@ import { defineConfig } from 'vite';
  */
 export default defineConfig({
   base: './',
+  // The normal build ships its sibling pages, so it offers Modes. See
+  // vite.single.mjs for the build that cannot.
+  define: { __SINGLE_FILE__: 'false' },
   server: {
     host: true,
     port: 5173,

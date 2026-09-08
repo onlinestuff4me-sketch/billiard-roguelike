@@ -12,6 +12,12 @@ import { defineConfig } from 'vite';
  */
 export default defineConfig({
   base: './',
+  // ONE FILE MEANS NO SIBLINGS. Modes are separate built pages (see
+  // scripts/snapshot-classic.mjs), and there is no ./classic/ next to a build
+  // that is deliberately one file — so the menu must not offer a door that
+  // opens onto a 404. The button is hidden rather than the feature removed:
+  // this build is a portable copy of the game, not a different game.
+  define: { __SINGLE_FILE__: 'true' },
   build: {
     target: 'es2020',
     outDir: process.env.SINGLE_OUT || 'dist-single',
