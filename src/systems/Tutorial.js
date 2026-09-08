@@ -35,7 +35,15 @@
 import { PLAYER_STATE } from '../entities/Player.js';
 import lessonData from '../data/lessons.json';
 
-const KEY = 'billiard-tutorial-done-v1';
+// BUMPED WITH THE CURRICULUM, DELIBERATELY.
+//
+// This flag means "has seen the tutorial", and the tutorial it referred to no
+// longer exists — nine lessons about a real-time table became six about a
+// still one. Everybody who has played the live site is carrying the v1 flag,
+// so leaving the key alone would ship the new tutorial to new players only and
+// hide it from precisely the people who have been playing. A new curriculum
+// gets a new key.
+const KEY = 'billiard-tutorial-done-v2';
 
 /** Where the demonstrating thumb presses: clear of the ball, on the cue's axis. */
 const HAND_PRESS = 2.6;
@@ -1219,7 +1227,19 @@ export class Tutorial {
     this._wrongWay = false;
     this._scratched = null;
 
-    // A RACK-CLEARING BOARD IS ONE LONG ATTEMPT, NOT A SERIES OF REPS.
+    // A BOARD THAT IS OVER DOES NOT GET PUT BACK.
+    //
+    // A reset is preparation for another attempt, and a passed board has no
+    // next attempt — so re-racking one is the game tidying the table out from
+    // under a player who is still watching what they did. Worse here than
+    // anywhere, because completion has just DETONATED the rack in celebration:
+    // the balls went up in fireworks and then quietly reappeared, standing in
+    // formation, half a second later. The felt stays exactly as the winning
+    // shot left it, and the only thing asking for attention is the CTA. The
+    // next lesson rebuilds the table when it loads, which is where a rack that
+    // does not match the new board was always going to be fixed.
+    //
+    // A RACK-CLEARING BOARD IS ALSO ONE LONG ATTEMPT, NOT A SERIES OF REPS.
     //
     // Every other board resets between attempts, which is right: they are the
     // same shot practised until it lands. This one is a rack being cleared over
@@ -1228,8 +1248,11 @@ export class Tutorial {
     // silently, which is exactly how it was reported ("it resets my cue without
     // telling me why"). The cue stays where it stopped, like it would at a
     // table, and only goes home when the attempt itself is over.
-    const inProgress = lesson?.clearRack && !this._awaitingNext && !missed;
-    if (!inProgress) {
+    const over = this._awaitingNext;
+    const inProgress = lesson?.clearRack && !over && !missed;
+    if (over) {
+      /* nothing moves — see above */
+    } else if (!inProgress) {
       this._homeBall();
       this._reRack();
     } else {
@@ -1250,7 +1273,7 @@ export class Tutorial {
     // whole way. It gives way the instant a thumb goes down. A board mid-way
     // through a rack is skipped, because `solve` is measured from the spawn
     // and the cue is not there.
-    if (missed && !inProgress && Number.isFinite(lesson?.solve) && this._lastAim) {
+    if (missed && !over && !inProgress && Number.isFinite(lesson?.solve) && this._lastAim) {
       const to = (lesson.solve * Math.PI) / 180;
       this._demo = {
         from: this._lastAim,

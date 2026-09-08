@@ -1,0 +1,5 @@
+origin/main @ bfac470
+Delete the immortality flag: power decides what breaks (#20)
+
+Built by scripts/snapshot-classic.mjs. Do not edit by hand —
+re-run the script against a different ref to move the snapshot.

@@ -2279,6 +2279,7 @@ const tutorial = new Tutorial({
 if (typeof window !== 'undefined') game.tutorial = tutorial;
 const menuMain = document.getElementById('menu-main');
 const menuSettings = document.getElementById('menu-settings');
+const menuModes = document.getElementById('menu-modes');
 const $ = (id) => document.getElementById(id);
 
 /**
@@ -2322,6 +2323,7 @@ function openMenu() {
   uiLayer.classList.add('attract');
   menuMain.hidden = false;
   menuSettings.hidden = true;
+  menuModes.hidden = true;
   showTutorialState();
 }
 
@@ -2345,6 +2347,18 @@ $('btn-settings').addEventListener('click', () => {
 });
 $('set-back').addEventListener('click', () => {
   menuSettings.hidden = true;
+  menuMain.hidden = false;
+});
+// MODES. Each mode is its own built page, so choosing one is a navigation and
+// not a state change — `#mode-classic` is a plain link and needs no handler.
+// The card for the mode already running is inert; it is there to say what you
+// have, not to be pressed.
+$('btn-modes').addEventListener('click', () => {
+  menuMain.hidden = true;
+  menuModes.hidden = false;
+});
+$('mode-back').addEventListener('click', () => {
+  menuModes.hidden = true;
   menuMain.hidden = false;
 });
 $('btn-mute').addEventListener('click', () => {

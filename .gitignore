@@ -15,3 +15,7 @@ pnpm-debug.log*
 
 # Single-file build output (npm run build:single)
 dist-single
+
+# The classic-mode snapshot IS committed (public/classic) — Vercel builds one
+# project from one repo, and a page it cannot build is a page it cannot serve.
+# Regenerate it with `node scripts/snapshot-classic.mjs`, never by hand.

@@ -74,6 +74,11 @@ mistaken for a live one.
 - **Judged at rest.** A rep is judged when the table stops, not while it is
   still moving — so a stroke that pots and then scratches is a miss, and says
   why.
+- **A board that is over is not put back.** A reset is preparation for another
+  attempt, and a passed board has no next attempt, so re-racking one is the
+  game tidying the table out from under a player who is still watching what
+  they did. The felt stays as the winning shot left it; the next board rebuilds
+  it when it loads.
 - **Three highlights, and only three.** Bone-white is the called pocket. Green
   is a thing that helps you and the way forward. Red is a thing that costs you
   and a miss. These layer on top of the table's own channels — cyan is always
@@ -181,6 +186,17 @@ The one-sentence budget is real and it bites. `cut-combo` and `bank` both
 wanted to name a pocket and a technique and had to give one up. The two-line
 band is the concession that keeps them honest; a third line would be the point
 at which the direction has stopped being one line on a rail.
+
+## The old design is a mode, not a branch
+
+The real-time build this replaced is still playable, at `/classic`, reachable
+from **Modes** on the main menu. It is a frozen build of the commit it shipped
+as, produced by `scripts/snapshot-classic.mjs`, not a configuration of this
+one. `RULES.staticTable` looks like the whole difference between the two and is
+not: the old design also had nine lessons instead of six, a goal bar, a gun on
+the stripes, chain targets and doors to shoot through, none of which this
+codebase still contains. A flag flip would produce a hybrid nobody designed. A
+previous design is a previous version, so it is served as one.
 
 ## What already existed
 
