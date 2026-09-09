@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "build:single": "vite build --config vite.single.mjs && node scripts/inline.mjs",
     "verify": "node tools/verify-boards.mjs",
-    "palette": "node tools/check-palette.mjs"
+    "palette": "node tools/check-palette.mjs",
+    "coach": "node tools/check-coach.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"

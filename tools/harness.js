@@ -15,10 +15,22 @@
    * State capture — so a search can branch without reloading the page
    * ---------------------------------------------------------------- */
 
+  // BY SLOT, NOT BY REFERENCE. This used to hold the Enemy objects themselves
+  // and put them back by hand — but the first thing `restore` does is rebuild
+  // the rack, which disposes every one of them, so the loop that followed was
+  // writing positions onto discarded balls while the live ones stood at their
+  // authored spots. From a fresh board the two are the same table, which is why
+  // it never showed; from halfway through a rack they are not, and a search
+  // that branches mid-attempt was silently starting each branch from the top.
+  //
+  // The game already knows how to restore a moment — the fourth lesson rewinds
+  // a stroke with it — so this asks the game.
   function snapshot() {
     const game = g();
     return {
-      balls: game.enemies.map((e) => ({ e, x: e.x, z: e.z, alive: e.alive })),
+      balls: game.rooms.scriptedEnemies
+        .filter((e) => e.alive && Number.isFinite(e.slotIndex))
+        .map((e) => ({ index: e.slotIndex, x: e.x, z: e.z })),
       px: game.player.x,
       pz: game.player.z
     };
@@ -26,16 +38,8 @@
 
   function restore(snap) {
     const game = g();
-    // reRackScripted revives the rack; the snapshot then re-kills what was down.
-    game.rooms.reRackScripted();
+    game.rooms.restoreScripted(snap.balls);
     game.rooms.table.rearmForStroke();
-    for (const b of snap.balls) {
-      b.e.x = b.x;
-      b.e.z = b.z;
-      b.e.vx = 0;
-      b.e.vz = 0;
-      if (!b.alive && b.e.alive) game.forceKill(b.e);
-    }
     game.player.placeAt(snap.px, snap.pz);
     game.player.vx = 0;
     game.player.vz = 0;
@@ -86,6 +90,14 @@
       return real.object(p);
     };
 
+    // EVERY STROKE IS A FRESH STROKE. The scratch handler arms a 0.6s guard so
+    // one cue ball cannot register two scratches on its way into a pocket, and
+    // that guard is measured in WALL CLOCK time — which a search that plays a
+    // hundred strokes between two animation frames never spends. It meant a
+    // scratch could be silently swallowed simply because the previous probe had
+    // scratched a millisecond earlier, and the board would be judged on a shot
+    // the game had declined to act on.
+    P.scratchGuard = 0;
     const th = (headingDeg * Math.PI) / 180;
     P.launch({ dirX: Math.sin(th), dirZ: -Math.cos(th), power }, game);
     game.midStroke = true;
@@ -219,6 +231,64 @@
       hits: out.hits,
       scratched: out.scratched,
       resting
+    };
+  };
+
+  /**
+   * ONE STROKE PLAYED FOR REAL, THROUGH THE COACH.
+   *
+   * `__simShot` deliberately gags the tutorial so a measurement of the physics
+   * is not also a lesson being played. This is the opposite: the stroke goes
+   * through the board's own rules, the band writes whatever it writes, and the
+   * table is left in whatever state the lesson decided it should be left in.
+   *
+   * It is how a claim ABOUT THE COACHING gets checked — that a scratch on a
+   * multi-shot board gives the stroke back rather than rebuilding the rack,
+   * and that the sentence the player then reads names what happened.
+   *
+   * @param {{deg:number, power?:number}} spec
+   * @returns {{band:string, tone:string, strokes:number, rack:Array, player:object, scratched:boolean, pots:Array}}
+   */
+  window.__simPlay = (spec = {}) => {
+    const game = g();
+    const tut = game.tutorial;
+    // `spent` puts the board's shot budget where a check needs it. Reaching
+    // the end of a three-shot budget by playing three real strokes that each
+    // pot exactly one ball is a search in its own right, and the branch under
+    // test is what happens AT the end, not how the board got there.
+    if (Number.isFinite(spec.spent)) tut._strokes = spec.spent;
+    const out = shoot(spec.deg ?? 0, spec.power ?? 0.7);
+    // The lesson resolves a stroke on its own clock, and the clock only runs
+    // when the game does. Drive it the way a frame would until it lets go.
+    for (let i = 0; i < 2000 && tut._launched; i++) tut.update(1 / 60);
+    game.midStroke = false;
+    game.phase = 'aim';
+    const band = tut.lineEl?.textContent || '';
+    return {
+      band,
+      tone: tut.el?.classList.contains('bad') ? 'bad' : tut.el?.classList.contains('good') ? 'good' : '',
+      strokes: tut._strokes,
+      done: tut._awaitingNext,
+      scratched: out.scratched,
+      pots: out.pots.map((p) => p.number),
+      rack: game.rooms.scriptedEnemies
+        .filter((e) => e.alive)
+        .map((e) => ({ n: e.number, x: +e.x.toFixed(2), z: +e.z.toFixed(2) }))
+        .sort((a, b) => a.n - b.n),
+      player: { x: +game.player.x.toFixed(2), z: +game.player.z.toFixed(2) }
+    };
+  };
+
+  /** The table as the lesson currently has it — no stroke, no side effects. */
+  window.__simTable = () => {
+    const game = g();
+    return {
+      strokes: game.tutorial?._strokes ?? 0,
+      rack: game.rooms.scriptedEnemies
+        .filter((e) => e.alive)
+        .map((e) => ({ n: e.number, x: +e.x.toFixed(2), z: +e.z.toFixed(2) }))
+        .sort((a, b) => a.n - b.n),
+      player: { x: +game.player.x.toFixed(2), z: +game.player.z.toFixed(2) }
     };
   };
 

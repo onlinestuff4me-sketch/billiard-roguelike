@@ -161,6 +161,23 @@ mistaken for a live one.
   game tidying the table out from under a player who is still watching what
   they did. The felt stays as the winning shot left it; the next board rebuilds
   it when it loads.
+- **A failed stroke is given back, not charged.** On a board played over
+  several strokes, a scratch or a miss rewinds to the table as it stood when
+  that stroke was fired: the balls that were up are up, where they were, the
+  cue is back on the spot it was played from, and the shot is unspent. The
+  alternative — rebuilding the rack — takes back the balls the player earned
+  while keeping the shots they spent earning them, which leaves an attempt that
+  cannot be finished. Running out of shots is the one way such a board can be
+  got wrong, and it is said out loud before the attempt starts again.
+- **Say what happened, then what to do.** Every correction is two halves: the
+  event in the player's own terms, and the next thing to try. "Scratched — your
+  own ball went in, so that shot is back. Try the 6 into the side pocket, but
+  hit it off-centre." Not "Down", not "Not quite". The game's word for an event
+  is not the player's word for it, and a correction with no instruction in it is
+  a scoreboard.
+
+`npm run coach` checks both of those the way `npm run verify` checks
+solvability: it plays real strokes and reads the table and the band afterwards.
 - **Three highlights, and only three.** Bone-white is the called pocket. Green
   is a thing that helps you and the way forward. Red is a thing that costs you
   and a miss. These layer on top of the table's own channels — cyan is always
@@ -181,7 +198,7 @@ mistaken for a live one.
 |---|---|---|
 | **Instruct** | board loads | the one line, the highlighted region, the lit pocket, a resting aim near a real solution |
 | **Aiming** | thumb down | the instruction, unchanged and unfaded; the routes — your ball, the struck ball — each ending in a tag naming where it goes |
-| **Missed** | table at rest, rep not met | what happened in one line, naming a cause; the board resets, then the cue swings from the line that failed to one that works |
+| **Missed** | table at rest, rep not met | what happened in one line, naming a cause, and what to do next; the table is put back — a whole board on a single-stroke lesson, one stroke on a multi-stroke one — and then the cue swings from the line that failed to one that works |
 | **Complete** | table at rest, rep met | the lesson's own praise, the felt dimmed, shots refused, one CTA forward |
 
 ## The three directions
