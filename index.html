@@ -1578,10 +1578,13 @@
       }
       .coach-tag {
         position: absolute;
-        /* Anchored ABOVE its point, not centred on it. The point is now
-           occupied by a ghost of the ball itself, and a label sitting on top
-           of the thing it names hides the better of the two signals. */
-        transform: translate(-50%, -100%);
+        /* Positioned by a solve, not by a rule. Tutorial._updateTags scores
+           eight positions around the point against every ball, pocket and
+           ghost on screen and takes the one that covers nothing — a fixed
+           offset put the label on the 2 on the board whose whole sentence is
+           about the 2. The transform is set from script; this is the default
+           for the frame before the first solve runs. */
+        transform: translate(-50%, -50%);
         padding: 3px 8px;
         border-radius: 6px;
         /* Bigger and heavier than the first pass. These were sized like a

@@ -120,7 +120,7 @@ const RULES = {
   // every power, the pot at the end of an angled combination is worth about a
   // degree and a half. Making the first ball reach the second is the lesson.
   'cut-combo': {
-    say: 'Angle your shot at the <b>6</b>, so it hits the <b>2</b> into the side pocket',
+    say: 'Angle your shot at the <b>6</b>, so it knocks the <b>2</b> toward the lit corner',
     spot: 'rack',
     handoff: true,
     cheer: 'The 6 found the 2 — that is the shot',
@@ -134,13 +134,13 @@ const RULES = {
    * ================================================================== */
 
   bank: {
-    say: 'The wall blocks the <b>3</b>. <em>Bounce</em> off the cushion below you to reach it',
+    say: 'A barrier blocks the <b>3</b>. <em>Bounce</em> off the bottom wall to reach it',
     spot: 'first',
     bankThenHit: true,
-    cheer: 'Off the cushion and onto the 3 — and a bank is worth more',
-    scold: 'You shot straight at the 3 and the wall stopped it. Shoot down into the cushion instead',
-    whiff: 'Your line came back short of the 3 — aim further down the cushion',
-    nudge: 'Aim <em>down</em> into the cushion below you. The dashed line swings back up to the <b>3</b>.'
+    cheer: 'Off the wall and onto the 3 — and a bounce is worth more',
+    scold: 'You shot straight at the 3 and the barrier stopped it. Shoot down into the bottom wall instead',
+    whiff: 'Your line came back short of the 3. Aim further along the bottom wall',
+    nudge: 'Aim <em>down</em> into the bottom wall. The dashed line swings back up to the <b>3</b>.'
   },
 
   // TWO POCKETS, LIT THROUGHOUT. The plan spans the strokes rather than living
@@ -761,7 +761,11 @@ export class Tutorial {
   _updateTags() {
     const cam = this.engine?.camera;
     const tags = this.input.isAiming && !this._awaitingNext ? this.game.aimTags : null;
-    if (!tags || !tags.length || !cam || !this.layer.clientWidth) {
+    // Only entries carrying words get a label. The rest are ghost-only — the
+    // intermediate balls of a chain, whose resting place is shown but not
+    // narrated (see aimTags in main.js).
+    const labelled = tags?.filter((t) => t.text) ?? [];
+    if (!labelled.length || !cam || !this.layer.clientWidth) {
       this._hideTags();
       return;
     }
@@ -770,13 +774,62 @@ export class Tutorial {
     const h = this.layer.clientHeight;
     const visX = (cam.right - cam.left) / cam.zoom;
     const visZ = (cam.top - cam.bottom) / cam.zoom;
+    const toPx = (x, z) => ({
+      x: ((x - cam.position.x) / visX + 0.5) * w,
+      y: ((z - cam.position.z) / visZ + 0.5) * h
+    });
     // THE CEILING IS THE BAND, NOT THE SCREEN. A route that ends in a far
     // corner pocket puts its label up level with the coaching band, which is
     // opaque and drawn above these — so the label was there, correct, and
-    // completely invisible. Measured once per frame rather than per tag.
+    // completely invisible.
     const ceiling = this.el.offsetTop + this.el.offsetHeight + 4;
 
-    for (let i = 0; i < tags.length; i += 1) {
+    // WHAT A LABEL MUST NOT COVER.
+    //
+    // Everything the player is being asked to look at: every ball on the
+    // table, every pocket, and the ghosts marking where the balls are going.
+    // A label that lands on the 2 has hidden the subject of its own sentence,
+    // which is how this was reported — the ball the lesson names was behind
+    // the words naming it.
+    const blockers = [];
+    for (const ball of this.game.enemies) {
+      if (!ball.alive) continue;
+      const p = toPx(ball.x, ball.z);
+      blockers.push({ ...p, r: (ball.radius / visZ) * h + 3 });
+    }
+    for (const pocket of this.rooms?.table?.pockets ?? []) {
+      const p = toPx(pocket.x, pocket.z);
+      blockers.push({ ...p, r: (pocket.radius / visZ) * h + 3 });
+    }
+    for (const tag of tags) {
+      const p = toPx(tag.x, tag.z);
+      blockers.push({ ...p, r: ((tag.r ?? 0) / visZ) * h + 3 });
+    }
+    const cue = toPx(this.player.x, this.player.z);
+    blockers.push({ ...cue, r: (this.player.radius / visZ) * h + 3 });
+
+    /** How badly a label box centred here lands on something worth seeing. */
+    const cost = (cx, cy, bw, bh) => {
+      let worst = 0;
+      for (const b of blockers) {
+        // Closest point on the box to the blocker's centre.
+        const dx = Math.max(Math.abs(b.x - cx) - bw / 2, 0);
+        const dy = Math.max(Math.abs(b.y - cy) - bh / 2, 0);
+        const gap = Math.hypot(dx, dy) - b.r;
+        if (gap < 0) worst += -gap;
+      }
+      return worst;
+    };
+
+    // Eight positions around the point, near ring first then far, so a label
+    // sits as close to the thing it names as it can get away with.
+    const DIRS = [
+      [0, -1], [0, 1], [1, 0], [-1, 0],
+      [0.72, -0.72], [-0.72, -0.72], [0.72, 0.72], [-0.72, 0.72]
+    ];
+    const placed = [];
+
+    for (let i = 0; i < labelled.length; i += 1) {
       let node = this._tagNodes[i];
       if (!node) {
         node = document.createElement('div');
@@ -784,32 +837,45 @@ export class Tutorial {
         this.tagEl.appendChild(node);
         this._tagNodes[i] = node;
       }
-      const tag = tags[i];
-      const px = ((tag.x - cam.position.x) / visX + 0.5) * w;
-      const py = ((tag.z - cam.position.z) / visZ + 0.5) * h;
+      const tag = labelled[i];
       node.textContent = tag.text;
       node.className = `coach-tag show ${tag.tone}`;
-      // ABOVE THE GHOST, CLEAR OF IT. The endpoint now carries a translucent
-      // copy of the ball (Player._showEndGhosts); the label sits a ball's
-      // height above it so both are readable at once. Below the ghost instead
-      // when the route ends near the top of the table, where there is no room
-      // above and the coaching band is waiting.
+
+      const at = toPx(tag.x, tag.z);
+      const bw = node.offsetWidth;
+      const bh = node.offsetHeight;
       const ballPx = ((tag.r ?? 0) / visZ) * h;
-      const above = py - ballPx - 6;
-      const flip = above - node.offsetHeight < ceiling;
-      node.style.transform = flip ? 'translate(-50%, 0)' : 'translate(-50%, -100%)';
-      // Clamped inside the layer, and by the tag's OWN measured width. A route
-      // that ends hard against a rail or in a corner pocket puts its endpoint
-      // within a few pixels of the edge, and a label centred there runs off
-      // the screen — which is how the scratch float text used to read
-      // "CRATCH".
-      const half = node.offsetWidth / 2 + 4;
-      const top = flip ? py + ballPx + 6 : above;
-      const lo = flip ? ceiling : ceiling + node.offsetHeight;
-      node.style.left = `${Math.min(Math.max(px, half), w - half).toFixed(1)}px`;
-      node.style.top = `${Math.min(Math.max(top, lo), h - 26).toFixed(1)}px`;
+
+      let best = null;
+      // Three rings, near first. A wide label beside a corner pocket often has
+      // no clean spot on the near ring at all — everything within a ball's
+      // reach of a corner is either the pocket, its mouth, or the rail — so
+      // there has to be somewhere further out to fall back to before the
+      // solve gives up and takes the least-bad overlap.
+      for (const reach of [ballPx + bh * 0.62 + 6, ballPx + bh * 1.5 + 12, ballPx + bh * 2.6 + 20]) {
+        for (const [ux, uy] of DIRS) {
+          // Clamped so a candidate never leaves the felt or hides under the
+          // band; the clamp happens BEFORE scoring, so the score is of the
+          // position that will actually be used.
+          const cx = Math.min(Math.max(at.x + ux * (reach + bw * 0.18), bw / 2 + 4), w - bw / 2 - 4);
+          const cy = Math.min(Math.max(at.y + uy * reach, ceiling + bh / 2), h - bh / 2 - 4);
+          // Labels already placed this frame are blockers for the next one.
+          let c = cost(cx, cy, bw, bh);
+          for (const q of placed) {
+            if (Math.abs(q.x - cx) < (q.w + bw) / 2 && Math.abs(q.y - cy) < (q.h + bh) / 2) c += 40;
+          }
+          if (!best || c < best.c) best = { c, cx, cy };
+          if (c === 0) break;
+        }
+        if (best?.c === 0) break;
+      }
+
+      placed.push({ x: best.cx, y: best.cy, w: bw, h: bh });
+      node.style.transform = 'translate(-50%, -50%)';
+      node.style.left = `${best.cx.toFixed(1)}px`;
+      node.style.top = `${best.cy.toFixed(1)}px`;
     }
-    for (let i = tags.length; i < this._tagNodes.length; i += 1) {
+    for (let i = labelled.length; i < this._tagNodes.length; i += 1) {
       this._tagNodes[i].className = 'coach-tag';
     }
   }

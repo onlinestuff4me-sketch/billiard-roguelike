@@ -330,25 +330,28 @@ class AimRenderer {
     // as a BALL at a glance, and the ring is what keeps it legible over the
     // felt's own gradient, where a low-opacity disc alone disappears.
     this.endGhosts = [];
-    for (let i = 0; i < 3; i += 1) {
-      // A ball is about thirteen pixels across on a phone, so a hairline ring
-      // at low alpha is technically present and practically invisible — which
-      // is how the first pass of this went. The ring is nearly a third of the
-      // radius thick and the fill is heavy enough to read as a filled shape;
-      // together they hold up against the felt's gradient and against a bright
-      // route passing underneath.
+    for (let i = 0; i < 4; i += 1) {
+      // A GHOST IS HOLLOW, AND DIMMER THAN THE BALL IT IS A GHOST OF.
+      //
+      // The previous pass over-corrected: a heavy fill at full-brightness ring
+      // read as another ball on the table rather than as a projection of one,
+      // which is worse than being too faint — a solid shape where no ball is
+      // is a lie about the state of the table. So: no fill to speak of, a ring
+      // kept clearly below the real balls' brightness, and enough ring WIDTH
+      // to stay findable at thirteen pixels across. Hollow, present, and
+      // obviously not a ball.
       const fillMat = new THREE.MeshBasicMaterial({
         transparent: true,
-        opacity: 0.3,
+        opacity: 0.07,
         depthWrite: false
       });
       const ringMat = new THREE.MeshBasicMaterial({
         transparent: true,
-        opacity: 1,
+        opacity: 0.62,
         depthWrite: false
       });
       const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 28), fillMat);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 1.02, 28), ringMat);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.76, 1.0, 28), ringMat);
       fill.rotation.x = -Math.PI / 2;
       ring.rotation.x = -Math.PI / 2;
       fill.visible = false;

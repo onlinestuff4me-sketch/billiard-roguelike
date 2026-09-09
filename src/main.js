@@ -2036,21 +2036,32 @@ function aimTags(prediction, cuePath, objectPath) {
     );
   }
 
-  // THE RACK BALL, at the end of however far the chain carried. Only the last
-  // link is named; the ones before it are mid-sentence.
-  const lastLeg = objectPath?.[objectPath.length - 1];
-  if (lastLeg?.segs?.length) {
-    const end = pathEnd(lastLeg.segs);
-    const down = pathPocket(lastLeg.segs, pockets);
-    const number = lastLeg.ball?.number;
-    if (end) {
-      const r = lastLeg.ball?.radius ?? player.radius;
-      tags.push(
-        down
-          ? { ...end, r, text: `${number ?? 'BALL'} → ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
-          : { ...end, r, text: number ? `${number} STOPS HERE` : 'STOPS HERE', tone: 'rack' }
-      );
+  // EVERY BALL IN THE CHAIN GETS A GHOST; ONLY THE LAST GETS WORDS.
+  //
+  // A combination moves two balls and the player is choosing where both of
+  // them end up, so both deserve to be shown — but two labels on one felt is
+  // a paragraph, and the intermediate ball's resting place is mid-sentence.
+  // A silent ghost says it without saying it: the shape is the answer, the
+  // label is only for the ball the shot is about.
+  const legs = objectPath ?? [];
+  for (let i = 0; i < legs.length; i += 1) {
+    const leg = legs[i];
+    if (!leg?.segs?.length) continue;
+    const end = pathEnd(leg.segs);
+    if (!end) continue;
+    const down = pathPocket(leg.segs, pockets);
+    const number = leg.ball?.number;
+    const r = leg.ball?.radius ?? player.radius;
+    const last = i === legs.length - 1;
+    if (!last) {
+      tags.push({ ...end, r, tone: down ? 'pocket' : 'rack' });
+      continue;
     }
+    tags.push(
+      down
+        ? { ...end, r, text: `${number ?? 'BALL'} → ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
+        : { ...end, r, text: number ? `${number} STOPS HERE` : 'STOPS HERE', tone: 'rack' }
+    );
   }
   return tags;
 }

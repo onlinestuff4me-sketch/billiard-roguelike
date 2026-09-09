@@ -19,10 +19,19 @@ facts, not a rule and an example. If a board needs two sentences, the board is
 teaching two things and should be two boards.
 
 Plain instruction, in the order the shot happens: hit WHAT, so it does WHAT, to
-end up WHERE. "Angle your shot at the 6, so it hits the 2 into the side pocket",
-not "cut the 6 across into the 2". Billiards has a vocabulary — cut, thread,
-carom, full ball — and every word of it is a word the player has to already know
-to be taught anything. None of it appears in a lesson.
+end up WHERE. "Angle your shot at the 6, so it knocks the 2 toward the lit
+corner", not "cut the 6 across into the 2". Billiards has a vocabulary — cut,
+thread, carom, full ball, cushion — and every word of it is a word the player
+has to already know to be taught anything. None of it appears in a lesson: the
+rail is the bottom wall, and the thing in the way is a barrier.
+
+**And the sentence has to be TRUE.** Naming a pocket is a claim about where a
+ball ends up, and it is as checkable as the board's pass condition — `__simShot`
+in the harness plays one stroke and reports where every ball came to rest. The
+angled combination told the player the 2 went in the side pocket; measured
+across its whole solve window, the 2 reaches a pocket at exactly one heading,
+and that pocket is the far corner. The board now lights the corner and the
+sentence names it.
 
 One SENTENCE, which is not the same as one visual line — on a 390px phone a
 sentence of any substance wraps, and pretending otherwise just means it gets
@@ -41,11 +50,23 @@ says where they go, and where a route is worth showing, the guide line shows
 it — including the ricochet and what happens to each ball after contact.
 
 A line says which way a ball goes; it does not say where it stops. So every
-route ends in a translucent copy of the ball itself, in that ball's own colour,
-sitting where it comes to rest — cyan for yours, amber for a rack ball, bone at
-a pocket, red at a pocket about to take your own ball. The label beside it names
-the same place in words, and both are drawn from one list (`aimTags` in
-main.js), so the shape and the words cannot describe different places.
+ball the shot moves ends in a ghost of itself — hollow, dimmer than the ball it
+projects, in that ball's own colour — sitting where it comes to rest. Cyan for
+yours, amber for a rack ball, bone at a pocket, red at a pocket about to take
+your own ball. A ghost must never read as another ball on the table: a solid
+shape where no ball is is a lie about the state of the felt.
+
+Every ball in a chain gets a ghost; only the last gets words. Two labels on one
+felt is a paragraph, and an intermediate ball's resting place is mid-sentence —
+the shape says it without saying it.
+
+**A label never covers a ball, a pocket or a ghost.** It is placed by a solve
+(`Tutorial._updateTags`), not by a fixed offset: eight positions at three
+distances, scored against everything on screen worth seeing, nearest clean one
+wins. A fixed offset put the label for "hits the 2" directly on top of the 2.
+
+The label and the ghost come from one list (`aimTags` in main.js), so the shape
+and the words can never describe different places.
 *Passes when:* cover the text and the goal is still guessable from the table.
 
 **3 — Coaching stays up until the player acts, and never covers the act.**
