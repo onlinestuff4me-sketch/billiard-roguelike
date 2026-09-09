@@ -171,13 +171,22 @@ mistaken for a live one.
   got wrong, and it is said out loud before the attempt starts again.
 - **Say what happened, then what to do.** Every correction is two halves: the
   event in the player's own terms, and the next thing to try. "Scratched — your
-  own ball went in, so that shot is back. Try the 6 into the side pocket, but
-  hit it off-centre." Not "Down", not "Not quite". The game's word for an event
-  is not the player's word for it, and a correction with no instruction in it is
-  a scoreboard.
+  own ball went in the pocket. Try the 6 into the side pocket, but hit it
+  off-centre." Not "Down", not "Not quite". A correction with no instruction in
+  it is a scoreboard.
 
-`npm run coach` checks both of those the way `npm run verify` checks
-solvability: it plays real strokes and reads the table and the band afterwards.
+  Nothing else goes in. The table putting itself back is not narrated — it has
+  already happened by the time the line is read, and a sentence that describes
+  what the player can see spends one of its two lines on it.
+- **One event, one word — and it is the word on the table.** A ball that goes
+  in a pocket is **pocketed**. Not "down", which is the game talking to itself,
+  and not "potted", which is a second name for the same event: a lesson that
+  calls one thing two things has taught a synonym instead of a game. Same for
+  every other event the boards name.
+
+`npm run coach` checks all three the way `npm run verify` checks solvability:
+it plays real strokes, reads the table and the band afterwards, and fails on a
+band that reaches for a word the game has not taught.
 - **Three highlights, and only three.** Bone-white is the called pocket. Green
   is a thing that helps you and the way forward. Red is a thing that costs you
   and a miss. These layer on top of the table's own channels — cyan is always
