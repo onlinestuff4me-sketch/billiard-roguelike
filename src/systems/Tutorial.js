@@ -91,7 +91,7 @@ const RULES = {
   // board, and the departure line is taught by the line itself — it is drawn
   // on every shot, and it turns red before the mistake rather than after.
   angle: {
-    say: '<em>Pull back</em> and sink the <b>3</b> in the side pocket',
+    say: '<em>Pull back</em>, then hit the <b>3</b> into the side pocket',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
@@ -99,7 +99,7 @@ const RULES = {
     facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
     cheer: 'In, and you are still on the table',
     whiff: 'Your line went past the 3 — put it through the middle of the ball',
-    nudge: 'Line the <b>3</b> up with the lit pocket, then pull back from below your ball.'
+    nudge: 'Line your ball up with the <b>3</b> and the lit pocket, then pull back from below it.'
   },
 
   /* ================================================================== *
@@ -107,7 +107,7 @@ const RULES = {
    * ================================================================== */
 
   combo: {
-    say: 'Sink the <b>1</b> in the side pocket, off the <b>4</b>',
+    say: 'Hit the <b>4</b>, so it knocks the <b>1</b> into the side pocket',
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
     cheer: 'One ball moved another. That is a combination',
@@ -120,13 +120,13 @@ const RULES = {
   // every power, the pot at the end of an angled combination is worth about a
   // degree and a half. Making the first ball reach the second is the lesson.
   'cut-combo': {
-    say: 'Cut the <b>6</b> across into the <b>2</b>, toward the side pocket',
+    say: 'Angle your shot at the <b>6</b>, so it hits the <b>2</b> into the side pocket',
     spot: 'rack',
     handoff: true,
     cheer: 'The 6 found the 2 — that is the shot',
-    scold: 'You hit the 6 too full, so it went straight — catch it further round its side',
+    scold: 'You hit the 6 straight on, so it went straight. Hit it more from the side',
     whiff: 'You aimed past the 6 — the shot starts on that ball',
-    nudge: 'Put your white circle on the <em>left</em> of the <b>6</b>, so the 6 runs across into the 2.'
+    nudge: 'Put your white circle on the <em>left side</em> of the <b>6</b>, so the 6 travels right into the 2.'
   },
 
   /* ================================================================== *
@@ -134,11 +134,11 @@ const RULES = {
    * ================================================================== */
 
   bank: {
-    say: 'The wall blocks the <b>3</b> — <em>bounce</em> off the cushion below you',
+    say: 'The wall blocks the <b>3</b>. <em>Bounce</em> off the cushion below you to reach it',
     spot: 'first',
     bankThenHit: true,
     cheer: 'Off the cushion and onto the 3 — and a bank is worth more',
-    scold: 'You went straight at it and the wall took the shot — go down into the cushion instead',
+    scold: 'You shot straight at the 3 and the wall stopped it. Shoot down into the cushion instead',
     whiff: 'Your line came back short of the 3 — aim further down the cushion',
     nudge: 'Aim <em>down</em> into the cushion below you. The dashed line swings back up to the <b>3</b>.'
   },
@@ -154,7 +154,7 @@ const RULES = {
   // board points at the first shot of the route instead, and keeps both goals
   // on screen.
   budget: {
-    say: 'Clear four balls in <em>three shots</em> — the <b>1</b> into the <b>4</b> first',
+    say: 'Clear all four balls in <em>three shots</em>. Start by hitting the <b>1</b> into the <b>4</b>',
     spot: 'rack',
     clearRack: true,
     shots: 3,
@@ -174,13 +174,13 @@ const RULES = {
   // built as a thread instead: 4.5 degrees wide, and it still costs you the
   // easy line.
   'green-red': {
-    say: 'Thread to the <b>2</b> through the <em>green</em>, not over the red',
+    say: 'Hit the <b>2</b> into the side pocket, through the <em>green</em> — not the red',
     spot: 'rack',
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
     cheer: 'Past the red, through the green, and in',
     scold: 'In, but your line went under the green — it pays double and it is barely off the lazy route',
-    whiff: 'Your line missed the 2 — thread it between the red and the green',
+    whiff: 'Your line missed the 2. Steer it between the red and the green',
     nudge: 'Turn a few degrees <em>up</em> from the red. The <em>green</em> is the next thing your line touches.'
   }
 };
@@ -770,6 +770,11 @@ export class Tutorial {
     const h = this.layer.clientHeight;
     const visX = (cam.right - cam.left) / cam.zoom;
     const visZ = (cam.top - cam.bottom) / cam.zoom;
+    // THE CEILING IS THE BAND, NOT THE SCREEN. A route that ends in a far
+    // corner pocket puts its label up level with the coaching band, which is
+    // opaque and drawn above these — so the label was there, correct, and
+    // completely invisible. Measured once per frame rather than per tag.
+    const ceiling = this.el.offsetTop + this.el.offsetHeight + 4;
 
     for (let i = 0; i < tags.length; i += 1) {
       let node = this._tagNodes[i];
@@ -784,14 +789,25 @@ export class Tutorial {
       const py = ((tag.z - cam.position.z) / visZ + 0.5) * h;
       node.textContent = tag.text;
       node.className = `coach-tag show ${tag.tone}`;
+      // ABOVE THE GHOST, CLEAR OF IT. The endpoint now carries a translucent
+      // copy of the ball (Player._showEndGhosts); the label sits a ball's
+      // height above it so both are readable at once. Below the ghost instead
+      // when the route ends near the top of the table, where there is no room
+      // above and the coaching band is waiting.
+      const ballPx = ((tag.r ?? 0) / visZ) * h;
+      const above = py - ballPx - 6;
+      const flip = above - node.offsetHeight < ceiling;
+      node.style.transform = flip ? 'translate(-50%, 0)' : 'translate(-50%, -100%)';
       // Clamped inside the layer, and by the tag's OWN measured width. A route
       // that ends hard against a rail or in a corner pocket puts its endpoint
       // within a few pixels of the edge, and a label centred there runs off
       // the screen — which is how the scratch float text used to read
       // "CRATCH".
       const half = node.offsetWidth / 2 + 4;
+      const top = flip ? py + ballPx + 6 : above;
+      const lo = flip ? ceiling : ceiling + node.offsetHeight;
       node.style.left = `${Math.min(Math.max(px, half), w - half).toFixed(1)}px`;
-      node.style.top = `${Math.min(Math.max(py, 14), h - 14).toFixed(1)}px`;
+      node.style.top = `${Math.min(Math.max(top, lo), h - 26).toFixed(1)}px`;
     }
     for (let i = tags.length; i < this._tagNodes.length; i += 1) {
       this._tagNodes[i].className = 'coach-tag';

@@ -2031,8 +2031,8 @@ function aimTags(prediction, cuePath, objectPath) {
     const down = pathPocket(cueSegs, pockets);
     tags.push(
       down
-        ? { ...cueEnd, text: 'SCRATCH', tone: 'bad' }
-        : { ...cueEnd, text: 'YOUR BALL', tone: 'cue' }
+        ? { ...cueEnd, r: player.radius, text: 'SCRATCH', tone: 'bad' }
+        : { ...cueEnd, r: player.radius, text: 'YOUR BALL', tone: 'cue' }
     );
   }
 
@@ -2044,10 +2044,11 @@ function aimTags(prediction, cuePath, objectPath) {
     const down = pathPocket(lastLeg.segs, pockets);
     const number = lastLeg.ball?.number;
     if (end) {
+      const r = lastLeg.ball?.radius ?? player.radius;
       tags.push(
         down
-          ? { ...end, text: `→ ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
-          : { ...end, text: number ? `${number} STOPS` : 'STOPS', tone: 'rack' }
+          ? { ...end, r, text: `${number ?? 'BALL'} → ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
+          : { ...end, r, text: number ? `${number} STOPS HERE` : 'STOPS HERE', tone: 'rack' }
       );
     }
   }
@@ -2070,16 +2071,17 @@ function refreshPrediction() {
   // ends down a hole is the one prediction the player most needs in advance.
   const cuePath = projectCuePath(prediction);
   const objectPath = projectObjectPath(prediction);
+  // ONE LIST, TWO RENDERERS. The ghost balls on the felt and the labels on the
+  // UI layer are both drawn from these, so the shape you see and the words
+  // next to it can never end up describing different places.
+  game.aimTags = aimTags(prediction, cuePath, objectPath);
   player.showTrajectory(prediction, {
     pockets: rooms.table.pockets,
     power: player.aimPower,
     cuePath,
-    objectPath
+    objectPath,
+    tags: game.aimTags
   });
-  // Read by the coaching layer, which is the only thing that draws them today.
-  // The geometry belongs here, next to the routes it describes; whether they
-  // are shown is a decision for whoever is teaching.
-  game.aimTags = aimTags(prediction, cuePath, objectPath);
 }
 
 /** Heading when the current hold began; used to measure how far it turned. */

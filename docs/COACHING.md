@@ -18,6 +18,12 @@ A single sentence a player can hold while aiming. Not a paragraph, not two
 facts, not a rule and an example. If a board needs two sentences, the board is
 teaching two things and should be two boards.
 
+Plain instruction, in the order the shot happens: hit WHAT, so it does WHAT, to
+end up WHERE. "Angle your shot at the 6, so it hits the 2 into the side pocket",
+not "cut the 6 across into the 2". Billiards has a vocabulary — cut, thread,
+carom, full ball — and every word of it is a word the player has to already know
+to be taught anything. None of it appears in a lesson.
+
 One SENTENCE, which is not the same as one visual line — on a 390px phone a
 sentence of any substance wraps, and pretending otherwise just means it gets
 clipped. The band is sized for two wrapped lines and holds that height whether
@@ -33,6 +39,13 @@ pocket there would be describing a shot the board does not ask for.
 A highlighted region says which pieces the sentence is about, the lit pocket
 says where they go, and where a route is worth showing, the guide line shows
 it — including the ricochet and what happens to each ball after contact.
+
+A line says which way a ball goes; it does not say where it stops. So every
+route ends in a translucent copy of the ball itself, in that ball's own colour,
+sitting where it comes to rest — cyan for yours, amber for a rack ball, bone at
+a pocket, red at a pocket about to take your own ball. The label beside it names
+the same place in words, and both are drawn from one list (`aimTags` in
+main.js), so the shape and the words cannot describe different places.
 *Passes when:* cover the text and the goal is still guessable from the table.
 
 **3 — Coaching stays up until the player acts, and never covers the act.**

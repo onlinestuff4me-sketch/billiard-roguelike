@@ -1578,15 +1578,26 @@
       }
       .coach-tag {
         position: absolute;
-        transform: translate(-50%, -50%);
-        padding: 2px 6px;
-        border-radius: 5px;
-        font-size: clamp(8.5px, 2.2vmin, 10px);
-        font-weight: 700;
-        letter-spacing: 0.1em;
+        /* Anchored ABOVE its point, not centred on it. The point is now
+           occupied by a ghost of the ball itself, and a label sitting on top
+           of the thing it names hides the better of the two signals. */
+        transform: translate(-50%, -100%);
+        padding: 3px 8px;
+        border-radius: 6px;
+        /* Bigger and heavier than the first pass. These were sized like a
+           chart annotation and read like one: correct, and invisible at arm's
+           length on a phone in a lit room over a moving table. */
+        font-size: clamp(10px, 2.7vmin, 12.5px);
+        font-weight: 800;
+        letter-spacing: 0.08em;
         white-space: nowrap;
-        background: rgba(5, 7, 10, 0.9);
-        border: 1px solid currentColor;
+        /* Near-opaque, so the label never has to compete with whatever felt,
+           grid line or route happens to be behind it, and a halo so its edge
+           survives crossing a bright line. */
+        background: rgba(3, 5, 8, 0.94);
+        border: 1.5px solid currentColor;
+        box-shadow: 0 0 12px rgba(3, 5, 8, 0.9);
+        text-shadow: 0 1px 2px rgba(3, 5, 8, 0.9);
         opacity: 0;
         transition: opacity 0.12s ease;
       }

@@ -317,6 +317,49 @@ class AimRenderer {
     this.marker.visible = false;
     this.group.add(this.marker);
 
+    // WHERE EACH BALL COMES TO REST, AS THE BALL.
+    //
+    // A line says which way something goes; it does not say where it stops,
+    // and a label saying so is a word the eye has to leave the table to read.
+    // A translucent copy of the ball, sitting at the end of its own route in
+    // its own colour, is the same fact as a shape — so the plan can be read
+    // without reading. Cyan is yours, amber is the rack, bone is a pocket, red
+    // is a pocket about to eat your own ball.
+    //
+    // Disc plus ring rather than either alone: the disc is what makes it read
+    // as a BALL at a glance, and the ring is what keeps it legible over the
+    // felt's own gradient, where a low-opacity disc alone disappears.
+    this.endGhosts = [];
+    for (let i = 0; i < 3; i += 1) {
+      // A ball is about thirteen pixels across on a phone, so a hairline ring
+      // at low alpha is technically present and practically invisible — which
+      // is how the first pass of this went. The ring is nearly a third of the
+      // radius thick and the fill is heavy enough to read as a filled shape;
+      // together they hold up against the felt's gradient and against a bright
+      // route passing underneath.
+      const fillMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.3,
+        depthWrite: false
+      });
+      const ringMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 1,
+        depthWrite: false
+      });
+      const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 28), fillMat);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.7, 1.02, 28), ringMat);
+      fill.rotation.x = -Math.PI / 2;
+      ring.rotation.x = -Math.PI / 2;
+      fill.visible = false;
+      ring.visible = false;
+      fill.frustumCulled = false;
+      ring.frustumCulled = false;
+      this.group.add(fill);
+      this.group.add(ring);
+      this.endGhosts.push({ fill, ring, fillMat, ringMat });
+    }
+
     // Pull band behind the player.
     this.pullPositions = new Float32Array(6);
     this.pullGeo = new THREE.BufferGeometry();
@@ -341,6 +384,40 @@ class AimRenderer {
     this.anchor = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), this.anchorMat);
     this.anchor.rotation.x = -Math.PI / 2;
     this.group.add(this.anchor);
+  }
+
+  /**
+   * Place a translucent copy of each ball at the end of its own route.
+   *
+   * Driven from the SAME list the coaching labels are drawn from (main.js
+   * `aimTags`), so the shape on the felt and the words beside it always name
+   * the same place. Geometry is a unit circle scaled to the ball's radius,
+   * which keeps one geometry for every ball size on the table.
+   */
+  _showEndGhosts(tags, y) {
+    const TONE = {
+      cue: PALETTE.player,
+      rack: PALETTE.solid,
+      pocket: PALETTE.bone,
+      bad: PALETTE.bad
+    };
+    for (let i = 0; i < this.endGhosts.length; i += 1) {
+      const ghost = this.endGhosts[i];
+      const tag = tags?.[i];
+      if (!tag || !Number.isFinite(tag.r)) {
+        ghost.fill.visible = false;
+        ghost.ring.visible = false;
+        continue;
+      }
+      const colour = TONE[tag.tone] ?? PALETTE.bone;
+      ghost.fillMat.color.setHex(colour);
+      ghost.ringMat.color.setHex(colour);
+      for (const mesh of [ghost.fill, ghost.ring]) {
+        mesh.position.set(tag.x, y, tag.z);
+        mesh.scale.setScalar(tag.r);
+        mesh.visible = true;
+      }
+    }
   }
 
   hide() {
@@ -457,6 +534,8 @@ class AimRenderer {
     this.dashGeo.setDrawRange(0, v);
     this.dashGeo.attributes.position.needsUpdate = true;
 
+    this._showEndGhosts(context.tags, y);
+
     // --- object-ball departure + ghost ball + cue tangent ---
     if (prediction.hit && prediction.caromDir) {
       const h = prediction.hit;
@@ -548,7 +627,12 @@ class AimRenderer {
         this.tangentGeo.attributes.position.needsUpdate = true;
         this.tangent.computeLineDistances();
         this.tangentMat.color.setHex(scratch ? PALETTE.bad : PALETTE.aimGhost);
-        this.tangentMat.opacity = scratch ? 0.95 : 0.25 + share * 0.7;
+        // The FLOOR is the fix, not the ramp. Confidence is still encoded —
+        // a full hit is dimmer and more broken up than a thin cut — but the
+        // bottom of the range was 0.25, which on this felt is a line you have
+        // to already know is there to see. A line nobody can find carries no
+        // information at all, however honest its opacity.
+        this.tangentMat.opacity = scratch ? 0.95 : 0.45 + share * 0.5;
         // Confident lines are nearly solid; unconfident ones fall apart.
         this.tangentMat.dashSize = 0.12 + share * 1.15;
         this.tangentMat.gapSize = 0.5 - share * 0.34;
