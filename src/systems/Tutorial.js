@@ -121,13 +121,13 @@ const RULES = {
   // every power, the pot at the end of an angled combination is worth about a
   // degree and a half. Making the first ball reach the second is the lesson.
   'cut-combo': {
-    say: 'Angle your shot at the <b>6</b>, so it knocks the <b>2</b> toward the lit corner',
+    say: 'Angle your shot at the <b>4</b>, so it knocks the <b>2</b> toward the lit corner',
     spot: 'rack',
     handoff: true,
-    cheer: 'The 6 found the 2 — that is the shot',
-    scold: 'You hit the 6 straight on, so it went straight. Hit it more from the side',
-    whiff: 'You aimed past the 6 — the shot starts on that ball',
-    nudge: 'Put your white circle on the <em>left side</em> of the <b>6</b>, so the 6 travels right into the 2.'
+    cheer: 'The 4 found the 2 — that is the shot',
+    scold: 'You hit the 4 straight on, so it went straight. Hit it more from the side',
+    whiff: 'You aimed past the 4 — the shot starts on that ball',
+    nudge: 'Put your white circle on the <em>left side</em> of the <b>4</b>, so the 4 travels right into the 2.'
   },
 
   /* ================================================================== *

@@ -49,17 +49,44 @@ A highlighted region says which pieces the sentence is about, the lit pocket
 says where they go, and where a route is worth showing, the guide line shows
 it — including the ricochet and what happens to each ball after contact.
 
-**One hue per ball.** The rack used to be a single amber channel, on the
-reasoning that a ball is neither good nor bad. That held while targets were
-interchangeable and stopped holding the moment a lesson named one: "hit the 4,
-so it knocks the 1" is a sentence about two specific balls, and on an all-amber
-table the only thing telling them apart is a numeral ten pixels tall. Two amber
-routes crossing the same felt are worse — the picture cannot say whose is
-whose. This is why real pool balls are coloured. A ball named in coaching copy
-is inked in its own colour too, so the word and the object match.
+**One hue per ball — and only four, on purpose.** The rack used to be a single
+amber channel, on the reasoning that a ball is neither good nor bad. That held
+while targets were interchangeable and stopped the moment a lesson named one:
+"hit the 4, so it knocks the 1" is a sentence about two specific balls, and on
+an all-amber table the only thing telling them apart is a numeral ten pixels
+tall. Two amber routes crossing the same felt are worse — the picture cannot
+say whose is whose. This is why real pool balls are coloured. A ball named in
+coaching copy is inked in its own colour too, so the word and the object match.
 
-The reserved hues stay reserved: red is danger, mint a pick-up, cyan you, teal
-the table, bone a called pocket. `PALETTE.ballInk` is picked from what is left.
+Four, because four is what the space holds. Red is danger, mint a pick-up, cyan
+your own ball, teal the table, bone a called pocket — every one of those is a
+meaning a ball must not accidentally wear. What is left is a little over half
+the wheel, and under red-green colour blindness it collapses further onto a
+blue-yellow axis. Five hues that survive all of that do not exist; four do, and
+a generated rack holds exactly four solids. One board was using a fifth number
+purely as a label — it was renumbered rather than given a fifth colour that
+could not be defended.
+
+**The palette is measured, not eyeballed.** `npm run palette`
+(`tools/check-palette.mjs`) checks every pair of balls that can share a table —
+read from the rack rules and from `lessons.json`, because two colours only have
+to be told apart if a player can see both at once — in normal vision and in
+simulated protanopia, deuteranopia and tritanopia, plus each ball against the
+reserved meanings and against the cloth. It fails the build rather than the
+player. Two floors, not one: chase the colour-blind number alone and every ball
+is herded into blue-violet, where dichromats keep the most separation —
+technically accessible, useless as a set of billiard balls.
+
+Tritanopia carries a lower floor than protanopia and deuteranopia. It is on the
+order of one person in ten thousand against roughly one man in twelve, and it
+is the deficiency that makes magenta approach red; holding all three to the same
+number costs the palette its whole warm half to protect against the rarest, which
+is a worse outcome for everyone including the people it is meant to protect.
+
+**Colour is never the only channel.** Every ball carries its number in bone on
+its face — that is the identifier WCAG 1.4.1 asks for, and it does not care
+about hue. Colour is here to make the numeral unnecessary at a glance, not to
+replace it.
 
 **The ghost goes where the journey commits, not where it ends.** A line says
 which way a ball travels; the moment that matters is the collision — that is
