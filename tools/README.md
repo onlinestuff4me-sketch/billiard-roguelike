@@ -9,7 +9,7 @@ false:
 - **the walls board** lost its scoring rule in a rewrite and could never
   complete at all;
 - **the budget board** demanded two balls in one stroke — **seven solutions in
-  the same 2160** — and said nothing at all when you potted one.
+  the same 2160** — and said nothing at all when you pocketed one.
 
 None of those were visible from playing the board a few times. All three were
 obvious within seconds of measuring it. So the boards are measured.
@@ -68,6 +68,11 @@ band afterwards. Both halves were wrong and neither was visible from a sweep:
   board could not be won from.
 - **the band said "Down"**, then said it again over the top of the scratch
   correction, because the progress line was written before the verdict was.
+
+It also holds the boards to one vocabulary. A ball that goes in a pocket is
+**pocketed** — not "down", not "potted" — and a band that reaches for a second
+name for the same event fails the run, because a lesson that calls one thing
+two things has taught the player a synonym instead of a game.
 
 The scratch and the pot it needs are **found, not hard-coded** — the boards'
 geometry is free to move, and a fixed heading quietly stops testing the thing it

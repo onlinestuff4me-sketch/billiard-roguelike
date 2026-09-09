@@ -113,7 +113,7 @@ const RULES = {
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
     cheer: 'One ball moved another. That is a combination',
-    scold: 'You potted the <b>4</b>, not the <b>1</b>. Aim through the 4 so it knocks the 1 in instead',
+    scold: 'You pocketed the <b>4</b>, not the <b>1</b>. Aim through the 4 so it knocks the 1 in instead',
     whiff: 'You missed the 4 completely — aim through it, at the 1 behind it',
     nudge: 'Aim <em>through</em> the <b>4</b> at the <b>1</b>. Those two already point at the lit pocket.'
   },
@@ -161,7 +161,7 @@ const RULES = {
     clearRack: true,
     shots: 3,
     cheer: 'Rack cleared',
-    scold: 'Nothing potted, so that shot was free. Go again',
+    scold: 'Nothing pocketed, so that shot was free. Go again',
     whiff: 'You touched nothing — start the shot on a ball',
     nudge: 'Aim <em>through</em> the <b>1</b> at the <b>4</b>, into the side pocket. Both lit pockets are yours.'
   },
@@ -181,7 +181,7 @@ const RULES = {
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
     cheer: 'Past the red, through the green, and in',
-    scold: 'Potted, but your line went under the <em>green</em>. Aim a touch higher and collect it on the way in',
+    scold: 'Pocketed, but your line went under the <em>green</em>. Aim a touch higher and collect it on the way in',
     whiff: 'You missed the <b>2</b> completely. Steer your line between the red and the green',
     nudge: 'Turn a few degrees <em>up</em> from the red. The <em>green</em> is the next thing your line touches.'
   }
@@ -1327,8 +1327,8 @@ export class Tutorial {
         const next = this._guideNext();
         this._setStatus(
           next
-            ? `Nothing potted, so that shot was free. Try the <b>${next.number}</b> into the ${next.pocket}`
-            : 'Nothing potted, so that shot was free. Go again',
+            ? `Nothing pocketed, so that shot was free. Try the <b>${next.number}</b> into the ${next.pocket}`
+            : 'Nothing pocketed, so that shot was free. Go again',
           'bad'
         );
       }
@@ -1561,41 +1561,40 @@ export class Tutorial {
   }
 
   /**
-   * What the stroke put down, by name.
+   * What the stroke put away, by name.
    *
-   * "Down" on its own is the game talking to itself: it is a word from the
-   * table that assumes the player already knows which ball it means. Naming
-   * the ball costs two characters and reports the actual event.
+   * ONE WORD FOR ONE EVENT, AND IT IS THE WORD ON THE TABLE. "Down" is the
+   * game talking to itself — a word that assumes the player already knows
+   * which ball it means — and "potted" is a second name for the same thing,
+   * which is worse than the first: a lesson that calls one event two things
+   * has taught the player a synonym instead of a game. The table has pockets,
+   * so a ball that goes in one is POCKETED, everywhere, always.
+   *
+   * Naming the ball as well costs two characters and reports the actual event.
    */
   _pottedNames() {
     const names = this._potted.map((b) => b?.number).filter(Boolean);
-    if (names.length === 1) return `The <b>${names[0]}</b> is potted`;
-    if (names.length > 1) return `${names.length} balls potted`;
-    return 'Potted';
+    if (names.length === 1) return `The <b>${names[0]}</b> is pocketed`;
+    if (names.length > 1) return `${names.length} balls pocketed`;
+    return 'Pocketed';
   }
 
   /**
    * What just happened, and what to do about it.
    *
    * A scratch is the one mistake that is always a mistake, so it is always
-   * called by its name — and on a board played over several strokes the fact
-   * that the game has just handed the stroke back is part of what happened,
-   * not a detail. A correction that leaves it out describes a table the player
-   * is not looking at.
+   * called by its name. It is NOT also narrated: the table has already put
+   * itself back by the time this is read, and a sentence that says so spends
+   * one of its two lines describing what the player can see. The band has room
+   * for what happened and what to do next, and nothing else.
    */
   _scratchLine(lesson, multi) {
     if (lesson.scratched) return lesson.scratched;
-    if (!multi) {
-      return (
-        'Scratched — your own ball went in the pocket. ' +
-        'Hit the target ball off to one side, and yours rolls clear instead'
-      );
-    }
-    const next = this._guideNext();
-    const back = 'Scratched — your own ball went in, so that shot is back';
+    const opener = 'Scratched — your own ball went in the pocket';
+    const next = multi ? this._guideNext() : null;
     return next
-      ? `${back}. Try the <b>${next.number}</b> into the ${next.pocket}, but hit it off-centre`
-      : `${back} — hit the ball off-centre, so yours rolls clear`;
+      ? `${opener}. Try the <b>${next.number}</b> into the ${next.pocket}, but hit it off-centre`
+      : `${opener}. Hit the target ball off to one side, and yours rolls clear instead`;
   }
 
   /**

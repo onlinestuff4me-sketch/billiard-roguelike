@@ -39,23 +39,40 @@ const sameRack = (a, b) =>
   a.length === b.length &&
   a.every((ball, i) => ball.n === b[i].n && Math.hypot(ball.x - b[i].x, ball.z - b[i].z) < 0.05);
 
+// TABLE VOCABULARY THE GAME HAS NOT TAUGHT. Two lists, and the second is the
+// subtler one: a ball going in a pocket is POCKETED, and every other name for
+// the same event — "down", "potted" — is a synonym the player has to learn on
+// top of the game rather than a word the game has given them. One event, one
+// word. ("down" as a direction is a different word and is left alone.)
+const JARGON = /\b(cut|carom|thread|full ball|cushion|kiss|english|safety)\b/i;
+const SYNONYM = /\bpott(ed|ing)\b|\b(nothing|is|are|balls?)\s+down\b/i;
+
+/** Held so the vocabulary can be judged over everything the run heard, once. */
+const said = [];
+const vocab = (band) => {
+  said.push(band);
+  return !JARGON.test(band) && !SYNONYM.test(band);
+};
+const reads = (band, label) => {
+  check(band.length > 0, `${label} is answered at all`, JSON.stringify(band));
+  check(vocab(band), 'in words the game has taught');
+  check(
+    /\b(aim|hit|shoot|steer|line|put|try|start|drag|pull|angle)\b/i.test(band),
+    'and with something to do next'
+  );
+};
+
 try {
   /* ------------------------------------------------------------------ *
    * EVERY OTHER BOARD: a miss is answered, in words that report and direct
    * ------------------------------------------------------------------ */
-  const JARGON = /\b(cut|carom|thread|full ball|cushion|kiss|english|safety)\b/i;
   for (const id of ['angle', 'combo', 'cut-combo', 'bank']) {
     await game.gotoBoard(id);
     console.log(`\n${id}\n`);
     // Straight backwards: on every board that is a miss, and on most of them
     // it is a miss that touches nothing at all.
     const miss = await game.play({ deg: 180, power: 0.35 });
-    check(miss.band.length > 0, 'a miss is answered at all', JSON.stringify(miss.band));
-    check(!JARGON.test(miss.band), 'without table jargon');
-    check(
-      /\b(aim|hit|shoot|steer|line|put|try|start|drag|pull|angle)\b/i.test(miss.band),
-      'and with something to do next'
-    );
+    reads(miss.band, 'a miss');
   }
   /* ------------------------------------------------------------------ *
    * THE MULTI-SHOT BOARD: a failed stroke is given back, not charged
@@ -65,17 +82,16 @@ try {
 
   // The opening shot of the route `verify-boards` finds. It pots.
   const first = await game.play({ deg: 20, power: 0.7 });
-  check(first.pots.length >= 1, 'the opening shot pots', `${first.pots.join(', ')} down`);
-  check(first.strokes === 1, 'a stroke that pots spends a shot', `${first.strokes} spent`);
+  check(first.pots.length >= 1, 'the opening shot pockets a ball', `${first.pots.join(', ')} in`);
+  check(first.strokes === 1, 'and spends a shot', `${first.strokes} spent`);
   check(
-    /potted/i.test(first.band) && !/\bDown\b/.test(first.band),
-    'the band reports what was potted, by name',
+    /pocketed/i.test(first.band) && vocab(first.band),
+    'the band names what was pocketed, in the table\'s own word',
     JSON.stringify(first.band)
   );
   check(
     /shots? left/.test(first.band) && /\d/.test(first.band),
-    'and names the next ball and its pocket',
-    ''
+    'and names the next ball and its pocket'
   );
 
   const before = await game.table();
@@ -109,13 +125,13 @@ try {
       `(${before.player.x}, ${before.player.z}) → (${after.player.x}, ${after.player.z})`
     );
     check(
-      /^Scratched/.test(after.band),
+      /^Scratched/.test(after.band) && vocab(after.band),
       'the band names the scratch first',
       JSON.stringify(after.band)
     );
     check(
-      /that shot is back/i.test(after.band),
-      'and says the stroke was given back'
+      /Try the .* into the .*pocket/i.test(after.band),
+      'and then says what to play next'
     );
   }
 
@@ -138,7 +154,7 @@ try {
   check(spent.strokes === 0, 'the attempt starts over', `${spent.strokes} spent`);
   check(spent.rack.length === 4, 'the whole rack is back up', `${spent.rack.length} balls`);
   check(
-    /out of shots/i.test(spent.band) && /Starting over/.test(spent.band),
+    /out of shots/i.test(spent.band) && /Starting over/.test(spent.band) && vocab(spent.band),
     'and the band says the budget ran out',
     JSON.stringify(spent.band)
   );
@@ -150,18 +166,13 @@ try {
   await game.gotoBoard('green-red');
   console.log('\ngreen-red\n');
   const last = await game.play({ deg: 180, power: 0.35 });
-  check(last.band.length > 0, 'a miss is answered at all', JSON.stringify(last.band));
-  check(!JARGON.test(last.band), 'without table jargon');
-  check(
-    /\b(aim|hit|shoot|steer|line|put|try|start|drag|pull|angle)\b/i.test(last.band),
-    'and with something to do next'
-  );
+  reads(last.band, 'a miss');
 
 } finally {
   await game.close();
 }
 
-console.log('');
+console.log(`\n${said.length} lines read, one vocabulary\n`);
 if (fails.length) {
   console.log(`${fails.length} check${fails.length === 1 ? '' : 's'} failed`);
   process.exit(1);
