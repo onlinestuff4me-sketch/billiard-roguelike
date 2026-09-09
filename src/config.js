@@ -700,6 +700,40 @@ export const PALETTE = {
 
   /* -- THE RACK: which ball, and nothing more ------------------------- */
   solid: 0xffb340,
+
+  /**
+   * ONE HUE PER BALL.
+   *
+   * The rack used to be a single channel — every solid amber — on the
+   * reasoning that a ball is neither good nor bad and the player only needs
+   * to know it is a target. That held while targets were interchangeable. It
+   * stopped holding the moment lessons started naming them: "hit the 4, so it
+   * knocks the 1 into the side pocket" is a sentence about two specific balls,
+   * and on an all-amber table the only thing telling them apart is a numeral
+   * about ten pixels tall. Two amber routes crossing the same felt are worse
+   * still: the picture cannot say whose is whose.
+   *
+   * This is why real pool balls are coloured, and the colour is what makes the
+   * numbering usable at a glance rather than a label you squint at.
+   *
+   * THE RESERVED HUES STAY RESERVED. Red is danger, mint is a pick-up, cyan is
+   * you, teal is the table, bone is a called pocket — a ball wearing any of
+   * them would break a rule the whole board relies on. So these are picked
+   * from what is left: warm ambers and yellows, blues, violets and pinks, all
+   * far enough apart in hue to survive a small ball on a dark felt. The order
+   * is not pool's own (pool's 3 is red and its 6 is green, both spoken for).
+   */
+  ballInk: {
+    1: 0xffb340,
+    2: 0x4d9fff,
+    3: 0xb06cff,
+    4: 0xffe14d,
+    5: 0xff7ac0,
+    6: 0xff9e2c,
+    7: 0x9fb4ff,
+    8: 0x14181f,
+    9: 0xd9c2ff
+  },
   stripe: 0xa05cff,
   /** Stripes are a bone body with a coloured band, like a real striped ball. */
   stripeBody: 0xcfdceb,
@@ -726,6 +760,19 @@ export const CSS_PALETTE = {
   bad: '#ff5a3d',
   amber: '#ffb340',
   violet: '#a05cff',
+  /* Mirrors PALETTE.ballInk, so a ball named in coaching copy can be inked in
+     that ball's own colour rather than in a generic "this is a ball" amber. */
+  ballInk: {
+    1: '#ffb340',
+    2: '#4d9fff',
+    3: '#b06cff',
+    4: '#ffe14d',
+    5: '#ff7ac0',
+    6: '#ff9e2c',
+    7: '#9fb4ff',
+    8: '#8b93a0',
+    9: '#d9c2ff'
+  },
   bone: '#eaf6ff',
   obsidian: '#05070a',
   felt: '#0b3a2e'

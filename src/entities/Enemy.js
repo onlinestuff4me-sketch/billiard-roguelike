@@ -479,6 +479,21 @@ export class Enemy {
     // combination on the table, and legibility outranks consistency here.
     const ink = PALETTE.bone;
     const hex = `#${ink.toString(16).padStart(6, '0')}`;
+    // ONE HUE PER BALL — see PALETTE.ballInk. The numeral stays bone on every
+    // ball, because a numeral in the ball's own colour is a numeral on a
+    // background of the same colour; the BODY carries the identity and the
+    // numeral only has to stay readable on top of it.
+    const own = PALETTE.ballInk?.[number];
+    if (own !== undefined && this.type === 'solid') {
+      this.baseColor.setHex(own);
+      this.material.color.setHex(own);
+      this.material.emissive.setHex(own);
+      // The ground marker and the spawn telegraph are built from the TYPE's
+      // colour, before the number is known — so a violet 3 kept an amber halo
+      // and read as an amber ball with an odd centre. Both follow the ball.
+      this.markerMat?.color.setHex(own);
+      this.telegraphMat?.color.setHex(own);
+    }
     if (!this.numberSprite) {
       this.numberSprite = new THREE.Sprite(
         new THREE.SpriteMaterial({

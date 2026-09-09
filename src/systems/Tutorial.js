@@ -34,6 +34,7 @@
 
 import { PLAYER_STATE } from '../entities/Player.js';
 import lessonData from '../data/lessons.json';
+import { CSS_PALETTE } from '../config.js';
 
 // BUMPED WITH THE CURRICULUM, DELIBERATELY.
 //
@@ -745,18 +746,23 @@ export class Tutorial {
   }
 
   /**
-   * ENDPOINT TAGS: the per-aim half of the instruction.
+   * THE ONE THING THE PICTURE CANNOT SAY.
    *
-   * The band is fixed and says what the board is. These say what the shot
-   * currently drawn would DO — "→ SIDE POCKET" at the end of the rack ball's
-   * route, "YOUR BALL" or "SCRATCH" at the end of yours. The geometry is
-   * computed in main.js beside the routes they annotate (`game.aimTags`), so a
-   * tag and the line under it can never disagree.
+   * This used to label every route endpoint — "YOUR BALL", "2 STOPS HERE",
+   * "1 → SIDE POCKET". All of them named a place the picture was already
+   * showing, in words the eye had to leave the felt to read, and each one then
+   * had to be kept clear of every ball and pocket it might cover. The ghosts
+   * say all of it better: a hollow copy of the ball, in the ball's colour, at
+   * the point its journey commits.
    *
-   * Only while aiming: with no thumb down there is no route, and a tag with no
-   * line under it is a label for nothing. That also means they cost the
-   * instruct state nothing — goal 2's guide line is optional, and here it is
-   * the player who opts in by touching the screen.
+   * SCRATCH survives, because it is not a place. It is a consequence — this
+   * shot loses you the cue ball — and no arrangement of shapes on the felt
+   * says that. It rides on the ghost that is now drawn INSIDE the pocket the
+   * cue ball will drop into, so the word and the warning are in the same place
+   * for the first time.
+   *
+   * Only while aiming: with no thumb down there is no route, and a warning
+   * about a shot nobody is taking is noise.
    */
   _updateTags() {
     const cam = this.engine?.camera;
@@ -839,7 +845,7 @@ export class Tutorial {
       }
       const tag = labelled[i];
       node.textContent = tag.text;
-      node.className = `coach-tag show ${tag.tone}`;
+      node.className = 'coach-tag show bad';
 
       const at = toPx(tag.x, tag.z);
       const bw = node.offsetWidth;
@@ -1534,7 +1540,19 @@ export class Tutorial {
    * constant in RULES above — so there is nothing to escape.
    */
   _say(html, tone) {
-    this.lineEl.innerHTML = html || '';
+    // A BALL NAMED IN THE SENTENCE IS INKED IN THAT BALL'S OWN COLOUR.
+    //
+    // Every solid now has its own hue on the felt, so "hit the 4, so it knocks
+    // the 1" can point with colour instead of asking the player to read two
+    // small numerals and match them. `<b>4</b>` picks up the 4's yellow; a
+    // <b> holding anything that is not a ball number keeps the rack amber.
+    this.lineEl.innerHTML = (html || '').replace(
+      /<b>(\d+)<\/b>/g,
+      (whole, n) => {
+        const ink = CSS_PALETTE.ballInk?.[n];
+        return ink ? `<b style="color:${ink}">${n}</b>` : whole;
+      }
+    );
     this.el.classList.remove('good', 'bad');
     if (tone) this.el.classList.add(tone);
   }

@@ -1930,7 +1930,15 @@ function projectObjectPath(prediction) {
         bodies: game.enemies.filter((b) => !exclude.includes(b))
       }
     );
-    legs.push({ segs: path.segments, ball: struck });
+    // The contact position is the swept-circle solution the predictor already
+    // has: where THIS ball's centre sits at the moment it reaches the next one.
+    // It is the point the ghost marks, and it is not the end of the route —
+    // the route carries on past it, dimmer, to where the ball would have gone.
+    legs.push({
+      segs: path.segments,
+      ball: struck,
+      contact: path.hit ? { x: path.hit.x, z: path.hit.z } : null
+    });
 
     // Hand on to the next ball, if this one reaches one.
     const next = path.hit;
@@ -1942,7 +1950,44 @@ function projectObjectPath(prediction) {
     ex /= el;
     ez /= el;
     const at = speedAfterDistance(speed, path.totalDistance);
-    strikerMass = struck.mass || 1;
+
+    // WHERE THIS BALL GOES AFTER IT HANDS OFF.
+    //
+    // A collision is not the end of the ball that caused it — it deflects and
+    // keeps rolling, exactly as the cue ball does, and that is the half of a
+    // combination a player has to see before they can plan the shot AFTER this
+    // one. The maths is the same two-body impulse used everywhere else: the
+    // striker keeps its velocity plus its share of the impulse along the
+    // contact normal.
+    //
+    // Drawn dimmer than the leg it continues, because by then the prediction
+    // is a solution stacked on a solution.
+    const legMass = struck.mass || 1;
+    const nextMass = next.body.mass || 1;
+    const vn2 = ex * at * next.nx + ez * at * next.nz;
+    if (vn2 > 0) {
+      const invA = 1 / legMass;
+      const invB = 1 / nextMass;
+      const j2 = (-(1 + PHYSICS.ballRestitution) * vn2) / (invA + invB);
+      const tx = ex * at + j2 * invA * next.nx;
+      const tz = ez * at + j2 * invA * next.nz;
+      const tailSpeed = Math.hypot(tx, tz);
+      const tailCarry = carryDistance(tailSpeed, PHYSICS.knockedDrag);
+      if (tailSpeed > 1e-5 && tailCarry >= TRAJECTORY.minDraw) {
+        legs[legs.length - 1].tail = physics.predictTrajectory(
+          { x: next.x, z: next.z },
+          { x: tx / tailSpeed, z: tz / tailSpeed },
+          {
+            maxBounces: 0,
+            radius: struck.radius,
+            maxDistance: tailCarry,
+            bodies: game.enemies.filter((b) => !exclude.includes(b) && b !== next.body)
+          }
+        ).segments;
+      }
+    }
+
+    strikerMass = legMass;
     struck = next.body;
     nx = next.nx;
     nz = next.nz;
@@ -1954,37 +1999,26 @@ function projectObjectPath(prediction) {
 }
 
 /**
- * WHERE A DRAWN ROUTE ENDS, IN WORDS.
+ * WHERE EACH BALL GOES, AS A GHOST OF THE BALL.
  *
- * A line tells the player the direction of an outcome; it does not tell them
- * the outcome. Two shots that look almost identical on the felt — one that
- * drops the 1 in the side pocket and one that leaves it an inch short — draw
- * the same picture, and the difference is the whole shot. So each route gets a
- * small tag at its far end naming where it goes.
+ * A line says which way something travels; it does not say where the travelling
+ * stops mattering. The moment that matters is the COLLISION — that is where the
+ * player's choice is spent, where the shot becomes committed, and where every
+ * plan is actually made. So each ball the shot moves gets a hollow copy of
+ * itself at its first contact, in its own colour, and the part of its route
+ * beyond that contact is drawn dimmer: still shown, no longer a promise.
  *
- * These are the words the coaching band does not have room for. The band holds
- * one sentence about the board; the tags hold the per-aim consequences, and
- * they update on every frame of the drag because they are read off the same
- * prediction the lines are drawn from.
- *
- * COLOUR IS THE SAME ALLOCATION AS EVERYWHERE ELSE. A tag takes the channel of
- * the ball whose route it ends — cyan for yours, amber for a rack ball —
- * except at a pocket, where it takes the pocket's own bone-white, or red when
- * the pocket in question is about to eat your own ball.
+ * This replaces a set of endpoint LABELS ("YOUR BALL", "2 STOPS HERE"). Words
+ * were the wrong tool: they name a place the picture could simply show, they
+ * have to be kept clear of everything they might cover, and they put the eye on
+ * the type instead of the felt. The one label that survives is SCRATCH, because
+ * that is not a place — it is a consequence, and no arrangement of shapes says
+ * it.
  */
-const POCKET_NAME = {
-  tl: 'FAR CORNER',
-  tr: 'FAR CORNER',
-  ml: 'SIDE POCKET',
-  mr: 'SIDE POCKET',
-  bl: 'NEAR CORNER',
-  br: 'NEAR CORNER'
-};
-
 /**
  * The pocket a path runs into, or null. Closest approach to a finite segment,
  * the same test Player.js uses to turn the departure line red — a shared
- * predicate, so the tag and the line can never disagree about a scratch.
+ * predicate, so the ghost and the line can never disagree about a scratch.
  */
 function pathPocket(segments, pockets) {
   if (!segments || !pockets) return null;
@@ -2009,61 +2043,63 @@ function pathEnd(segments) {
   return last ? { x: last.bx, z: last.bz } : null;
 }
 
+/** A ball's own hue, so its ghost and its route match the ball on the felt. */
+function inkOf(ball) {
+  return PALETTE.ballInk?.[ball?.number] ?? PALETTE.solid;
+}
+
 /**
- * Build the endpoint tags for the aim currently drawn.
+ * Build the ghosts for the aim currently drawn.
  *
- * At most three, and usually two: your ball's departure, and the far end of
- * the object chain. A leg that hands off to another ball gets no tag of its
- * own — the next leg's tag is the answer, and tagging every link turns the
- * felt into a list.
+ * Placement, in order of precedence:
+ *   1. INTO A POCKET — the ghost goes in the POCKET, not where the ball came
+ *      to rest. A ball that drops is removed at the mouth and its predicted
+ *      path carries on past it, so "the end of the route" is a place the ball
+ *      never reaches. That is how a SCRATCH warning came to be drawn a foot
+ *      away from the pocket it was warning about, which reads as a bug in the
+ *      prediction rather than a warning about the shot.
+ *   2. INTO ANOTHER BALL — the ghost goes at the contact position, which is
+ *      the swept-circle solution the predictor already has.
+ *   3. NEITHER — the ghost goes where the ball stops.
  *
- * @returns {Array<{x:number,z:number,text:string,tone:string}>}
+ * @returns {Array<{x:number,z:number,r:number,ink:number,text?:string,dim?:boolean}>}
  */
-function aimTags(prediction, cuePath, objectPath) {
-  const tags = [];
+function aimGhosts(prediction, cuePath, objectPath) {
+  const ghosts = [];
   const pockets = rooms.table.pockets;
 
-  // YOUR BALL. Where the cue ends up is the thing players learn last and need
-  // first — it is what turns one pot into a run, and it is what a scratch is.
+  // YOUR BALL, but only when it is about to be lost. Where the cue ball comes
+  // to rest is already drawn — the departure line ends there — and a ghost on
+  // it was one more shape competing with the balls. A scratch is different: it
+  // is the one outcome the player must not discover afterwards.
   const cueSegs = cuePath?.segments?.length ? cuePath.segments : prediction?.segments;
-  const cueEnd = pathEnd(cueSegs);
-  if (cueEnd) {
-    const down = pathPocket(cueSegs, pockets);
-    tags.push(
-      down
-        ? { ...cueEnd, r: player.radius, text: 'SCRATCH', tone: 'bad' }
-        : { ...cueEnd, r: player.radius, text: 'YOUR BALL', tone: 'cue' }
-    );
+  const down = pathPocket(cueSegs, pockets);
+  if (down) {
+    ghosts.push({
+      x: down.x,
+      z: down.z,
+      r: player.radius,
+      ink: PALETTE.bad,
+      text: 'SCRATCH'
+    });
   }
 
-  // EVERY BALL IN THE CHAIN GETS A GHOST; ONLY THE LAST GETS WORDS.
-  //
-  // A combination moves two balls and the player is choosing where both of
-  // them end up, so both deserve to be shown — but two labels on one felt is
-  // a paragraph, and the intermediate ball's resting place is mid-sentence.
-  // A silent ghost says it without saying it: the shape is the answer, the
-  // label is only for the ball the shot is about.
-  const legs = objectPath ?? [];
-  for (let i = 0; i < legs.length; i += 1) {
-    const leg = legs[i];
+  // EVERY BALL THE SHOT MOVES, at the moment its own journey commits.
+  for (const leg of objectPath ?? []) {
     if (!leg?.segs?.length) continue;
-    const end = pathEnd(leg.segs);
-    if (!end) continue;
-    const down = pathPocket(leg.segs, pockets);
-    const number = leg.ball?.number;
-    const r = leg.ball?.radius ?? player.radius;
-    const last = i === legs.length - 1;
-    if (!last) {
-      tags.push({ ...end, r, tone: down ? 'pocket' : 'rack' });
-      continue;
-    }
-    tags.push(
-      down
-        ? { ...end, r, text: `${number ?? 'BALL'} → ${POCKET_NAME[down.slot] || 'POCKET'}`, tone: 'pocket' }
-        : { ...end, r, text: number ? `${number} STOPS HERE` : 'STOPS HERE', tone: 'rack' }
-    );
+    const potted = pathPocket(leg.segs, pockets);
+    const contact = leg.contact;
+    const rest = pathEnd(leg.segs);
+    const at = potted ? { x: potted.x, z: potted.z } : contact || rest;
+    if (!at) continue;
+    ghosts.push({
+      x: at.x,
+      z: at.z,
+      r: leg.ball?.radius ?? player.radius,
+      ink: inkOf(leg.ball)
+    });
   }
-  return tags;
+  return ghosts;
 }
 
 function refreshPrediction() {
@@ -2085,13 +2121,15 @@ function refreshPrediction() {
   // ONE LIST, TWO RENDERERS. The ghost balls on the felt and the labels on the
   // UI layer are both drawn from these, so the shape you see and the words
   // next to it can never end up describing different places.
-  game.aimTags = aimTags(prediction, cuePath, objectPath);
+  game.aimTags = aimGhosts(prediction, cuePath, objectPath);
   player.showTrajectory(prediction, {
     pockets: rooms.table.pockets,
     power: player.aimPower,
     cuePath,
     objectPath,
-    tags: game.aimTags
+    // One hue per leg, taken from the ball travelling it.
+    legInks: objectPath.map((leg) => inkOf(leg.ball)),
+    ghosts: game.aimTags
   });
 }
 

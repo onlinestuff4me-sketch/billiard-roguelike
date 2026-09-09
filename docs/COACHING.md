@@ -49,24 +49,45 @@ A highlighted region says which pieces the sentence is about, the lit pocket
 says where they go, and where a route is worth showing, the guide line shows
 it — including the ricochet and what happens to each ball after contact.
 
-A line says which way a ball goes; it does not say where it stops. So every
-ball the shot moves ends in a ghost of itself — hollow, dimmer than the ball it
-projects, in that ball's own colour — sitting where it comes to rest. Cyan for
-yours, amber for a rack ball, bone at a pocket, red at a pocket about to take
-your own ball. A ghost must never read as another ball on the table: a solid
-shape where no ball is is a lie about the state of the felt.
+**One hue per ball.** The rack used to be a single amber channel, on the
+reasoning that a ball is neither good nor bad. That held while targets were
+interchangeable and stopped holding the moment a lesson named one: "hit the 4,
+so it knocks the 1" is a sentence about two specific balls, and on an all-amber
+table the only thing telling them apart is a numeral ten pixels tall. Two amber
+routes crossing the same felt are worse — the picture cannot say whose is
+whose. This is why real pool balls are coloured. A ball named in coaching copy
+is inked in its own colour too, so the word and the object match.
 
-Every ball in a chain gets a ghost; only the last gets words. Two labels on one
-felt is a paragraph, and an intermediate ball's resting place is mid-sentence —
-the shape says it without saying it.
+The reserved hues stay reserved: red is danger, mint a pick-up, cyan you, teal
+the table, bone a called pocket. `PALETTE.ballInk` is picked from what is left.
 
-**A label never covers a ball, a pocket or a ghost.** It is placed by a solve
-(`Tutorial._updateTags`), not by a fixed offset: eight positions at three
-distances, scored against everything on screen worth seeing, nearest clean one
-wins. A fixed offset put the label for "hits the 2" directly on top of the 2.
+**The ghost goes where the journey commits, not where it ends.** A line says
+which way a ball travels; the moment that matters is the collision — that is
+where the choice is spent. So each ball gets a hollow copy of itself, in its own
+colour, at its first contact; and its route carries on past that point at a
+fraction of the strength. Still shown, no longer a promise.
 
-The label and the ghost come from one list (`aimTags` in main.js), so the shape
-and the words can never describe different places.
+Into a pocket, the ghost goes **in the pocket** — not where the predicted path
+happens to end. A ball that drops is removed at the mouth and its path carries
+on past it, so "the end of the route" is a place the ball never reaches. That is
+how a SCRATCH warning came to be drawn a foot clear of the pocket it was warning
+about, which reads as a broken prediction rather than a warning.
+
+A ghost must never read as another ball: hollow, and dimmer than the ball it
+projects. A solid shape where no ball is is a lie about the state of the felt.
+
+**Words are the last resort, not the first.** The felt carried a label at every
+route endpoint — YOUR BALL, 2 STOPS HERE, 1 → SIDE POCKET — each naming a place
+the picture was already showing, in type the eye had to leave the table to read,
+and each then needing to be kept clear of everything it might cover. They are
+gone. SCRATCH survives alone, because it is a consequence rather than a place
+and no arrangement of shapes says it; it rides on the ghost inside the pocket
+the cue ball will drop into.
+
+The one label that remains is still placed by a solve (`Tutorial._updateTags`):
+eight positions at three distances, scored against every ball, pocket and ghost
+on screen, nearest clean one wins. **A label never covers a ball, a pocket or a
+ghost.**
 *Passes when:* cover the text and the goal is still guessable from the table.
 
 **3 — Coaching stays up until the player acts, and never covers the act.**

@@ -1560,16 +1560,15 @@
       #coach-skip:active { color: var(--bone); }
       #coach-skip[hidden] { display: none; }
 
-      /* ---- endpoint tags ------------------------------------------- *
-         The per-aim half of the instruction: what the route currently drawn
-         actually DOES, named at the point it ends. Two shots that look almost
-         identical on the felt — one that drops the 1 and one that leaves it an
-         inch short — draw the same picture, and the difference is the shot.
+      /* ---- the scratch warning --------------------------------------- *
+         The only words left on the felt. This layer used to label every route
+         endpoint — YOUR BALL, 2 STOPS HERE, 1 → SIDE POCKET — and all of them
+         named a place the picture was already showing, in type the eye had to
+         leave the table to read, each one then needing to be kept clear of
+         everything it might cover.
 
-         Colour is the channel of the ball whose route ends there: cyan for
-         yours, amber for a rack ball; bone-white at a pocket, which is what a
-         called pocket is lit in; red when that pocket is about to eat your own
-         ball.                                                                */
+         The ghosts say all of that better. A scratch does not have a shape to
+         say it with: it is a consequence, not a place, so it keeps its word.  */
       #coach-tags {
         position: absolute;
         inset: 0;
@@ -1605,9 +1604,6 @@
         transition: opacity 0.12s ease;
       }
       .coach-tag.show { opacity: 1; }
-      .coach-tag.cue { color: var(--cyan); }
-      .coach-tag.rack { color: var(--amber); }
-      .coach-tag.pocket { color: var(--bone); }
       .coach-tag.bad { color: #ff5a3d; }
       @media (prefers-reduced-motion: reduce) {
         .menu-title .ln { animation: none; }
