@@ -1,133 +1,86 @@
 /**
- * check-palette.mjs — prove the balls are told apart by sight, not by faith.
+ * check-palette.mjs — prove the balls are told apart ON SCREEN.
  *
- * Colour became load-bearing the moment the rack stopped being one amber
- * channel: a lesson says "hit the 4, so it knocks the 1", two routes cross the
- * same felt, and which is which is now carried by hue. That is exactly the
- * kind of claim that is easy to assert and easy to get wrong — "these look
- * different to me" is a statement about one pair of eyes in one room.
+ * THE FIRST VERSION OF THIS FILE MEASURED THE WRONG THING, and said so
+ * confidently. It read `PALETTE.ballInk` out of the source, computed CIE
+ * distances between those hex values, reported the closest pair as dE 32, and
+ * passed. Meanwhile the game was drawing four balls that a player described,
+ * correctly, as "almost the same exact color". Sampled out of the real
+ * framebuffer, the four rendered as #afacaf, #a2a9b7, #a2a9be and #a2aaaf — a
+ * worst-case separation of dE 3.9. The palette was never the problem. The
+ * numeral sprite was `radius * 2.5`, a quarter wider than the ball it labels,
+ * with a heavy dark halo: it covered the entire face, and the only part of a
+ * ball wearing the ball's colour was a rim a pixel or two thick.
  *
- * Roughly one man in twelve has some red-green colour vision deficiency. A
- * palette that separates cleanly for the author and collapses to two shades of
- * mustard for them has not made the game harder, it has made the coaching
- * unreadable — the picture stops answering the question the words defer to it.
+ * A check on source colour cannot see that, and no amount of care choosing hex
+ * values would have. So this boots the actual game, renders an actual board,
+ * and reads actual pixels — the same discipline `npm run verify` applies to
+ * whether a board can be played, and `__simShot` applies to whether a lesson's
+ * sentence is true.
  *
- * So this measures, in the same spirit as `npm run verify` measures whether a
- * board can be played:
+ * WHAT IT MEASURES
  *
- *   1. Every ball against every other ball, in normal vision AND simulated
- *      protanopia, deuteranopia and tritanopia. Distance is CIE76 dE in Lab.
- *   2. Every ball against the RESERVED hues — a ball that reads as the danger
- *      red, the pick-up mint, your own cyan or a called pocket's bone is worse
- *      than a ball nobody can name.
- *   3. Every ball against the felt it sits on, as a WCAG relative-luminance
- *      ratio. Two balls can be perfectly distinct from each other and both
- *      invisible on the cloth.
+ *   1. Every pair of balls that can share a table — derived from the rack
+ *      rules and lessons.json, because two colours only need telling apart if
+ *      a player can see both at once — in normal vision and in simulated
+ *      protanopia, deuteranopia and tritanopia. CIE76 dE in Lab.
+ *   2. Every ball against the things that MEAN something: the cue ball, the
+ *      danger red, the pick-up mint, a called pocket's bone. Measured through
+ *      the same renderer, so "does this read as the cue ball" is a question
+ *      about pixels.
+ *   3. Every ball against the felt it sits on.
  *
- *   node tools/check-palette.mjs [--verbose]
+ * Sampling is an annulus at 0.8 of the ball's radius: outside the numeral and
+ * its halo, inside the silhouette. That is where a ball wears its colour, and
+ * choosing it carelessly is how the first measurement went wrong twice.
+ *
+ *   npm run palette  [--verbose]
  *
  * Non-zero exit on any failure, so it can gate a build.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { openGame } from './sim.mjs';
 
 const HERE = resolve(import.meta.dirname, '..');
 const verbose = process.argv.includes('--verbose');
 
 /* ------------------------------------------------------------------ *
  * Thresholds
+ *
+ * These are lower than a flat-swatch guideline would suggest, and they are
+ * lower on purpose: they are measured through a bloom composite that
+ * compresses the whole gamut. A rendered dE of 38 between two balls is a large
+ * on-screen difference in this game. Compare against what shipped before this
+ * check existed — 3.9 — rather than against an abstract scale.
+ *
+ * Colour is also never the only channel: every ball carries its number. That
+ * is the identifier WCAG 1.4.1 asks for; hue is here to make reading the
+ * numeral unnecessary at a glance, not to replace it.
  * ------------------------------------------------------------------ */
-
-/**
- * TWO FLOORS, BECAUSE THERE ARE TWO FAILURES.
- *
- * `MIN_NORMAL` is separation as most players see it: this is the one that
- * decides whether the palette does its job at all. `MIN_CVD` is separation at
- * its worst across simulated protanopia, deuteranopia and tritanopia: this is
- * the one that decides whether it does its job for everyone.
- *
- * They are different numbers because the achievable ceiling is different. Red,
- * mint and cyan are spoken for — danger, pick-up, your own ball — and under
- * dichromacy the remaining wheel collapses hard onto a blue-yellow axis. Chase
- * the CVD number alone and the optimiser herds every ball into blue-violet,
- * where dichromats keep the most separation: technically accessible, and
- * useless as a set of billiard balls. Both are scored, and both must pass.
- *
- * COLOUR IS NOT THE ONLY CHANNEL, and these numbers are set knowing that.
- * Every ball carries its number in bone on its face — that is the identifier
- * WCAG 1.4.1 asks for, and it does not care about hue at all. Colour is here
- * to make the numeral unnecessary at a glance, not to replace it.
- */
 const MIN_NORMAL = 25;
-
 /**
- * AND THE DICHROMACIES ARE NOT ONE BAR.
- *
- * Protanopia and deuteranopia together are around one man in twelve.
- * Tritanopia is on the order of one person in ten thousand, and it collapses a
- * different axis — it is the one that makes magenta approach red. Holding all
- * three to the same number costs the palette its entire warm half to protect
- * against the rarest of them, which is a worse outcome for everyone including
- * the people it is meant to protect. So the common two carry the real bar and
- * tritanopia carries a floor: still checked, still has to clear "obviously
- * different", not allowed to veto the palette on its own.
+ * Protanopia and deuteranopia are around one man in twelve. Tritanopia is on
+ * the order of one person in ten thousand and collapses a different axis, so
+ * it carries a floor rather than the bar — holding all three to one number
+ * costs the palette its warm half to protect against the rarest of them.
  */
-const MIN_CVD = { protanopia: 18, deuteranopia: 18, tritanopia: 14 };
-
-/** Tritanopia's reduced bar applies to the reserved hues too, same reasoning. */
-const TRITAN_RESERVED_SCALE = 0.6;
-
-/** A ball must be further than this from a hue that MEANS something else. */
-const MIN_RESERVED = {
-  // These three appear as objects on the same felt as the balls. A ball
-  // wearing one is not hard to read, it is a lie.
-  'bad (danger)': 30,
-  'good (pick-up)': 30,
-  'player (your ball)': 30,
-  // These two are told apart by form as well as colour — a pocket is a ring in
-  // the rail, a stripe carries a violet band — and holding the balls 30 off
-  // them would forfeit the light end of the space, which is where contrast on
-  // a dark cloth comes from.
-  'bone (called pocket)': 20,
-  'stripe (striped ball)': 20
-};
-
-/**
- * WCAG 1.4.11 asks 3:1 for a graphical object, comparing two flat fills. A
- * ball is not a flat fill: it is a lit sphere with an emissive term, a ground
- * marker ring and a bone numeral on its face, all of which raise its real
- * separation from the cloth well above what its base hex suggests. 2:1 on the
- * hex alone is the floor this uses — a sanity check that nothing is painted
- * felt-on-felt, not a claim of WCAG conformance.
- */
-const MIN_FELT_CONTRAST = 2;
+const MIN_CVD = { protanopia: 14, deuteranopia: 14, tritanopia: 11 };
+const MIN_MEANING = { cue: 26, bad: 24, good: 24, bone: 18 };
+const MIN_FELT = 14;
 
 /* ------------------------------------------------------------------ *
  * Colour maths
  * ------------------------------------------------------------------ */
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const linearToSrgb = (c) => {
+  const v = Math.min(Math.max(c, 0), 1);
+  return v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
+};
 
-function hexToRgb(hex) {
-  const n = typeof hex === 'string' ? parseInt(hex.replace('#', ''), 16) : hex;
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255);
-}
-
-/** WCAG relative luminance. */
-function luminance(rgb) {
-  const [r, g, b] = rgb.map(srgbToLinear);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrastRatio(a, b) {
-  const la = luminance(a);
-  const lb = luminance(b);
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-}
-
-/** sRGB (0..1) -> CIELAB, D65. */
 function rgbToLab(rgb) {
-  const [r, g, b] = rgb.map(srgbToLinear);
+  const [r, g, b] = rgb.map((v) => srgbToLinear(v / 255));
   const x = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.95047;
   const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
   const z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.08883;
@@ -140,13 +93,7 @@ function rgbToLab(rgb) {
 
 const deltaE = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-/**
- * Viénot, Brettel & Mollon (1999) dichromat simulation, applied in linear RGB.
- * These are the matrices used by most colour-blindness simulators; they are an
- * approximation of what a dichromat sees, not a claim about their experience,
- * and they are used here the way a contrast ratio is used — as a conservative
- * proxy that catches the failures worth catching.
- */
+/** Viénot, Brettel & Mollon (1999), applied in linear RGB. */
 const CVD = {
   protanopia: [
     [0.11238, 0.88762, 0],
@@ -168,54 +115,25 @@ const CVD = {
 function simulate(rgb, kind) {
   if (!kind) return rgb;
   const m = CVD[kind];
-  const lin = rgb.map(srgbToLinear);
-  const out = m.map((row) => row[0] * lin[0] + row[1] * lin[1] + row[2] * lin[2]);
-  const toSrgb = (c) => {
-    const v = Math.min(Math.max(c, 0), 1);
-    return v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
-  };
-  return out.map(toSrgb);
+  const lin = rgb.map((v) => srgbToLinear(v / 255));
+  return m
+    .map((row) => row[0] * lin[0] + row[1] * lin[1] + row[2] * lin[2])
+    .map((v) => Math.round(linearToSrgb(v) * 255));
 }
 
-const labUnder = (hex, kind) => rgbToLab(simulate(hexToRgb(hex), kind));
+const views = ['protanopia', 'deuteranopia', 'tritanopia'];
+const labsOf = (rgb) => ({
+  normal: rgbToLab(rgb),
+  ...Object.fromEntries(views.map((v) => [v, rgbToLab(simulate(rgb, v))]))
+});
+const hex = (rgb) => `#${rgb.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 
 /* ------------------------------------------------------------------ *
- * The palette, read from the source of truth
+ * Which balls can share a table
  * ------------------------------------------------------------------ */
 
 const config = readFileSync(resolve(HERE, 'src/config.js'), 'utf8');
 
-function readBallInk() {
-  // The numeric PALETTE.ballInk block, so this checks what the GAME uses
-  // rather than a copy of it that can drift.
-  const block = /ballInk:\s*\{([^}]*)\}/.exec(config);
-  if (!block) throw new Error('could not find PALETTE.ballInk in src/config.js');
-  const out = {};
-  for (const [, n, hex] of block[1].matchAll(/(\d+):\s*0x([0-9a-fA-F]{6})/g)) {
-    out[n] = `#${hex}`;
-  }
-  if (!Object.keys(out).length) throw new Error('PALETTE.ballInk parsed empty');
-  return out;
-}
-
-function readNamed(name) {
-  const m = new RegExp(`\\b${name}:\\s*0x([0-9a-fA-F]{6})`).exec(config);
-  return m ? `#${m[1]}` : null;
-}
-
-/**
- * WHICH BALLS CAN SHARE A TABLE.
- *
- * Two colours only have to be told apart if a player can see both at once.
- * Requiring every ball to differ from every other ball is a stricter problem
- * than the game actually poses, and with red, mint and cyan reserved it is a
- * problem with no good answer — five mutually separable hues do not exist in
- * what is left. Five that separate WHERE IT MATTERS do.
- *
- * So the pairs are read from the game: the solids a generated rack can hold,
- * and the solids each authored lesson places. A pair that never co-occurs is
- * reported and not enforced.
- */
 function coOccurring() {
   const pairs = new Set();
   const add = (list) => {
@@ -224,15 +142,11 @@ function coOccurring() {
       for (let j = i + 1; j < solids.length; j += 1) pairs.add(`${solids[i]}|${solids[j]}`);
     }
   };
-
-  // Generated rooms: RACK.archetypeByNumber decides which numbers are solids.
   const arch = /archetypeByNumber:\s*\[([^\]]*)\]/.exec(config);
   if (arch) {
     const types = arch[1].split(',').map((t) => t.trim().replace(/['"]/g, ''));
     add(types.map((t, i) => (t === 'solid' ? i + 1 : null)).filter(Boolean));
   }
-
-  // Authored lessons: whatever each board actually puts on the felt.
   const lessons = JSON.parse(readFileSync(resolve(HERE, 'src/data/lessons.json'), 'utf8'));
   for (const board of lessons.lessons ?? []) {
     add((board.enemies ?? []).filter((e) => e.type === 'solid' && e.number).map((e) => e.number));
@@ -240,80 +154,152 @@ function coOccurring() {
   return pairs;
 }
 
-const balls = readBallInk();
-const together = coOccurring();
-const RESERVED = {
-  'bad (danger)': readNamed('bad'),
-  'good (pick-up)': readNamed('good'),
-  'player (your ball)': readNamed('player'),
-  'bone (called pocket)': readNamed('bone'),
-  'stripe (striped ball)': readNamed('stripeBody')
-};
-const FELT = readNamed('felt') ?? '#0b3a2e';
+/* ------------------------------------------------------------------ *
+ * Measure
+ * ------------------------------------------------------------------ */
+
+const RESERVED = { bad: 0xff5a3d, good: 0x2ef2c4, bone: 0xeaf6ff };
+
+const game = await openGame({ preserveDrawingBuffer: true });
+let measured;
+try {
+  await game.gotoBoard('cut-combo');
+  await game.page.waitForTimeout(700);
+  measured = await game.page.evaluate((reserved) => {
+    const g = window.__game;
+
+    /** Read the framebuffer once and sample the balls' colour annulus. */
+    const shoot = () =>
+      new Promise((done) => {
+        requestAnimationFrame(() => {
+          const glc = document.getElementById('stage-canvas');
+          const c = document.createElement('canvas');
+          c.width = glc.width;
+          c.height = glc.height;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(glc, 0, 0);
+          const cam = g.tutorial.engine.camera;
+          const dpr = glc.width / glc.clientWidth;
+          const W = glc.clientWidth;
+          const H = glc.clientHeight;
+          const visX = (cam.right - cam.left) / cam.zoom;
+          const visZ = (cam.top - cam.bottom) / cam.zoom;
+          const at = (x, z, r) => {
+            const px = ((x - cam.position.x) / visX + 0.5) * W;
+            const py = ((z - cam.position.z) / visZ + 0.5) * H;
+            const rp = (r / visZ) * H;
+            const pts = [];
+            for (let a = 0; a < 12; a += 1) {
+              const ang = (a / 12) * Math.PI * 2;
+              const d = ctx.getImageData(
+                Math.round((px + Math.cos(ang) * rp * 0.8) * dpr),
+                Math.round((py + Math.sin(ang) * rp * 0.8) * dpr),
+                1,
+                1
+              ).data;
+              pts.push([d[0], d[1], d[2]]);
+            }
+            // Median per channel: a mean would be dragged by the numeral's
+            // halo and by any specular hit on the sphere.
+            return [0, 1, 2].map((i) => pts.map((q) => q[i]).sort((a, b) => a - b)[6]);
+          };
+          done({ at, ctx });
+        });
+      });
+
+    /** Paint every ball one colour and read it back, so each is measured
+        under identical lighting, bloom and position. */
+    const asColour = async (hexColour) => {
+      for (const e of g.rooms.scriptedEnemies) {
+        if (!e.alive) continue;
+        e.material.color.setHex(hexColour);
+        e.material.emissive.setHex(hexColour);
+        e.markerMat?.color.setHex(hexColour);
+        e.material.needsUpdate = true;
+      }
+      const { at } = await shoot();
+      const e = g.rooms.scriptedEnemies.find((b) => b.alive);
+      return at(e.x, e.z, e.radius);
+    };
+
+    return (async () => {
+      const ink = window.__BALL_INK;
+      const balls = {};
+      for (const [n, c] of Object.entries(ink)) balls[n] = await asColour(c);
+      const meaning = {};
+      for (const [k, c] of Object.entries(reserved)) meaning[k] = await asColour(c);
+      const { at } = await shoot();
+      meaning.cue = at(g.player.x, g.player.z, g.player.radius);
+      const felt = at(-5, 6, 0.48);
+      return { balls, meaning, felt };
+    })();
+  }, RESERVED);
+} finally {
+  await game.close();
+}
 
 /* ------------------------------------------------------------------ *
- * Checks
+ * Judge
  * ------------------------------------------------------------------ */
+
+const together = coOccurring();
+const ids = Object.keys(measured.balls).sort((a, b) => Number(a) - Number(b));
+const L = Object.fromEntries(ids.map((n) => [n, labsOf(measured.balls[n])]));
+const ML = Object.fromEntries(
+  Object.entries(measured.meaning).map(([k, v]) => [k, labsOf(v)])
+);
+const feltL = labsOf(measured.felt);
 
 const failures = [];
 const rows = [];
-
-const ids = Object.keys(balls).sort((a, b) => Number(a) - Number(b));
-const cvdViews = ['protanopia', 'deuteranopia', 'tritanopia'];
 
 for (let i = 0; i < ids.length; i += 1) {
   for (let j = i + 1; j < ids.length; j += 1) {
     const a = ids[i];
     const b = ids[j];
-    const norm = deltaE(labUnder(balls[a], null), labUnder(balls[b], null));
+    const norm = deltaE(L[a].normal, L[b].normal);
     let worst = { d: Infinity, view: null };
-    for (const view of cvdViews) {
-      const d = deltaE(labUnder(balls[a], view), labUnder(balls[b], view));
-      if (d < worst.d) worst = { d, view };
+    for (const v of views) {
+      const d = deltaE(L[a][v], L[b][v]);
+      if (d < worst.d) worst = { d, view: v };
     }
     const shares = together.has(`${a}|${b}`);
-    rows.push({ pair: `${a} vs ${b}`, norm, d: worst.d, view: worst.view, shares });
+    rows.push({ pair: `${a} vs ${b}`, norm, ...worst, shares });
     if (!shares) continue;
     if (norm < MIN_NORMAL) {
       failures.push(
-        `balls ${a} and ${b} share a table and are only dE ${norm.toFixed(1)} apart ` +
-          `in normal vision (need ${MIN_NORMAL})`
+        `balls ${a} and ${b} share a table and render only dE ${norm.toFixed(1)} apart ` +
+          `(need ${MIN_NORMAL})`
       );
     }
-    for (const view of cvdViews) {
-      const d = deltaE(labUnder(balls[a], view), labUnder(balls[b], view));
-      if (d < MIN_CVD[view]) {
+    for (const v of views) {
+      const d = deltaE(L[a][v], L[b][v]);
+      if (d < MIN_CVD[v]) {
         failures.push(
-          `balls ${a} and ${b} share a table and are only dE ${d.toFixed(1)} apart ` +
-            `under ${view} (need ${MIN_CVD[view]})`
+          `balls ${a} and ${b} share a table and render only dE ${d.toFixed(1)} apart ` +
+            `under ${v} (need ${MIN_CVD[v]})`
         );
       }
     }
   }
 }
 
-for (const id of ids) {
-  for (const [name, hex] of Object.entries(RESERVED)) {
-    if (!hex) continue;
-    for (const view of [null, ...cvdViews]) {
-      const need =
-        view === 'tritanopia'
-          ? MIN_RESERVED[name] * TRITAN_RESERVED_SCALE
-          : MIN_RESERVED[name];
-      const d = deltaE(labUnder(balls[id], view), labUnder(hex, view));
-      if (d < need) {
+for (const n of ids) {
+  for (const [k, need] of Object.entries(MIN_MEANING)) {
+    if (!ML[k]) continue;
+    for (const v of ['normal', ...views]) {
+      const d = deltaE(L[n][v], ML[k][v]);
+      const bar = v === 'tritanopia' ? need * 0.7 : need;
+      if (d < bar) {
         failures.push(
-          `ball ${id} reads as ${name} — dE ${d.toFixed(1)} under ${view ?? 'normal'} ` +
-            `(need ${need.toFixed(0)})`
+          `ball ${n} renders as ${k} — dE ${d.toFixed(1)} under ${v} (need ${bar.toFixed(0)})`
         );
       }
     }
   }
-  const ratio = contrastRatio(hexToRgb(balls[id]), hexToRgb(FELT));
-  if (ratio < MIN_FELT_CONTRAST) {
-    failures.push(
-      `ball ${id} is ${ratio.toFixed(2)}:1 against the felt (need ${MIN_FELT_CONTRAST}:1)`
-    );
+  const f = deltaE(L[n].normal, feltL.normal);
+  if (f < MIN_FELT) {
+    failures.push(`ball ${n} renders only dE ${f.toFixed(1)} from the felt (need ${MIN_FELT})`);
   }
 }
 
@@ -321,28 +307,33 @@ for (const id of ids) {
  * Report
  * ------------------------------------------------------------------ */
 
-console.log('\nBALL   HEX        vs FELT   CLOSEST NEIGHBOUR');
-console.log('─'.repeat(76));
-for (const id of ids) {
-  const ratio = contrastRatio(hexToRgb(balls[id]), hexToRgb(FELT));
+console.log('\nMEASURED OUT OF THE FRAMEBUFFER, not out of the source.\n');
+console.log('BALL   RENDERS AS   vs FELT   CLOSEST BALL IT SHARES A TABLE WITH');
+console.log('─'.repeat(78));
+for (const n of ids) {
   const mine = rows.filter(
-    (r) => r.shares && (r.pair.startsWith(`${id} `) || r.pair.endsWith(` ${id}`))
+    (r) => r.shares && (r.pair.startsWith(`${n} `) || r.pair.endsWith(` ${n}`))
   );
-  const worst = mine.reduce((a, b) => (b.d < (a?.d ?? Infinity) ? b : a), null);
+  const worst = mine.reduce((a, b) => (b.norm < (a?.norm ?? Infinity) ? b : a), null);
   console.log(
-    `  ${id}    ${balls[id]}    ${ratio.toFixed(2)}:1` +
+    `  ${n}    ${hex(measured.balls[n])}      ` +
+      `dE ${deltaE(L[n].normal, feltL.normal).toFixed(0).padStart(3)}` +
       (worst
-        ? `     dE ${worst.d.toFixed(0)} ${worst.view.slice(0, 6)} / ${worst.norm.toFixed(0)} normal (${worst.pair})`
+        ? `     dE ${worst.norm.toFixed(0)} normal / ${worst.d.toFixed(0)} ${worst.view.slice(0, 6)}  (${worst.pair})`
         : '     —')
   );
 }
+console.log(
+  `\n  cue ${hex(measured.meaning.cue)}   felt ${hex(measured.felt)}   ` +
+    `danger ${hex(measured.meaning.bad)}   pick-up ${hex(measured.meaning.good)}`
+);
 
 if (verbose) {
   console.log('\nEVERY PAIR  (· = never share a table, not enforced)');
-  for (const r of [...rows].sort((a, b) => a.d - b.d)) {
+  for (const r of [...rows].sort((a, b) => a.norm - b.norm)) {
     console.log(
-      `  ${r.shares ? ' ' : '·'} ${r.pair.padEnd(9)} cvd ${r.d.toFixed(1).padStart(5)} ` +
-        `(${r.view.padEnd(12)})  normal ${r.norm.toFixed(1).padStart(5)}`
+      `  ${r.shares ? ' ' : '·'} ${r.pair.padEnd(9)} normal ${r.norm.toFixed(1).padStart(6)}   ` +
+        `worst ${r.d.toFixed(1).padStart(5)} (${r.view})`
     );
   }
 }
@@ -355,10 +346,10 @@ if (failures.length) {
 }
 
 const live = rows.filter((r) => r.shares);
-const minC = live.reduce((a, r) => Math.min(a, r.d), Infinity);
 const minN = live.reduce((a, r) => Math.min(a, r.norm), Infinity);
+const minC = live.reduce((a, r) => Math.min(a, r.d), Infinity);
 console.log(
   `\nall ${ids.length} balls clear — of the ${live.length} pairs that can share a table, ` +
-    `the closest is dE ${minN.toFixed(1)} in normal vision (floor ${MIN_NORMAL}) and ` +
-    `${minC.toFixed(1)} under dichromacy\n`
+    `the closest renders dE ${minN.toFixed(1)} apart in normal vision (floor ${MIN_NORMAL}) ` +
+    `and ${minC.toFixed(1)} under dichromacy\n`
 );

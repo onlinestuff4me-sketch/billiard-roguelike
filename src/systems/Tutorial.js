@@ -34,7 +34,7 @@
 
 import { PLAYER_STATE } from '../entities/Player.js';
 import lessonData from '../data/lessons.json';
-import { CSS_PALETTE } from '../config.js';
+import { CSS_PALETTE, POCKET_NAME } from '../config.js';
 
 // BUMPED WITH THE CURRICULUM, DELIBERATELY.
 //
@@ -571,7 +571,13 @@ export class Tutorial {
     const board = this.lesson?.call;
     const base = board == null ? [] : Array.isArray(board) ? board : [board];
     this.game.callPocket?.([...new Set([...base, best.pocket.slot])]);
-    return String(best.ball.number);
+    // The ball AND the pocket. A hint that names only the ball leaves the
+    // player holding half an instruction on the one board that asks them to
+    // plan three shots ahead.
+    return {
+      number: String(best.ball.number),
+      pocket: POCKET_NAME[best.pocket.slot] || 'lit pocket'
+    };
   }
 
   /**
@@ -1249,6 +1255,15 @@ export class Tutorial {
       if (left === 0) {
         this._score();
       } else if (this._pots > 0) {
+        // COACH THE NEXT SHOT, NOT THE SCOREBOARD.
+        //
+        // This used to read "3 left · 2 shots of your three · go for the 4",
+        // which is an inventory. The one board that asks the player to plan
+        // three strokes ahead is the one board where a running total is the
+        // least useful thing to say: what they need is the same kind of
+        // sentence the board opened with, again, for the shot in front of
+        // them — which ball, and which pocket.
+        //
         // Only a stroke that PUT SOMETHING DOWN spends a shot. A tutorial that
         // charges for misses turns its own arithmetic into a trap: the player
         // runs out of budget while still learning the gesture the budget is
@@ -1256,14 +1271,19 @@ export class Tutorial {
         this._strokes += 1;
         const s = lesson.shots - this._strokes;
         const next = this._guideNext();
+        const budget = `${s} shot${s === 1 ? '' : 's'} left`;
         this._setStatus(
-          `${left} left · ${s} shot${s === 1 ? '' : 's'} of your three${next ? ` · go for the ${next}` : ''}`,
+          next
+            ? `Down. Now hit the <b>${next.number}</b> into the ${next.pocket} — ${budget}`
+            : `Down — ${budget}`,
           s > 0 ? 'good' : 'bad'
         );
       } else {
         const next = this._guideNext();
         this._setStatus(
-          `Nothing down, so that one is free. ${left} left${next ? ` — go for the ${next}` : ''}`,
+          next
+            ? `Nothing down, so that one was free. Try the <b>${next.number}</b> into the ${next.pocket}`
+            : 'Nothing down, so that one was free. Go again',
           'bad'
         );
       }

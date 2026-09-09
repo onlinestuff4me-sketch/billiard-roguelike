@@ -126,17 +126,44 @@ let composer = null;
 
 function buildComposer(width, height) {
   if (!bloomAllowed()) return;
-  composer = new EffectComposer(renderer);
+  // THE COMPOSER GETS AN EXPLICITLY LINEAR TARGET.
+  //
+  // EffectComposer's default render target inherits the renderer's output
+  // colour space, which is sRGB. RenderPass then writes sRGB-encoded values
+  // into it and OutputPass encodes them a second time on the way to the
+  // screen. A double encode lifts every mid-tone toward white, which is why
+  // the balls measured as four near-identical greys — #afacaf, #a2a9b7,
+  // #a2aabe, #a2aaaf, a worst-case separation of dE 3.3 — while their source
+  // colours were 32 apart. Darks survive it and very bright saturated colours
+  // clip and survive it, so the cue ball and the felt looked fine and only the
+  // mid-tones, which is every ball, were destroyed.
+  //
+  // The passes want linear light in and OutputPass wants to be the only thing
+  // that encodes. Measured with tools/check-palette.mjs, which samples the
+  // real framebuffer.
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    type: THREE.HalfFloatType,
+    colorSpace: THREE.LinearSRGBColorSpace
+  });
+  composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(
-    new UnrealBloomPass(
-      new THREE.Vector2(width, height),
-      RENDER.bloom.strength,
-      RENDER.bloom.radius,
-      RENDER.bloom.threshold
-    )
+  const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(width, height),
+    RENDER.bloom.strength,
+    RENDER.bloom.radius,
+    RENDER.bloom.threshold
   );
+  composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
+  // Exposed for tools/check-palette.mjs, which measures the colours the player
+  // actually sees. Bloom is part of that answer — it was the whole answer, the
+  // first time this was measured — so the check has to be able to reach it.
+  if (typeof window !== 'undefined') {
+    window.__bloom = bloomPass;
+    window.__composer = composer;
+    window.__renderer = renderer;
+    window.__THREE = THREE;
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -824,6 +851,9 @@ game.boons = boons;
 const rules = new Rules();
 game.rules = rules;
 game.callPocket = callPocket;
+// Handed to tools/check-palette.mjs, which measures these colours as the
+// renderer draws them rather than as they are written down.
+game.ballInk = PALETTE.ballInk;
 // A handle for the console and for automated smoke runs. Read-only in spirit:
 // nothing in the game reads it back.
 if (typeof window !== 'undefined') window.__game = game;

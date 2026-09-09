@@ -338,6 +338,24 @@ export const ENEMY = {
  * strokes, so the pressure is not "something is walking at me" but "I have
  * four strokes and six balls". These are the numbers that hold that up.
  * ------------------------------------------------------------------ */
+/**
+ * WHAT A POCKET IS CALLED, IN A SENTENCE.
+ *
+ * Lighting a pocket says WHERE without words, which is why boards do it. But
+ * coaching that tells the player what to do next has to name it — "hit the 4
+ * into the side pocket" is an instruction; "hit the 4 into the lit one" is a
+ * puzzle about the interface. Near and far are from the cue's own end of the
+ * table, because that is the end the player is looking from.
+ */
+export const POCKET_NAME = {
+  tl: 'far corner',
+  tr: 'far corner',
+  ml: 'side pocket',
+  mr: 'side pocket',
+  bl: 'near corner',
+  br: 'near corner'
+};
+
 export const RULES = {
   /**
    * ONE MULTIPLIER ON EVERY PIECE.
@@ -730,10 +748,10 @@ export const PALETTE = {
    * not to replace it.
    */
   ballInk: {
-    1: 0xffe14d,
-    2: 0x3f74f0,
-    3: 0xc98cff,
-    4: 0xd1409e
+    1: 0xecec13,
+    2: 0xa50da5,
+    3: 0x5aa6f2,
+    4: 0x0000ff
   },
   stripe: 0xa05cff,
   /** Stripes are a bone body with a coloured band, like a real striped ball. */
@@ -764,10 +782,10 @@ export const CSS_PALETTE = {
   /* Mirrors PALETTE.ballInk, so a ball named in coaching copy can be inked in
      that ball's own colour rather than in a generic "this is a ball" amber. */
   ballInk: {
-    1: '#ffe14d',
-    2: '#3f74f0',
-    3: '#c98cff',
-    4: '#d1409e'
+    1: '#ecec13',
+    2: '#a50da5',
+    3: '#5aa6f2',
+    4: '#0000ff'
   },
   bone: '#eaf6ff',
   obsidian: '#05070a',
