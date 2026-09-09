@@ -122,9 +122,12 @@ function numberTexture(number, hex) {
   // its own silhouette and eats a one-pixel stroke from behind. A soft dark
   // halo goes down first to push the glow away from the glyph, then the hard
   // outline gives it an edge, then the fill.
+  // Tightened with the sprite. The halo exists to keep an emissive ball from
+  // blooming over the glyph's edge; at the old width it also swallowed the
+  // colour ring the glyph now sits inside.
   ctx.shadowColor = 'rgba(3, 5, 8, 0.95)';
-  ctx.shadowBlur = size * 0.16;
-  ctx.lineWidth = size * 0.2;
+  ctx.shadowBlur = size * 0.1;
+  ctx.lineWidth = size * 0.15;
   ctx.strokeStyle = 'rgba(3, 5, 8, 0.85)';
   ctx.strokeText(String(number), x, y);
   ctx.strokeText(String(number), x, y);
@@ -471,14 +474,43 @@ export class Enemy {
   setNumber(number) {
     this.number = number;
     this.value = number * 100;
-    // Deliberately wider than the body: at this camera scale a numeral
-    // confined to the silhouette is about ten pixels tall on a phone.
-    const scale = Math.max(1.15, this.radius * 2.5);
+    // THE NUMERAL SITS INSIDE THE BALL, NOT OVER IT.
+    //
+    // This was radius * 2.5 — a sprite a quarter WIDER than the ball it
+    // labels, carrying a heavy near-black stroke and a soft dark halo. On a
+    // thirteen-pixel ball that covered the entire face and a ring of felt
+    // besides, so the only part of the ball wearing the ball's colour was a
+    // thin rim. Measured through the real framebuffer, four colours 32 dE
+    // apart at source rendered as four greys 3.9 apart: the palette was fine
+    // and nothing was showing it.
+    //
+    // It was widened deliberately, because a numeral confined to the
+    // silhouette is about ten pixels tall and that was the only thing telling
+    // two amber balls apart. That reasoning expired when the balls got their
+    // own hues: colour identifies at a glance, the numeral confirms, and a
+    // confirmation does not need to cover the thing it confirms. Like a real
+    // pool ball — a small numeral in the middle, colour all around it.
+    const scale = Math.max(0.86, this.radius * 1.85);
     // Bone on every ball. The band, not the numeral, is what says "stripe";
     // violet ink on a bone body over a violet band was the least legible
     // combination on the table, and legibility outranks consistency here.
     const ink = PALETTE.bone;
     const hex = `#${ink.toString(16).padStart(6, '0')}`;
+    // ONE HUE PER BALL — see PALETTE.ballInk. The numeral stays bone on every
+    // ball, because a numeral in the ball's own colour is a numeral on a
+    // background of the same colour; the BODY carries the identity and the
+    // numeral only has to stay readable on top of it.
+    const own = PALETTE.ballInk?.[number];
+    if (own !== undefined && this.type === 'solid') {
+      this.baseColor.setHex(own);
+      this.material.color.setHex(own);
+      this.material.emissive.setHex(own);
+      // The ground marker and the spawn telegraph are built from the TYPE's
+      // colour, before the number is known — so a violet 3 kept an amber halo
+      // and read as an amber ball with an odd centre. Both follow the ball.
+      this.markerMat?.color.setHex(own);
+      this.telegraphMat?.color.setHex(own);
+    }
     if (!this.numberSprite) {
       this.numberSprite = new THREE.Sprite(
         new THREE.SpriteMaterial({

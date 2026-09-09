@@ -88,6 +88,19 @@ export async function openGame(opts = {}) {
   // The synth is irrelevant to physics and a headless AudioContext throws on
   // values a real one tolerates; a thrown note inside a substep would abort the
   // very stroke we are trying to measure.
+  // Keeping the WebGL drawing buffer lets a check read the pixels the player
+  // actually sees (tools/check-palette.mjs). Off by default: it costs the
+  // browser a copy on every frame, and nothing else here needs it.
+  if (opts.preserveDrawingBuffer) {
+    await page.addInitScript(() => {
+      const real = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, attrs) {
+        if (String(type).includes('webgl')) attrs = { ...(attrs || {}), preserveDrawingBuffer: true };
+        return real.call(this, type, attrs);
+      };
+    });
+  }
+
   await page.addInitScript(() => {
     for (const k of ['setValueAtTime', 'exponentialRampToValueAtTime', 'linearRampToValueAtTime']) {
       const f = AudioParam.prototype[k];
@@ -110,6 +123,11 @@ export async function openGame(opts = {}) {
   await page.waitForTimeout(2400);
   // The harness runs against the live systems, so it goes in AFTER boot.
   await page.evaluate(readFileSync(join(HERE, 'harness.js'), 'utf8'));
+  // The palette lives in a module the page does not expose; hand it over so a
+  // check can measure the colours the game is actually configured with.
+  await page.evaluate(() => {
+    window.__BALL_INK = window.__game?.ballInk ?? null;
+  });
 
   return {
     page,
@@ -130,6 +148,8 @@ export async function openGame(opts = {}) {
     },
 
     lesson: () => page.evaluate(() => window.__simLesson()),
+    /** One stroke, fully resolved, with where every ball came to rest. */
+    shot: (spec) => page.evaluate((sp) => window.__simShot(sp), spec),
     sweep: (spec) => page.evaluate((s) => window.__simSweep(s), spec),
     plan: (spec) => page.evaluate((s) => window.__simPlan(s), spec),
     async close() {

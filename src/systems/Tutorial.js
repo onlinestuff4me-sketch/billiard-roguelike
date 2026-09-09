@@ -34,6 +34,7 @@
 
 import { PLAYER_STATE } from '../entities/Player.js';
 import lessonData from '../data/lessons.json';
+import { CSS_PALETTE, POCKET_NAME } from '../config.js';
 
 // BUMPED WITH THE CURRICULUM, DELIBERATELY.
 //
@@ -91,7 +92,7 @@ const RULES = {
   // board, and the departure line is taught by the line itself — it is drawn
   // on every shot, and it turns red before the mistake rather than after.
   angle: {
-    say: '<em>Pull back</em> and sink the <b>3</b> in the side pocket',
+    say: '<em>Pull back</em>, then hit the <b>3</b> into the side pocket',
     spot: 'first',
     hand: true,
     handDraw: 6.4,
@@ -99,7 +100,7 @@ const RULES = {
     facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
     cheer: 'In, and you are still on the table',
     whiff: 'Your line went past the 3 — put it through the middle of the ball',
-    nudge: 'Line the <b>3</b> up with the lit pocket, then pull back from below your ball.'
+    nudge: 'Line your ball up with the <b>3</b> and the lit pocket, then pull back from below it.'
   },
 
   /* ================================================================== *
@@ -107,7 +108,7 @@ const RULES = {
    * ================================================================== */
 
   combo: {
-    say: 'Sink the <b>1</b> in the side pocket, off the <b>4</b>',
+    say: 'Hit the <b>4</b>, so it knocks the <b>1</b> into the side pocket',
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
     cheer: 'One ball moved another. That is a combination',
@@ -120,13 +121,13 @@ const RULES = {
   // every power, the pot at the end of an angled combination is worth about a
   // degree and a half. Making the first ball reach the second is the lesson.
   'cut-combo': {
-    say: 'Cut the <b>6</b> across into the <b>2</b>, toward the side pocket',
+    say: 'Angle your shot at the <b>4</b>, so it knocks the <b>2</b> toward the lit corner',
     spot: 'rack',
     handoff: true,
-    cheer: 'The 6 found the 2 — that is the shot',
-    scold: 'You hit the 6 too full, so it went straight — catch it further round its side',
-    whiff: 'You aimed past the 6 — the shot starts on that ball',
-    nudge: 'Put your white circle on the <em>left</em> of the <b>6</b>, so the 6 runs across into the 2.'
+    cheer: 'The 4 found the 2 — that is the shot',
+    scold: 'You hit the 4 straight on, so it went straight. Hit it more from the side',
+    whiff: 'You aimed past the 4 — the shot starts on that ball',
+    nudge: 'Put your white circle on the <em>left side</em> of the <b>4</b>, so the 4 travels right into the 2.'
   },
 
   /* ================================================================== *
@@ -134,13 +135,13 @@ const RULES = {
    * ================================================================== */
 
   bank: {
-    say: 'The wall blocks the <b>3</b> — <em>bounce</em> off the cushion below you',
+    say: 'A barrier blocks the <b>3</b>. <em>Bounce</em> off the bottom wall to reach it',
     spot: 'first',
     bankThenHit: true,
-    cheer: 'Off the cushion and onto the 3 — and a bank is worth more',
-    scold: 'You went straight at it and the wall took the shot — go down into the cushion instead',
-    whiff: 'Your line came back short of the 3 — aim further down the cushion',
-    nudge: 'Aim <em>down</em> into the cushion below you. The dashed line swings back up to the <b>3</b>.'
+    cheer: 'Off the wall and onto the 3 — and a bounce is worth more',
+    scold: 'You shot straight at the 3 and the barrier stopped it. Shoot down into the bottom wall instead',
+    whiff: 'Your line came back short of the 3. Aim further along the bottom wall',
+    nudge: 'Aim <em>down</em> into the bottom wall. The dashed line swings back up to the <b>3</b>.'
   },
 
   // TWO POCKETS, LIT THROUGHOUT. The plan spans the strokes rather than living
@@ -154,7 +155,7 @@ const RULES = {
   // board points at the first shot of the route instead, and keeps both goals
   // on screen.
   budget: {
-    say: 'Clear four balls in <em>three shots</em> — the <b>1</b> into the <b>4</b> first',
+    say: 'Clear all four balls in <em>three shots</em>. Start by hitting the <b>1</b> into the <b>4</b>',
     spot: 'rack',
     clearRack: true,
     shots: 3,
@@ -174,13 +175,13 @@ const RULES = {
   // built as a thread instead: 4.5 degrees wide, and it still costs you the
   // easy line.
   'green-red': {
-    say: 'Thread to the <b>2</b> through the <em>green</em>, not over the red',
+    say: 'Hit the <b>2</b> into the side pocket, through the <em>green</em> — not the red',
     spot: 'rack',
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
     cheer: 'Past the red, through the green, and in',
     scold: 'In, but your line went under the green — it pays double and it is barely off the lazy route',
-    whiff: 'Your line missed the 2 — thread it between the red and the green',
+    whiff: 'Your line missed the 2. Steer it between the red and the green',
     nudge: 'Turn a few degrees <em>up</em> from the red. The <em>green</em> is the next thing your line touches.'
   }
 };
@@ -570,7 +571,13 @@ export class Tutorial {
     const board = this.lesson?.call;
     const base = board == null ? [] : Array.isArray(board) ? board : [board];
     this.game.callPocket?.([...new Set([...base, best.pocket.slot])]);
-    return String(best.ball.number);
+    // The ball AND the pocket. A hint that names only the ball leaves the
+    // player holding half an instruction on the one board that asks them to
+    // plan three shots ahead.
+    return {
+      number: String(best.ball.number),
+      pocket: POCKET_NAME[best.pocket.slot] || 'lit pocket'
+    };
   }
 
   /**
@@ -745,23 +752,32 @@ export class Tutorial {
   }
 
   /**
-   * ENDPOINT TAGS: the per-aim half of the instruction.
+   * THE ONE THING THE PICTURE CANNOT SAY.
    *
-   * The band is fixed and says what the board is. These say what the shot
-   * currently drawn would DO — "→ SIDE POCKET" at the end of the rack ball's
-   * route, "YOUR BALL" or "SCRATCH" at the end of yours. The geometry is
-   * computed in main.js beside the routes they annotate (`game.aimTags`), so a
-   * tag and the line under it can never disagree.
+   * This used to label every route endpoint — "YOUR BALL", "2 STOPS HERE",
+   * "1 → SIDE POCKET". All of them named a place the picture was already
+   * showing, in words the eye had to leave the felt to read, and each one then
+   * had to be kept clear of every ball and pocket it might cover. The ghosts
+   * say all of it better: a hollow copy of the ball, in the ball's colour, at
+   * the point its journey commits.
    *
-   * Only while aiming: with no thumb down there is no route, and a tag with no
-   * line under it is a label for nothing. That also means they cost the
-   * instruct state nothing — goal 2's guide line is optional, and here it is
-   * the player who opts in by touching the screen.
+   * SCRATCH survives, because it is not a place. It is a consequence — this
+   * shot loses you the cue ball — and no arrangement of shapes on the felt
+   * says that. It rides on the ghost that is now drawn INSIDE the pocket the
+   * cue ball will drop into, so the word and the warning are in the same place
+   * for the first time.
+   *
+   * Only while aiming: with no thumb down there is no route, and a warning
+   * about a shot nobody is taking is noise.
    */
   _updateTags() {
     const cam = this.engine?.camera;
     const tags = this.input.isAiming && !this._awaitingNext ? this.game.aimTags : null;
-    if (!tags || !tags.length || !cam || !this.layer.clientWidth) {
+    // Only entries carrying words get a label. The rest are ghost-only — the
+    // intermediate balls of a chain, whose resting place is shown but not
+    // narrated (see aimTags in main.js).
+    const labelled = tags?.filter((t) => t.text) ?? [];
+    if (!labelled.length || !cam || !this.layer.clientWidth) {
       this._hideTags();
       return;
     }
@@ -770,8 +786,62 @@ export class Tutorial {
     const h = this.layer.clientHeight;
     const visX = (cam.right - cam.left) / cam.zoom;
     const visZ = (cam.top - cam.bottom) / cam.zoom;
+    const toPx = (x, z) => ({
+      x: ((x - cam.position.x) / visX + 0.5) * w,
+      y: ((z - cam.position.z) / visZ + 0.5) * h
+    });
+    // THE CEILING IS THE BAND, NOT THE SCREEN. A route that ends in a far
+    // corner pocket puts its label up level with the coaching band, which is
+    // opaque and drawn above these — so the label was there, correct, and
+    // completely invisible.
+    const ceiling = this.el.offsetTop + this.el.offsetHeight + 4;
 
-    for (let i = 0; i < tags.length; i += 1) {
+    // WHAT A LABEL MUST NOT COVER.
+    //
+    // Everything the player is being asked to look at: every ball on the
+    // table, every pocket, and the ghosts marking where the balls are going.
+    // A label that lands on the 2 has hidden the subject of its own sentence,
+    // which is how this was reported — the ball the lesson names was behind
+    // the words naming it.
+    const blockers = [];
+    for (const ball of this.game.enemies) {
+      if (!ball.alive) continue;
+      const p = toPx(ball.x, ball.z);
+      blockers.push({ ...p, r: (ball.radius / visZ) * h + 3 });
+    }
+    for (const pocket of this.rooms?.table?.pockets ?? []) {
+      const p = toPx(pocket.x, pocket.z);
+      blockers.push({ ...p, r: (pocket.radius / visZ) * h + 3 });
+    }
+    for (const tag of tags) {
+      const p = toPx(tag.x, tag.z);
+      blockers.push({ ...p, r: ((tag.r ?? 0) / visZ) * h + 3 });
+    }
+    const cue = toPx(this.player.x, this.player.z);
+    blockers.push({ ...cue, r: (this.player.radius / visZ) * h + 3 });
+
+    /** How badly a label box centred here lands on something worth seeing. */
+    const cost = (cx, cy, bw, bh) => {
+      let worst = 0;
+      for (const b of blockers) {
+        // Closest point on the box to the blocker's centre.
+        const dx = Math.max(Math.abs(b.x - cx) - bw / 2, 0);
+        const dy = Math.max(Math.abs(b.y - cy) - bh / 2, 0);
+        const gap = Math.hypot(dx, dy) - b.r;
+        if (gap < 0) worst += -gap;
+      }
+      return worst;
+    };
+
+    // Eight positions around the point, near ring first then far, so a label
+    // sits as close to the thing it names as it can get away with.
+    const DIRS = [
+      [0, -1], [0, 1], [1, 0], [-1, 0],
+      [0.72, -0.72], [-0.72, -0.72], [0.72, 0.72], [-0.72, 0.72]
+    ];
+    const placed = [];
+
+    for (let i = 0; i < labelled.length; i += 1) {
       let node = this._tagNodes[i];
       if (!node) {
         node = document.createElement('div');
@@ -779,21 +849,45 @@ export class Tutorial {
         this.tagEl.appendChild(node);
         this._tagNodes[i] = node;
       }
-      const tag = tags[i];
-      const px = ((tag.x - cam.position.x) / visX + 0.5) * w;
-      const py = ((tag.z - cam.position.z) / visZ + 0.5) * h;
+      const tag = labelled[i];
       node.textContent = tag.text;
-      node.className = `coach-tag show ${tag.tone}`;
-      // Clamped inside the layer, and by the tag's OWN measured width. A route
-      // that ends hard against a rail or in a corner pocket puts its endpoint
-      // within a few pixels of the edge, and a label centred there runs off
-      // the screen — which is how the scratch float text used to read
-      // "CRATCH".
-      const half = node.offsetWidth / 2 + 4;
-      node.style.left = `${Math.min(Math.max(px, half), w - half).toFixed(1)}px`;
-      node.style.top = `${Math.min(Math.max(py, 14), h - 14).toFixed(1)}px`;
+      node.className = 'coach-tag show bad';
+
+      const at = toPx(tag.x, tag.z);
+      const bw = node.offsetWidth;
+      const bh = node.offsetHeight;
+      const ballPx = ((tag.r ?? 0) / visZ) * h;
+
+      let best = null;
+      // Three rings, near first. A wide label beside a corner pocket often has
+      // no clean spot on the near ring at all — everything within a ball's
+      // reach of a corner is either the pocket, its mouth, or the rail — so
+      // there has to be somewhere further out to fall back to before the
+      // solve gives up and takes the least-bad overlap.
+      for (const reach of [ballPx + bh * 0.62 + 6, ballPx + bh * 1.5 + 12, ballPx + bh * 2.6 + 20]) {
+        for (const [ux, uy] of DIRS) {
+          // Clamped so a candidate never leaves the felt or hides under the
+          // band; the clamp happens BEFORE scoring, so the score is of the
+          // position that will actually be used.
+          const cx = Math.min(Math.max(at.x + ux * (reach + bw * 0.18), bw / 2 + 4), w - bw / 2 - 4);
+          const cy = Math.min(Math.max(at.y + uy * reach, ceiling + bh / 2), h - bh / 2 - 4);
+          // Labels already placed this frame are blockers for the next one.
+          let c = cost(cx, cy, bw, bh);
+          for (const q of placed) {
+            if (Math.abs(q.x - cx) < (q.w + bw) / 2 && Math.abs(q.y - cy) < (q.h + bh) / 2) c += 40;
+          }
+          if (!best || c < best.c) best = { c, cx, cy };
+          if (c === 0) break;
+        }
+        if (best?.c === 0) break;
+      }
+
+      placed.push({ x: best.cx, y: best.cy, w: bw, h: bh });
+      node.style.transform = 'translate(-50%, -50%)';
+      node.style.left = `${best.cx.toFixed(1)}px`;
+      node.style.top = `${best.cy.toFixed(1)}px`;
     }
-    for (let i = tags.length; i < this._tagNodes.length; i += 1) {
+    for (let i = labelled.length; i < this._tagNodes.length; i += 1) {
       this._tagNodes[i].className = 'coach-tag';
     }
   }
@@ -1161,6 +1255,15 @@ export class Tutorial {
       if (left === 0) {
         this._score();
       } else if (this._pots > 0) {
+        // COACH THE NEXT SHOT, NOT THE SCOREBOARD.
+        //
+        // This used to read "3 left · 2 shots of your three · go for the 4",
+        // which is an inventory. The one board that asks the player to plan
+        // three strokes ahead is the one board where a running total is the
+        // least useful thing to say: what they need is the same kind of
+        // sentence the board opened with, again, for the shot in front of
+        // them — which ball, and which pocket.
+        //
         // Only a stroke that PUT SOMETHING DOWN spends a shot. A tutorial that
         // charges for misses turns its own arithmetic into a trap: the player
         // runs out of budget while still learning the gesture the budget is
@@ -1168,14 +1271,19 @@ export class Tutorial {
         this._strokes += 1;
         const s = lesson.shots - this._strokes;
         const next = this._guideNext();
+        const budget = `${s} shot${s === 1 ? '' : 's'} left`;
         this._setStatus(
-          `${left} left · ${s} shot${s === 1 ? '' : 's'} of your three${next ? ` · go for the ${next}` : ''}`,
+          next
+            ? `Down. Now hit the <b>${next.number}</b> into the ${next.pocket} — ${budget}`
+            : `Down — ${budget}`,
           s > 0 ? 'good' : 'bad'
         );
       } else {
         const next = this._guideNext();
         this._setStatus(
-          `Nothing down, so that one is free. ${left} left${next ? ` — go for the ${next}` : ''}`,
+          next
+            ? `Nothing down, so that one was free. Try the <b>${next.number}</b> into the ${next.pocket}`
+            : 'Nothing down, so that one was free. Go again',
           'bad'
         );
       }
@@ -1452,7 +1560,19 @@ export class Tutorial {
    * constant in RULES above — so there is nothing to escape.
    */
   _say(html, tone) {
-    this.lineEl.innerHTML = html || '';
+    // A BALL NAMED IN THE SENTENCE IS INKED IN THAT BALL'S OWN COLOUR.
+    //
+    // Every solid now has its own hue on the felt, so "hit the 4, so it knocks
+    // the 1" can point with colour instead of asking the player to read two
+    // small numerals and match them. `<b>4</b>` picks up the 4's yellow; a
+    // <b> holding anything that is not a ball number keeps the rack amber.
+    this.lineEl.innerHTML = (html || '').replace(
+      /<b>(\d+)<\/b>/g,
+      (whole, n) => {
+        const ink = CSS_PALETTE.ballInk?.[n];
+        return ink ? `<b style="color:${ink}">${n}</b>` : whole;
+      }
+    );
     this.el.classList.remove('good', 'bad');
     if (tone) this.el.classList.add(tone);
   }

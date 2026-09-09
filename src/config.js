@@ -338,6 +338,24 @@ export const ENEMY = {
  * strokes, so the pressure is not "something is walking at me" but "I have
  * four strokes and six balls". These are the numbers that hold that up.
  * ------------------------------------------------------------------ */
+/**
+ * WHAT A POCKET IS CALLED, IN A SENTENCE.
+ *
+ * Lighting a pocket says WHERE without words, which is why boards do it. But
+ * coaching that tells the player what to do next has to name it — "hit the 4
+ * into the side pocket" is an instruction; "hit the 4 into the lit one" is a
+ * puzzle about the interface. Near and far are from the cue's own end of the
+ * table, because that is the end the player is looking from.
+ */
+export const POCKET_NAME = {
+  tl: 'far corner',
+  tr: 'far corner',
+  ml: 'side pocket',
+  mr: 'side pocket',
+  bl: 'near corner',
+  br: 'near corner'
+};
+
 export const RULES = {
   /**
    * ONE MULTIPLIER ON EVERY PIECE.
@@ -700,6 +718,41 @@ export const PALETTE = {
 
   /* -- THE RACK: which ball, and nothing more ------------------------- */
   solid: 0xffb340,
+
+  /**
+   * ONE HUE PER BALL — AND ONLY FOUR OF THEM, ON PURPOSE.
+   *
+   * The rack used to be a single channel, every solid amber, on the reasoning
+   * that a ball is neither good nor bad. That held while targets were
+   * interchangeable and stopped the moment lessons named them: "hit the 4, so
+   * it knocks the 1" is a sentence about two specific balls, and on an
+   * all-amber table the only thing telling them apart is a numeral ten pixels
+   * tall. Two amber routes crossing the same felt are worse — the picture
+   * cannot say whose is whose. This is why real pool balls are coloured.
+   *
+   * FOUR, because four is what the space holds. Red is danger, mint is a
+   * pick-up, cyan is your own ball, teal is the table and bone is a called
+   * pocket; every one of those is a meaning a ball must not accidentally wear.
+   * What is left is a little over half the wheel, and under red-green colour
+   * blindness — around one man in twelve — it collapses further onto a
+   * blue-yellow axis. Five hues that survive all of that do not exist. Four do,
+   * and a generated rack holds exactly four solids.
+   *
+   * These are not chosen by eye. `npm run palette` measures every pair that can
+   * share a table, in normal vision and in simulated protanopia, deuteranopia
+   * and tritanopia, plus each ball against the reserved meanings and against
+   * the cloth. It fails the build rather than the player.
+   *
+   * And colour is not the only channel: every ball carries its number in bone
+   * on its face. Colour is here to make the numeral unnecessary at a glance,
+   * not to replace it.
+   */
+  ballInk: {
+    1: 0xecec13,
+    2: 0xa50da5,
+    3: 0x5aa6f2,
+    4: 0x0000ff
+  },
   stripe: 0xa05cff,
   /** Stripes are a bone body with a coloured band, like a real striped ball. */
   stripeBody: 0xcfdceb,
@@ -726,6 +779,14 @@ export const CSS_PALETTE = {
   bad: '#ff5a3d',
   amber: '#ffb340',
   violet: '#a05cff',
+  /* Mirrors PALETTE.ballInk, so a ball named in coaching copy can be inked in
+     that ball's own colour rather than in a generic "this is a ball" amber. */
+  ballInk: {
+    1: '#ecec13',
+    2: '#a50da5',
+    3: '#5aa6f2',
+    4: '#0000ff'
+  },
   bone: '#eaf6ff',
   obsidian: '#05070a',
   felt: '#0b3a2e'

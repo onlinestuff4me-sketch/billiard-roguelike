@@ -18,6 +18,21 @@ A single sentence a player can hold while aiming. Not a paragraph, not two
 facts, not a rule and an example. If a board needs two sentences, the board is
 teaching two things and should be two boards.
 
+Plain instruction, in the order the shot happens: hit WHAT, so it does WHAT, to
+end up WHERE. "Angle your shot at the 6, so it knocks the 2 toward the lit
+corner", not "cut the 6 across into the 2". Billiards has a vocabulary — cut,
+thread, carom, full ball, cushion — and every word of it is a word the player
+has to already know to be taught anything. None of it appears in a lesson: the
+rail is the bottom wall, and the thing in the way is a barrier.
+
+**And the sentence has to be TRUE.** Naming a pocket is a claim about where a
+ball ends up, and it is as checkable as the board's pass condition — `__simShot`
+in the harness plays one stroke and reports where every ball came to rest. The
+angled combination told the player the 2 went in the side pocket; measured
+across its whole solve window, the 2 reaches a pocket at exactly one heading,
+and that pocket is the far corner. The board now lights the corner and the
+sentence names it.
+
 One SENTENCE, which is not the same as one visual line — on a 390px phone a
 sentence of any substance wraps, and pretending otherwise just means it gets
 clipped. The band is sized for two wrapped lines and holds that height whether
@@ -33,6 +48,73 @@ pocket there would be describing a shot the board does not ask for.
 A highlighted region says which pieces the sentence is about, the lit pocket
 says where they go, and where a route is worth showing, the guide line shows
 it — including the ricochet and what happens to each ball after contact.
+
+**One hue per ball — and only four, on purpose.** The rack used to be a single
+amber channel, on the reasoning that a ball is neither good nor bad. That held
+while targets were interchangeable and stopped the moment a lesson named one:
+"hit the 4, so it knocks the 1" is a sentence about two specific balls, and on
+an all-amber table the only thing telling them apart is a numeral ten pixels
+tall. Two amber routes crossing the same felt are worse — the picture cannot
+say whose is whose. This is why real pool balls are coloured. A ball named in
+coaching copy is inked in its own colour too, so the word and the object match.
+
+Four, because four is what the space holds. Red is danger, mint a pick-up, cyan
+your own ball, teal the table, bone a called pocket — every one of those is a
+meaning a ball must not accidentally wear. What is left is a little over half
+the wheel, and under red-green colour blindness it collapses further onto a
+blue-yellow axis. Five hues that survive all of that do not exist; four do, and
+a generated rack holds exactly four solids. One board was using a fifth number
+purely as a label — it was renumbered rather than given a fifth colour that
+could not be defended.
+
+**The palette is measured, not eyeballed.** `npm run palette`
+(`tools/check-palette.mjs`) checks every pair of balls that can share a table —
+read from the rack rules and from `lessons.json`, because two colours only have
+to be told apart if a player can see both at once — in normal vision and in
+simulated protanopia, deuteranopia and tritanopia, plus each ball against the
+reserved meanings and against the cloth. It fails the build rather than the
+player. Two floors, not one: chase the colour-blind number alone and every ball
+is herded into blue-violet, where dichromats keep the most separation —
+technically accessible, useless as a set of billiard balls.
+
+Tritanopia carries a lower floor than protanopia and deuteranopia. It is on the
+order of one person in ten thousand against roughly one man in twelve, and it
+is the deficiency that makes magenta approach red; holding all three to the same
+number costs the palette its whole warm half to protect against the rarest, which
+is a worse outcome for everyone including the people it is meant to protect.
+
+**Colour is never the only channel.** Every ball carries its number in bone on
+its face — that is the identifier WCAG 1.4.1 asks for, and it does not care
+about hue. Colour is here to make the numeral unnecessary at a glance, not to
+replace it.
+
+**The ghost goes where the journey commits, not where it ends.** A line says
+which way a ball travels; the moment that matters is the collision — that is
+where the choice is spent. So each ball gets a hollow copy of itself, in its own
+colour, at its first contact; and its route carries on past that point at a
+fraction of the strength. Still shown, no longer a promise.
+
+Into a pocket, the ghost goes **in the pocket** — not where the predicted path
+happens to end. A ball that drops is removed at the mouth and its path carries
+on past it, so "the end of the route" is a place the ball never reaches. That is
+how a SCRATCH warning came to be drawn a foot clear of the pocket it was warning
+about, which reads as a broken prediction rather than a warning.
+
+A ghost must never read as another ball: hollow, and dimmer than the ball it
+projects. A solid shape where no ball is is a lie about the state of the felt.
+
+**Words are the last resort, not the first.** The felt carried a label at every
+route endpoint — YOUR BALL, 2 STOPS HERE, 1 → SIDE POCKET — each naming a place
+the picture was already showing, in type the eye had to leave the table to read,
+and each then needing to be kept clear of everything it might cover. They are
+gone. SCRATCH survives alone, because it is a consequence rather than a place
+and no arrangement of shapes says it; it rides on the ghost inside the pocket
+the cue ball will drop into.
+
+The one label that remains is still placed by a solve (`Tutorial._updateTags`):
+eight positions at three distances, scored against every ball, pocket and ghost
+on screen, nearest clean one wins. **A label never covers a ball, a pocket or a
+ghost.**
 *Passes when:* cover the text and the goal is still guessable from the table.
 
 **3 — Coaching stays up until the player acts, and never covers the act.**

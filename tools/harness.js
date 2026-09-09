@@ -180,6 +180,49 @@
   };
 
   /**
+   * ONE STROKE, AND EVERYTHING IT DID.
+   *
+   * The sweep answers "is this board solvable"; this answers "what actually
+   * happens on this shot", which is the question every piece of coaching COPY
+   * is a claim about. A board that says "into the side pocket" is asserting a
+   * fact about where a ball ends up, and that assertion is as checkable as the
+   * board's own pass condition — it just was not being checked, which is how
+   * a lesson came to name the wrong pocket.
+   *
+   * @param {{deg:number, power?:number}} spec
+   */
+  window.__simShot = (spec = {}) => {
+    const game = g();
+    const notify = game.tutorial?.notify;
+    if (game.tutorial) game.tutorial.notify = () => {};
+    const base = snapshot();
+    restore(base);
+    const out = shoot(spec.deg ?? 0, spec.power ?? 0.7);
+    const nearestPocket = (b) => {
+      let best = null;
+      for (const p of game.rooms.table.pockets) {
+        const d = Math.hypot(p.x - b.x, p.z - b.z);
+        if (!best || d < best.d) best = { d: +d.toFixed(2), slot: p.slot };
+      }
+      return best;
+    };
+    const resting = game.rooms.scriptedEnemies
+      .filter((e) => e.alive)
+      .map((e) => ({ n: e.number, x: +e.x.toFixed(2), z: +e.z.toFixed(2), near: nearestPocket(e) }));
+    restore(base);
+    game.midStroke = false;
+    game.phase = 'aim';
+    if (game.tutorial) game.tutorial.notify = notify;
+    return {
+      pots: out.pots.map((p) => ({ n: p.number, slot: p.slot })),
+      passes: out.passes,
+      hits: out.hits,
+      scratched: out.scratched,
+      resting
+    };
+  };
+
+  /**
    * Sweep every heading and report where the board is satisfied.
    * @param {{step?:number, powers?:number[]}} spec
    */

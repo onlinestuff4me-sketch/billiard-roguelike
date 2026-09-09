@@ -259,23 +259,38 @@ class AimRenderer {
     // 3. Carom deflection cone.
     // Two legs, each allowed one bank, plus headroom. See main.js
     // projectObjectPath — the object ball's route is a chain, not a stub.
-    this.conePositions = new Float32Array(8 * 6);
-    this.coneGeo = new THREE.BufferGeometry();
-    this.coneGeo.setAttribute('position', new THREE.BufferAttribute(this.conePositions, 3));
-    this.coneGeo.setDrawRange(0, 0);
-    // WHOSE PATH IS WHOSE. The cue's own route is drawn in the player's cyan;
-    // the route of the balls it sends is drawn in the rack's amber. Two lines
-    // in the same colour crossing the same table is the one place this palette
-    // cannot afford to be tidy.
-    this.coneMat = new THREE.LineBasicMaterial({
-      color: PALETTE.solid,
-      transparent: true,
-      opacity: 0.9,
-      depthWrite: false
-    });
-    this.cone = new THREE.LineSegments(this.coneGeo, this.coneMat);
-    this.cone.frustumCulled = false;
-    this.group.add(this.cone);
+    // WHOSE PATH IS WHOSE — ONE LINE PER BALL.
+    //
+    // This was a single line object holding the whole chain in one amber. Two
+    // balls' routes in one colour, crossing the same felt, is a picture that
+    // cannot answer the only question being asked of it: which of these is the
+    // 4 and which is the 1. Each leg gets its own line now, carrying that
+    // ball's own hue (PALETTE.ballInk).
+    //
+    // And each successive leg is DIMMER than the one before it. A leg past the
+    // first is on the far side of a collision — the shot has already committed
+    // by then and the prediction is compounding one impulse solution on top of
+    // another. Drawing it at the same strength as the first would promise a
+    // confidence the physics does not have; drawing it not at all would hide
+    // the second half of every combination.
+    this.legLines = [];
+    for (let i = 0; i < 4; i += 1) {
+      const positions = new Float32Array(8 * 6);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setDrawRange(0, 0);
+      const mat = new THREE.LineBasicMaterial({
+        color: PALETTE.solid,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false
+      });
+      const line = new THREE.LineSegments(geo, mat);
+      line.frustumCulled = false;
+      line.visible = false;
+      this.group.add(line);
+      this.legLines.push({ positions, geo, mat, line });
+    }
 
     // 4. The cue ball's own departure path — where YOU end up.
     //    A polyline, not a ray: it is the projected velocity marched through
@@ -302,8 +317,12 @@ class AimRenderer {
     // Ghost ball — a full outline of the cue ball at its contact position.
     // Aiming at a whole shape reads faster than aiming at an abstract point,
     // which is why the ghost-ball method is what beginners are taught first.
+    // YOUR ball's ghost, at YOUR ball's first collision — so it wears the
+    // player's cyan rather than a neutral bone. Every other ghost on the table
+    // is the colour of the ball it belongs to; this one was the exception for
+    // no reason but that it predated them.
     this.markerMat = new THREE.MeshBasicMaterial({
-      color: PALETTE.bone,
+      color: PALETTE.player,
       transparent: true,
       opacity: 0.5,
       depthWrite: false,
@@ -316,6 +335,52 @@ class AimRenderer {
     this.marker.rotation.x = -Math.PI / 2;
     this.marker.visible = false;
     this.group.add(this.marker);
+
+    // WHERE EACH BALL COMES TO REST, AS THE BALL.
+    //
+    // A line says which way something goes; it does not say where it stops,
+    // and a label saying so is a word the eye has to leave the table to read.
+    // A translucent copy of the ball, sitting at the end of its own route in
+    // its own colour, is the same fact as a shape — so the plan can be read
+    // without reading. Cyan is yours, amber is the rack, bone is a pocket, red
+    // is a pocket about to eat your own ball.
+    //
+    // Disc plus ring rather than either alone: the disc is what makes it read
+    // as a BALL at a glance, and the ring is what keeps it legible over the
+    // felt's own gradient, where a low-opacity disc alone disappears.
+    this.endGhosts = [];
+    for (let i = 0; i < 4; i += 1) {
+      // A GHOST IS HOLLOW, AND DIMMER THAN THE BALL IT IS A GHOST OF.
+      //
+      // The previous pass over-corrected: a heavy fill at full-brightness ring
+      // read as another ball on the table rather than as a projection of one,
+      // which is worse than being too faint — a solid shape where no ball is
+      // is a lie about the state of the table. So: no fill to speak of, a ring
+      // kept clearly below the real balls' brightness, and enough ring WIDTH
+      // to stay findable at thirteen pixels across. Hollow, present, and
+      // obviously not a ball.
+      const fillMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.07,
+        depthWrite: false
+      });
+      const ringMat = new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0.62,
+        depthWrite: false
+      });
+      const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 28), fillMat);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.76, 1.0, 28), ringMat);
+      fill.rotation.x = -Math.PI / 2;
+      ring.rotation.x = -Math.PI / 2;
+      fill.visible = false;
+      ring.visible = false;
+      fill.frustumCulled = false;
+      ring.frustumCulled = false;
+      this.group.add(fill);
+      this.group.add(ring);
+      this.endGhosts.push({ fill, ring, fillMat, ringMat });
+    }
 
     // Pull band behind the player.
     this.pullPositions = new Float32Array(6);
@@ -341,6 +406,42 @@ class AimRenderer {
     this.anchor = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), this.anchorMat);
     this.anchor.rotation.x = -Math.PI / 2;
     this.group.add(this.anchor);
+  }
+
+  /**
+   * Place a translucent copy of each ball at the end of its own route.
+   *
+   * Driven from the SAME list the coaching labels are drawn from (main.js
+   * `aimTags`), so the shape on the felt and the words beside it always name
+   * the same place. Geometry is a unit circle scaled to the ball's radius,
+   * which keeps one geometry for every ball size on the table.
+   */
+  _showEndGhosts(list, y) {
+    for (let i = 0; i < this.endGhosts.length; i += 1) {
+      const ghost = this.endGhosts[i];
+      const spec = list?.[i];
+      if (!spec || !Number.isFinite(spec.r)) {
+        ghost.fill.visible = false;
+        ghost.ring.visible = false;
+        continue;
+      }
+      // The ball's own hue, decided in main.js next to the geometry, so a
+      // ghost is always the colour of the ball it is a ghost of.
+      ghost.fillMat.color.setHex(spec.ink);
+      ghost.ringMat.color.setHex(spec.ink);
+      // A SCRATCH GHOST IS NOT A NEUTRAL PROJECTION. It sits inside a pocket,
+      // and a called pocket is lit bone-white and blooming — a ghost at the
+      // strength the others use disappears into it. The one ghost that is a
+      // warning gets the weight of one.
+      const warn = !!spec.text;
+      ghost.fillMat.opacity = warn ? 0.42 : 0.07;
+      ghost.ringMat.opacity = warn ? 1 : 0.62;
+      for (const mesh of [ghost.fill, ghost.ring]) {
+        mesh.position.set(spec.x, y, spec.z);
+        mesh.scale.setScalar(spec.r);
+        mesh.visible = true;
+      }
+    }
   }
 
   hide() {
@@ -457,6 +558,8 @@ class AimRenderer {
     this.dashGeo.setDrawRange(0, v);
     this.dashGeo.attributes.position.needsUpdate = true;
 
+    this._showEndGhosts(context.ghosts, y);
+
     // --- object-ball departure + ghost ball + cue tangent ---
     if (prediction.hit && prediction.caromDir) {
       const h = prediction.hit;
@@ -471,24 +574,51 @@ class AimRenderer {
       // And it is the WHOLE route where one is supplied: a combination is two
       // collisions, and a board whose lesson is "the 6 runs into the 2 and the
       // 2 goes in the corner" has to draw the second half of that sentence.
-      const legs = context.objectPath;
-      let n = 0;
-      if (legs && legs.length) {
-        for (const leg of legs) {
-          for (const seg of leg.segs) {
-            if ((n + 1) * 6 > this.conePositions.length) break;
-            this.conePositions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
-            n += 1;
-          }
+      // EACH BALL, TWICE: up to its collision, and on past it.
+      //
+      // Slots alternate leg / tail / leg / tail. The leg is the part the
+      // player is choosing — bright, in that ball's colour. The tail is where
+      // the same ball carries on after it hands off, in the same colour at
+      // half the strength, because it is a solution stacked on a solution.
+      const legs = context.objectPath ?? [];
+      const inks = context.legInks ?? [];
+      const draw = [];
+      for (let i = 0; i < legs.length; i += 1) {
+        const ink = inks[i] ?? PALETTE.solid;
+        if (legs[i]?.segs?.length) draw.push({ segs: legs[i].segs, ink, opacity: i === 0 ? 0.92 : 0.5 });
+        if (legs[i]?.tail?.length) draw.push({ segs: legs[i].tail, ink, opacity: 0.24 });
+      }
+      for (let i = 0; i < this.legLines.length; i += 1) {
+        const slot = this.legLines[i];
+        const item = draw[i];
+        if (!item) {
+          slot.geo.setDrawRange(0, 0);
+          slot.line.visible = false;
+          continue;
         }
+        let n = 0;
+        for (const seg of item.segs) {
+          if ((n + 1) * 6 > slot.positions.length) break;
+          slot.positions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
+          n += 1;
+        }
+        slot.mat.color.setHex(item.ink);
+        slot.mat.opacity = item.opacity;
+        slot.geo.setDrawRange(0, n * 2);
+        slot.geo.attributes.position.needsUpdate = true;
+        slot.line.visible = n > 0;
       }
-      if (!n) {
-        this.conePositions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
-        n = 1;
+      // No chain at all: a stub in the carom direction, so a first-contact
+      // shot still shows which way the ball it touches is going.
+      if (!draw.length) {
+        const slot = this.legLines[0];
+        slot.positions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
+        slot.mat.color.setHex(context.legInks?.[0] ?? PALETTE.solid);
+        slot.mat.opacity = 0.92;
+        slot.geo.setDrawRange(0, 2);
+        slot.geo.attributes.position.needsUpdate = true;
+        slot.line.visible = true;
       }
-      this.coneGeo.setDrawRange(0, n * 2);
-      this.coneGeo.attributes.position.needsUpdate = true;
-      this.cone.visible = true;
 
       // The ghost ball sits where the cue ball's centre stops at contact, which
       // is exactly the point the swept-circle predictor solved for.
@@ -548,7 +678,12 @@ class AimRenderer {
         this.tangentGeo.attributes.position.needsUpdate = true;
         this.tangent.computeLineDistances();
         this.tangentMat.color.setHex(scratch ? PALETTE.bad : PALETTE.aimGhost);
-        this.tangentMat.opacity = scratch ? 0.95 : 0.25 + share * 0.7;
+        // The FLOOR is the fix, not the ramp. Confidence is still encoded —
+        // a full hit is dimmer and more broken up than a thin cut — but the
+        // bottom of the range was 0.25, which on this felt is a line you have
+        // to already know is there to see. A line nobody can find carries no
+        // information at all, however honest its opacity.
+        this.tangentMat.opacity = scratch ? 0.95 : 0.45 + share * 0.5;
         // Confident lines are nearly solid; unconfident ones fall apart.
         this.tangentMat.dashSize = 0.12 + share * 1.15;
         this.tangentMat.gapSize = 0.5 - share * 0.34;
@@ -561,7 +696,10 @@ class AimRenderer {
         this.tangent.visible = false;
       }
     } else {
-      this.cone.visible = false;
+      for (const slot of this.legLines) {
+        slot.geo.setDrawRange(0, 0);
+        slot.line.visible = false;
+      }
       this.marker.visible = false;
       this.tangentGeo.setDrawRange(0, 0);
       this.tangent.visible = false;
@@ -602,8 +740,10 @@ class AimRenderer {
     this.primaryMat.dispose();
     this.dashGeo.dispose();
     this.dashMat.dispose();
-    this.coneGeo.dispose();
-    this.coneMat.dispose();
+    for (const slot of this.legLines) {
+      slot.geo.dispose();
+      slot.mat.dispose();
+    }
     this.tangentGeo.dispose();
     this.tangentMat.dispose();
     this.marker.geometry.dispose();
