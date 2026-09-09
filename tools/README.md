@@ -48,6 +48,31 @@ found.
 
 Exit code is non-zero if any board fails, so this belongs in CI.
 
+## `npm run coach`
+
+`verify` proves a board **can be solved**. This proves the other half: what the
+tutorial *does* when a stroke goes wrong, and whether the sentence the player
+then reads describes the table in front of them.
+
+```
+npm run coach
+```
+
+It plays real strokes through the boards' own rules and reads the table and the
+band afterwards. Both halves were wrong and neither was visible from a sweep:
+
+- **the stroke was charged twice.** A scratch on the four-in-three board ran the
+  ordinary miss path — cue home, *whole rack rebuilt* — so every ball already
+  cleared stood back up while the shots spent clearing them stayed spent. The
+  attempt was neither restarted nor continued; it was left in a position the
+  board could not be won from.
+- **the band said "Down"**, then said it again over the top of the scratch
+  correction, because the progress line was written before the verdict was.
+
+The scratch and the pot it needs are **found, not hard-coded** — the boards'
+geometry is free to move, and a fixed heading quietly stops testing the thing it
+was written for the first time it does.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -63,6 +88,8 @@ underneath it.
 - `harness.js` — injected into the page; snapshot/restore, one fully-resolved
   stroke, the sweep, and the multi-stroke beam search.
 - `verify-boards.mjs` — the CLI and the thresholds.
+- `check-coach.mjs` — what the boards say and do when a stroke fails.
+- `check-palette.mjs` — the ball colours, sampled out of the framebuffer.
 
 ## Beyond the tutorial
 

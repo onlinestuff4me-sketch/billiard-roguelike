@@ -97,9 +97,10 @@ const RULES = {
     hand: true,
     handDraw: 6.4,
     pot: () => 'score',
-    facing: 'Other way — the ball fires AWAY from your thumb. Drag from below it.',
+    facing: 'Wrong way — your ball fires AWAY from your thumb. Drag from below it instead',
     cheer: 'In, and you are still on the table',
-    whiff: 'Your line went past the 3 — put it through the middle of the ball',
+    whiff: 'You missed the 3 completely — put your line through the middle of the ball',
+    scold: 'You hit the <b>3</b>, but it missed the pocket. Line your ball up behind it, straight at the lit pocket',
     nudge: 'Line your ball up with the <b>3</b> and the lit pocket, then pull back from below it.'
   },
 
@@ -112,8 +113,8 @@ const RULES = {
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
     cheer: 'One ball moved another. That is a combination',
-    scold: 'You put the 4 down, not the 1 — the 1 is the one by the pocket',
-    whiff: 'You aimed past the 4 — aim through it, at the 1 behind it',
+    scold: 'You potted the <b>4</b>, not the <b>1</b>. Aim through the 4 so it knocks the 1 in instead',
+    whiff: 'You missed the 4 completely — aim through it, at the 1 behind it',
     nudge: 'Aim <em>through</em> the <b>4</b> at the <b>1</b>. Those two already point at the lit pocket.'
   },
 
@@ -125,8 +126,8 @@ const RULES = {
     spot: 'rack',
     handoff: true,
     cheer: 'The 4 found the 2 — that is the shot',
-    scold: 'You hit the 4 straight on, so it went straight. Hit it more from the side',
-    whiff: 'You aimed past the 4 — the shot starts on that ball',
+    scold: 'You hit the <b>4</b> straight on, so it went straight ahead. Hit its left side, so it turns into the 2',
+    whiff: 'You missed the 4 completely — the shot has to start on that ball',
     nudge: 'Put your white circle on the <em>left side</em> of the <b>4</b>, so the 4 travels right into the 2.'
   },
 
@@ -139,8 +140,8 @@ const RULES = {
     spot: 'first',
     bankThenHit: true,
     cheer: 'Off the wall and onto the 3 — and a bounce is worth more',
-    scold: 'You shot straight at the 3 and the barrier stopped it. Shoot down into the bottom wall instead',
-    whiff: 'Your line came back short of the 3. Aim further along the bottom wall',
+    scold: 'The barrier stopped your ball. Shoot down into the bottom wall instead, and bounce around it',
+    whiff: 'You did not reach the <b>3</b>. Aim down into the bottom wall, and bounce around the barrier',
     nudge: 'Aim <em>down</em> into the bottom wall. The dashed line swings back up to the <b>3</b>.'
   },
 
@@ -160,7 +161,7 @@ const RULES = {
     clearRack: true,
     shots: 3,
     cheer: 'Rack cleared',
-    scold: 'Nothing down — a stroke that pockets nothing costs you nothing, so go again',
+    scold: 'Nothing potted, so that shot was free. Go again',
     whiff: 'You touched nothing — start the shot on a ball',
     nudge: 'Aim <em>through</em> the <b>1</b> at the <b>4</b>, into the side pocket. Both lit pockets are yours.'
   },
@@ -180,8 +181,8 @@ const RULES = {
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
     cheer: 'Past the red, through the green, and in',
-    scold: 'In, but your line went under the green — it pays double and it is barely off the lazy route',
-    whiff: 'Your line missed the 2. Steer it between the red and the green',
+    scold: 'Potted, but your line went under the <em>green</em>. Aim a touch higher and collect it on the way in',
+    whiff: 'You missed the <b>2</b> completely. Steer your line between the red and the green',
     nudge: 'Turn a few degrees <em>up</em> from the red. The <em>green</em> is the next thing your line touches.'
   }
 };
@@ -334,6 +335,12 @@ export class Tutorial {
     this.done = 0;
     /** Strokes spent on the current board — the budget the third lesson counts. */
     this._strokes = 0;
+    /** The table as it stood the instant the current stroke was fired. */
+    this._before = null;
+    /** Did the stroke that just resolved use up a multi-shot board's budget? */
+    this._restart = false;
+    /** Balls this stroke put down, in the order they dropped. */
+    this._potted = [];
     /** Did the stroke that just resolved match any rule? */
     this._scored = false;
 
@@ -351,6 +358,8 @@ export class Tutorial {
     /** Cue contacts this launch, in order, with whether each one killed. */
     this._strikes = [];
     this._rejected = false;
+    /** Did the stroke that just resolved put the cue ball down a pocket? */
+    this._scratched = false;
     /** True once a lesson is finished and the Next button is showing. */
     this._awaitingNext = false;
     this._misses = 0;
@@ -460,6 +469,9 @@ export class Tutorial {
     this.index = index;
     this.done = 0;
     this._strokes = 0;
+    this._before = null;
+    this._restart = false;
+    this._potted.length = 0;
     this._scored = false;
     this._hits = 0;
     this._struck.clear();
@@ -1022,6 +1034,14 @@ export class Tutorial {
       // the angle that would not have.
       this._lastAim = { x: payload.dirX ?? 0, z: payload.dirZ ?? -1 };
       this._demo = null;
+      // THE TABLE AS IT IS RIGHT NOW, before the balls move.
+      //
+      // A board played over several strokes has to be able to give a stroke
+      // back. Taken here rather than at the end of the last one because this
+      // is the only moment that is certainly "before the shot" — the player
+      // may have rolled the cue, and the previous stroke may have left balls
+      // still drifting when its verdict was read.
+      this._before = this._snapshot();
       // Taking the next shot is the only thing that clears the last one's
       // feedback. It used to expire on a 2.2s timer, which is not long enough
       // to read a sentence, look at the table and work out what it means — the
@@ -1039,7 +1059,8 @@ export class Tutorial {
       this._struck.clear();
       this._strikes.length = 0;
       this._rejected = false;
-      this._scratched = null;
+      this._scratched = false;
+      this._potted.length = 0;
       return;
     }
 
@@ -1059,6 +1080,10 @@ export class Tutorial {
     // on, because it is the thing the game is actually about.
     if (name === 'potted') {
       this._pots += 1;
+      // Which ball, not just how many. A board that coaches the next shot has
+      // to be able to name the one that just went in — "the 4 is down" is a
+      // report of what happened; "down" is a noise the player has to decode.
+      if (payload.ball) this._potted.push(payload.ball);
       // A rack-clearing board is judged when the stroke ends, not on each ball
       // — a shot that drops two should read as one success, not two.
       if (lesson.clearRack) return;
@@ -1087,14 +1112,12 @@ export class Tutorial {
     // and the departure preview turns from red to safe on the way. See _demo.
     if (name === 'scratch') {
       this._rejected = true;
-      // Held, not written. The verdict for a stroke is written once, when the
-      // table has stopped — and this one has to survive that write, because a
-      // scratch is a more specific fact than anything the board's own scold
-      // can say. Writing it here meant `_resolveShot` overwrote the sharpest
-      // correction the game has with the generic one a moment later.
-      this._scratched =
-        lesson.scratched ||
-        'Scratch — your ball followed the shot in. Angle it, and yours rolls clear instead.';
+      // A FLAG, NOT A SENTENCE. The verdict for a stroke is written once, when
+      // the table has stopped — and the sentence a scratch deserves depends on
+      // what the game does about it, which is decided there: on a board played
+      // over several strokes the scratch is undone, and a correction that does
+      // not mention that is describing a table the player is not looking at.
+      this._scratched = true;
       return;
     }
 
@@ -1254,6 +1277,12 @@ export class Tutorial {
       const left = rack.filter((e) => e.alive).length;
       if (left === 0) {
         this._score();
+      } else if (this._rejected) {
+        // A SCRATCH IS NOT A RESULT. It used to be scored as one: the stroke
+        // that ended in a pocket still banked whatever it had potted on the
+        // way, still spent a shot, and still printed "Down. Now hit the …"
+        // — which the scratch correction then overwrote a line later. The
+        // stroke is about to be given back below, so it says nothing here.
       } else if (this._pots > 0) {
         // COACH THE NEXT SHOT, NOT THE SCOREBOARD.
         //
@@ -1271,19 +1300,35 @@ export class Tutorial {
         this._strokes += 1;
         const s = lesson.shots - this._strokes;
         const next = this._guideNext();
-        const budget = `${s} shot${s === 1 ? '' : 's'} left`;
-        this._setStatus(
-          next
-            ? `Down. Now hit the <b>${next.number}</b> into the ${next.pocket} — ${budget}`
-            : `Down — ${budget}`,
-          s > 0 ? 'good' : 'bad'
-        );
+        if (s > 0) {
+          const budget = `${s} shot${s === 1 ? '' : 's'} left`;
+          this._setStatus(
+            next
+              ? `${this._pottedNames()}. Now hit the <b>${next.number}</b> into the ${next.pocket} — ${budget}`
+              : `${this._pottedNames()} — ${budget}`,
+            'good'
+          );
+        } else {
+          // OUT OF SHOTS, AND THE BOARD HAD NOTHING TO SAY ABOUT IT. The
+          // budget simply ran past zero: the card went on counting down into
+          // negative numbers while the player kept shooting at a table that
+          // could no longer be cleared in three. Running out is the one way
+          // this board can be got wrong, so it is stated, and the attempt
+          // starts again from the beginning rather than from wherever the
+          // impossible position happened to leave off.
+          this._restart = true;
+          this._setStatus(
+            `You are out of shots with ${left === 1 ? 'a ball' : `${left} balls`} still up. ` +
+              `Starting over — the whole rack in ${lesson.shots}`,
+            'bad'
+          );
+        }
       } else {
         const next = this._guideNext();
         this._setStatus(
           next
-            ? `Nothing down, so that one was free. Try the <b>${next.number}</b> into the ${next.pocket}`
-            : 'Nothing down, so that one was free. Go again',
+            ? `Nothing potted, so that shot was free. Try the <b>${next.number}</b> into the ${next.pocket}`
+            : 'Nothing potted, so that shot was free. Go again',
           'bad'
         );
       }
@@ -1306,35 +1351,24 @@ export class Tutorial {
     // verdict IS a verdict.
     if (stillIts && !counted && !this._scored && !this._rejected) this._rejected = true;
 
-    if (stillIts && this._rejected) {
-      // A shot that touched nothing is a different mistake from a shot that
-      // touched some of it, and saying nothing at all — which is what a whiff
-      // used to get — is indistinguishable from the game being broken.
-      const line = this._scratched
-        ? this._scratched
-        : this._wrongWay
-          ? lesson.facing
-          : this._hits === 0 && lesson.whiff
-            ? lesson.whiff
-            : lesson.scold || 'Not quite — go again';
-      this._setStatus(line, 'bad');
-      this._misses += 1;
-      // Nothing here can be failed, but something you cannot fail and cannot
-      // do either is just a wall. After a couple of honest attempts the
-      // evocative sentence gives way to the actual instruction — and it is not
-      // shown NEXT TO the correction, it REPLACES the board's line from now
-      // on. The band holds one sentence, and the one that earns the space
-      // after two misses is the one with the answer in it.
-      if (this._misses >= 2 && lesson.nudge) this._nudging = true;
-    }
-
-    // Kept, because the reset below needs to know how the stroke went and the
+    // Kept, because the table below needs to know how the stroke went and the
     // per-stroke flags are about to be cleared for the next one.
     const missed = this._rejected;
+    const scratched = this._scratched;
+    const wrongWay = this._wrongWay;
+    const restart = this._restart;
     this._rejected = false;
     this._wrongWay = false;
-    this._scratched = null;
+    this._scratched = false;
+    this._restart = false;
 
+    // PUT THE TABLE RIGHT BEFORE SAYING ANYTHING ABOUT IT.
+    //
+    // The correction below names the ball to play next, and it is chosen off
+    // the balls that are standing — so it has to be written against the table
+    // the player will be looking at when they read it, not the one the failed
+    // stroke left behind.
+    //
     // A BOARD THAT IS OVER DOES NOT GET PUT BACK.
     //
     // A reset is preparation for another attempt, and a passed board has no
@@ -1347,7 +1381,7 @@ export class Tutorial {
     // next lesson rebuilds the table when it loads, which is where a rack that
     // does not match the new board was always going to be fixed.
     //
-    // A RACK-CLEARING BOARD IS ALSO ONE LONG ATTEMPT, NOT A SERIES OF REPS.
+    // A RACK-CLEARING BOARD IS ONE LONG ATTEMPT, NOT A SERIES OF REPS.
     //
     // Every other board resets between attempts, which is right: they are the
     // same shot practised until it lands. This one is a rack being cleared over
@@ -1356,15 +1390,71 @@ export class Tutorial {
     // silently, which is exactly how it was reported ("it resets my cue without
     // telling me why"). The cue stays where it stopped, like it would at a
     // table, and only goes home when the attempt itself is over.
+    //
+    // A FAILED STROKE ON SUCH A BOARD IS GIVEN BACK, NOT CHARGED.
+    //
+    // It used to be charged twice over. A scratch on the fourth lesson ran the
+    // ordinary miss path — cue home, WHOLE RACK REBUILT — so every ball the
+    // player had already cleared stood back up, while the strokes they had
+    // spent clearing them stayed spent. The attempt was not restarted and it
+    // was not continued; it was left in a state the board could not be won
+    // from. A stroke that fails now rewinds to the table as it stood when that
+    // stroke was fired: the balls that were up are up, where they were, and
+    // the cue is back on the spot it was played from.
     const over = this._awaitingNext;
-    const inProgress = lesson?.clearRack && !over && !missed;
+    const multi = !!lesson?.clearRack;
+    let homed = !multi;
     if (over) {
       /* nothing moves — see above */
-    } else if (!inProgress) {
+    } else if (multi && restart) {
+      this._strokes = 0;
+      this._before = null;
       this._homeBall();
       this._reRack();
-    } else {
+      homed = true;
+    } else if (multi && missed) {
+      // The rewind is the whole attempt's memory, so a board with nothing
+      // remembered yet (a scratch on the opening stroke of a fresh board)
+      // falls back to the ordinary reset, which is the same table anyway.
+      if (this._rewind()) {
+        homed = this._atSpawn();
+      } else {
+        this._homeBall();
+        this._reRack();
+        homed = true;
+      }
+    } else if (multi) {
       this._restAim();
+    } else {
+      this._homeBall();
+      this._reRack();
+    }
+
+    if (missed) {
+      // SAY WHAT HAPPENED, THEN SAY WHAT TO DO.
+      //
+      // A shot that touched nothing is a different mistake from a shot that
+      // touched some of it, and saying nothing at all — which is what a whiff
+      // used to get — is indistinguishable from the game being broken.
+      const line = scratched
+        ? this._scratchLine(lesson, multi)
+        : wrongWay
+          ? lesson.facing
+          : this._hits === 0 && lesson.whiff
+            ? lesson.whiff
+            : lesson.scold || this._restateLine();
+      // The multi-shot board has already written the sentence that names the
+      // next ball; only a scratch, which is a fact about the cue rather than
+      // about the rack, is sharper than what it said.
+      if (!multi || scratched) this._setStatus(line, 'bad');
+      this._misses += 1;
+      // Nothing here can be failed, but something you cannot fail and cannot
+      // do either is just a wall. After a couple of honest attempts the
+      // evocative sentence gives way to the actual instruction — and it is not
+      // shown NEXT TO the correction, it REPLACES the board's line from now
+      // on. The band holds one sentence, and the one that earns the space
+      // after two misses is the one with the answer in it.
+      if (this._misses >= 2 && lesson.nudge) this._nudging = true;
     }
 
     // SHOW THE FIX, DO NOT ONLY NAME IT.
@@ -1375,13 +1465,13 @@ export class Tutorial {
     // wrong, because the difference between the line they played and the line
     // that works is two degrees of a thing they cannot replay.
     //
-    // So on any miss that put the cue back on its spawn, the demonstration
-    // runs: hold on the heading that just failed, then swing to a measured
-    // solution, on the real cue with the real preview redrawing itself the
-    // whole way. It gives way the instant a thumb goes down. A board mid-way
-    // through a rack is skipped, because `solve` is measured from the spawn
-    // and the cue is not there.
-    if (missed && !over && !inProgress && Number.isFinite(lesson?.solve) && this._lastAim) {
+    // So on any miss that left the cue on its spawn, the demonstration runs:
+    // hold on the heading that just failed, then swing to a measured solution,
+    // on the real cue with the real preview redrawing itself the whole way. It
+    // gives way the instant a thumb goes down. A cue that is anywhere else is
+    // skipped, because `solve` is a heading measured FROM THE SPAWN and means
+    // nothing from a stroke's worth of table away.
+    if (missed && !over && homed && Number.isFinite(lesson?.solve) && this._lastAim) {
       const to = (lesson.solve * Math.PI) / 180;
       this._demo = {
         from: this._lastAim,
@@ -1414,6 +1504,112 @@ export class Tutorial {
     this.engine?.shake?.(20);
     this.engine?.zoomPunch?.();
     this.game.audio?.roomClear?.();
+  }
+
+  /**
+   * The table as it stands, in enough detail to put it back.
+   *
+   * Balls are named by their AUTHORED SLOT rather than by their place in the
+   * rack, because the rack shortens as it is cleared and a ball's index in it
+   * stops meaning anything the moment one goes down.
+   *
+   * @returns {object|null}
+   */
+  _snapshot() {
+    if (!this.rooms?.scriptedSpec) return null;
+    return {
+      balls: this.rooms.scriptedEnemies
+        .filter((e) => e.alive && Number.isFinite(e.slotIndex))
+        .map((e) => ({ index: e.slotIndex, x: e.x, z: e.z })),
+      x: this.player.x,
+      z: this.player.z,
+      done: this.done,
+      strokes: this._strokes
+    };
+  }
+
+  /**
+   * Give the last stroke back: the table exactly as it stood when it was fired.
+   *
+   * Only reachable on a board played over several strokes, and only when that
+   * stroke failed. Everything the stroke did is undone together — the balls it
+   * put down stand again where they stood, the cue goes back to the spot it
+   * was played from, and the budget it spent is unspent. Undoing half of that
+   * is what the old path did, and it left a board that could not be won.
+   *
+   * @returns {boolean} whether there was a stroke to give back
+   */
+  _rewind() {
+    const before = this._before;
+    if (!before || !this.rooms.restoreScripted?.(before.balls)) return false;
+    this.player.placeAt(before.x, before.z);
+    this.player.focus = this.player.focusMax;
+    this._restAim();
+    this.done = before.done;
+    this._strokes = before.strokes;
+    // The same small puff `_reRack` uses, for the same reason: a ball that
+    // moves on its own is the game doing something, and the player is owed the
+    // sight of it happening rather than a table that is quietly different.
+    for (const ball of before.balls) this.fx.burst(ball.x, ball.z, 6, 0x8aa0b8, 4, 0.5);
+    this._before = null;
+    return true;
+  }
+
+  /** Is the cue sitting on the board's spawn, where `solve` was measured from? */
+  _atSpawn() {
+    return Math.hypot(this.player.x, this.player.z - this.spawnZ()) < 0.05;
+  }
+
+  /**
+   * What the stroke put down, by name.
+   *
+   * "Down" on its own is the game talking to itself: it is a word from the
+   * table that assumes the player already knows which ball it means. Naming
+   * the ball costs two characters and reports the actual event.
+   */
+  _pottedNames() {
+    const names = this._potted.map((b) => b?.number).filter(Boolean);
+    if (names.length === 1) return `The <b>${names[0]}</b> is potted`;
+    if (names.length > 1) return `${names.length} balls potted`;
+    return 'Potted';
+  }
+
+  /**
+   * What just happened, and what to do about it.
+   *
+   * A scratch is the one mistake that is always a mistake, so it is always
+   * called by its name — and on a board played over several strokes the fact
+   * that the game has just handed the stroke back is part of what happened,
+   * not a detail. A correction that leaves it out describes a table the player
+   * is not looking at.
+   */
+  _scratchLine(lesson, multi) {
+    if (lesson.scratched) return lesson.scratched;
+    if (!multi) {
+      return (
+        'Scratched — your own ball went in the pocket. ' +
+        'Hit the target ball off to one side, and yours rolls clear instead'
+      );
+    }
+    const next = this._guideNext();
+    const back = 'Scratched — your own ball went in, so that shot is back';
+    return next
+      ? `${back}. Try the <b>${next.number}</b> into the ${next.pocket}, but hit it off-centre`
+      : `${back} — hit the ball off-centre, so yours rolls clear`;
+  }
+
+  /**
+   * The last-resort correction: a stroke that matched no rule and that the
+   * board has no words of its own for.
+   *
+   * It used to be "Not quite — go again", which reports nothing that happened
+   * and asks for the same shot with no idea what to change. Every board that
+   * can reach this now carries a `scold` that names the miss, so this is the
+   * floor rather than the common case — and even the floor says which way to
+   * look.
+   */
+  _restateLine() {
+    return 'That one did not go in — line your ball up with the lit pocket and try again';
   }
 
   /**

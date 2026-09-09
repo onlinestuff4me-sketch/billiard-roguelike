@@ -371,8 +371,12 @@ export class RoomManager {
 
   /** Instantiate one authored rack. */
   spawnScripted(list) {
-    return list.map((slot) => {
+    return list.map((slot, i) => {
       const enemy = new Enemy(this.enemyLayer, slot.type || 'solid', slot.x, slot.z, 1);
+      // Which authored slot this ball came from. A lesson that rewinds one
+      // stroke has to put back the SAME balls, and identity by array position
+      // stops being true the moment one of them is gone.
+      enemy.slotIndex = i;
       enemy.frozen = slot.frozen !== false;
       // Pinned in place, but still armed unless the lesson says otherwise —
       // an encounter staged to teach you to read a shooter needs one that
@@ -414,6 +418,43 @@ export class RoomManager {
     }
     if (this.goal) this.goal.scored = false;
     this.scriptedEnemies = this.spawnScripted(spec.enemies || []);
+  }
+
+  /**
+   * Put the rack back exactly as it stood at some earlier moment.
+   *
+   * Not the same thing as re-racking. A re-rack rebuilds the authored table,
+   * which is what a board wants between two attempts at the same shot — but a
+   * board played over several strokes has a table that is legitimately no
+   * longer the authored one, and rebuilding it there throws away every ball
+   * the player has already earned. This restores a MOMENT: the balls that were
+   * still up then, standing where they stood then.
+   *
+   * @param {Array<{index:number,x:number,z:number}>} saved from Tutorial._snapshot
+   * @returns {boolean} whether the table was restored
+   */
+  restoreScripted(saved) {
+    const spec = this.scriptedSpec;
+    if (!spec || !saved) return false;
+    const list = spec.enemies || [];
+    const wanted = saved.filter((ball) => list[ball.index]);
+    for (const enemy of this.scriptedEnemies) {
+      enemy.alive = false;
+      enemy.dispose();
+      const i = this.game.enemies.indexOf(enemy);
+      if (i >= 0) this.game.enemies.splice(i, 1);
+    }
+    this.scriptedEnemies = this.spawnScripted(wanted.map((ball) => list[ball.index]));
+    this.scriptedEnemies.forEach((enemy, i) => {
+      // The AUTHORED index, not the position in this shortened rack — so a
+      // later rewind names the same slots and `homeX/homeZ` stay the board's.
+      enemy.slotIndex = wanted[i].index;
+      enemy.x = wanted[i].x;
+      enemy.z = wanted[i].z;
+      enemy.vx = 0;
+      enemy.vz = 0;
+    });
+    return true;
   }
 
   /** The lit bar for a goal lesson. Drawn on the felt, never collided with. */

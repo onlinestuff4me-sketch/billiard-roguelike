@@ -150,6 +150,10 @@ export async function openGame(opts = {}) {
     lesson: () => page.evaluate(() => window.__simLesson()),
     /** One stroke, fully resolved, with where every ball came to rest. */
     shot: (spec) => page.evaluate((sp) => window.__simShot(sp), spec),
+    /** One stroke played through the lesson, leaving the table as it leaves it. */
+    play: (spec) => page.evaluate((sp) => window.__simPlay(sp), spec),
+    /** The table as the lesson currently has it. */
+    table: () => page.evaluate(() => window.__simTable()),
     sweep: (spec) => page.evaluate((s) => window.__simSweep(s), spec),
     plan: (spec) => page.evaluate((s) => window.__simPlan(s), spec),
     async close() {
