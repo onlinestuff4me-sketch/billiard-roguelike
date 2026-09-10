@@ -129,6 +129,32 @@ pick-up, cyan is your ball), then the four with the widest worst-case
 separation. Choosing hexes by eye, or by distance between source values, is how
 this palette went wrong twice.
 
+## `npm run find-board -- <board>`
+
+`verify` answers *is this board solvable as authored*. This answers the
+question before it: **where should the balls go** so that the shot the card
+describes is a shot a beginner can find. It sweeps candidate placements, and
+for each one sweeps every heading at two powers through the real physics,
+reporting the widest **contiguous window** of heading that satisfies the goal.
+
+It exists because a board was caught claiming something it did not check, and
+the honest fix — require the pot the card names — was rejected on a search of
+*twenty* layouts that found nothing wider than 2°. Twenty layouts is not a
+search. Run properly it produced two results worth having:
+
+- **the plant board.** 320 placements over the middle of the table confirmed
+  the verdict for combinations played the long way — a pot's tolerance falls
+  off as one over the distance the object ball travels — and then found **6°**,
+  three times the playable floor, the moment the second ball was parked a
+  ball's width off a pocket mouth. The board requires the pot now.
+- **the budget board.** Three families, about 550 placements, looking for two
+  balls in one stroke: two in a line at a pocket, two in a line at the cue, two
+  hanging on the mouth together. The widest window anywhere was **2°**. A
+  knocked ball carries its own drag, so once the first ball has taken the
+  impulse there is nothing left in the second. A board cannot ask for a shot
+  the physics does not hand out, so that board's budget was changed to stop
+  needing one.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -146,7 +172,8 @@ underneath it.
 - `verify-boards.mjs` — the CLI and the thresholds.
 - `check-coach.mjs` — what the boards say and do, and whether they mean it.
 - `check-palette.mjs` — the ball colours and contrasts, out of the framebuffer.
-- `check-layout.mjs` — nothing off the edge, at four viewports.
+- `check-layout.mjs` — nothing off the edge, at six viewports.
+- `find-board.mjs` — where should the balls go, searched rather than guessed.
 
 ## Beyond the tutorial
 

@@ -118,7 +118,7 @@ try {
    * THE MULTI-SHOT BOARD: a failed stroke is given back, not charged
    * ------------------------------------------------------------------ */
   await game.gotoBoard('budget');
-  console.log('\nbudget — four balls, three shots\n');
+  console.log('\nbudget — four balls, five strokes\n');
 
   const opening = await game.route();
   check(opening?.lines > 0, 'the board draws its route', `${opening?.lines ?? 0} lines`);
@@ -139,7 +139,7 @@ try {
     JSON.stringify(first.band)
   );
   check(
-    /shots? left/.test(first.band) && /\d/.test(first.band),
+    /strokes? left/.test(first.band) && /\d/.test(first.band),
     'and names the next ball and its pocket'
   );
 
@@ -204,11 +204,11 @@ try {
     if (probe.pots.length && !probe.scratched) potDeg = d;
   }
   check(potDeg !== null, 'a pot is reachable from here', potDeg === null ? '' : `${potDeg}°`);
-  const spent = await game.play({ deg: potDeg ?? 20, power: 0.7, spent: 2 });
+  const spent = await game.play({ deg: potDeg ?? 20, power: 0.7, spent: 4 });
   check(spent.strokes === 0, 'the attempt starts over', `${spent.strokes} spent`);
   check(spent.rack.length === 4, 'the whole rack is back up', `${spent.rack.length} balls`);
   check(
-    /out of shots/i.test(spent.band) && /Starting over/.test(spent.band) && vocab(spent.band),
+    /out of strokes/i.test(spent.band) && /Starting over/.test(spent.band) && vocab(spent.band),
     'and the band says the budget ran out',
     JSON.stringify(spent.band)
   );

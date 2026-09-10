@@ -75,6 +75,13 @@ const HAND_RELEASE = 8.6;
  * but a board you cannot fail and cannot do either is a wall, so after two
  * honest misses the nudge replaces the instruction with the actual answer.
  *
+ * `route` is what the coaching road is drawn for: `{number, slot}` names a ball
+ * and the pocket it has to reach, `{reach}` names a ball that only has to be
+ * hit. It is the goal the board's SENTENCE describes, stated once so the words
+ * and the road drawn on the felt cannot come from two different ideas of the
+ * shot. (Not `goal` — LESSONS already uses that for the number of reps a board
+ * takes, and a second meaning on the same key silently won.)
+ *
  * `spot` names what the band is talking about, and the spotlight dims the rest
  * of the table around it — 'player', 'goal', 'first' (the ball nearest the
  * cue), 'rack' (all of them in one shape) or 'blocked' (the rack together with
@@ -97,6 +104,7 @@ const RULES = {
     hand: true,
     handDraw: 6.4,
     pot: () => 'score',
+    route: { number: 3, slot: 'mr' },
     facing: 'Wrong way — your ball fires AWAY from your thumb. Drag from below it instead',
     cheer: 'In, and you are still on the table',
     whiff: 'You missed the 3 completely — put your line through the middle of the ball',
@@ -112,38 +120,43 @@ const RULES = {
     say: 'Hit the <b>4</b>, so it knocks the <b>1</b> into the side pocket',
     spot: 'rack',
     pot: (p) => (p.ball.number === 1 ? 'score' : null),
+    route: { number: 1, slot: 'mr' },
     cheer: 'One ball moved another. That is a combination',
     scold: 'You pocketed the <b>4</b>, not the <b>1</b>. Aim through the 4 so it knocks the 1 in instead',
     whiff: 'You missed the 4 completely — aim through it, at the 1 behind it',
     nudge: 'Aim <em>through</em> the <b>4</b> at the <b>1</b>. Those two already point at the lit pocket.'
   },
 
-  // JUDGED ON THE HAND-OFF, not the pot — AND IT NO LONGER LIGHTS A POCKET.
+  // THE PLANT. Two balls in a row, the second parked on a pocket, and the shot
+  // is not finished until that second one goes in.
   //
-  // Measured across every heading at every power, the pot at the end of an
-  // angled combination is worth about a degree and a half. Making the first
-  // ball reach the second is the lesson, and requiring the pot would be
-  // requiring tournament accuracy of someone on their third board.
+  // It used to be judged on the HAND-OFF — the 4 merely reaching the 2 — while
+  // its card named a corner and its felt lit one. A player who bounced the 2
+  // off two walls and never came near the pocket was told they had done it,
+  // and said so. The board was rebuilt rather than reworded: a lesson whose
+  // success is "you touched it" sits inside a tutorial where every other
+  // success is a ball going down, and no wording fixes that.
   //
-  // The board went on lighting a corner and naming it anyway, which made it a
-  // liar: a player who bounced the 2 off two walls and never came near the
-  // pocket was told they had done it. Reported exactly that way. A LIT POCKET
-  // IS A PROMISE — the game uses it to mean "put a ball in here" everywhere
-  // else — so a board that does not check one does not get to make it.
-  //
-  // Twenty re-authored layouts were measured looking for one where the pot IS
-  // worth requiring; the widest window any of them offered was 2 degrees, at
-  // the floor `npm run verify` calls unplayable, and the ball reached five
-  // different pockets across the run. There is no honest version of the claim,
-  // so the claim goes.
+  // Requiring the pot was rejected once on a search of twenty layouts that
+  // found nothing wider than two degrees. Twenty layouts is not a search. A
+  // real one (tools/find-board.mjs, 320 placements) confirmed the verdict for
+  // combinations played the LONG way — a pot's tolerance falls off as one over
+  // the distance the object ball travels, and every one of those layouts had
+  // the second ball far from a pocket — and then found six degrees, three
+  // times the playable floor, the moment the second ball was parked a ball's
+  // width off the mouth. That is the board now, and the pot is required.
   'cut-combo': {
-    say: 'Hit the <b>4</b> off to one side, so it turns and knocks the <b>2</b>',
+    say: 'The <b>2</b> is sitting on the side pocket. Send the <b>4</b> into it',
     spot: 'rack',
-    handoff: true,
-    cheer: 'The 4 found the 2 — one ball can aim another',
-    scold: 'You hit the <b>4</b> straight on, so it went straight ahead. Hit its left side, so it turns into the 2',
+    // A pot of the 2 ONLY off the 4 — a direct hit on the 2 is a different
+    // shot and not the one being taught.
+    pot: (p) => (p.ball.number === 2 ? 'score' : null),
+    needsPass: true,
+    route: { number: 2, slot: 'mr' },
+    cheer: 'In — and you never touched the 2 yourself',
+    scold: 'The <b>2</b> has to be knocked in by the <b>4</b>, not by your own ball. Start the shot on the 4',
     whiff: 'You missed the 4 completely — the shot has to start on that ball',
-    nudge: 'Put your white circle on the <em>left side</em> of the <b>4</b>, so the 4 travels right into the 2.'
+    nudge: 'Line your ball up with the <b>4</b> and the <b>2</b> behind it, then follow the road on the felt.'
   },
 
   /* ================================================================== *
@@ -158,31 +171,46 @@ const RULES = {
     say: 'A barrier blocks the <b>3</b>. <em>Bounce</em> off the bottom wall to reach it',
     spot: 'first',
     bankThenHit: true,
+    route: { reach: 3 },
     cheer: 'Off the wall and onto the 3 — and a bounce is worth more',
     scold: 'The barrier stopped your ball. Shoot down into the bottom wall instead, and bounce around it',
     whiff: 'You did not reach the <b>3</b>. Aim down into the bottom wall, and bounce around the barrier',
     nudge: 'Aim <em>down</em> into the bottom wall. The dashed line swings back up to the <b>3</b>.'
   },
 
-  // TWO POCKETS, LIT THROUGHOUT. The plan spans the strokes rather than living
-  // inside one of them: the 1 and the 4 belong to the side pocket, the 2 to the
-  // corner, and three shots is not enough to take them one at a time carelessly.
+  // FOUR BALLS, FIVE STROKES, AND EVERY STROKE COUNTS.
   //
-  // The single stroke that drops one in the side AND one in the corner was
-  // searched for and does not exist — after the first cut the cue has lost most
-  // of its speed and its departure is nearly fixed, so reaching a second ball
-  // twelve units away at the right angle is a coincidence, not a plan. The
-  // board points at the first shot of the route instead, and keeps both goals
-  // on screen.
+  // It was four balls in THREE strokes, and only a stroke that pocketed
+  // something was charged. Four balls in three strokes is arithmetic: one
+  // stroke has to drop two, and the board was asking a beginner to find a
+  // double they could not see. Reported twice — "I still can't figure out how
+  // to complete lesson 5".
+  //
+  // So a double was measured, properly, with tools/find-board.mjs: three
+  // different families, about 550 placements, every heading at two powers
+  // through the real physics. Two balls in a line at a pocket, two balls in a
+  // line at the cue, two balls hanging on the mouth together. The widest
+  // window any of them offered was TWO DEGREES — the floor `npm run verify`
+  // calls unplayable. It is not a matter of arranging the rack better: a
+  // knocked ball carries its own drag, so by the time the first ball has taken
+  // the impulse there is not enough left in the second to reach anything.
+  //
+  // A board cannot ask for a shot the physics does not hand out. So the budget
+  // stopped needing one: five strokes for four balls, and a stroke is spent
+  // whether or not it pockets. That binds — two wasted strokes and the attempt
+  // is over — without requiring anything but four ordinary pots in a row, and
+  // it teaches the thing the board was always about, which is not wasting a
+  // stroke. A scratch is still given back, because a foul is not a miss.
   budget: {
-    say: 'Clear all four in <em>three shots</em>. Start with the <b>1</b> into the <b>4</b>, into the side pocket',
+    say: 'Clear all four in <em>five strokes</em>. Every stroke counts, hit or miss',
     spot: 'rack',
     clearRack: true,
-    shots: 3,
+    shots: 5,
+    chargesMisses: true,
     cheer: 'Rack cleared',
-    scold: 'Nothing pocketed, so that shot was free. Go again',
+    scold: 'Nothing pocketed — and that still cost you a stroke',
     whiff: 'You touched nothing — start the shot on a ball',
-    nudge: 'Aim <em>through</em> the <b>1</b> at the <b>4</b>. The dashed route on the felt is the shot.'
+    nudge: 'Take the ball the road on the felt is drawn to. It is the shortest pot on the table.'
   },
 
   // THE RED SITS ON THE LAZY LINE. The obvious route to the 2 runs straight
@@ -199,6 +227,7 @@ const RULES = {
     spot: 'rack',
     needsGreen: true,
     pot: (p) => (p.tookGreen ? 'score' : 'reject'),
+    route: { number: 2, slot: 'ml' },
     cheer: 'Past the red, through the green, and in',
     scold: 'Pocketed, but your line went under the <em>green</em>. Aim a touch higher and collect it on the way in',
     whiff: 'You missed the <b>2</b> completely. Steer your line between the red and the green',
@@ -582,9 +611,10 @@ export class Tutorial {
     this.player.respawn(0, this.spawnZ());
     this.player.focus = this.player.focusMax;
     this._restAim();
-    // The strip is sized against the table, so it is sized once the table for
-    // THIS board exists rather than against whatever was standing before it.
-    this._layoutCoach(true);
+    // NOT re-solved here. Every board in the tutorial is the same table with a
+    // different rack on it, so the strip is the same strip — and re-solving it
+    // per board meant the felt shifted under the player between lessons. It is
+    // solved once, when the tutorial starts, and on a real viewport change.
     this._showRoute();
   }
 
@@ -628,22 +658,14 @@ export class Tutorial {
   _routeTarget() {
     const lesson = this.lesson;
     if (!lesson) return null;
-    // THE BOARD'S OWN OPENING SHOT, while the cue is still on the spawn it was
-    // measured from. It is the shot the card's sentence describes, so drawing
-    // anything else would put the line and the words in disagreement.
-    if (this._strokes === 0 && Number.isFinite(lesson.solve) && this._atSpawn()) {
-      return { deg: lesson.solve };
-    }
-    const call = lesson.call;
-    const slots = call == null ? [] : Array.isArray(call) ? call : [call];
     // On a rack-clearing board the guide has already chosen which ball is next
     // and lit its pocket; the route follows that choice rather than making a
     // second one the sentence does not mention.
     if (lesson.clearRack) {
       const next = this._guideNext();
-      return next ? { number: Number(next.number), slot: next.slot } : {};
+      return next ? next.want : null;
     }
-    return slots.length === 1 ? { slot: slots[0] } : {};
+    return lesson.route || null;
   }
 
   /**
@@ -683,32 +705,51 @@ export class Tutorial {
     const band = this.el.getBoundingClientRect();
     const bottom = band.height ? band.bottom - origin : skipBottom + 53;
     this._bandFloor = bottom + 2;
-    this._reserve = Math.round(bottom + 9);
-    this.setBandReserve?.(this._reserve, now);
+    if (!this.setBandReserve) return;
+    this._reserve = this._solveReserve(bottom + 9);
+    this.setBandReserve(this._reserve, now);
   }
 
   /**
-   * KEEP THE STRIP CLEAR, EVERY FRAME, BY WATCHING WHAT IS ACTUALLY DRAWN.
+   * SOLVE THE STRIP ONCE, EXACTLY, AND THEN LEAVE IT ALONE.
    *
    * The reserve is measured against the ARENA, and the arena is not the last
-   * thing the table draws: the far rail stands a pocket's radius above the
-   * pocket centres, so a strip sized to the arena left the rail poking into
-   * the band by about eleven pixels.
+   * thing the table draws: the far rail stands above the pocket centres, so a
+   * strip sized to the arena leaves the rail poking into the band. Buying the
+   * difference moves the camera, which moves the rail — the correction has to
+   * account for its own effect.
    *
-   * Correcting it inside `_layoutCoach` looked right and was not — the strip
-   * is sized while a board is being built, and what the table draws settles
-   * a frame or two later, so the correction was computed against geometry
-   * that was about to change. A frame-by-frame guard cannot be wrong about
-   * the order things happen in: it reads what is on screen now, and buys the
-   * difference if there is one. Buying moves the camera, which moves the
-   * rail, so it converges over a few frames rather than in one step.
+   * It used to do that by nudging a pixel at a time, every frame, until the
+   * rail cleared. That is a resize per frame, and the table visibly crept down
+   * at the start of every board. Reported as the table animating on every step
+   * of the tutorial, which is exactly what it was.
+   *
+   * The relationship is LINEAR — the arena is mapped into the stage by a
+   * single scale — so two probes give the line and the line gives the answer.
+   * Measure where the table's top lands at two different reserves, take the
+   * slope, solve for the reserve that puts it exactly where the band ends.
+   * One computation, one resize, and the table then holds still for the whole
+   * tutorial.
+   *
+   * @param {number} floor  the screen y the table must start at or below
+   * @returns {number} the reserve to hold
    */
-  _holdBandClear() {
-    if (!this.active || !this._bandFloor || !this.setBandReserve) return;
-    const top = this._tableTop();
-    if (top == null || top >= this._bandFloor) return;
-    this._reserve = Math.round(this._reserve + Math.max(1, this._bandFloor - top));
-    this.setBandReserve(this._reserve, true);
+  _solveReserve(floor) {
+    const probe = (r) => {
+      this.setBandReserve(r, true);
+      return this._tableTop();
+    };
+    const r0 = Math.round(floor);
+    const t0 = probe(r0);
+    if (t0 == null) return r0;
+    const r1 = r0 + 40;
+    const t1 = probe(r1);
+    if (t1 == null || Math.abs(t1 - t0) < 1e-3) return r0;
+    const slope = (t1 - t0) / (r1 - r0);
+    const want = r0 + (floor - t0) / slope;
+    // A cap, because a stage that is nearly all strip is worse than a rail
+    // touching the band, and a bad probe must not be able to ask for one.
+    return Math.max(r0, Math.min(Math.round(want), Math.round(this.layer.clientHeight * 0.4)));
   }
 
   /**
@@ -757,6 +798,23 @@ export class Tutorial {
     const pockets = this.rooms?.table?.pockets;
     const rack = this.rooms.scriptedEnemies.filter((e) => e.alive && e.number > 0);
     if (!pockets || !pockets.length || !rack.length) return null;
+    const board = this.lesson?.call;
+    const base = board == null ? [] : Array.isArray(board) ? board : [board];
+    const light = (extra) =>
+      this.game.callPocket?.([...new Set([...base, ...extra.filter(Boolean)])]);
+
+    // NO DOUBLE IS LOOKED FOR, because there is no double to find. Three
+    // families of placement, about 550 layouts, every heading at two powers
+    // through the real physics (tools/find-board.mjs): the widest window for
+    // two balls in one stroke was two degrees anywhere on the table. A knocked
+    // ball carries its own drag, so once the first ball has taken the impulse
+    // there is nothing left in the second. The board's budget was changed to
+    // stop needing one; this is where the code that hunted for one used to be.
+
+    // Otherwise the easiest ball left, which is the shortest ball-to-pocket
+    // run on the table — also the widest aim window, since the angular
+    // tolerance of a pot falls off as one over that distance. So the advice
+    // the board gives is the advice the geometry supports, not a preference.
     let best = null;
     for (const ball of rack) {
       for (const pocket of pockets) {
@@ -768,17 +826,27 @@ export class Tutorial {
     // Keep the board's own called pockets lit and ADD the guided one. On a
     // board whose whole point is that two pockets are in play, replacing them
     // with a single suggestion throws the plan away to give a hint.
-    const board = this.lesson?.call;
-    const base = board == null ? [] : Array.isArray(board) ? board : [board];
-    this.game.callPocket?.([...new Set([...base, best.pocket.slot])]);
+    light([best.pocket.slot]);
     // The ball AND the pocket. A hint that names only the ball leaves the
     // player holding half an instruction on the one board that asks them to
     // plan three shots ahead.
     return {
+      want: { number: best.ball.number, slot: best.pocket.slot },
       number: String(best.ball.number),
       slot: best.pocket.slot,
       pocket: POCKET_NAME[best.pocket.slot] || 'lit pocket'
     };
+  }
+
+  /**
+   * The shot `_guideNext` chose, as a noun phrase.
+   *
+   * A phrase rather than a sentence, because it is used after three different
+   * verbs — "Now hit…", "Try…", "Scratched… Try…" — and one of them read
+   * "Try hit the 6 into the side pocket" when this carried its own verb.
+   */
+  _nextLine(next) {
+    return next ? `the <b>${next.number}</b> into the ${next.pocket}` : null;
   }
 
   /**
@@ -1171,7 +1239,6 @@ export class Tutorial {
     this._updateHand();
     this._updateTags();
     this._updateDemo(rawDt);
-    this._holdBandClear();
 
     if (this._awaitingNext) return;
 
@@ -1440,15 +1507,13 @@ export class Tutorial {
     // unanswered" gate at the end.
     let counted = false;
 
-    // THE HAND-OFF. Cue reaches ball A, A reaches ball B. This is the whole
-    // content of a combination, and it is judged on its own because the pot at
-    // the end of an ANGLED one measures at a degree and a half — the shot is
-    // real, but requiring it would be requiring tournament accuracy of someone
-    // on their fifth board. Dropping it as well is a bonus the cheer notices.
-    if (stillIts && lesson.handoff) {
-      counted = true;
-      if (this._passes >= 1) this._score();
-      else this._rejected = true;
+    // A POT THAT HAS TO COME OFF ANOTHER BALL. The plant board's pot rule
+    // already refuses every ball but the 2; this refuses a 2 the cue hit
+    // itself, which is a different shot from the one being taught and an
+    // easier one.
+    if (stillIts && lesson.needsPass && this._pendingScore && this._passes < 1) {
+      this._pendingScore = null;
+      this._rejected = true;
     }
 
     // THE BANK. Same reasoning: a banked pot measures at one degree. Using the
@@ -1473,54 +1538,47 @@ export class Tutorial {
         // way, still spent a shot, and still printed "Down. Now hit the …"
         // — which the scratch correction then overwrote a line later. The
         // stroke is about to be given back below, so it says nothing here.
-      } else if (this._pots > 0) {
+      } else {
         // COACH THE NEXT SHOT, NOT THE SCOREBOARD.
         //
         // This used to read "3 left · 2 shots of your three · go for the 4",
         // which is an inventory. The one board that asks the player to plan
-        // three strokes ahead is the one board where a running total is the
-        // least useful thing to say: what they need is the same kind of
-        // sentence the board opened with, again, for the shot in front of
-        // them — which ball, and which pocket.
+        // ahead is the one board where a running total is the least useful
+        // thing to say: what they need is the same kind of sentence the board
+        // opened with, again, for the shot in front of them — which ball, and
+        // which pocket.
         //
-        // Only a stroke that PUT SOMETHING DOWN spends a shot. A tutorial that
-        // charges for misses turns its own arithmetic into a trap: the player
-        // runs out of budget while still learning the gesture the budget is
-        // supposed to be about.
-        this._strokes += 1;
+        // EVERY STROKE COSTS ONE, hit or miss, where the board says so.
+        // Charging only the pots was right while the board asked for four
+        // balls in three strokes, because that arithmetic needed a double and
+        // a double turned out to be a two-degree shot wherever the balls were
+        // put. With five strokes for four balls there is slack in the budget,
+        // and a budget nothing can spend is not a budget.
+        this._strokes += lesson.chargesMisses || this._pots > 0 ? 1 : 0;
         const s = lesson.shots - this._strokes;
         const next = this._guideNext();
+        const budget = `${s} stroke${s === 1 ? '' : 's'} left`;
         if (s > 0) {
-          const budget = `${s} shot${s === 1 ? '' : 's'} left`;
+          const did = this._pots > 0 ? `${this._pottedNames()}.` : 'Nothing pocketed.';
           this._setStatus(
-            next
-              ? `${this._pottedNames()}. Now hit the <b>${next.number}</b> into the ${next.pocket} — ${budget}`
-              : `${this._pottedNames()} — ${budget}`,
-            'good'
+            next ? `${did} Now hit ${this._nextLine(next)} — ${budget}` : `${did} ${budget}`,
+            this._pots > 0 ? 'good' : 'bad'
           );
         } else {
-          // OUT OF SHOTS, AND THE BOARD HAD NOTHING TO SAY ABOUT IT. The
+          // OUT OF STROKES, AND THE BOARD HAD NOTHING TO SAY ABOUT IT. The
           // budget simply ran past zero: the card went on counting down into
           // negative numbers while the player kept shooting at a table that
-          // could no longer be cleared in three. Running out is the one way
-          // this board can be got wrong, so it is stated, and the attempt
-          // starts again from the beginning rather than from wherever the
-          // impossible position happened to leave off.
+          // could no longer be cleared. Running out is the one way this board
+          // can be got wrong, so it is stated, and the attempt starts again
+          // from the beginning rather than from wherever the impossible
+          // position happened to leave off.
           this._restart = true;
           this._setStatus(
-            `You are out of shots with ${left === 1 ? 'a ball' : `${left} balls`} still up. ` +
+            `You are out of strokes with ${left === 1 ? 'a ball' : `${left} balls`} still up. ` +
               `Starting over — the whole rack in ${lesson.shots}`,
             'bad'
           );
         }
-      } else {
-        const next = this._guideNext();
-        this._setStatus(
-          next
-            ? `Nothing pocketed, so that shot was free. Try the <b>${next.number}</b> into the ${next.pocket}`
-            : 'Nothing pocketed, so that shot was free. Go again',
-          'bad'
-        );
       }
     }
 
@@ -1784,7 +1842,7 @@ export class Tutorial {
     const opener = 'Scratched — your own ball went in the pocket';
     const next = multi ? this._guideNext() : null;
     return next
-      ? `${opener}. Try the <b>${next.number}</b> into the ${next.pocket}, but hit it off-centre`
+      ? `${opener}. Try ${this._nextLine(next)}, but hit it off-centre`
       : `${opener}. Hit the target ball off to one side, and yours rolls clear instead`;
   }
 

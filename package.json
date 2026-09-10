@@ -12,7 +12,8 @@
     "verify": "node tools/verify-boards.mjs",
     "palette": "node tools/check-palette.mjs",
     "coach": "node tools/check-coach.mjs",
-    "layout": "node tools/check-layout.mjs"
+    "layout": "node tools/check-layout.mjs",
+    "find-board": "node tools/find-board.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"

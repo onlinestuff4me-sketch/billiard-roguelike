@@ -2174,56 +2174,87 @@ function aimGhosts(prediction, cuePath, objectPath) {
  * wherever the player left it. This projects from where the cue is now.
  * ------------------------------------------------------------------ */
 
-const ROUTE_SLOTS = 5;
+/**
+ * A RIBBON, NOT A LINE.
+ *
+ * The route was dashed, and so is half of what the aim preview draws — two
+ * kinds of dash on the same felt, one a prediction of this shot and one a
+ * diagram of a different one. Reported as exactly that: hard to tell which
+ * lines were which.
+ *
+ * So the route stops being a line. It is a soft translucent band laid under
+ * everything, about half a ball wide — a road rather than a trajectory. It
+ * cannot be confused with a prediction because nothing else on the table has
+ * width, and it reads at a glance without competing with the crisp lines that
+ * answer "what does THIS shot do".
+ */
+const ROUTE_SLOTS = 4;
+const ROUTE_WIDTH = 0.5;
 const routeGroup = new THREE.Group();
 routeGroup.renderOrder = -1;
 scene.add(routeGroup);
 const routeSlots = [];
 for (let i = 0; i < ROUTE_SLOTS; i += 1) {
-  const positions = new Float32Array(96 * 6);
+  // Two triangles per segment; a route is a handful of segments even when it
+  // banks, so this is sized once and never grown.
+  const positions = new Float32Array(64 * 6 * 3);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setDrawRange(0, 0);
-  const mat = new THREE.LineDashedMaterial({
+  const mat = new THREE.MeshBasicMaterial({
     color: PALETTE.bone,
     transparent: true,
-    opacity: 0.38,
-    dashSize: 0.5,
-    gapSize: 0.42,
-    depthWrite: false
+    opacity: 0.16,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide
   });
-  const line = new THREE.LineSegments(geo, mat);
-  line.frustumCulled = false;
-  line.visible = false;
-  routeGroup.add(line);
-  routeSlots.push({ positions, geo, mat, line });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false;
+  mesh.visible = false;
+  routeGroup.add(mesh);
+  routeSlots.push({ positions, geo, mat, mesh });
 }
 
 /** Put a solved route on the felt, or take it off with no argument. */
 function drawCoachRoute(list) {
-  const y = TRAJECTORY.height ?? 0.12;
+  const y = (TRAJECTORY.height ?? 0.12) - 0.02;
   for (let i = 0; i < routeSlots.length; i += 1) {
     const slot = routeSlots[i];
     const item = list?.[i];
     if (!item?.segs?.length) {
       slot.geo.setDrawRange(0, 0);
-      slot.line.visible = false;
+      slot.mesh.visible = false;
       continue;
     }
-    let n = 0;
+    let v = 0;
+    const half = (item.width ?? ROUTE_WIDTH) / 2;
     for (const seg of item.segs) {
-      if ((n + 1) * 6 > slot.positions.length) break;
-      slot.positions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
-      n += 1;
+      const dx = seg.bx - seg.ax;
+      const dz = seg.bz - seg.az;
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-5 || (v + 6) * 3 > slot.positions.length) continue;
+      // Perpendicular in the felt plane, which is the only plane there is.
+      const nx = (-dz / len) * half;
+      const nz = (dx / len) * half;
+      const quad = [
+        [seg.ax + nx, seg.az + nz],
+        [seg.bx + nx, seg.bz + nz],
+        [seg.bx - nx, seg.bz - nz],
+        [seg.ax + nx, seg.az + nz],
+        [seg.bx - nx, seg.bz - nz],
+        [seg.ax - nx, seg.az - nz]
+      ];
+      for (const [px, pz] of quad) {
+        slot.positions.set([px, y, pz], v * 3);
+        v += 1;
+      }
     }
     slot.mat.color.setHex(item.ink ?? PALETTE.bone);
-    slot.mat.opacity = item.opacity ?? 0.34;
-    slot.geo.setDrawRange(0, n * 2);
+    slot.mat.opacity = item.opacity ?? 0.16;
+    slot.geo.setDrawRange(0, v);
     slot.geo.attributes.position.needsUpdate = true;
-    slot.line.visible = n > 0;
-    // Dash spacing is computed from vertex distances, so it has to be redone
-    // whenever the vertices move. Skipped, the dashes stretch into solid line.
-    slot.line.computeLineDistances();
+    slot.mesh.visible = v > 0;
   }
 }
 
@@ -2252,90 +2283,131 @@ function projectShot(dir, power) {
 }
 
 /**
- * Search for a shot that drops `number` in `slot`, and hand back the lines.
+ * THE RULE FOR CHOOSING WHICH SHOT TO COACH.
  *
- * Coarse on purpose: the sweep is a diagram-finder, not the verifier. It runs
- * on entering a board and after each stroke resolves, never per frame.
+ * The route used to be the projection of the board's stored `solve` heading,
+ * with every leg it produced drawn — which put lines on the felt for balls the
+ * card was not talking about, running off the table past the shot the player
+ * was being asked to play. It read as wrong because it was answering a
+ * different question.
  *
- * @param {{number?: number, slot?: string}} want  the ball and pocket to aim at
- * @returns {Array|null} route lines, or null if nothing was found
+ * The rule now, stated once and applied to every board:
+ *
+ *   1. THE GOAL comes from the board — a ball into a named pocket, or a ball
+ *      to be reached. It is the goal the card's sentence describes.
+ *   2. EVERY HEADING is projected, at two powers, and marked as achieving the
+ *      goal or not.
+ *   3. THE SHOT IS THE MIDDLE OF THE WIDEST CONTIGUOUS RUN of headings that
+ *      achieve it. Not the first that works and not the stored one: the middle
+ *      of the widest window is the shot with the most room for error either
+ *      side, which is the shot worth teaching.
+ *   4. ONLY THE GOAL IS DRAWN — the cue's path to its first contact, and the
+ *      target ball's path to its pocket. What the other balls do afterwards is
+ *      true and irrelevant, and drawing it is what made the picture unreadable.
+ *
+ * @param {{number?: number, slot?: string, reach?: number}} want
+ * @returns {Array|null} route bands, or null if the goal cannot be reached
  */
 function solveCoachRoute(want = {}) {
   const pockets = rooms.table.pockets;
   if (!pockets?.length) return null;
-  // A HEADING THE BOARD ALREADY KNOWS BEATS ONE THIS FUNCTION FINDS.
-  //
-  // Every board carries `solve`: a potting heading measured through the real
-  // physics by npm run verify, and the heading its opening sentence was
-  // written about. Searching for a different one and drawing that instead
-  // would put a line on the felt disagreeing with the words above it — which
-  // is exactly what happened on the four-in-three board, where the sentence
-  // said to start on the 1 and the route sent the 1 to the other side of the
-  // table. It only applies from the spawn, because that is where it was
-  // measured from.
-  if (Number.isFinite(want.deg)) {
-    const th = (want.deg * Math.PI) / 180;
-    const dir = { x: Math.sin(th), z: -Math.cos(th) };
-    // The heading is measured; the POWER is not — verify sweeps three of them
-    // and reports the heading that worked at any one. So the route tries a
-    // spread and keeps the first that puts a ball down without losing the cue,
-    // falling back to the longest chain it saw. Fixing it at one power drew a
-    // line that stopped short of the pocket the card had just named.
-    let fallback = null;
-    for (const power of [0.55, 0.7, 0.85, 1]) {
-      const shot = projectShot(dir, power);
-      const lines = routeLines(shot);
-      if (!lines) continue;
-      const cueSegs = shot.cuePath?.segments?.length
-        ? shot.cuePath.segments
-        : shot.prediction?.segments;
-      const drops = shot.objectPath.some((leg) => pathPocket(leg.segs, pockets));
-      if (drops && !pathPocket(cueSegs, pockets)) return lines;
-      if (!fallback || lines.length > fallback.length) fallback = lines;
-    }
-    // A board whose measured heading projects to nothing at all — the bank,
-    // whose whole shot happens off a cushion — falls through to the search.
-    if (fallback) return fallback;
-  }
-  let best = null;
-  for (let deg = 0; deg < 360; deg += 1.5) {
+  if (want.number == null && want.reach == null) return null;
+
+  const STEP = 1.5;
+  const hits = [];
+  const shots = new Map();
+  for (let deg = 0; deg < 360; deg += STEP) {
     const th = (deg * Math.PI) / 180;
     const dir = { x: Math.sin(th), z: -Math.cos(th) };
-    for (const power of [0.7, 1]) {
+    for (const power of [0.65, 0.95]) {
       const shot = projectShot(dir, power);
       if (!shot.objectPath.length) continue;
-      // A route that loses the cue ball is not a route to recommend, whatever
-      // else it does.
-      const cueSegs = shot.cuePath?.segments?.length
+      // Losing the cue ball is never the shot to teach, whatever else it does.
+      // Losing the cue is judged on where it GOES after contact; the road is
+      // drawn along how it gets there.
+      const departure = shot.cuePath?.segments?.length
         ? shot.cuePath.segments
         : shot.prediction?.segments;
-      if (pathPocket(cueSegs, pockets)) continue;
-      for (const leg of shot.objectPath) {
-        const down = pathPocket(leg.segs, pockets);
-        if (!down) continue;
-        if (want.number != null && leg.ball?.number !== want.number) continue;
-        if (want.slot && down.slot !== want.slot) continue;
-        // Prefer the shot that arrives most squarely, which is also the one
-        // with the widest window either side of it.
-        const score = leg.segs.length;
-        if (!best || score < best.score) best = { score, shot, leg };
-      }
+      if (pathPocket(departure, pockets)) continue;
+      const found = goalLeg(shot, want, pockets);
+      if (found.at < 0) continue;
+      hits.push(deg);
+      shots.set(deg, { shot, at: found.at, plan: found.plan, approach: shot.prediction?.segments });
+      break;
     }
   }
-  return best ? routeLines(best.shot) : null;
+  if (!hits.length) return null;
+
+  // The widest contiguous run, and its middle.
+  let best = { from: hits[0], to: hits[0] };
+  let run = { from: hits[0], to: hits[0] };
+  for (let i = 1; i < hits.length; i += 1) {
+    if (hits[i] - hits[i - 1] <= STEP * 1.5) run.to = hits[i];
+    else {
+      if (run.to - run.from >= best.to - best.from) best = run;
+      run = { from: hits[i], to: hits[i] };
+    }
+  }
+  if (run.to - run.from >= best.to - best.from) best = run;
+  // A run that wraps past 360 is one run, not two — the last and the first.
+  const mid = hits.reduce(
+    (a, d) => (Math.abs(d - (best.from + best.to) / 2) < Math.abs(a - (best.from + best.to) / 2) ? d : a),
+    hits[0]
+  );
+
+  const picked = shots.get(mid);
+  if (!picked) return null;
+  const bands = [];
+  // THE LINE TO AIM ALONG, not the one the cue leaves on. Where your ball ends
+  // up after contact is what the live preview is for and what the ghost marks;
+  // the road is the half of the shot the player has to choose, which is the
+  // run from the cue to the ball it has to start on.
+  if (picked.approach?.length) {
+    bands.push({ segs: picked.approach, ink: PALETTE.player, opacity: 0.16, width: 0.4 });
+  }
+  // THE WHOLE CHAIN UP TO THE GOAL, and not one leg further. On a combination
+  // the interesting part is the middle — the ball that turns and passes the
+  // shot on — and stopping at the goal leg is what keeps the road a plan
+  // rather than a scribble: everything past it is true, irrelevant, and what
+  // made the first version of this unreadable.
+  for (let i = 0; i <= picked.at; i += 1) {
+    const leg = picked.shot.objectPath[i];
+    if (leg?.segs?.length) bands.push({ segs: leg.segs, ink: inkOf(leg.ball), opacity: 0.28 });
+  }
+  // WHAT THE ROAD SAYS, in the same object as the road. A board that coaches
+  // the shot in words and draws it on the felt has to take both from one
+  // search, or the two eventually describe different strokes — which is how a
+  // sentence naming one ball ended up over a line sending a different one
+  // somewhere else.
+  bands.plan = picked.plan;
+  return bands;
 }
 
-/** One projected shot, as the faint lines the felt shows. */
-function routeLines(shot) {
-  if (!shot?.objectPath?.length) return null;
-  const lines = [];
-  const cueSegs = shot.cuePath?.segments?.length ? shot.cuePath.segments : shot.prediction?.segments;
-  if (cueSegs?.length) lines.push({ segs: cueSegs, ink: PALETTE.player, opacity: 0.3 });
-  for (const leg of shot.objectPath) {
-    if (leg?.segs?.length) lines.push({ segs: leg.segs, ink: inkOf(leg.ball), opacity: 0.55 });
-    if (leg?.tail?.length) lines.push({ segs: leg.tail, ink: inkOf(leg.ball), opacity: 0.26 });
+/**
+ * The leg of this projection that achieves the goal, if any.
+ *
+ * @param {object} shot     a projection from projectShot
+ * @param {object} want     the goal — {number, slot} or {reach}
+ * @param {Array}  pockets
+ */
+function goalLeg(shot, want, pockets) {
+  const miss = { at: -1, plan: [] };
+  for (let i = 0; i < shot.objectPath.length; i += 1) {
+    const leg = shot.objectPath[i];
+    if (!leg?.segs?.length) continue;
+    if (want.reach != null) {
+      // "Reach this ball" boards: the shot has to move it, which is what a leg
+      // in the chain means.
+      if (leg.ball?.number === want.reach) return { at: i, plan: [{ number: want.reach }] };
+      continue;
+    }
+    if (leg.ball?.number !== want.number) continue;
+    const at = pathPocket(leg.segs, pockets);
+    if (!at) continue;
+    if (want.slot && at.slot !== want.slot) continue;
+    return { at: i, plan: [{ number: want.number, slot: at.slot }] };
   }
-  return lines.length ? lines : null;
+  return miss;
 }
 
 function refreshPrediction() {
@@ -2615,7 +2687,16 @@ function applyReserve() {
   // -z is screen-up: moving the camera up-world pushes the table down-screen.
   // NOT via lookAt — the orientation was set once at boot and re-aiming at a
   // moved centre would tilt a camera whose whole job is to be straight down.
-  camera.position.z = -(perPixel * reserve) / 2;
+  //
+  // AND THE ENGINE HAS TO BE TOLD, because it owns this position: it rewrites
+  // camera.position from its own `basePosition` every frame to apply shake.
+  // Setting only the camera meant the reserve was undone on the next frame —
+  // and the guard that watched for the table intruding then bought the same
+  // strip again, every frame, forever. That is what the table creeping down at
+  // the start of every board actually was.
+  const z = -(perPixel * reserve) / 2;
+  camera.position.z = z;
+  if (engine?.basePosition) engine.basePosition.z = z;
   camera.updateProjectionMatrix();
   layoutBand();
 }

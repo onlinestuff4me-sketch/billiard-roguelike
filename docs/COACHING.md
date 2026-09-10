@@ -200,6 +200,13 @@ band that reaches for a word the game has not taught.
 - **Say what is on screen.** Only words for things the player can see and has
   been shown: the white circle, the lit pocket, the 4. No jargon the game has
   not taught.
+- **A board may not ask for a shot the physics does not hand out.** The
+  four-in-three board needed one stroke to drop two, and a double was measured
+  at 2° — the floor `verify` calls unplayable — across three families and about
+  550 placements. It is not an arrangement problem: a knocked ball carries its
+  own drag, so once the first ball has taken the impulse there is nothing left
+  in the second. The board's budget changed instead. When a board and the
+  physics disagree, the board is wrong.
 - **A lit pocket is a promise.** The game lights a pocket to mean *put a ball
   in here*. A board that lights one and passes the player for something else is
   lying, and two did: the angled combination and the bank were both judged on
@@ -208,15 +215,35 @@ band that reaches for a word the game has not taught.
   lights a pocket now. `npm run coach` fails any board that lights one without
   checking it.
 - **Draw the answer, and leave it drawn.** A sentence can name a ball and a
-  pocket; it cannot carry a *line*, and on the four-in-three board it has to
-  carry three of them in order. So the route is on the felt the whole time —
-  faint, dashed, one colour per ball — showing where each ball travels on a
-  shot that works. Dashed and dim where the live aim preview is solid and
-  bright, so it reads as a diagram rather than as a prediction.
+  pocket; it cannot carry a *line*. So the route is on the felt the whole time,
+  as a soft translucent **road** about half a ball wide — not a line, because
+  the aim preview is already made of lines and two kinds of line on one table
+  is a picture nobody can read. Nothing else on the felt has width, so the road
+  cannot be mistaken for a prediction of the shot being aimed.
 
   It is **solved from where the cue is now**, not authored: after the first
   stroke of a multi-stroke board the cue is wherever the player left it, and a
   stored line would be describing a table that no longer exists.
+
+- **One rule picks the shot, for every board.** The route used to be the
+  projection of a stored heading with every leg it produced drawn — lines for
+  balls the card was not talking about, running off the table past the shot
+  being asked for. It read as wrong because it was answering a different
+  question. The rule now:
+
+  1. **The goal** comes from the board — `route: {number, slot}` for a ball
+     into a named pocket, `route: {reach}` for a ball that only has to be hit.
+     It is the goal the card's sentence describes, written once so the words
+     and the road cannot come from two different ideas of the shot.
+  2. **Every heading** is projected, at two powers, and marked as achieving it.
+  3. **The shot is the middle of the widest contiguous run** of headings that
+     do. Not the first that works and not the stored one: the middle of the
+     widest window is the shot with the most room for error either side, which
+     is the shot worth teaching.
+  4. **Only the goal is drawn** — the cue's run to its first contact and the
+     chain up to the goal leg, and not one leg further. What the other balls do
+     afterwards is true, irrelevant, and what made the first version of this
+     unreadable.
 - **A demonstrated shot has to be a shot that works.** Every board stores
   `solve`, a heading, and two things teach it as the answer — the cue swinging
   onto it after a miss, and the route. Two boards had drifted off theirs: the

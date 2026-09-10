@@ -122,7 +122,9 @@
 
   function passes(lesson, out) {
     if (out.scratched) return false;
-    if (lesson.handoff) return out.passes >= 1;
+    // A pot that has to come off another ball: the board's own `pot` rule
+    // decides which ball, and `needsPass` decides that the cue did not do it.
+    if (lesson.needsPass && out.passes < 1) return false;
     if (lesson.bankThenHit) return out.hits >= 1 && out.bounces >= 1;
     if (lesson.clearRack) return out.pots.length >= 1;
     if (typeof lesson.pot === 'function') {
@@ -249,8 +251,8 @@
       solve: L.solve ?? null,
       call: L.call,
       shots: L.shots ?? null,
-      gate: L.handoff
-        ? 'hand-off'
+      gate: L.needsPass
+        ? 'pot off a ball'
         : L.bankThenHit
           ? 'bank+strike'
           : L.clearRack

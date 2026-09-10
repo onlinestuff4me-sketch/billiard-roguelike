@@ -57,6 +57,10 @@
         touch-action: none;
         user-select: none;
         -webkit-user-select: none;
+        /* Mobile Safari inflates text in blocks it thinks are too narrow to
+           read, which silently undoes every size measured into a fixed box. */
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
       }
 
       /* Letterbox host: fills the viewport, centers the 9:16 stage. */
@@ -1091,6 +1095,15 @@
         align-items: center;
         gap: clamp(10px, 2.2vmin, 16px);
         width: min(88%, 340px);
+        /* SIZE THE TYPE FROM THIS BOX, NOT FROM THE VIEWPORT.
+           There is no webfont: `Rajdhani` is used if the device happens to
+           have it and otherwise the stack falls back to Helvetica or Arial,
+           which are a good deal wider. A viewport-relative clamp cannot know
+           that, so a title that fitted in the test fell off both edges of a
+           real phone, and the eyebrow — `white-space: nowrap` — ran off the
+           right of the screen. Container units make the question "does this
+           fit its box", which is the question. */
+        container-type: inline-size;
       }
       /* display:flex above beats the [hidden] attribute's default display:none,
          which silently stacked both panels. Restore it explicitly. */
@@ -1100,13 +1113,18 @@
       #ui-layer.attract { opacity: 0; }
       .menu-eyebrow {
         margin: 0;
-        font-size: clamp(9px, 2.4vmin, 12px);
+        /* 27 characters at this tracking is about 32 units of width, so a
+           thirty-second of the box is the size that always fits — with a
+           ceiling, so it does not grow silly on a tablet. */
+        font-size: min(3.1cqw, 12px);
         letter-spacing: 0.22em;
         text-transform: uppercase;
         color: var(--amber);
-        white-space: nowrap;
+        text-align: center;
+        max-width: 100%;
       }
       .menu-title {
+        max-width: 100%;
         margin: 0 0 clamp(8px, 2vmin, 18px);
         display: flex;
         flex-direction: column;
@@ -1114,7 +1132,10 @@
         text-align: center;
       }
       .menu-title .ln {
-        font-size: clamp(38px, 12vmin, 68px);
+        /* ROGUELIKE is nine characters; in the widest font this stack can fall
+           back to that is about seven ems, so a seventh of the box is the size
+           that fits whatever the device has installed. */
+        font-size: min(13.5cqw, 68px);
         font-weight: 800;
         letter-spacing: -0.02em;
         text-transform: uppercase;

@@ -48,25 +48,25 @@
     },
     {
       "id": "cut-combo",
-      "name": "On An Angle",
+      "name": "Two In A Row",
       "rest": {
-        "x": 0.731,
-        "z": -0.682
+        "x": 0.948,
+        "z": -0.317
       },
-      "solve": 50.75,
-      "call": null,
+      "solve": 71.5,
+      "call": "mr",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 6.0,
-          "z": -2.0,
+          "x": 6.37,
+          "z": 1.36,
           "number": 2
         },
         {
           "type": "solid",
-          "x": 4.0,
-          "z": 2.6,
+          "x": 2.6,
+          "z": 5.11,
           "number": 4
         }
       ]
@@ -100,7 +100,7 @@
     },
     {
       "id": "budget",
-      "name": "Four Balls, Three Shots",
+      "name": "Four Balls, Five Strokes",
       "rest": {
         "x": 0.438,
         "z": -0.899
