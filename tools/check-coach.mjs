@@ -190,6 +190,33 @@ try {
   }
 
   /* ------------------------------------------------------------------ *
+   * IT ONLY NAMES SHOTS THAT ARE THERE
+   *
+   * The guide used to pick the shortest ball-to-pocket run on the table and
+   * say it, which is the right ball to want and not necessarily one you can
+   * hit: from the wrong side of a ball parked on a pocket, every line to it is
+   * a scratch. An instruction that cannot be followed is worse than none,
+   * because the player spends their strokes believing it.
+   * ------------------------------------------------------------------ */
+  for (let stroke = 0; stroke < 3; stroke += 1) {
+    let deg = null;
+    for (let d = 0; d < 360 && deg === null; d += 6) {
+      const probe = await game.shot({ deg: d, power: 0.8 });
+      if (probe.hits && !probe.scratched) deg = d;
+    }
+    if (deg === null) break;
+    const played = await game.play({ deg, power: 0.8 });
+    const named = /hit the .*?(\d+).*? into the ([a-z ]+pocket|[a-z ]*corner)/i.exec(played.band);
+    if (!named) continue;
+    const route = await game.route();
+    check(
+      route?.plan?.number === Number(named[1]),
+      `the shot it names after stroke ${stroke + 1} is a shot that exists`,
+      `${JSON.stringify(played.band)} → route for ${JSON.stringify(route?.plan)}`
+    );
+  }
+
+  /* ------------------------------------------------------------------ *
    * RUNNING OUT OF SHOTS: stated, and the attempt starts again
    * ------------------------------------------------------------------ */
   // The budget used to simply run past zero — the card counted down into

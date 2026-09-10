@@ -129,6 +129,19 @@ pick-up, cyan is your ball), then the four with the widest worst-case
 separation. Choosing hexes by eye, or by distance between source values, is how
 this palette went wrong twice.
 
+## `npm run scoring`
+
+The only check here that needs no browser: `Rules.js` is plain arithmetic. It
+exists because of a report that banks after a ball went down were counting as
+extra multipliers.
+
+They were not being *paid* — points are paid at the instant a ball drops, at
+the multiplier standing then. But the stroke's ledger line reported the
+multiplier the ladder had **reached**, and the run's best-multiplier stat
+recorded it too. The number the player was shown was the number they were told
+they had been paid at, and it was wrong — which is the same as being paid
+wrongly, from where they sit.
+
 ## `npm run find-board -- <board>`
 
 `verify` answers *is this board solvable as authored*. This answers the
@@ -174,6 +187,7 @@ underneath it.
 - `check-palette.mjs` — the ball colours and contrasts, out of the framebuffer.
 - `check-layout.mjs` — nothing off the edge, at six viewports.
 - `find-board.mjs` — where should the balls go, searched rather than guessed.
+- `check-scoring.mjs` — the ladder pays for what happened (no browser needed).
 
 ## Beyond the tutorial
 

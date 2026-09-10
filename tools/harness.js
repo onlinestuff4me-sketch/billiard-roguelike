@@ -229,11 +229,12 @@
   window.__simRoute = () => {
     const t = g().tutorial;
     if (!t?.lesson) return null;
-    const want = t._routeTarget();
+    const want = t.lesson.clearRack ? {} : t.lesson.route;
     const lines = want ? t.solveCoachRoute(want) : null;
     return {
       id: t.lesson.id,
       want,
+      plan: lines?.plan ?? null,
       lines: (lines || []).length,
       // Which balls the route is about — the route and the sentence above it
       // have to be describing the same shot.

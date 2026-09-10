@@ -1487,6 +1487,8 @@ game.on = {
       engine.zoomPunch();
       engine.hitStop(TIME.hitStop * 0.7);
     }
+    // The advice is over the moment the shot is chosen.
+    retireCoachRoute();
     tutorial.notify('launch', {
       power: p,
       turned: game.lastTurn || 0,
@@ -2175,37 +2177,47 @@ function aimGhosts(prediction, cuePath, objectPath) {
  * ------------------------------------------------------------------ */
 
 /**
- * A RIBBON, NOT A LINE.
+ * CHEVRONS, NOT A LINE AND NOT A BAND.
  *
- * The route was dashed, and so is half of what the aim preview draws — two
- * kinds of dash on the same felt, one a prediction of this shot and one a
- * diagram of a different one. Reported as exactly that: hard to tell which
- * lines were which.
+ * The route was dashed first, and so is half of what the aim preview draws —
+ * two kinds of dash on one felt, one a prediction of this shot and one a
+ * diagram of a different one. Then it was a solid translucent band, which was
+ * unmistakable and too much: laid over the aim lines in additive blending it
+ * washed them out, and the player could no longer see the thing they were
+ * actually steering.
  *
- * So the route stops being a line. It is a soft translucent band laid under
- * everything, about half a ball wide — a road rather than a trajectory. It
- * cannot be confused with a prediction because nothing else on the table has
- * width, and it reads at a glance without competing with the crisp lines that
- * answer "what does THIS shot do".
+ * So the road is a row of small arrows marching along it, with a larger one at
+ * the end. It says the same thing the band said — this way, to here — using a
+ * fraction of the ink, and it says one thing the band could not: WHICH WAY.
+ * The march is the animation; the arrowhead is the destination. And because it
+ * is mostly empty felt, the crisp lines of the live preview read straight
+ * through it.
+ *
+ * It fades out over a third of a second the moment a stroke is fired. The road
+ * is advice about a shot you are choosing; once it is chosen the advice is
+ * over, and leaving it up puts a diagram of a shot that has already happened
+ * across the shot that is happening.
  */
 const ROUTE_SLOTS = 4;
-const ROUTE_WIDTH = 0.5;
+/** World units between chevrons, and how fast they march along the path. */
+const ROUTE_SPACING = 0.8;
+const ROUTE_MARCH = 1.35;
 const routeGroup = new THREE.Group();
 routeGroup.renderOrder = -1;
 scene.add(routeGroup);
 const routeSlots = [];
 for (let i = 0; i < ROUTE_SLOTS; i += 1) {
-  // Two triangles per segment; a route is a handful of segments even when it
-  // banks, so this is sized once and never grown.
-  const positions = new Float32Array(64 * 6 * 3);
+  const positions = new Float32Array(96 * 3 * 3);
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setDrawRange(0, 0);
   const mat = new THREE.MeshBasicMaterial({
     color: PALETTE.bone,
     transparent: true,
-    opacity: 0.16,
-    blending: THREE.AdditiveBlending,
+    opacity: 0.5,
+    // NOT additive. Additive is what made the band drown the aim lines: it adds
+    // its own light to whatever is under it regardless of draw order, so the
+    // brighter the thing beneath, the more it was washed out.
     depthWrite: false,
     side: THREE.DoubleSide
   });
@@ -2216,42 +2228,94 @@ for (let i = 0; i < ROUTE_SLOTS; i += 1) {
   routeSlots.push({ positions, geo, mat, mesh });
 }
 
-/** Put a solved route on the felt, or take it off with no argument. */
+/** The route currently being shown, and how far through its march it is. */
+let routeBands = null;
+let routePhase = 0;
+/** 1 while the route is advice; falls to 0 once the stroke is under way. */
+let routeFade = 1;
+
+/** Hand the felt a solved route, or take it off with no argument. */
 function drawCoachRoute(list) {
+  routeBands = list?.length ? list : null;
+  if (routeBands) routeFade = 1;
+  paintCoachRoute();
+}
+
+/** Fade the road out — the advice is over the moment the shot is taken. */
+function retireCoachRoute() {
+  if (routeBands) routeFade = Math.max(routeFade, 0.999);
+  routeBands = routeBands && routeFade > 0 ? routeBands : null;
+  routeFade = routeBands ? routeFade : 0;
+  routeRetiring = true;
+}
+let routeRetiring = false;
+
+function updateCoachRoute(dt) {
+  if (!routeBands) return;
+  routePhase = (routePhase + dt * ROUTE_MARCH) % ROUTE_SPACING;
+  if (routeRetiring) {
+    routeFade -= dt / 0.33;
+    if (routeFade <= 0) {
+      routeFade = 0;
+      routeBands = null;
+      routeRetiring = false;
+      paintCoachRoute();
+      return;
+    }
+  }
+  paintCoachRoute();
+}
+
+/** Walk each band's polyline and drop an arrow every ROUTE_SPACING units. */
+function paintCoachRoute() {
   const y = (TRAJECTORY.height ?? 0.12) - 0.02;
   for (let i = 0; i < routeSlots.length; i += 1) {
     const slot = routeSlots[i];
-    const item = list?.[i];
-    if (!item?.segs?.length) {
+    const band = routeBands?.[i];
+    if (!band?.segs?.length || routeFade <= 0) {
       slot.geo.setDrawRange(0, 0);
       slot.mesh.visible = false;
       continue;
     }
     let v = 0;
-    const half = (item.width ?? ROUTE_WIDTH) / 2;
-    for (const seg of item.segs) {
+    const put = (px, pz, dx, dz, len, wide) => {
+      if ((v + 3) * 3 > slot.positions.length) return;
+      const nx = -dz;
+      const nz = dx;
+      slot.positions.set(
+        [
+          px + dx * len, y, pz + dz * len,
+          px - dx * len * 0.35 + nx * wide, y, pz - dz * len * 0.35 + nz * wide,
+          px - dx * len * 0.35 - nx * wide, y, pz - dz * len * 0.35 - nz * wide
+        ],
+        v * 3
+      );
+      v += 3;
+    };
+
+    const size = band.size ?? 1;
+    let carried = ROUTE_SPACING - routePhase;
+    let last = null;
+    for (const seg of band.segs) {
       const dx = seg.bx - seg.ax;
       const dz = seg.bz - seg.az;
       const len = Math.hypot(dx, dz);
-      if (len < 1e-5 || (v + 6) * 3 > slot.positions.length) continue;
-      // Perpendicular in the felt plane, which is the only plane there is.
-      const nx = (-dz / len) * half;
-      const nz = (dx / len) * half;
-      const quad = [
-        [seg.ax + nx, seg.az + nz],
-        [seg.bx + nx, seg.bz + nz],
-        [seg.bx - nx, seg.bz - nz],
-        [seg.ax + nx, seg.az + nz],
-        [seg.bx - nx, seg.bz - nz],
-        [seg.ax - nx, seg.az - nz]
-      ];
-      for (const [px, pz] of quad) {
-        slot.positions.set([px, y, pz], v * 3);
-        v += 1;
+      if (len < 1e-5) continue;
+      const ux = dx / len;
+      const uz = dz / len;
+      let at = carried;
+      while (at <= len) {
+        put(seg.ax + ux * at, seg.az + uz * at, ux, uz, 0.32 * size, 0.21 * size);
+        at += ROUTE_SPACING;
       }
+      carried = at - len;
+      last = { x: seg.bx, z: seg.bz, ux, uz };
     }
-    slot.mat.color.setHex(item.ink ?? PALETTE.bone);
-    slot.mat.opacity = item.opacity ?? 0.16;
+    // THE POINTER AT THE END. A row of arrows says which way; this says where.
+    if (last) put(last.x, last.z, last.ux, last.uz, 0.58 * size, 0.38 * size);
+
+    slot.mat.color.setHex(band.ink ?? PALETTE.bone);
+    slot.mat.opacity = (band.opacity ?? 0.5) * routeFade;
     slot.geo.setDrawRange(0, v);
     slot.geo.attributes.position.needsUpdate = true;
     slot.mesh.visible = v > 0;
@@ -2311,18 +2375,21 @@ function projectShot(dir, power) {
 function solveCoachRoute(want = {}) {
   const pockets = rooms.table.pockets;
   if (!pockets?.length) return null;
-  if (want.number == null && want.reach == null) return null;
 
   const STEP = 1.5;
-  const hits = [];
-  const shots = new Map();
+  // ONE SWEEP, GROUPED BY WHAT IT ACHIEVES. Asking "can this particular ball
+  // reach that particular pocket" one candidate at a time is the same sweep
+  // over and over; sweeping once and filing each heading under the goal it
+  // achieves answers every candidate at the price of one — which is what makes
+  // it affordable for a board to ask "what CAN be done from here" before it
+  // opens its mouth.
+  const goals = new Map();
   for (let deg = 0; deg < 360; deg += STEP) {
     const th = (deg * Math.PI) / 180;
     const dir = { x: Math.sin(th), z: -Math.cos(th) };
     for (const power of [0.65, 0.95]) {
       const shot = projectShot(dir, power);
       if (!shot.objectPath.length) continue;
-      // Losing the cue ball is never the shot to teach, whatever else it does.
       // Losing the cue is judged on where it GOES after contact; the road is
       // drawn along how it gets there.
       const departure = shot.cuePath?.segments?.length
@@ -2331,39 +2398,32 @@ function solveCoachRoute(want = {}) {
       if (pathPocket(departure, pockets)) continue;
       const found = goalLeg(shot, want, pockets);
       if (found.at < 0) continue;
-      hits.push(deg);
-      shots.set(deg, { shot, at: found.at, plan: found.plan, approach: shot.prediction?.segments });
+      const key = `${found.number}|${found.slot ?? ''}`;
+      let goal = goals.get(key);
+      if (!goal) {
+        goal = { hits: [], shots: new Map(), number: found.number, slot: found.slot };
+        goals.set(key, goal);
+      }
+      goal.hits.push(deg);
+      goal.shots.set(deg, { shot, at: found.at, approach: shot.prediction?.segments });
       break;
     }
   }
-  if (!hits.length) return null;
+  if (!goals.size) return null;
 
-  // The widest contiguous run, and its middle.
-  let best = { from: hits[0], to: hits[0] };
-  let run = { from: hits[0], to: hits[0] };
-  for (let i = 1; i < hits.length; i += 1) {
-    if (hits[i] - hits[i - 1] <= STEP * 1.5) run.to = hits[i];
-    else {
-      if (run.to - run.from >= best.to - best.from) best = run;
-      run = { from: hits[i], to: hits[i] };
-    }
-  }
-  if (run.to - run.from >= best.to - best.from) best = run;
-  // A run that wraps past 360 is one run, not two — the last and the first.
-  const mid = hits.reduce(
-    (a, d) => (Math.abs(d - (best.from + best.to) / 2) < Math.abs(a - (best.from + best.to) / 2) ? d : a),
-    hits[0]
-  );
-
-  const picked = shots.get(mid);
+  const chosen = bestGoal([...goals.values()], want);
+  if (!chosen) return null;
+  const mid = widestMiddle(chosen.hits, STEP);
+  const picked = chosen.shots.get(mid);
   if (!picked) return null;
+
   const bands = [];
   // THE LINE TO AIM ALONG, not the one the cue leaves on. Where your ball ends
   // up after contact is what the live preview is for and what the ghost marks;
   // the road is the half of the shot the player has to choose, which is the
   // run from the cue to the ball it has to start on.
   if (picked.approach?.length) {
-    bands.push({ segs: picked.approach, ink: PALETTE.player, opacity: 0.16, width: 0.4 });
+    bands.push({ segs: picked.approach, ink: PALETTE.player, opacity: 0.4, size: 0.85 });
   }
   // THE WHOLE CHAIN UP TO THE GOAL, and not one leg further. On a combination
   // the interesting part is the middle — the ball that turns and passes the
@@ -2372,40 +2432,85 @@ function solveCoachRoute(want = {}) {
   // made the first version of this unreadable.
   for (let i = 0; i <= picked.at; i += 1) {
     const leg = picked.shot.objectPath[i];
-    if (leg?.segs?.length) bands.push({ segs: leg.segs, ink: inkOf(leg.ball), opacity: 0.28 });
+    if (leg?.segs?.length) bands.push({ segs: leg.segs, ink: inkOf(leg.ball), opacity: 0.62 });
   }
   // WHAT THE ROAD SAYS, in the same object as the road. A board that coaches
   // the shot in words and draws it on the felt has to take both from one
   // search, or the two eventually describe different strokes — which is how a
-  // sentence naming one ball ended up over a line sending a different one
-  // somewhere else.
-  bands.plan = picked.plan;
+  // board came to tell a player to pot a ball that could not be reached from
+  // where their cue was standing.
+  bands.plan = { number: chosen.number, slot: chosen.slot };
   return bands;
+}
+
+/**
+ * Which goal to coach, when the board has not named one.
+ *
+ * The shortest ball-to-pocket run on the table, because the angular tolerance
+ * of a pot falls off as one over that distance — so the easiest shot is the
+ * one the geometry supports rather than a preference. Among goals that tie,
+ * the one with more working headings.
+ */
+function bestGoal(list, want) {
+  if (want.number != null || want.reach != null) return list[0];
+  let best = null;
+  for (const goal of list) {
+    const ball = game.enemies.find((e) => e.alive && e.number === goal.number);
+    const pocket = rooms.table.pockets.find((p) => p.slot === goal.slot);
+    if (!ball || !pocket) continue;
+    const d = Math.hypot(pocket.x - ball.x, pocket.z - ball.z);
+    if (!best || d < best.d - 0.01 || (Math.abs(d - best.d) <= 0.01 && goal.hits.length > best.goal.hits.length)) {
+      best = { d, goal };
+    }
+  }
+  return best?.goal ?? list[0];
+}
+
+/**
+ * The middle of the widest contiguous run of working headings.
+ *
+ * Not the first that works and not a stored one: the middle of the widest
+ * window is the shot with the most room for error either side, which is the
+ * shot worth teaching.
+ */
+function widestMiddle(hits, step) {
+  let best = { from: hits[0], to: hits[0] };
+  let run = { from: hits[0], to: hits[0] };
+  for (let i = 1; i < hits.length; i += 1) {
+    if (hits[i] - hits[i - 1] <= step * 1.5) run.to = hits[i];
+    else {
+      if (run.to - run.from >= best.to - best.from) best = run;
+      run = { from: hits[i], to: hits[i] };
+    }
+  }
+  if (run.to - run.from >= best.to - best.from) best = run;
+  const centre = (best.from + best.to) / 2;
+  return hits.reduce((a, d) => (Math.abs(d - centre) < Math.abs(a - centre) ? d : a), hits[0]);
 }
 
 /**
  * The leg of this projection that achieves the goal, if any.
  *
  * @param {object} shot     a projection from projectShot
- * @param {object} want     the goal — {number, slot} or {reach}
+ * @param {object} want     {number, slot} | {reach} | {} for "any pot at all"
  * @param {Array}  pockets
  */
 function goalLeg(shot, want, pockets) {
-  const miss = { at: -1, plan: [] };
+  const miss = { at: -1 };
   for (let i = 0; i < shot.objectPath.length; i += 1) {
     const leg = shot.objectPath[i];
     if (!leg?.segs?.length) continue;
     if (want.reach != null) {
       // "Reach this ball" boards: the shot has to move it, which is what a leg
       // in the chain means.
-      if (leg.ball?.number === want.reach) return { at: i, plan: [{ number: want.reach }] };
+      if (leg.ball?.number === want.reach) return { at: i, number: want.reach };
       continue;
     }
-    if (leg.ball?.number !== want.number) continue;
+    if (want.number != null && leg.ball?.number !== want.number) continue;
     const at = pathPocket(leg.segs, pockets);
     if (!at) continue;
     if (want.slot && at.slot !== want.slot) continue;
-    return { at: i, plan: [{ number: want.number, slot: at.slot }] };
+    return { at: i, number: leg.ball?.number, slot: at.slot };
   }
   return miss;
 }
@@ -2965,6 +3070,7 @@ function frame(now) {
 
   attract(rawDt);
   updateBandReserve(rawDt);
+  updateCoachRoute(rawDt);
   tutorial.update(rawDt);
   pulseCalledPocket(rawDt);
   pumpCelebrations(rawDt);

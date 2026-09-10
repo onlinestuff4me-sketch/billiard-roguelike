@@ -1111,21 +1111,44 @@
       /* Behind the menu the background should read as gameplay, not as a HUD:
          hide the run furniture so only the table and the action show. */
       #ui-layer.attract { opacity: 0; }
-      .menu-eyebrow {
-        margin: 0;
-        /* 27 characters at this tracking is about 32 units of width, so a
-           thirty-second of the box is the size that always fits — with a
-           ceiling, so it does not grow silly on a tablet. */
-        font-size: min(3.1cqw, 12px);
-        letter-spacing: 0.22em;
+      /* THE SUB-HEADLINE, under the name rather than over it — and on one line.
+         It sat above the title as an eyebrow and wrapped to two lines on a real
+         phone, which is a strapline broken in half above the thing it is a
+         strapline for. */
+      /* #boot-veil, NOT bare `.menu-eyebrow`. The overlay carries
+         `#boot-veil p { font-size: clamp(11px, 3vmin, 16px) }`, an ID selector,
+         which quietly outranked every class rule written here — so this text
+         was 11.7px on a 390px phone whatever the class said, which is why it
+         wrapped and why nothing done to the class fixed it. */
+      #boot-veil .menu-eyebrow {
+        margin: -2px 0 clamp(6px, 1.6vmin, 12px);
+        /* SIZED SO IT FITS ON ONE LINE, measured rather than reasoned about.
+           27 characters at this tracking come to roughly 25 ems, so it has to
+           stay under a twenty-fifth of the box — and the box is the framed
+           stage's, not the screen's.
+           Two things make the arithmetic land higher than it looks: the type
+           is whatever the device has (there is no webfont), and small text
+           gets boosted by about half again on some engines whatever the
+           viewport meta says. Both are why this is smaller than it reads: at
+           390px it renders at ten and a half and needs 250 of a 288px box. */
+        font-size: clamp(8px, 2.6vmin, 12px);
+        letter-spacing: 0.16em;
         text-transform: uppercase;
         color: var(--amber);
         text-align: center;
+        /* NOT `nowrap`. It reads as one line on every phone-shaped viewport —
+           183px of text in a 236px box at the narrowest — and a box narrower
+           than that is a browser window shaped like a letterbox rather than a
+           phone. Given the choice between two lines and running off the side
+           of the screen, two lines. */
         max-width: 100%;
+      }
+      @supports (container-type: inline-size) {
+        #boot-veil .menu-eyebrow { font-size: min(3.2cqw, 12px); }
       }
       .menu-title {
         max-width: 100%;
-        margin: 0 0 clamp(8px, 2vmin, 18px);
+        margin: 0;
         display: flex;
         flex-direction: column;
         line-height: 0.92;
@@ -1134,8 +1157,10 @@
       .menu-title .ln {
         /* ROGUELIKE is nine characters; in the widest font this stack can fall
            back to that is about seven ems, so a seventh of the box is the size
-           that fits whatever the device has installed. */
-        font-size: min(13.5cqw, 68px);
+           that fits whatever the device has installed. The vmin rule is the
+           fallback for a browser without container queries — an unsupported
+           `cqw` takes the whole declaration with it. */
+        font-size: clamp(30px, 11vmin, 60px);
         font-weight: 800;
         letter-spacing: -0.02em;
         text-transform: uppercase;
@@ -1148,6 +1173,9 @@
         color: transparent;
         animation: menu-sweep 5.5s linear infinite;
         filter: drop-shadow(0 0 22px rgba(53, 242, 255, 0.35));
+      }
+      @supports (container-type: inline-size) {
+        .menu-title .ln { font-size: min(13.5cqw, 68px); }
       }
       .menu-title .ln:nth-child(2) { animation-delay: -2.75s; }
       @keyframes menu-sweep {
@@ -1665,10 +1693,10 @@
         <div id="ui-layer"></div>
         <div id="boot-veil">
           <div class="menu-inner" id="menu-main">
-            <p class="menu-eyebrow">Dark Velvet Cyber-Billiards</p>
             <h1 class="menu-title" aria-label="Billiard Roguelike">
               <span class="ln">Billiard</span><span class="ln">Roguelike</span>
             </h1>
+            <p class="menu-eyebrow">Dark Velvet Cyber-Billiards</p>
             <button id="btn-play" class="menu-btn primary" type="button">Play</button>
             <div class="menu-row">
               <button id="btn-modes" class="menu-btn" type="button">Modes</button>

@@ -13,7 +13,8 @@
     "palette": "node tools/check-palette.mjs",
     "coach": "node tools/check-coach.mjs",
     "layout": "node tools/check-layout.mjs",
-    "find-board": "node tools/find-board.mjs"
+    "find-board": "node tools/find-board.mjs",
+    "scoring": "node tools/check-scoring.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"

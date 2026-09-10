@@ -184,6 +184,14 @@ mistaken for a live one.
   calls one thing two things has taught a synonym instead of a game. Same for
   every other event the boards name.
 
+- **A rung on the ladder is not money until something drops on it.** Points are
+  paid at the instant a ball drops, at the multiplier standing then, so a rail
+  hit after the last pot has nothing left to pay. The ladder still climbs —
+  the next pot might be about to happen — but what is *remembered and
+  reported* is only ever the figure something was actually paid at. It used to
+  report the figure the ladder had reached, which is the same as being paid
+  wrongly from where the player sits. `npm run scoring`.
+
 `npm run coach` checks all three the way `npm run verify` checks solvability:
 it plays real strokes, reads the table and the band afterwards, and fails on a
 band that reaches for a word the game has not taught.
@@ -224,6 +232,25 @@ band that reaches for a word the game has not taught.
   It is **solved from where the cue is now**, not authored: after the first
   stroke of a multi-stroke board the cue is wherever the player left it, and a
   stored line would be describing a table that no longer exists.
+
+  It is drawn as **a row of small arrows marching along it, with a larger one
+  at the end**. A dashed line was indistinguishable from the aim preview, which
+  is also dashed; a solid translucent band was unmistakable and too much —
+  laid over the preview it washed out the lines the player is actually
+  steering. Arrows use a fraction of the ink, say one thing neither could
+  (which way), and leave enough empty felt for the live preview to read
+  straight through. They **fade out over a third of a second the moment the
+  stroke is fired**: advice about a shot you are choosing is over once you have
+  chosen it.
+
+- **It may only name a shot that is there.** The guide used to pick the
+  shortest ball-to-pocket run on the table and say it — the right ball to
+  *want*, and not necessarily one that can be hit. From the wrong side of a
+  ball parked on a pocket, every line to it is a scratch, and the board spent
+  a player's strokes telling them to play it. The route solver sweeps every
+  heading once and files each under what it achieves, so asking it for the best
+  *available* shot costs no more than asking it to confirm one already chosen.
+  When nothing is on, the band says so.
 
 - **One rule picks the shot, for every board.** The route used to be the
   projection of a stored heading with every leg it produced drawn — lines for

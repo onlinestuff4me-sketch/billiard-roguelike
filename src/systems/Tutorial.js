@@ -611,6 +611,7 @@ export class Tutorial {
     this.player.respawn(0, this.spawnZ());
     this.player.focus = this.player.focusMax;
     this._restAim();
+    this._planned = undefined;
     // NOT re-solved here. Every board in the tutorial is the same table with a
     // different rack on it, so the strip is the same strip — and re-solving it
     // per board meant the felt shifted under the player between lessons. It is
@@ -643,29 +644,15 @@ export class Tutorial {
       this.drawCoachRoute(null);
       return;
     }
-    const want = this._routeTarget();
-    this.drawCoachRoute(want ? this.solveCoachRoute(want) : null);
-  }
-
-  /**
-   * Which ball, into which pocket, the route should show.
-   *
-   * A board with a called pocket means it: that is the promise the felt is
-   * making, so the route has to land there. A board without one — the ones
-   * judged on a hand-off or a bounce — asks only for any ball to be reached,
-   * and takes the first route that finds one.
-   */
-  _routeTarget() {
-    const lesson = this.lesson;
-    if (!lesson) return null;
-    // On a rack-clearing board the guide has already chosen which ball is next
-    // and lit its pocket; the route follows that choice rather than making a
-    // second one the sentence does not mention.
-    if (lesson.clearRack) {
-      const next = this._guideNext();
-      return next ? next.want : null;
+    // A rack-clearing board has already searched, to find out what it was
+    // allowed to SAY; the road is that same search's answer rather than a
+    // second one that could disagree with it.
+    if (this.lesson?.clearRack) {
+      this.drawCoachRoute(this._guideNext()?.bands ?? null);
+      return;
     }
-    return lesson.route || null;
+    const want = this.lesson?.route;
+    this.drawCoachRoute(want ? this.solveCoachRoute(want) : null);
   }
 
   /**
@@ -795,47 +782,49 @@ export class Tutorial {
    * @returns {string|null} the number to name, or null if there is nothing left
    */
   _guideNext() {
-    const pockets = this.rooms?.table?.pockets;
+    if (this._planned !== undefined) return this._planned;
+    this._planned = null;
     const rack = this.rooms.scriptedEnemies.filter((e) => e.alive && e.number > 0);
-    if (!pockets || !pockets.length || !rack.length) return null;
-    const board = this.lesson?.call;
-    const base = board == null ? [] : Array.isArray(board) ? board : [board];
-    const light = (extra) =>
-      this.game.callPocket?.([...new Set([...base, ...extra.filter(Boolean)])]);
+    if (!rack.length || !this.solveCoachRoute) return this._planned;
 
+    // ONLY NAME A SHOT THAT IS THERE.
+    //
+    // This used to pick the shortest ball-to-pocket run on the table and say
+    // it. That is the right ball to WANT and not necessarily a ball you can
+    // hit: on the four-in-three board it told a player to pot a ball parked on
+    // a pocket while their cue was on the wrong side of it, and every line to
+    // it was a scratch. An instruction that cannot be followed is worse than
+    // no instruction, because the player spends their strokes believing it.
+    //
+    // The route solver sweeps every heading once and files each under what it
+    // achieves, so asking it for the best AVAILABLE shot costs no more than
+    // asking it to confirm one already chosen — and the words and the road
+    // then come out of the same search and cannot disagree.
+    //
     // NO DOUBLE IS LOOKED FOR, because there is no double to find. Three
     // families of placement, about 550 layouts, every heading at two powers
     // through the real physics (tools/find-board.mjs): the widest window for
     // two balls in one stroke was two degrees anywhere on the table. A knocked
-    // ball carries its own drag, so once the first ball has taken the impulse
-    // there is nothing left in the second. The board's budget was changed to
-    // stop needing one; this is where the code that hunted for one used to be.
+    // ball carries its own drag, so once the first has taken the impulse there
+    // is nothing left in the second.
+    const bands = this.solveCoachRoute({});
+    const plan = bands?.plan;
+    if (!plan?.number) return this._planned;
 
-    // Otherwise the easiest ball left, which is the shortest ball-to-pocket
-    // run on the table — also the widest aim window, since the angular
-    // tolerance of a pot falls off as one over that distance. So the advice
-    // the board gives is the advice the geometry supports, not a preference.
-    let best = null;
-    for (const ball of rack) {
-      for (const pocket of pockets) {
-        const d = Math.hypot(pocket.x - ball.x, pocket.z - ball.z);
-        if (!best || d < best.d) best = { d, ball, pocket };
-      }
-    }
-    if (!best) return null;
     // Keep the board's own called pockets lit and ADD the guided one. On a
     // board whose whole point is that two pockets are in play, replacing them
     // with a single suggestion throws the plan away to give a hint.
-    light([best.pocket.slot]);
-    // The ball AND the pocket. A hint that names only the ball leaves the
-    // player holding half an instruction on the one board that asks them to
-    // plan three shots ahead.
-    return {
-      want: { number: best.ball.number, slot: best.pocket.slot },
-      number: String(best.ball.number),
-      slot: best.pocket.slot,
-      pocket: POCKET_NAME[best.pocket.slot] || 'lit pocket'
+    const board = this.lesson?.call;
+    const base = board == null ? [] : Array.isArray(board) ? board : [board];
+    this.game.callPocket?.([...new Set([...base, plan.slot].filter(Boolean))]);
+
+    this._planned = {
+      bands,
+      number: String(plan.number),
+      slot: plan.slot,
+      pocket: POCKET_NAME[plan.slot] || 'lit pocket'
     };
+    return this._planned;
   }
 
   /**
@@ -1299,6 +1288,8 @@ export class Tutorial {
       // may have rolled the cue, and the previous stroke may have left balls
       // still drifting when its verdict was read.
       this._before = this._snapshot();
+      // The plan is about a table that is about to stop existing.
+      this._planned = undefined;
       // Taking the next shot is the only thing that clears the last one's
       // feedback. It used to expire on a 2.2s timer, which is not long enough
       // to read a sentence, look at the table and work out what it means — the
@@ -1560,8 +1551,14 @@ export class Tutorial {
         const budget = `${s} stroke${s === 1 ? '' : 's'} left`;
         if (s > 0) {
           const did = this._pots > 0 ? `${this._pottedNames()}.` : 'Nothing pocketed.';
+          // NOTHING REACHABLE IS A THING TO SAY, not a thing to leave out. The
+          // guide only names shots that exist now, so when it has nothing the
+          // honest line is that the cue is out of position — which is a real
+          // state of a real table and the one the budget is teaching about.
           this._setStatus(
-            next ? `${did} Now hit ${this._nextLine(next)} — ${budget}` : `${did} ${budget}`,
+            next
+              ? `${did} Now hit ${this._nextLine(next)} — ${budget}`
+              : `${did} Nothing on from here — take a stroke to get the cue back in play. ${budget}`,
             this._pots > 0 ? 'good' : 'bad'
           );
         } else {
@@ -1601,6 +1598,10 @@ export class Tutorial {
 
     // Kept, because the table below needs to know how the stroke went and the
     // per-stroke flags are about to be cleared for the next one.
+    // Whatever the stroke did, the table is not the one the last plan was made
+    // for. Cleared here rather than at each place that moves a ball, so a path
+    // added later cannot forget to.
+    this._planned = undefined;
     const missed = this._rejected;
     const scratched = this._scratched;
     const wrongWay = this._wrongWay;
