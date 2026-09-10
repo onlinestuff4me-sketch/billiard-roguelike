@@ -78,6 +78,57 @@ The scratch and the pot it needs are **found, not hard-coded** — the boards'
 geometry is free to move, and a fixed heading quietly stops testing the thing it
 was written for the first time it does.
 
+It also holds the boards to their promises:
+
+- **A lit pocket means "put a ball in here".** A board that lights one and
+  passes the player for something else is lying. Two were: the angled
+  combination and the bank, both judged on reaching a ball while their felt
+  named a corner. The check found the second one the day it was written for the
+  first.
+- **A stored solution has to solve the board.** Every board carries `solve`, a
+  heading, and the game teaches it twice — the cue swings onto it after a miss,
+  and the coach route is drawn from it. Two boards had drifted off theirs: the
+  bank's scratched at every power, and the four-in-three board's pocketed
+  nothing at all.
+- **Every board draws its route** before anything is asked of the player.
+
+## `npm run layout`
+
+Four viewports, from a 360px phone up. Nothing may cross the edge of the
+screen, a row that is meant to be centred has to be, buttons sharing a row have
+to be one width, and in a lesson the table must start below the coaching band.
+
+The menu's three secondary buttons were a flex row of items each carrying
+`width: 100%`. A flex item will not shrink below its min-content width, so
+three buttons each asking for the whole row — one holding the unbreakable word
+SETTINGS — could not fit and ran past the row's own right edge. On a 360px
+phone that put SOUND ON off the side of the screen. Obvious in a screenshot,
+invisible in a diff.
+
+## `npm run palette`
+
+Boots the game, renders a board, reads pixels. It measures three different
+questions, and the first version of it measured none of them:
+
+| | what | floor |
+|---|---|---|
+| **apart** | every pair of balls that can share a table, in normal vision and simulated protanopia, deuteranopia and tritanopia | CIE76 dE |
+| **visible** | each ball against the felt and against the obsidian | WCAG 1.4.11, 3:1 |
+| **readable** | each numeral against the ground it is printed on | WCAG 1.4.3, 4.5:1 |
+
+The second and third are why a player could report a ball as unreadable while a
+palette check passed: it was measuring only whether the balls differed from
+*each other*. Sampling runs at a phone's pixel ratio, because a numeral four
+device-pixels tall has no pure-ink pixel in it and a contrast measured there
+reports the limits of the sampling rather than the design.
+
+`npm run palette -- --pick` searches the **rendered** gamut: 432 candidates put
+through the real renderer and sampled back, filtered by the floors above and by
+the hue families the game has already spent (red means it hurts, green means a
+pick-up, cyan is your ball), then the four with the widest worst-case
+separation. Choosing hexes by eye, or by distance between source values, is how
+this palette went wrong twice.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -93,8 +144,9 @@ underneath it.
 - `harness.js` — injected into the page; snapshot/restore, one fully-resolved
   stroke, the sweep, and the multi-stroke beam search.
 - `verify-boards.mjs` — the CLI and the thresholds.
-- `check-coach.mjs` — what the boards say and do when a stroke fails.
-- `check-palette.mjs` — the ball colours, sampled out of the framebuffer.
+- `check-coach.mjs` — what the boards say and do, and whether they mean it.
+- `check-palette.mjs` — the ball colours and contrasts, out of the framebuffer.
+- `check-layout.mjs` — nothing off the edge, at four viewports.
 
 ## Beyond the tutorial
 

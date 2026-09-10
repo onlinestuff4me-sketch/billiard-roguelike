@@ -14,7 +14,7 @@
  */
 
 import * as THREE from 'three';
-import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA, RULES } from '../config.js';
+import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA, RULES, LAYER } from '../config.js';
 
 export const ENEMY_STATE = {
   SPAWNING: 'spawning',
@@ -105,40 +105,57 @@ function numberTexture(number, hex) {
   canvas.height = size;
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, size, size);
-  // An outlined numeral, no disc behind it. A light puck haloed harder than
-  // anything else under a 0.34 bloom threshold; a puck in the ball's colour
-  // just read as a hole. A heavy near-black stroke filled bone survives both,
-  // against amber, violet-on-bone and black alike.
-  ctx.font = `700 ${size * 0.7}px Rajdhani, "Segoe UI", Arial, sans-serif`;
+
+  // A NUMBER IN A LIGHT CIRCLE, WHICH IS HOW A POOL BALL IS PRINTED — and it
+  // only works because this sprite is drawn AFTER the bloom pass (LAYER.overlay,
+  // see the render step in main.js).
+  //
+  // Three designs went into the framebuffer before this one came out of it.
+  //
+  // BONE INK, OUTLINED IN NEAR-BLACK, in the lit scene. Bone on the yellow ball
+  // is 1.4:1 and on the blue one 3.8:1 — under the 4.5:1 WCAG 1.4.3 asks of
+  // small text — and it could be read at all only because of the outline. An
+  // outline is a workaround for contrast rather than contrast, and it measured
+  // exactly as it was reported: the white 1 could not be read on the yellow.
+  //
+  // A LIGHT DISC, in the lit scene. It sits far above the bloom threshold, so
+  // it blew out to pure white from the centre to 0.5 of the radius and lifted
+  // the whole ball with it. Every ball measured as the same near-white: the
+  // failure the oversized outlined numeral caused, from the opposite side.
+  //
+  // DARK INK, in the lit scene. A ball is twenty pixels across and emissive,
+  // so bloom lays a blurred copy of its own glow back over everything inside
+  // its silhouette — including a one-pixel stroke, which it fills in. Measured
+  // at 1.7:1 on the yellow ball and 1.1:1 on the blue: the numeral was not
+  // there at all.
+  //
+  // The common cause is bloom, so the numeral leaves the lit scene. Off the
+  // overlay layer nothing can bleed into it, the disc cannot glow, and the
+  // digit's ground stops being a function of the palette: near-black on bone
+  // is about 17:1 on every ball there will ever be.
+  const c = size / 2;
+  // Small, because the ball's colour is the other half of the identification
+  // and a confirmation that covers what it confirms has eaten it. This reaches
+  // roughly half the ball's radius, leaving the outer half pure colour — which
+  // is also where check-palette.mjs samples.
+  const r = size * 0.29;
+
+  ctx.beginPath();
+  ctx.arc(c, c, r * 1.1, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(4, 6, 10, 0.82)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(c, c, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#f2f7fb';
+  ctx.fill();
+
+  ctx.font = `800 ${size * 0.4}px Rajdhani, "Segoe UI", Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.lineJoin = 'round';
-  const x = size / 2;
-  const y = size / 2 + size * 0.02;
-
-  // THREE PASSES, BECAUSE THE BALL UNDERNEATH IS LIT.
-  //
-  // A hard outline alone was not enough: an emissive ball blooms outward past
-  // its own silhouette and eats a one-pixel stroke from behind. A soft dark
-  // halo goes down first to push the glow away from the glyph, then the hard
-  // outline gives it an edge, then the fill.
-  // Tightened with the sprite. The halo exists to keep an emissive ball from
-  // blooming over the glyph's edge; at the old width it also swallowed the
-  // colour ring the glyph now sits inside.
-  ctx.shadowColor = 'rgba(3, 5, 8, 0.95)';
-  ctx.shadowBlur = size * 0.1;
-  ctx.lineWidth = size * 0.15;
-  ctx.strokeStyle = 'rgba(3, 5, 8, 0.85)';
-  ctx.strokeText(String(number), x, y);
-  ctx.strokeText(String(number), x, y);
-  ctx.shadowBlur = 0;
-
-  ctx.lineWidth = size * 0.14;
-  ctx.strokeStyle = 'rgba(4, 6, 10, 0.98)';
-  ctx.strokeText(String(number), x, y);
-
   ctx.fillStyle = hex;
-  ctx.fillText(String(number), x, y);
+  ctx.fillText(String(number), c, c + size * 0.015);
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.anisotropy = 4;
   NUMBER_TEXTURES.set(key, texture);
@@ -491,15 +508,13 @@ export class Enemy {
     // confirmation does not need to cover the thing it confirms. Like a real
     // pool ball — a small numeral in the middle, colour all around it.
     const scale = Math.max(0.86, this.radius * 1.85);
-    // Bone on every ball. The band, not the numeral, is what says "stripe";
-    // violet ink on a bone body over a violet band was the least legible
-    // combination on the table, and legibility outranks consistency here.
-    const ink = PALETTE.bone;
+    // NEAR-BLACK ON EVERY BALL, and the palette is picked so that works —
+    // see numberTexture above, and the 4.5:1 floor in tools/check-palette.mjs.
+    // Ink light enough to bloom is ink that eats the ball it is written on.
+    const ink = PALETTE.ballGlyph;
     const hex = `#${ink.toString(16).padStart(6, '0')}`;
-    // ONE HUE PER BALL — see PALETTE.ballInk. The numeral stays bone on every
-    // ball, because a numeral in the ball's own colour is a numeral on a
-    // background of the same colour; the BODY carries the identity and the
-    // numeral only has to stay readable on top of it.
+    // ONE HUE PER BALL — see PALETTE.ballInk. The BODY carries the identity;
+    // the numeral only has to stay readable on top of it.
     const own = PALETTE.ballInk?.[number];
     if (own !== undefined && this.type === 'solid') {
       this.baseColor.setHex(own);
@@ -516,9 +531,13 @@ export class Enemy {
         new THREE.SpriteMaterial({
           map: numberTexture(number, hex),
           transparent: true,
-          depthWrite: false
+          depthWrite: false,
+          depthTest: false
         })
       );
+      // Out of the lit scene entirely — see numberTexture above. The render
+      // step draws this layer once the bloom composite is finished.
+      this.numberSprite.layers.set(LAYER.overlay);
       this.group.add(this.numberSprite);
     } else {
       this.numberSprite.material.map = numberTexture(number, hex);

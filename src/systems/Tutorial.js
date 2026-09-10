@@ -118,14 +118,29 @@ const RULES = {
     nudge: 'Aim <em>through</em> the <b>4</b> at the <b>1</b>. Those two already point at the lit pocket.'
   },
 
-  // JUDGED ON THE HAND-OFF, not the pot: measured across every heading at
-  // every power, the pot at the end of an angled combination is worth about a
-  // degree and a half. Making the first ball reach the second is the lesson.
+  // JUDGED ON THE HAND-OFF, not the pot — AND IT NO LONGER LIGHTS A POCKET.
+  //
+  // Measured across every heading at every power, the pot at the end of an
+  // angled combination is worth about a degree and a half. Making the first
+  // ball reach the second is the lesson, and requiring the pot would be
+  // requiring tournament accuracy of someone on their third board.
+  //
+  // The board went on lighting a corner and naming it anyway, which made it a
+  // liar: a player who bounced the 2 off two walls and never came near the
+  // pocket was told they had done it. Reported exactly that way. A LIT POCKET
+  // IS A PROMISE — the game uses it to mean "put a ball in here" everywhere
+  // else — so a board that does not check one does not get to make it.
+  //
+  // Twenty re-authored layouts were measured looking for one where the pot IS
+  // worth requiring; the widest window any of them offered was 2 degrees, at
+  // the floor `npm run verify` calls unplayable, and the ball reached five
+  // different pockets across the run. There is no honest version of the claim,
+  // so the claim goes.
   'cut-combo': {
-    say: 'Angle your shot at the <b>4</b>, so it knocks the <b>2</b> toward the lit corner',
+    say: 'Hit the <b>4</b> off to one side, so it turns and knocks the <b>2</b>',
     spot: 'rack',
     handoff: true,
-    cheer: 'The 4 found the 2 — that is the shot',
+    cheer: 'The 4 found the 2 — one ball can aim another',
     scold: 'You hit the <b>4</b> straight on, so it went straight ahead. Hit its left side, so it turns into the 2',
     whiff: 'You missed the 4 completely — the shot has to start on that ball',
     nudge: 'Put your white circle on the <em>left side</em> of the <b>4</b>, so the 4 travels right into the 2.'
@@ -135,6 +150,10 @@ const RULES = {
    * ACT III — THE TABLE. Cushions, budget, and the felt.
    * ================================================================== */
 
+  // AND IT DOES NOT LIGHT A POCKET EITHER. Judged on reaching the 3 off a
+  // wall, which is the lesson; it was lighting the far corner all the same.
+  // The same false promise as the angled combination, found by the check
+  // written for that one — which is the point of writing the check.
   bank: {
     say: 'A barrier blocks the <b>3</b>. <em>Bounce</em> off the bottom wall to reach it',
     spot: 'first',
@@ -156,14 +175,14 @@ const RULES = {
   // board points at the first shot of the route instead, and keeps both goals
   // on screen.
   budget: {
-    say: 'Clear all four balls in <em>three shots</em>. Start by hitting the <b>1</b> into the <b>4</b>',
+    say: 'Clear all four in <em>three shots</em>. Start with the <b>1</b> into the <b>4</b>, into the side pocket',
     spot: 'rack',
     clearRack: true,
     shots: 3,
     cheer: 'Rack cleared',
     scold: 'Nothing pocketed, so that shot was free. Go again',
     whiff: 'You touched nothing — start the shot on a ball',
-    nudge: 'Aim <em>through</em> the <b>1</b> at the <b>4</b>, into the side pocket. Both lit pockets are yours.'
+    nudge: 'Aim <em>through</em> the <b>1</b> at the <b>4</b>. The dashed route on the felt is the shot.'
   },
 
   // THE RED SITS ON THE LAZY LINE. The obvious route to the 2 runs straight
@@ -330,6 +349,17 @@ export class Tutorial {
     // has not found the gesture has no other exit.
     act(this.skipEl, () => this._finish());
 
+    // The strip is measured, not assumed, so it has to be re-measured whenever
+    // the thing it is measured against changes size.
+    this._onResize = () => this._layoutCoach(true);
+    window.addEventListener('resize', this._onResize);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', this._onResize);
+
+    // The board list, reachable from the page. tools/ asks the game what its
+    // boards claim rather than re-reading the data file and re-deriving it —
+    // a checker with its own copy of the rules eventually checks the wrong ones.
+    this.boards = LESSONS;
+
     this.active = false;
     this.index = -1;
     this.done = 0;
@@ -337,6 +367,9 @@ export class Tutorial {
     this._strokes = 0;
     /** The table as it stood the instant the current stroke was fired. */
     this._before = null;
+    /** The lowest screen y the coaching strip occupies, and what it cost. */
+    this._bandFloor = 0;
+    this._reserve = 0;
     /** Did the stroke that just resolved use up a multi-shot board's budget? */
     this._restart = false;
     /** Balls this stroke put down, in the order they dropped. */
@@ -421,8 +454,13 @@ export class Tutorial {
     // nothing in the room can be hurt except by this director.
     this.game.tutorialGuard = () => false;
     this.layer.classList.add('coaching');
+    // TAKE THE STRIP BEFORE THE FIRST BOARD IS DRAWN, not after. Animating the
+    // table down into place on lesson one would open the tutorial with the
+    // felt moving under a sentence the player is still reading.
+    this._layoutCoach(true);
     // The menu hands over mid-attract-shot, so nothing about the previous ball
     // is carried in: the first lesson racks its own table immediately.
+    // (The route is solved once the board's table exists — see _buildRoom.)
     this._launched = false;
     this.hud?.hideBanner?.();
     this._enter(0);
@@ -431,6 +469,11 @@ export class Tutorial {
   stop() {
     this.active = false;
     this.index = -1;
+    // AND GIVE THE TABLE BACK, over half a second. This is the moment the
+    // tutorial hands the game over; the felt growing out to fill the screen is
+    // the curtain going up, and a jump cut here reads as a glitch.
+    this.setBandReserve?.(0);
+    this.drawCoachRoute?.(null);
     this._awaitingNext = false;
     this._needsRoom = false;
     this._roomKey = null;
@@ -539,6 +582,151 @@ export class Tutorial {
     this.player.respawn(0, this.spawnZ());
     this.player.focus = this.player.focusMax;
     this._restAim();
+    // The strip is sized against the table, so it is sized once the table for
+    // THIS board exists rather than against whatever was standing before it.
+    this._layoutCoach(true);
+    this._showRoute();
+  }
+
+  /**
+   * DRAW THE ANSWER, AND LEAVE IT ON THE FELT.
+   *
+   * The band names a ball and a pocket; the player still has to find the LINE.
+   * On the four-in-three board they have to find three of them, in order,
+   * before the first stroke, and no sentence carries that — reported as "I
+   * still have no idea how to complete this lesson in the required number of
+   * shots". So the route is drawn: faint and dashed, up the whole time, under
+   * whatever the player is aiming.
+   *
+   * It is solved from where the cue is NOW (main.js solveCoachRoute), which is
+   * the only version that survives a board played over several strokes: after
+   * the first one the cue is wherever the player left it, and an authored line
+   * would be describing a table that no longer exists.
+   *
+   * The ball it solves for is the one the band is talking about, so the words
+   * and the line are the same advice. A board with no route to find — nothing
+   * left, or nothing reachable — simply has no line, rather than a wrong one.
+   */
+  _showRoute() {
+    if (!this.solveCoachRoute || !this.drawCoachRoute) return;
+    if (!this.active || this._awaitingNext) {
+      this.drawCoachRoute(null);
+      return;
+    }
+    const want = this._routeTarget();
+    this.drawCoachRoute(want ? this.solveCoachRoute(want) : null);
+  }
+
+  /**
+   * Which ball, into which pocket, the route should show.
+   *
+   * A board with a called pocket means it: that is the promise the felt is
+   * making, so the route has to land there. A board without one — the ones
+   * judged on a hand-off or a bounce — asks only for any ball to be reached,
+   * and takes the first route that finds one.
+   */
+  _routeTarget() {
+    const lesson = this.lesson;
+    if (!lesson) return null;
+    // THE BOARD'S OWN OPENING SHOT, while the cue is still on the spawn it was
+    // measured from. It is the shot the card's sentence describes, so drawing
+    // anything else would put the line and the words in disagreement.
+    if (this._strokes === 0 && Number.isFinite(lesson.solve) && this._atSpawn()) {
+      return { deg: lesson.solve };
+    }
+    const call = lesson.call;
+    const slots = call == null ? [] : Array.isArray(call) ? call : [call];
+    // On a rack-clearing board the guide has already chosen which ball is next
+    // and lit its pocket; the route follows that choice rather than making a
+    // second one the sentence does not mention.
+    if (lesson.clearRack) {
+      const next = this._guideNext();
+      return next ? { number: Number(next.number), slot: next.slot } : {};
+    }
+    return slots.length === 1 ? { slot: slots[0] } : {};
+  }
+
+  /**
+   * PUT THE COACH ABOVE THE TABLE, AND BUY THE ROOM FOR IT.
+   *
+   * The band used to be pinned to the one strip of felt a board cannot place
+   * anything in — below the far corner pockets, above the rack. That strip is
+   * real, and it is still where the band goes when no lesson is running. But
+   * "a board cannot place a ball there" is not "a ball cannot END there": a
+   * ball rolled up under the band is a ball the player cannot see, and it was
+   * reported exactly that way.
+   *
+   * So a lesson buys the space. Skip and the band stack at the very top of the
+   * screen, the strip they occupy is measured rather than guessed at, and the
+   * table is told to shrink out of it (main.js setBandReserve). Nothing is
+   * behind the words, so nothing can hide behind them.
+   *
+   * @param {boolean} [now] take the room immediately instead of easing into it
+   */
+  _layoutCoach(now = false) {
+    if (!this.active) return;
+    // Skip's own top comes from --hud-pad; the band goes under whatever height
+    // that button turns out to be at this size, and both are read back rather
+    // than recomputed here so the CSS stays the one place they are described.
+    // RELATIVE TO THE LAYER, NOT TO THE VIEWPORT. `--coach-top` is a `top` on
+    // an element inside #ui-layer, and the layer is only at the top of the
+    // screen when the stage happens to fill it — the frame is letterboxed the
+    // rest of the time. Reading the rects raw put the band a stage-offset
+    // further down than asked for, which on a 430x860 phone was 48px of empty
+    // strip between Skip and the sentence.
+    const origin = this.layer.getBoundingClientRect().top;
+    const skip = this.skipEl.getBoundingClientRect();
+    const skipBottom = skip.height ? skip.bottom - origin : 32;
+    this.layer.style.setProperty('--coach-top', `${Math.round(skipBottom + 7)}px`);
+    // Measured AFTER the property is written: reading a rect flushes layout,
+    // so this is the band where it has just been put, not where it used to be.
+    const band = this.el.getBoundingClientRect();
+    const bottom = band.height ? band.bottom - origin : skipBottom + 53;
+    this._bandFloor = bottom + 2;
+    this._reserve = Math.round(bottom + 9);
+    this.setBandReserve?.(this._reserve, now);
+  }
+
+  /**
+   * KEEP THE STRIP CLEAR, EVERY FRAME, BY WATCHING WHAT IS ACTUALLY DRAWN.
+   *
+   * The reserve is measured against the ARENA, and the arena is not the last
+   * thing the table draws: the far rail stands a pocket's radius above the
+   * pocket centres, so a strip sized to the arena left the rail poking into
+   * the band by about eleven pixels.
+   *
+   * Correcting it inside `_layoutCoach` looked right and was not — the strip
+   * is sized while a board is being built, and what the table draws settles
+   * a frame or two later, so the correction was computed against geometry
+   * that was about to change. A frame-by-frame guard cannot be wrong about
+   * the order things happen in: it reads what is on screen now, and buys the
+   * difference if there is one. Buying moves the camera, which moves the
+   * rail, so it converges over a few frames rather than in one step.
+   */
+  _holdBandClear() {
+    if (!this.active || !this._bandFloor || !this.setBandReserve) return;
+    const top = this._tableTop();
+    if (top == null || top >= this._bandFloor) return;
+    this._reserve = Math.round(this._reserve + Math.max(1, this._bandFloor - top));
+    this.setBandReserve(this._reserve, true);
+  }
+
+  /**
+   * The topmost pixel the table draws, in layer coordinates.
+   *
+   * @returns {number|null}
+   */
+  _tableTop() {
+    const pockets = this.rooms?.table?.pockets;
+    const cam = this.engine?.camera;
+    const h = this.layer.clientHeight;
+    if (!pockets?.length || !cam || !h) return null;
+    const visZ = (cam.top - cam.bottom) / cam.zoom;
+    let top = Infinity;
+    for (const p of pockets) {
+      top = Math.min(top, ((p.z - cam.position.z) / visZ + 0.5) * h - (p.radius / visZ) * h);
+    }
+    return Number.isFinite(top) ? top : null;
   }
 
   /**
@@ -588,6 +776,7 @@ export class Tutorial {
     // plan three shots ahead.
     return {
       number: String(best.ball.number),
+      slot: best.pocket.slot,
       pocket: POCKET_NAME[best.pocket.slot] || 'lit pocket'
     };
   }
@@ -982,6 +1171,7 @@ export class Tutorial {
     this._updateHand();
     this._updateTags();
     this._updateDemo(rawDt);
+    this._holdBandClear();
 
     if (this._awaitingNext) return;
 
@@ -1480,6 +1670,7 @@ export class Tutorial {
       };
     }
     if (this._needsRoom) this._buildRoom();
+    else this._showRoute();
   }
 
   /** Clear the table with some ceremony. */
@@ -1691,6 +1882,8 @@ export class Tutorial {
     this.player.hideTrajectory?.();
     this.game.aimTags = null;
     this._hideTags();
+    // A finished board has no next shot, so it has no route to show.
+    this.drawCoachRoute?.(null);
 
     // A FINISHED LESSON HAS TO LOOK FINISHED.
     //
@@ -1791,6 +1984,8 @@ export class Tutorial {
   }
 
   dispose() {
+    window.removeEventListener('resize', this._onResize);
+    window.visualViewport?.removeEventListener('resize', this._onResize);
     this.el.remove();
     this.spotEl.remove();
     this.ringEl.remove();

@@ -170,6 +170,75 @@
 
   window.__simBoards = () => window.__LESSON_IDS || [];
 
+  /**
+   * WHAT EACH BOARD PROMISES, AND WHAT IT CHECKS.
+   *
+   * A lit pocket means "put a ball in here" everywhere else in the game, so a
+   * board that lights one and then passes the player for something else is
+   * lying — which is how a lesson came to congratulate someone for bouncing a
+   * ball off two walls and missing the corner it had lit.
+   */
+  window.__simPromises = () =>
+    (g().tutorial?.boards || []).map((L) => ({
+      id: L.id,
+      lights: L.call == null ? [] : Array.isArray(L.call) ? L.call : [L.call],
+      checksAPot: !!(L.pot || L.clearRack || L.clearsRack || L.usesGoal)
+    }));
+
+  /**
+   * DOES THE BOARD'S OWN STORED SOLUTION ACTUALLY SOLVE IT?
+   *
+   * `solve` is a heading, measured once and written into lessons.json, and two
+   * things now lean on it: the demonstration that swings the cue after a miss,
+   * and the coach route drawn on the felt. Both teach it as the answer. On the
+   * four-in-three board it had drifted to a heading that pockets nothing at
+   * any power — so the game was drawing, and demonstrating, a shot that does
+   * not work.
+   */
+  window.__simSolve = () => {
+    const L = g().tutorial?.lesson;
+    if (!L || !Number.isFinite(L.solve)) return null;
+    const game = g();
+    const notify = game.tutorial.notify;
+    game.tutorial.notify = () => {};
+    const base = snapshot();
+    const tried = [];
+    for (const power of [0.55, 0.7, 0.85, 1]) {
+      restore(base);
+      // The board's OWN predicate, on the internal shape it expects — the
+      // public `__simShot` result has been flattened for reporting and no
+      // longer carries the ball objects a `pot` rule reads.
+      const out = shoot(L.solve, power);
+      tried.push({
+        power,
+        ok: passes(L, out),
+        pots: out.pots.map((p) => `${p.number}->${p.slot}`),
+        scratched: out.scratched
+      });
+    }
+    restore(base);
+    game.midStroke = false;
+    game.phase = 'aim';
+    game.tutorial.notify = notify;
+    return { id: L.id, solve: L.solve, ok: tried.some((t) => t.ok), tried };
+  };
+
+  /** The coach route the board is currently drawing, as line counts and inks. */
+  window.__simRoute = () => {
+    const t = g().tutorial;
+    if (!t?.lesson) return null;
+    const want = t._routeTarget();
+    const lines = want ? t.solveCoachRoute(want) : null;
+    return {
+      id: t.lesson.id,
+      want,
+      lines: (lines || []).length,
+      // Which balls the route is about — the route and the sentence above it
+      // have to be describing the same shot.
+      inks: (lines || []).map((l) => l.ink)
+    };
+  };
+
   window.__simLesson = () => {
     const L = g().tutorial?.lesson;
     if (!L) return null;

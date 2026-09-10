@@ -748,11 +748,20 @@ export const PALETTE = {
    * not to replace it.
    */
   ballInk: {
-    1: 0xecec13,
-    2: 0xa50da5,
-    3: 0x5aa6f2,
-    4: 0x0000ff
+    1: 0xf0c775,
+    2: 0xa329a3,
+    3: 0x00aaff,
+    4: 0x3a4dff
   },
+  /**
+   * The ink every ball's numeral is printed in.
+   *
+   * One colour, not one per ball, and dark rather than light: dark ink cannot
+   * bloom, so it costs the ball none of its colour, and one constant makes the
+   * requirement on the palette a single clear line — every ball must be light
+   * enough to carry it at 4.5:1. See tools/check-palette.mjs.
+   */
+  ballGlyph: 0x05070a,
   stripe: 0xa05cff,
   /** Stripes are a bone body with a coloured band, like a real striped ball. */
   stripeBody: 0xcfdceb,
@@ -782,15 +791,26 @@ export const CSS_PALETTE = {
   /* Mirrors PALETTE.ballInk, so a ball named in coaching copy can be inked in
      that ball's own colour rather than in a generic "this is a ball" amber. */
   ballInk: {
-    1: '#ecec13',
-    2: '#a50da5',
-    3: '#5aa6f2',
-    4: '#0000ff'
+    1: '#f0c775',
+    2: '#a329a3',
+    3: '#00aaff',
+    4: '#3a4dff'
   },
   bone: '#eaf6ff',
   obsidian: '#05070a',
   felt: '#0b3a2e'
 };
+
+/**
+ * RENDER LAYERS — what is part of the lit scene, and what is drawn on top.
+ *
+ * `overlay` is everything that must survive the bloom pass untouched. So far
+ * that is the numeral on a ball: at twenty pixels across, a bloomed ball
+ * blurs its own glow straight over a one-pixel stroke, and no choice of ink
+ * survives it (see numberTexture in src/entities/Enemy.js). Drawn after the
+ * composite instead, it is simply there.
+ */
+export const LAYER = { world: 0, overlay: 1 };
 
 /* ------------------------------------------------------------------ *
  * RENDER — presentation toggles

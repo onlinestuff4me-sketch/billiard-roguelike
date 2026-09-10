@@ -1167,7 +1167,34 @@
         box-shadow: 0 0 26px rgba(53, 242, 255, 0.4);
       }
       .menu-btn.primary:hover { background: #7ff8ff; }
-      .menu-row { display: flex; gap: 10px; width: 100%; }
+      /* THREE EQUAL COLUMNS, AND NONE OF THEM CAN PUSH THE ROW WIDER.
+         This was a flex row of `.menu-btn`s, each carrying `width: 100%` from
+         the base rule. A flex item will not shrink below its min-content width
+         by default, so three buttons each asking for the full row — one of
+         them holding the unbreakable word SETTINGS — could not fit and spilled
+         out of the right-hand side. Measured on a 360px phone the row's own box
+         was centred and its contents ran 50px past it, putting SOUND ON off the
+         edge of the screen. `minmax(0, 1fr)` is the grid spelling of "you may
+         be narrower than your contents want". */
+      .menu-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+      }
+      .menu-row .menu-btn {
+        width: auto;
+        min-width: 0;
+        padding-inline: 4px;
+        font-size: clamp(10px, 2.6vmin, 13px);
+        letter-spacing: 0.08em;
+        /* One box, three equal heights: SOUND ON wraps to two lines and the
+           other two must not become shorter buttons beside it. */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
       .menu-foot {
         margin: 4px 0 0;
         font-size: clamp(9px, 2.3vmin, 11px);

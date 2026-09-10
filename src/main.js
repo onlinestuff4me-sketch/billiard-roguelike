@@ -39,7 +39,8 @@ import {
   RULES,
   TABLE,
   TUTORIAL,
-  PROGRESSION
+  PROGRESSION,
+  LAYER
 } from './config.js';
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
@@ -66,18 +67,39 @@ const canvas = document.getElementById('stage-canvas');
 const uiLayer = document.getElementById('ui-layer');
 const bootVeil = document.getElementById('boot-veil');
 
+/** Screen pixels at the top of the stage that the table is not drawn in. */
+let bandReserve = 0;
+let bandReserveTarget = 0;
+/** Where the current easing started, and how far through it is. */
+let bandReserveFrom = 0;
+let bandReserveT = 1;
+const BAND_RESERVE_TIME = 0.55;
+
 function layoutStage() {
   const vw = window.innerWidth;
   const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  let h = vh;
+  // THE STAGE IS THE ARENA PLUS WHATEVER IS RESERVED ABOVE IT. The arena keeps
+  // its aspect and fits the height that is left; the strip is added back on so
+  // the framed box still reaches the bottom of the screen. See setBandReserve.
+  //
+  // Sized to the TARGET rather than to the value currently easing towards it,
+  // so the canvas and its post-processing targets are reallocated once per
+  // change instead of once per frame of the animation. Taking the strip is
+  // instant, so nothing is ever drawn into a stage that is too small for it;
+  // giving it back is animated, and there the arena simply grows into a box
+  // that is already the right size.
+  const reserve = Math.min(Math.max(0, bandReserveTarget), vh * 0.42);
+  let h = Math.max(120, vh - reserve);
   let w = h * ARENA.aspect;
   if (w > vw) {
     w = vw;
     h = w / ARENA.aspect;
   }
-  stage.style.width = `${Math.round(w)}px`;
-  stage.style.height = `${Math.round(h)}px`;
-  return { width: Math.round(w), height: Math.round(h) };
+  const width = Math.round(w);
+  const height = Math.round(h + reserve);
+  stage.style.width = `${width}px`;
+  stage.style.height = `${height}px`;
+  return { width, height };
 }
 
 /* ------------------------------------------------------------------ *
@@ -2132,6 +2154,190 @@ function aimGhosts(prediction, cuePath, objectPath) {
   return ghosts;
 }
 
+/* ------------------------------------------------------------------ *
+ * THE COACH ROUTE — the answer, drawn on the felt and left there
+ *
+ * A lesson can say which ball goes in which pocket, and the player still has
+ * to work out the LINE. On the four-in-three board they have to work out three
+ * of them, in order, before the first stroke — and a sentence cannot carry
+ * that. Reported as "I still have no idea how to complete this lesson".
+ *
+ * So the board draws it. Not a hint that appears when you fail: a faint dashed
+ * route, up the whole time, showing where each ball travels on a shot that
+ * works. It reads as a diagram rather than as a prediction — dashed where the
+ * live preview is solid, dim where the live preview is bright — so it can sit
+ * under an aim without being mistaken for one.
+ *
+ * The route is SOLVED, not authored. A stored line would be right until the
+ * first time a board moved, and on a board played over several strokes it
+ * would be wrong from the second stroke onward, because by then the cue is
+ * wherever the player left it. This projects from where the cue is now.
+ * ------------------------------------------------------------------ */
+
+const ROUTE_SLOTS = 5;
+const routeGroup = new THREE.Group();
+routeGroup.renderOrder = -1;
+scene.add(routeGroup);
+const routeSlots = [];
+for (let i = 0; i < ROUTE_SLOTS; i += 1) {
+  const positions = new Float32Array(96 * 6);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setDrawRange(0, 0);
+  const mat = new THREE.LineDashedMaterial({
+    color: PALETTE.bone,
+    transparent: true,
+    opacity: 0.38,
+    dashSize: 0.5,
+    gapSize: 0.42,
+    depthWrite: false
+  });
+  const line = new THREE.LineSegments(geo, mat);
+  line.frustumCulled = false;
+  line.visible = false;
+  routeGroup.add(line);
+  routeSlots.push({ positions, geo, mat, line });
+}
+
+/** Put a solved route on the felt, or take it off with no argument. */
+function drawCoachRoute(list) {
+  const y = TRAJECTORY.height ?? 0.12;
+  for (let i = 0; i < routeSlots.length; i += 1) {
+    const slot = routeSlots[i];
+    const item = list?.[i];
+    if (!item?.segs?.length) {
+      slot.geo.setDrawRange(0, 0);
+      slot.line.visible = false;
+      continue;
+    }
+    let n = 0;
+    for (const seg of item.segs) {
+      if ((n + 1) * 6 > slot.positions.length) break;
+      slot.positions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
+      n += 1;
+    }
+    slot.mat.color.setHex(item.ink ?? PALETTE.bone);
+    slot.mat.opacity = item.opacity ?? 0.34;
+    slot.geo.setDrawRange(0, n * 2);
+    slot.geo.attributes.position.needsUpdate = true;
+    slot.line.visible = n > 0;
+    // Dash spacing is computed from vertex distances, so it has to be redone
+    // whenever the vertices move. Skipped, the dashes stretch into solid line.
+    slot.line.computeLineDistances();
+  }
+}
+
+/**
+ * Project one heading at one power from where the cue is now, without
+ * disturbing the aim the player is holding.
+ */
+function projectShot(dir, power) {
+  const held = player.aimPower;
+  player.aimPower = power;
+  try {
+    const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, dir, {
+      radius: player.radius,
+      maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
+      maxDistance: Math.min(TRAJECTORY.maxDistance, carryDistance(launchSpeed())),
+      bodies: game.enemies
+    });
+    return {
+      prediction,
+      cuePath: projectCuePath(prediction),
+      objectPath: projectObjectPath(prediction)
+    };
+  } finally {
+    player.aimPower = held;
+  }
+}
+
+/**
+ * Search for a shot that drops `number` in `slot`, and hand back the lines.
+ *
+ * Coarse on purpose: the sweep is a diagram-finder, not the verifier. It runs
+ * on entering a board and after each stroke resolves, never per frame.
+ *
+ * @param {{number?: number, slot?: string}} want  the ball and pocket to aim at
+ * @returns {Array|null} route lines, or null if nothing was found
+ */
+function solveCoachRoute(want = {}) {
+  const pockets = rooms.table.pockets;
+  if (!pockets?.length) return null;
+  // A HEADING THE BOARD ALREADY KNOWS BEATS ONE THIS FUNCTION FINDS.
+  //
+  // Every board carries `solve`: a potting heading measured through the real
+  // physics by npm run verify, and the heading its opening sentence was
+  // written about. Searching for a different one and drawing that instead
+  // would put a line on the felt disagreeing with the words above it — which
+  // is exactly what happened on the four-in-three board, where the sentence
+  // said to start on the 1 and the route sent the 1 to the other side of the
+  // table. It only applies from the spawn, because that is where it was
+  // measured from.
+  if (Number.isFinite(want.deg)) {
+    const th = (want.deg * Math.PI) / 180;
+    const dir = { x: Math.sin(th), z: -Math.cos(th) };
+    // The heading is measured; the POWER is not — verify sweeps three of them
+    // and reports the heading that worked at any one. So the route tries a
+    // spread and keeps the first that puts a ball down without losing the cue,
+    // falling back to the longest chain it saw. Fixing it at one power drew a
+    // line that stopped short of the pocket the card had just named.
+    let fallback = null;
+    for (const power of [0.55, 0.7, 0.85, 1]) {
+      const shot = projectShot(dir, power);
+      const lines = routeLines(shot);
+      if (!lines) continue;
+      const cueSegs = shot.cuePath?.segments?.length
+        ? shot.cuePath.segments
+        : shot.prediction?.segments;
+      const drops = shot.objectPath.some((leg) => pathPocket(leg.segs, pockets));
+      if (drops && !pathPocket(cueSegs, pockets)) return lines;
+      if (!fallback || lines.length > fallback.length) fallback = lines;
+    }
+    // A board whose measured heading projects to nothing at all — the bank,
+    // whose whole shot happens off a cushion — falls through to the search.
+    if (fallback) return fallback;
+  }
+  let best = null;
+  for (let deg = 0; deg < 360; deg += 1.5) {
+    const th = (deg * Math.PI) / 180;
+    const dir = { x: Math.sin(th), z: -Math.cos(th) };
+    for (const power of [0.7, 1]) {
+      const shot = projectShot(dir, power);
+      if (!shot.objectPath.length) continue;
+      // A route that loses the cue ball is not a route to recommend, whatever
+      // else it does.
+      const cueSegs = shot.cuePath?.segments?.length
+        ? shot.cuePath.segments
+        : shot.prediction?.segments;
+      if (pathPocket(cueSegs, pockets)) continue;
+      for (const leg of shot.objectPath) {
+        const down = pathPocket(leg.segs, pockets);
+        if (!down) continue;
+        if (want.number != null && leg.ball?.number !== want.number) continue;
+        if (want.slot && down.slot !== want.slot) continue;
+        // Prefer the shot that arrives most squarely, which is also the one
+        // with the widest window either side of it.
+        const score = leg.segs.length;
+        if (!best || score < best.score) best = { score, shot, leg };
+      }
+    }
+  }
+  return best ? routeLines(best.shot) : null;
+}
+
+/** One projected shot, as the faint lines the felt shows. */
+function routeLines(shot) {
+  if (!shot?.objectPath?.length) return null;
+  const lines = [];
+  const cueSegs = shot.cuePath?.segments?.length ? shot.cuePath.segments : shot.prediction?.segments;
+  if (cueSegs?.length) lines.push({ segs: cueSegs, ink: PALETTE.player, opacity: 0.3 });
+  for (const leg of shot.objectPath) {
+    if (leg?.segs?.length) lines.push({ segs: leg.segs, ink: inkOf(leg.ball), opacity: 0.55 });
+    if (leg?.tail?.length) lines.push({ segs: leg.tail, ink: inkOf(leg.ball), opacity: 0.26 });
+  }
+  return lines.length ? lines : null;
+}
+
 function refreshPrediction() {
   if (!player.alive) return;
   const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
@@ -2307,6 +2513,10 @@ function layoutBand() {
   const pockets = rooms?.table?.pockets;
   const h = uiLayer.clientHeight;
   if (!pockets?.length || !h) return;
+  // A lesson buys its own strip and puts the band in it (Tutorial._layoutCoach),
+  // so there is nothing to anchor to the felt. Outside a lesson the band still
+  // has to find the one gap in a table drawn edge to edge.
+  if (bandReserve > 0.5) return;
   const visZ = (camera.top - camera.bottom) / camera.zoom;
   const toY = (z) => ((z - camera.position.z) / visZ + 0.5) * h;
   // The lowest edge of anything in the top row of pockets, plus a hair.
@@ -2319,6 +2529,97 @@ function layoutBand() {
   uiLayer.style.setProperty('--coach-top', `${Math.round(floor + 4)}px`);
 }
 
+/* ------------------------------------------------------------------ *
+ * THE RESERVE — screen given to the coach, taken off the table
+ *
+ * The band used to sit ON the felt, in the one strip a board could not place
+ * anything in: below the far corner pockets, above the rack. That strip is
+ * real, and it is still where the band goes with no reserve — but "a board
+ * cannot place a ball there" is not the same as "a ball cannot END there",
+ * and a ball that rolls up under the band is a ball the player cannot see.
+ * Reported exactly that way: the yellow one went behind the bar.
+ *
+ * So a lesson buys the space instead of borrowing it. `bandReserve` is a strip
+ * of screen at the top that the table is not drawn in; the arena shrinks to
+ * fit what is left, and the band lives in the strip with nothing behind it.
+ *
+ * IT IS THE CAMERA, NOT THE CANVAS. Resizing the drawing buffer to make room
+ * would reallocate the framebuffer and every post-processing target on each
+ * frame of the animation. An orthographic frustum can be widened instead: the
+ * canvas stays exactly as it is, the world simply maps into fewer of its
+ * pixels. So the transition is free, and everything that projects world to
+ * screen — the spotlight, the tags, the band's own anchor — already reads the
+ * camera and follows without knowing anything happened.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Ask for a reserve. Animated, because the table growing back to full screen
+ * at the end of the tutorial is the moment the game hands itself over — a jump
+ * cut there reads as a bug rather than as a curtain going up.
+ *
+ * @param {number} px      how much screen to hold back
+ * @param {boolean} [now]  skip the easing (entering the tutorial, a resize)
+ */
+function setBandReserve(px, now = false) {
+  const want = Math.max(0, px || 0);
+  if (Math.abs(want - bandReserveTarget) < 0.5 && !now) return;
+  bandReserveTarget = want;
+  if (now) {
+    bandReserve = want;
+    bandReserveT = 1;
+  } else {
+    bandReserveFrom = bandReserve;
+    bandReserveT = 0;
+  }
+  // The stage changes shape once, here, for the value being moved TO.
+  resize();
+}
+
+// Readable from a check, like the rest of the game's state — tools/ measures
+// the strip the table gave up rather than inferring it from a screenshot.
+if (typeof window !== 'undefined') {
+  window.__reserve = () => ({ now: bandReserve, target: bandReserveTarget, eased: bandReserveT });
+}
+
+function updateBandReserve(dt) {
+  if (bandReserveT >= 1) return;
+  bandReserveT = Math.min(1, bandReserveT + dt / BAND_RESERVE_TIME);
+  const u = bandReserveT;
+  const k = u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2; // ease in-out cubic
+  bandReserve = bandReserveFrom + (bandReserveTarget - bandReserveFrom) * k;
+  applyReserve();
+}
+
+/**
+ * Map the arena into the stage MINUS the reserve, and push it to the bottom.
+ *
+ * The stage is aspect-locked to the arena, so with no reserve the frustum is
+ * the arena exactly and every world unit is the same number of pixels it has
+ * always been. With one, the same arena has to fit in a shorter box: world
+ * units per pixel goes up, the frustum grows to cover the whole canvas at that
+ * scale, and the camera slides up-world by half the reserve so the surplus
+ * lands above the table rather than around it.
+ */
+function applyReserve() {
+  const h = stage.clientHeight;
+  const w = stage.clientWidth;
+  if (!h || !w) return;
+  // A cap, so a band that somehow measured huge cannot squeeze the felt into
+  // a letterbox. Past this the band overlaps again, which is the lesser fault.
+  const reserve = Math.min(bandReserve, h * 0.42);
+  const perPixel = viewHeight / Math.max(1, h - reserve);
+  camera.top = (perPixel * h) / 2;
+  camera.bottom = -camera.top;
+  camera.right = (perPixel * w) / 2;
+  camera.left = -camera.right;
+  // -z is screen-up: moving the camera up-world pushes the table down-screen.
+  // NOT via lookAt — the orientation was set once at boot and re-aiming at a
+  // moved centre would tilt a camera whose whole job is to be straight down.
+  camera.position.z = -(perPixel * reserve) / 2;
+  camera.updateProjectionMatrix();
+  layoutBand();
+}
+
 function resize() {
   const { width, height } = layoutStage();
   const pr = Math.min(window.devicePixelRatio || 1, RENDER.maxPixelRatio);
@@ -2328,8 +2629,7 @@ function resize() {
     composer.setPixelRatio(pr);
     composer.setSize(width, height);
   }
-  camera.updateProjectionMatrix();
-  layoutBand();
+  applyReserve();
 }
 
 const initial = layoutStage();
@@ -2354,6 +2654,9 @@ const tutorial = new Tutorial({
   hud,
   engine,
   spawnZ,
+  setBandReserve,
+  solveCoachRoute,
+  drawCoachRoute,
   resetRun: resetRunState,
   finish: () => startRun()
 });
@@ -2580,6 +2883,7 @@ function frame(now) {
   audio.setTimeDilation(engine.timeScale);
 
   attract(rawDt);
+  updateBandReserve(rawDt);
   tutorial.update(rawDt);
   pulseCalledPocket(rawDt);
   pumpCelebrations(rawDt);
@@ -2677,8 +2981,40 @@ function frame(now) {
 
   fx.update(dt, rawDt);
 
-  if (composer) composer.render();
-  else renderer.render(scene, camera);
+  // THE NUMERALS GO ON AFTER THE BLOOM, and that is the whole reason they can
+  // be read at all.
+  //
+  // A ball is twenty pixels across and it is emissive, so the bloom pass pulls
+  // its glow out and lays a blurred copy back over everything inside its own
+  // silhouette. A numeral stroke on a ball that size is one or two pixels
+  // wide; the blur fills it in completely. Measured out of the framebuffer, a
+  // near-black digit on the yellow ball came back at 1.7:1 and on the blue one
+  // at 1.1:1 — which is to say the numeral was not there. Every attempt to fix
+  // that in the SPRITE failed for the same reason from a different direction:
+  // dark ink is erased by the glow, and light ink is above the bloom threshold
+  // and blows the whole ball out to white.
+  //
+  // So the numeral stops being part of the lit scene. It is drawn in a second
+  // pass, straight onto the composited image, where nothing can bleed into it.
+  if (composer) {
+    camera.layers.disable(LAYER.overlay);
+    composer.render();
+    camera.layers.set(LAYER.overlay);
+    const clear = renderer.autoClear;
+    // autoClear alone is not enough: a scene BACKGROUND is painted on every
+    // render whatever autoClear says, and this one is opaque obsidian — the
+    // overlay pass wiped the composite it was supposed to be drawn on top of.
+    const background = scene.background;
+    scene.background = null;
+    renderer.autoClear = false;
+    renderer.render(scene, camera);
+    renderer.autoClear = clear;
+    scene.background = background;
+    camera.layers.set(LAYER.world);
+  } else {
+    camera.layers.enableAll();
+    renderer.render(scene, camera);
+  }
 }
 
 requestAnimationFrame(frame);

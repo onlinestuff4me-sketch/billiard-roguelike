@@ -200,12 +200,51 @@ band that reaches for a word the game has not taught.
 - **Say what is on screen.** Only words for things the player can see and has
   been shown: the white circle, the lit pocket, the 4. No jargon the game has
   not taught.
+- **A lit pocket is a promise.** The game lights a pocket to mean *put a ball
+  in here*. A board that lights one and passes the player for something else is
+  lying, and two did: the angled combination and the bank were both judged on
+  reaching a ball, while their felt named a corner. A player who bounced the
+  ball off two walls and never came near it was told they had done it. Neither
+  lights a pocket now. `npm run coach` fails any board that lights one without
+  checking it.
+- **Draw the answer, and leave it drawn.** A sentence can name a ball and a
+  pocket; it cannot carry a *line*, and on the four-in-three board it has to
+  carry three of them in order. So the route is on the felt the whole time —
+  faint, dashed, one colour per ball — showing where each ball travels on a
+  shot that works. Dashed and dim where the live aim preview is solid and
+  bright, so it reads as a diagram rather than as a prediction.
+
+  It is **solved from where the cue is now**, not authored: after the first
+  stroke of a multi-stroke board the cue is wherever the player left it, and a
+  stored line would be describing a table that no longer exists.
+- **A demonstrated shot has to be a shot that works.** Every board stores
+  `solve`, a heading, and two things teach it as the answer — the cue swinging
+  onto it after a miss, and the route. Two boards had drifted off theirs: the
+  bank's scratched at every power, and the four-in-three board's pocketed
+  nothing at all. `npm run coach` plays each board's stored solution through
+  the board's own rule.
+
+## Where the words go
+
+The band is **above the felt, not on it**. A lesson reserves a strip at the top
+of the screen for Skip and the sentence, and the table shrinks to fit what is
+left — measured against what the table actually draws, then held clear every
+frame, because the far rail stands above the pocket centres and a strip sized
+to the arena alone left it poking into the band.
+
+It used to be pinned to the one strip of felt no board places anything in,
+which is not the same as a strip no *ball* can reach. One rolled up under the
+band and out of sight, which is exactly how it was reported.
+
+The strip is bought instantly when a lesson starts and **given back over half a
+second** when the tutorial ends: the felt growing out to fill the screen is the
+curtain going up on the game itself.
 
 ## The four states
 
 | State | Trigger | What it must carry |
 |---|---|---|
-| **Instruct** | board loads | the one line, the highlighted region, the lit pocket, a resting aim near a real solution |
+| **Instruct** | board loads | the one line, the highlighted region, the lit pocket if the board checks one, the solved route, a resting aim near a real solution |
 | **Aiming** | thumb down | the instruction, unchanged and unfaded; the routes — your ball, the struck ball — each ending in a tag naming where it goes |
 | **Missed** | table at rest, rep not met | what happened in one line, naming a cause, and what to do next; the table is put back — a whole board on a single-stroke lesson, one stroke on a multi-stroke one — and then the cue swings from the line that failed to one that works |
 | **Complete** | table at rest, rep met | the lesson's own praise, the felt dimmed, shots refused, one CTA forward |

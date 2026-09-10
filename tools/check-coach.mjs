@@ -64,11 +64,51 @@ const reads = (band, label) => {
 
 try {
   /* ------------------------------------------------------------------ *
+   * A LIT POCKET IS A PROMISE
+   *
+   * The game lights a pocket to mean "put a ball in here" — a called pocket in
+   * a run, the target of a lesson. A board that lights one and then passes the
+   * player for something else is lying, and one did: the angled combination
+   * was judged on whether the first ball reached the second, while its card
+   * named a corner and its felt lit that corner. Reported by a player who
+   * bounced the ball off two walls, never came near the pocket, and was told
+   * they had done it.
+   * ------------------------------------------------------------------ */
+  console.log('\nwhat each board promises\n');
+  for (const board of await game.promises()) {
+    if (!board.lights.length) continue;
+    check(
+      board.checksAPot,
+      `${board.id} lights ${board.lights.join(', ')} and checks a ball goes in`,
+      board.checksAPot ? '' : 'lights a pocket it never checks'
+    );
+  }
+
+  /* ------------------------------------------------------------------ *
    * EVERY OTHER BOARD: a miss is answered, in words that report and direct
    * ------------------------------------------------------------------ */
   for (const id of ['angle', 'combo', 'cut-combo', 'bank']) {
     await game.gotoBoard(id);
     console.log(`\n${id}\n`);
+    // THE ROUTE IS DRAWN BEFORE ANYTHING IS ASKED OF THE PLAYER. A board that
+    // cannot show its own answer is a board the player has to guess at, which
+    // is what the four-in-three one was.
+    const route = await game.route();
+    check(route?.lines > 0, 'the board draws its route', `${route?.lines ?? 0} lines`);
+    // AND THE ROUTE IS A SHOT THAT WORKS. `solve` is a stored heading, and two
+    // things teach it as the answer: the demonstration that swings the cue
+    // after a miss, and the route drawn on the felt. On two boards it had
+    // drifted — the bank's scratched at every power and the four-in-three
+    // board's pocketed nothing at all — so the game was demonstrating shots
+    // that do not work, confidently, with the board's own rule saying no.
+    const solved = await game.solve();
+    if (solved) {
+      check(
+        solved.ok,
+        `${id}'s stored solution actually solves it`,
+        `${solved.solve}° — ` + solved.tried.map((t) => `${t.power}:${t.ok ? 'yes' : 'no'}`).join(' ')
+      );
+    }
     // Straight backwards: on every board that is a miss, and on most of them
     // it is a miss that touches nothing at all.
     const miss = await game.play({ deg: 180, power: 0.35 });
@@ -79,6 +119,15 @@ try {
    * ------------------------------------------------------------------ */
   await game.gotoBoard('budget');
   console.log('\nbudget — four balls, three shots\n');
+
+  const opening = await game.route();
+  check(opening?.lines > 0, 'the board draws its route', `${opening?.lines ?? 0} lines`);
+  const openSolve = await game.solve();
+  check(
+    openSolve?.ok,
+    "budget's stored solution actually solves it",
+    `${openSolve?.solve}° — ` + (openSolve?.tried ?? []).map((t) => `${t.power}:${t.ok ? 'yes' : 'no'}`).join(' ')
+  );
 
   // The opening shot of the route `verify-boards` finds. It pots.
   const first = await game.play({ deg: 20, power: 0.7 });
@@ -133,6 +182,11 @@ try {
       /Try the .* into the .*pocket/i.test(after.band),
       'and then says what to play next'
     );
+    // AND THE FELT AGREES WITH THE WORDS. The route re-solves from wherever
+    // the rewind left the cue, so the line the player follows is the line for
+    // the shot the sentence just named.
+    const again = await game.route();
+    check(again?.lines > 0, 'and a route for the shot it names', `${again?.lines ?? 0} lines`);
   }
 
   /* ------------------------------------------------------------------ *

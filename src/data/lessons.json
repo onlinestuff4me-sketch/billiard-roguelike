@@ -54,7 +54,7 @@
         "z": -0.682
       },
       "solve": 50.75,
-      "call": "tr",
+      "call": null,
       "obstacles": [],
       "enemies": [
         {
@@ -78,8 +78,8 @@
         "x": -0.139,
         "z": 0.99
       },
-      "solve": 193.75,
-      "call": "tl",
+      "solve": 191.25,
+      "call": null,
       "obstacles": [
         {
           "type": "box",
@@ -105,7 +105,7 @@
         "x": 0.438,
         "z": -0.899
       },
-      "solve": 26.0,
+      "solve": 28.0,
       "call": [
         "mr",
         "tr"

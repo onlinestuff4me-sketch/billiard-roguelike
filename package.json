@@ -11,7 +11,8 @@
     "build:single": "vite build --config vite.single.mjs && node scripts/inline.mjs",
     "verify": "node tools/verify-boards.mjs",
     "palette": "node tools/check-palette.mjs",
-    "coach": "node tools/check-coach.mjs"
+    "coach": "node tools/check-coach.mjs",
+    "layout": "node tools/check-layout.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"

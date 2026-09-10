@@ -80,7 +80,15 @@ export async function openGame(opts = {}) {
 
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ executablePath: browserPath() });
-  const page = await browser.newPage({ viewport: { width: 430, height: 860 } });
+  // A PHONE'S PIXEL RATIO, when a check asks for it. Anti-aliasing at 1x is not
+  // a rounding error on something as small as the numeral on a ball: a digit
+  // four device-pixels tall has no pure-ink pixel in it at all, so a contrast
+  // measured there reports the limits of the sampling rather than the design.
+  // Every phone the game is played on runs at 2x or 3x.
+  const page = await browser.newPage({
+    viewport: opts.viewport ?? { width: 430, height: 860 },
+    deviceScaleFactor: opts.deviceScaleFactor ?? 1
+  });
 
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message)));
@@ -148,6 +156,12 @@ export async function openGame(opts = {}) {
     },
 
     lesson: () => page.evaluate(() => window.__simLesson()),
+    /** Every board's lit pockets and whether it checks one. */
+    promises: () => page.evaluate(() => window.__simPromises()),
+    /** The coach route the current board draws. */
+    route: () => page.evaluate(() => window.__simRoute()),
+    /** Whether the board's stored `solve` heading actually solves it. */
+    solve: () => page.evaluate(() => window.__simSolve()),
     /** One stroke, fully resolved, with where every ball came to rest. */
     shot: (spec) => page.evaluate((sp) => window.__simShot(sp), spec),
     /** One stroke played through the lesson, leaving the table as it leaves it. */
