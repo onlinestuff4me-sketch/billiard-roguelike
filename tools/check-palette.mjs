@@ -235,10 +235,25 @@ const game = await openGame({ preserveDrawingBuffer: true, deviceScaleFactor: 3 
 let measured;
 let candidates = null;
 try {
-  // The four-in-three board, because it is the one that racks every numbered
-  // ball the palette defines — three solids and the stripe — so the numerals
-  // can be measured on the balls they are actually printed on.
-  await game.gotoBoard('budget');
+  // A RACK BUILT FOR THE MEASUREMENT, rather than whichever board happens to
+  // hold the most balls. This used to borrow the four-in-three board because
+  // it racked every numbered ball the palette defines; that board has since
+  // been replaced by a two-ball one and the check went looking for a board
+  // that no longer exists. What it needs is all four numerals on the felt at
+  // once, which is a rig, not a lesson — so it puts them there itself.
+  await game.gotoBoard('angle');
+  await game.page.evaluate(() => {
+    const g = window.__game;
+    const spec = g.rooms.scriptedSpec;
+    spec.enemies.length = 0;
+    spec.enemies.push(
+      { type: 'solid', x: -4.5, z: -4, number: 1 },
+      { type: 'solid', x: -1.5, z: -4, number: 2 },
+      { type: 'solid', x: 1.5, z: -4, number: 3 },
+      { type: 'stripe', x: 4.5, z: -4, number: 4 }
+    );
+    g.tutorial._buildRoom();
+  });
   await game.page.waitForTimeout(700);
   measured = await game.page.evaluate((reserved) => {
     const g = window.__game;

@@ -129,12 +129,15 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 | 2 | `combo` | Hit the 4, so it knocks the 1 into the side pocket | the 1 is pocketed | 3.5° |
 | 3 | `cut-combo` | The 2 is sitting on the side pocket. Send the 4 into it | the 2 is pocketed, off the 4 | 4° |
 | 4 | `bank` | A barrier blocks the 3. Bounce off the bottom wall to reach it | a rail, then the 3 | 4° |
-| 5 | `budget` | Clear all four in five strokes. Every stroke counts | the rack is cleared inside the budget | 6° |
+| 5 | `two-in-one` | One stroke, two balls: clip the 4 in with the 1, and the 1 runs on | both balls are pocketed in the same stroke | 4.5° |
 | 6 | `green-red` | Off the left wall and through the green — the 5 puts the 2 in | the 2 is pocketed off the 5, having taken the green and missed the red | 4° |
 
 Window is the widest contiguous run of headings that satisfies the board's own
-rule, measured through the real physics at half a degree by `npm run verify`.
-Two degrees is the floor; below it a board is not a lesson, it is a lottery.
+rule, measured through the real physics at half a degree and six powers by
+`npm run verify`. Two degrees is the floor; below it a board is not a lesson,
+it is a lottery. The power axis matters as much as the heading one: the
+two-in-one board reads 0.5° at three powers, 1.5° at six, and 4.5° once its
+placement is chosen with the honest instrument.
 
 `spot` picks what the lesson's spotlight frames: `player`, `goal`, `first` (the
 ball nearest the cue), `rack` (all of them in one shape) or `blocked` (the rack
@@ -157,16 +160,26 @@ verdict rather than a bruise (`rejectsMine`), and the felt re-arms with the
 rack, because a mine that stays spent means the second attempt at "not the red"
 has no red in it.
 
-**Two balls in one stroke is not a shot this table has.** Seven families and
-about 1,600 placements (`npm run find-board -- two-in-one`, `-- two-in-one-cue`):
-both balls pushed by one impulse, one cut off the other into a second pocket,
-both into the same pocket, the far ball hanging in the jaws, the cue potting
-both itself. Nothing anywhere is wider than two degrees. The reason is the
-table rather than the arrangement — every pair of pockets on it is at least
-fifteen units apart, so whichever ball goes second has a long run, and a pot's
-tolerance falls off as one over that distance. The only readings above the
-floor came from placements where the front ball started inside a pocket's own
-capture radius, which is a board with a ball already down on it.
+**Two balls in one stroke took three searches to find, and two of them were
+wrong about their own instrument.** Eight families and about 1,800 placements
+said nothing was wider than two degrees — measured at two powers. A window is
+an area in heading and power, and sampling the power axis twice reports the
+window for a player who only ever hits the ball two ways. Re-measured across
+the range a thumb produces, the family the board now uses is 4.5° wide.
+
+Two other resolution traps are in the same family of mistake. A heading sweep
+at two degrees cannot measure a window finer than two degrees — it joins hits
+either side of a gap and calls the space between them solid — so `find-board`
+ranks coarsely and re-measures its leaders at half a degree. And a placement
+whose far ball starts inside a pocket's own capture radius reads wide because
+the table drops that ball whether or not the player does anything; the search
+excludes those.
+
+One real limit survived all of it: **the predictor and the physics disagree by
+about three degrees on this shot.** The road is drawn from the predictor, so a
+board like this stores the most forgiving heading the two instruments agree
+on — which is how the resting aim, the road, and the demonstration after a
+miss stay one line rather than three.
 
 The sequence is deliberate: 3 and 4 give the *same instruction* on a different
 rack, so the player discovers for themselves that the shot can be angled. 5 is

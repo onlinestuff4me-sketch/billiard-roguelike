@@ -178,64 +178,65 @@ const RULES = {
     nudge: 'Aim <em>down</em> into the bottom wall. The dashed line swings back up to the <b>3</b>.'
   },
 
-  // TWO BALLS IN ONE STROKE IS NOT A SHOT THIS TABLE HAS.
+  // TWO BALLS IN ONE STROKE — and the search that said it was impossible was
+  // measuring with two thumbs.
   //
-  // Asked for three times, and searched for properly before being answered:
-  // seven families and about 1,600 placements, every heading at two powers
-  // through the real physics, the leaders re-measured at half a degree
-  // (`npm run find-board -- two-in-one`, `-- two-in-one-cue`). Both balls
-  // pushed by one impulse; one cut off the other into a second pocket; both
-  // into the same pocket; the ball hanging in the jaws; the cue potting both
-  // itself. Nothing anywhere is wider than TWO DEGREES, the floor
+  // Asked for three times. Answered twice with "there is no such shot here",
+  // on eight families and about 1,800 placements: both balls pushed by one
+  // impulse, one cut off the other into a second pocket, both into the same
+  // pocket, the far ball hanging in the jaws, the cue potting one and carrying
+  // on into another. Nothing measured wider than two degrees, the floor
   // `npm run verify` calls unplayable.
   //
-  // The reason is the table, not the arrangement. Every pair of pockets on it
-  // is at least fifteen units apart, so whichever ball goes second has a long
-  // way to travel, and a pot's tolerance falls off as one over that distance.
-  // The one shape that beats it — both balls into the SAME pocket — only
-  // measures wide when the front ball starts inside the pocket's own capture
-  // radius, which means the table drops it whether or not the player does
-  // anything. A 5.5° reading came from exactly that, and it is not a lesson,
-  // it is a board with a ball already down on it.
+  // THE SEARCH WAS SWEEPING TWO POWERS. Every heading was tried at 0.6 and
+  // 0.85 and the widest run of headings that worked at ONE OF THOSE TWO was
+  // called the window — which is the window for a player who only ever hits
+  // the ball two ways. Re-ranked and re-measured across the range a thumb
+  // actually produces, the family the request described comes back at FOUR AND
+  // A HALF DEGREES — 310.5° to 315° — which is where every other board on this
+  // tutorial lives.
   //
-  // So this board is still the budget one, for now, and the shot it cannot
-  // ask for is written down here rather than attempted again. What would make
-  // it real is a physics change — a cut ball keeping more of its speed — and
-  // that is a decision about how the whole game feels, not about one lesson.
-
-  // FOUR BALLS, FIVE STROKES, AND EVERY STROKE COUNTS.
+  // (The same mistake in the other axis cost a round earlier: a sweep at two
+  // degrees cannot measure a window finer than two degrees. find-board ranks
+  // coarsely on two powers and re-measures its leaders at half a degree across
+  // five; `npm run verify` sweeps six.)
   //
-  // It was four balls in THREE strokes, and only a stroke that pocketed
-  // something was charged. Four balls in three strokes is arithmetic: one
-  // stroke has to drop two, and the board was asking a beginner to find a
-  // double they could not see. Reported twice — "I still can't figure out how
-  // to complete lesson 5".
+  // THE STORED HEADING HAS TO SATISFY TWO INSTRUMENTS, and they disagree.
   //
-  // So a double was measured, properly, with tools/find-board.mjs: three
-  // different families, about 550 placements, every heading at two powers
-  // through the real physics. Two balls in a line at a pocket, two balls in a
-  // line at the cue, two balls hanging on the mouth together. The widest
-  // window any of them offered was TWO DEGREES — the floor `npm run verify`
-  // calls unplayable. It is not a matter of arranging the rack better: a
-  // knocked ball carries its own drag, so by the time the first ball has taken
-  // the impulse there is not enough left in the second to reach anything.
+  // The window is an area in heading AND power, and the middle of the heading
+  // run is not the middle of that area: measured through the real physics,
+  // 311° works at nine powers out of eleven and the middle of the run works at
+  // two. But the road is drawn from the PREDICTOR, which models one contact at
+  // a time, and its version of this shot sits about three degrees away — it
+  // cannot draw 311° at all, and the heading its own sweep picks works at one
+  // power in eleven.
   //
-  // A board cannot ask for a shot the physics does not hand out. So the budget
-  // stopped needing one: five strokes for four balls, and a stroke is spent
-  // whether or not it pockets. That binds — two wasted strokes and the attempt
-  // is over — without requiring anything but four ordinary pots in a row, and
-  // it teaches the thing the board was always about, which is not wasting a
-  // stroke. A scratch is still given back, because a foul is not a miss.
-  budget: {
-    say: 'Clear all four in <em>five strokes</em>. Every stroke counts, hit or miss',
+  // So the stored heading is the most forgiving one both agree on: 314.5°,
+  // seven powers out of eleven, and a road the felt can actually draw. The
+  // resting aim, the road and the demonstration after a miss are then one
+  // line rather than three.
+  //
+  // The board is the shape that was asked for: the cue clips the 1, the 1
+  // sends the 4 into the side pocket, and the 1 carries on into the corner.
+  // Two pockets, one stroke, and the cue rests pointing at it with the road
+  // drawn on the felt — the lesson is that the opportunity is there to be
+  // seen, not that a 3.5° line is easy to find unaided.
+  'two-in-one': {
+    say: 'One stroke, two balls: clip the <b>4</b> in with the <b>1</b>, and the 1 runs on',
     spot: 'rack',
-    clearRack: true,
-    shots: 5,
-    chargesMisses: true,
-    cheer: 'Rack cleared',
-    scold: 'Nothing pocketed — and that still cost you a stroke',
-    whiff: 'You touched nothing — start the shot on a ball',
-    nudge: 'Take the ball the road on the felt is drawn to. It is the shortest pot on the table.'
+    // Both, in the same stroke. Counting reps would pass a player who potted
+    // one, re-racked, and potted the other — two strokes doing one thing each,
+    // which is the opposite of the lesson.
+    strokePots: 2,
+    // DRAWN ALONG THE HEADING THE CUE RESTS ON. The sweep's own pick is a
+    // degree or two off it and works too, but then the road and the resting
+    // aim are two different lines for one shot, and the player is left to
+    // wonder which of them is the answer. One line: the measured one.
+    route: { fromSolve: true, number: 4, slot: 'ml' },
+    cheer: 'Two balls, one stroke. That is what to look for',
+    scold: 'Only one went down. Aim so the <b>1</b> clips the <b>4</b> thinly — it has to keep rolling afterwards',
+    whiff: 'You missed the <b>1</b> completely — aim at the near ball, not past it',
+    nudge: 'Follow the road: through the edge of the <b>1</b>, so it puts the <b>4</b> in and carries on.'
   },
 
   // THE RED SITS ON THE LAZY LINE — AND NOW THE BOARD MEANS IT.
@@ -704,27 +705,35 @@ export class Tutorial {
       this.drawCoachRoute(null);
       return;
     }
+    this.drawCoachRoute(this.roadNow());
+  }
+
+  /**
+   * THE ROAD THIS BOARD WOULD DRAW RIGHT NOW.
+   *
+   * One function, because there were two and a check was reading the wrong
+   * one: it asked the sweep directly and reported a heading the felt was not
+   * showing, which is the same class of mistake as a check that asks the
+   * solver whether a road exists while the player sees nothing.
+   *
+   * A BOARD MAY NAME ITS OWN LINE. Only where the shot is one the predictor
+   * cannot see to the end of — a rail into a hand-off — and only because
+   * `solve` is measured through the real physics rather than guessed. The
+   * search is still the default, because it is the only thing that can answer
+   * for a table the player has already changed.
+   */
+  roadNow() {
+    if (!this.solveCoachRoute) return null;
     // A rack-clearing board has already searched, to find out what it was
     // allowed to SAY; the road is that same search's answer rather than a
-    // second one that could disagree with it.
-    if (this.lesson?.clearRack) {
-      this.drawCoachRoute(this._guideNext()?.bands ?? null);
-      return;
-    }
+    // second one that could disagree with it. It is asked FIRST, because such
+    // a board names no `route` of its own — there is no fixed goal on a table
+    // the player is emptying.
+    if (this.lesson?.clearRack) return this._guideNext()?.bands ?? null;
     const want = this.lesson?.route;
-    if (!want) {
-      this.drawCoachRoute(null);
-      return;
-    }
-    // A BOARD MAY NAME ITS OWN LINE. Only where the shot is one the predictor
-    // cannot see to the end of — a rail into a hand-off — and only because
-    // `solve` is measured through the real physics rather than guessed. The
-    // search is still the default, because it is the only thing that can
-    // answer for a table the player has already changed.
-    const road = want.fromSolve
-      ? this.roadAlong?.(this.lesson.solve, want) ?? this.solveCoachRoute(want)
-      : this.solveCoachRoute(want);
-    this.drawCoachRoute(road);
+    if (!want) return null;
+    if (want.fromSolve) return this.roadAlong?.(this.lesson.solve, want) ?? this.solveCoachRoute(want);
+    return this.solveCoachRoute(want);
   }
 
   /**
@@ -1859,6 +1868,11 @@ export class Tutorial {
     }
     this.player.vx = 0;
     this.player.vz = 0;
+    // AND THE CAMERA. A pot shakes the camera and punches the zoom, both of
+    // which decay over a few hundred milliseconds — fine mid-stroke, wrong the
+    // moment everything else stops: the only thing still moving is the frame
+    // around a motionless ball, which reads as the ball twitching.
+    this.engine?.settle?.();
     this.game.audio?.roomClear?.();
   }
 

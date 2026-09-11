@@ -305,54 +305,78 @@ const PLANS = {
     premise: MINED_DIRECT
   }
 ,
-  // THE CUE DOING BOTH, which is the one shape left untried.
+  // THE CUE DOING BOTH — THE SECOND SHAPE ASKED FOR, SEARCHED PROPERLY.
   //
-  // Every family so far hands the work on: the cue hits a ball and that ball
-  // has to do the rest, either by pushing the second (nothing left after the
-  // drag) or by cutting it (the near ball then has thirteen units to cross).
-  // Here nothing is handed on. The cue clips the first ball into a pocket,
-  // keeps most of its own speed — which is what a thin cut does — and carries
-  // on into a second ball sitting on a second pocket. Two pots, one impulse,
-  // no second-hand energy.
+  // "Shooting the cue at ball 1, making ball 1 go into a pocket, while the cue
+  // ball continues onward and hits ball 2 into a different pocket."
+  //
+  // Nothing is handed on here, which is what makes it different from every
+  // family that measured at the floor: the cue clips the first ball into its
+  // pocket, keeps most of its own speed — a thin cut barely slows the striker
+  // — and carries on into a second ball sitting on a second pocket. The first
+  // pass at this family only tried pairs of pockets down one rail, which is
+  // the one place the cue's tangent line does NOT go. This one grids the
+  // second ball over the table and lets the sweep find the line.
   'two-in-one-cue': {
-    board: 'two-in-one',
-    goal: 'the cue potting both balls itself, one after the other',
+    board: 'budget',
+    goal: 'the cue potting one ball and carrying on into another, two pockets',
     balls: [1, 4],
     grid() {
       const round = (v) => +v.toFixed(2);
       const cue = { x: 0, z: 6.4 };
-      const out = [];
-      const pairs = [
-        [{ x: -8.1, z: 0, r: 0.82 }, { x: -8.1, z: -15.1, r: 0.98 }],
-        [{ x: -8.1, z: 15.1, r: 0.98 }, { x: -8.1, z: 0, r: 0.82 }]
+      const POCKETS = [
+        { x: -8.1, z: 0, r: 0.82 },
+        { x: 8.1, z: 0, r: 0.82 },
+        { x: -8.1, z: -15.1, r: 0.98 },
+        { x: 8.1, z: -15.1, r: 0.98 },
+        { x: -8.1, z: 15.1, r: 0.98 },
+        { x: 8.1, z: 15.1, r: 0.98 }
       ];
-      for (const [A, B] of pairs) {
-        const off = (P, back, side) => {
-          const ux = cue.x - P.x;
-          const uz = cue.z - P.z;
-          const ul = Math.hypot(ux, uz);
-          return {
-            x: P.x + (ux / ul) * back + (-uz / ul) * side,
-            z: P.z + (uz / ul) * back + (ux / ul) * side
+      const sunk = (b) => POCKETS.some((p) => Math.hypot(p.x - b.x, p.z - b.z) < p.r + 0.25);
+      const out = [];
+      // The first ball, off the mouth of the left side pocket on the line the
+      // cue comes in on, with a little sideways play — the offset is what
+      // makes the hit a cut and decides which way the cue leaves.
+      const A = { x: -8.1, z: 0 };
+      const ux = cue.x - A.x;
+      const uz = cue.z - A.z;
+      const ul = Math.hypot(ux, uz);
+      for (const back of [1.2, 1.5, 1.9]) {
+        for (const side of [-0.5, 0, 0.5]) {
+          const one = {
+            x: A.x + (ux / ul) * back + (-uz / ul) * side,
+            z: A.z + (uz / ul) * back + (ux / ul) * side
           };
-        };
-        for (const backA of [1.2, 1.5, 1.9]) {
-          for (const backB of [1.2, 1.5, 1.9]) {
-            for (const side of [-0.9, -0.45, 0, 0.45, 0.9]) {
-              const a = off(A, backA, 0);
-              const b = off(B, backB, side);
-              if (Math.abs(a.x) > 7.4 || Math.abs(b.x) > 7.4) continue;
-              if (Math.abs(a.z) > 14.4 || Math.abs(b.z) > 14.4) continue;
-              if (Math.hypot(a.x - b.x, a.z - b.z) < 1.1) continue;
-              out.push({ 4: [round(a.x), round(a.z)], 1: [round(b.x), round(b.z)] });
+          if (sunk(one)) continue;
+          // The second ball, off the mouth of each of the other pockets, at a
+          // couple of distances and either side of the line in.
+          for (const B of POCKETS.slice(1)) {
+            const vx = 0 - B.x;
+            const vz = 0 - B.z;
+            const vl = Math.hypot(vx, vz) || 1;
+            for (const back2 of [1.2, 1.6]) {
+              for (const side2 of [-0.7, 0, 0.7]) {
+                const two = {
+                  x: B.x + (vx / vl) * back2 + (-vz / vl) * side2,
+                  z: B.z + (vz / vl) * back2 + (vx / vl) * side2
+                };
+                if (sunk(two)) continue;
+                if (Math.abs(two.x) > 7.4 || Math.abs(two.z) > 14.4) continue;
+                if (Math.hypot(two.x - one.x, two.z - one.z) < 1.2) continue;
+                out.push({ 1: [round(one.x), round(one.z)], 4: [round(two.x), round(two.z)] });
+              }
             }
           }
         }
       }
       return out;
     },
-    // Two down, and no ball touched another: the cue did all of it.
-    ok: (out) => !out.scratched && out.passes === 0 && out.pots.length >= 2
+    // Two balls down, in different pockets, and no ball touched another: the
+    // cue did all of it, which is the shape the card would describe.
+    ok: (out) => {
+      if (out.scratched || out.passes !== 0 || out.pots.length < 2) return false;
+      return new Set(out.pots.map((p) => p.slot)).size >= 2;
+    }
   }
 };
 
@@ -373,9 +397,9 @@ try {
   // trip each and finishes.
   const grid = plan.grid();
   const results = [];
-  const sweep = async (place, step) =>
+  const sweep = async (place, step, powers) =>
     game.page.evaluate(
-        ({ place, okSource, premiseSource, step }) => {
+        ({ place, okSource, premiseSource, step, powers }) => {
           const g = window.__game;
           const ok = new Function('out', `return (${okSource})(out);`);
           const spec = g.rooms.scriptedSpec;
@@ -404,7 +428,7 @@ try {
           else g.rooms.reRackScripted();
           const hits = [];
           for (let deg = 0; deg < 360; deg += step) {
-            for (const power of [0.6, 0.85]) {
+            for (const power of powers) {
               if (ok(window.__simShot({ deg, power }))) {
                 hits.push(deg);
                 break;
@@ -451,7 +475,8 @@ try {
         place,
         okSource: plan.ok.toString(),
         premiseSource: plan.premise ? plan.premise.toString() : null,
-        step
+        step,
+        powers
       }
     );
 
@@ -466,9 +491,17 @@ try {
   // can honestly do, and the leaders are then measured properly.
   const COARSE = 2;
   const FINE = 0.5;
+  // TWO POWERS TO RANK, FIVE TO MEASURE. The same mistake as the heading step,
+  // in the other axis: a sweep that tries two powers reports the window for a
+  // player who only ever hits at those two. The board this search was written
+  // for measured 2° at [0.6, 0.85] and 3.5° across the range a thumb actually
+  // produces — the difference between "unplayable" and "in line with lesson
+  // two". Ranking can be cheap; measuring cannot.
+  const RANK_POWERS = [0.6, 0.85];
+  const FINE_POWERS = [0.5, 0.6, 0.7, 0.85, 1.0];
   for (let i = 0; i < grid.length; i += 1) {
     if (i % 20 === 0) process.stdout.write(`  ${i}/${grid.length}\r`);
-    results.push(await sweep(grid[i], COARSE));
+    results.push(await sweep(grid[i], COARSE, RANK_POWERS));
   }
   process.stdout.write('        \r');
   const kept = results.filter((r) => r.premise);
@@ -480,7 +513,7 @@ try {
   console.log(`  re-measuring the best ${leaders.length} at ${FINE}°\n`);
   for (let i = 0; i < leaders.length; i += 1) {
     process.stdout.write(`  ${i}/${leaders.length}\r`);
-    const fine = await sweep(leaders[i].place, FINE);
+    const fine = await sweep(leaders[i].place, FINE, FINE_POWERS);
     leaders[i].widest = fine.widest;
     leaders[i].mid = fine.mid;
     leaders[i].n = fine.n;

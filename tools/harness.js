@@ -243,12 +243,17 @@
   window.__simRoute = () => {
     const t = g().tutorial;
     if (!t?.lesson) return null;
+    // THE ROAD THE FELT IS SHOWING, through the tutorial's own function. This
+    // used to re-ask the sweep, which on a board that draws its own stored
+    // line reported a heading the player was never shown.
     const want = t.lesson.clearRack ? {} : t.lesson.route;
-    const lines = want ? t.solveCoachRoute(want) : null;
+    const lines = t.roadNow();
     return {
       id: t.lesson.id,
       want,
       plan: lines?.plan ?? null,
+      // The heading the road is drawn along, so a check can PLAY it.
+      heading: lines?.heading ?? null,
       lines: (lines || []).length,
       // Which balls the route is about — the route and the sentence above it
       // have to be describing the same shot.
@@ -435,7 +440,13 @@
     const game = g();
     const L = game.tutorial.lesson;
     const step = spec.step ?? 0.5;
-    const powers = spec.powers ?? [0.5, 0.75, 1.0];
+    // SIX POWERS, NOT THREE. A thumb produces a continuum; a sweep samples it,
+    // and a sparse sample reports the window for a player who only ever hits
+    // the ball three ways. The two-in-one board reads 0.5° at three powers and
+    // 3.5° at six, because the headings between its islands work at two thirds
+    // power and nothing else — the same failure as measuring headings at two
+    // degrees and calling everything between two hits solid.
+    const powers = spec.powers ?? [0.45, 0.55, 0.65, 0.75, 0.85, 1.0];
     const notify = game.tutorial.notify;
     game.tutorial.notify = () => {};
     const base = snapshot();

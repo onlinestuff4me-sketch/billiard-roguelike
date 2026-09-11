@@ -99,42 +99,30 @@
       ]
     },
     {
-      "id": "budget",
-      "name": "Four Balls, Five Strokes",
+      "id": "two-in-one",
+      "name": "Two In One Stroke",
       "rest": {
-        "x": 0.438,
-        "z": -0.899
+        "x": -0.713,
+        "z": -0.701
       },
-      "solve": 28.0,
+      "solve": 314.5,
       "call": [
-        "mr",
-        "tr"
+        "ml",
+        "tl"
       ],
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 2.6,
-          "z": 2.6,
-          "number": 1
-        },
-        {
-          "type": "solid",
-          "x": 5.0,
-          "z": 1.4,
+          "x": -7.04,
+          "z": 0.84,
           "number": 4
         },
         {
-          "type": "solid",
-          "x": 6.4,
-          "z": -10.6,
-          "number": 2
-        },
-        {
           "type": "stripe",
-          "x": -5.5,
-          "z": 1.0,
-          "number": 6
+          "x": -5.88,
+          "z": 0.99,
+          "number": 1
         }
       ]
     },

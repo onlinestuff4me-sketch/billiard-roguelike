@@ -104,6 +104,39 @@ try {
       `${id} — the road is on the felt`,
       `${drawn?.bands ?? 0} bands, fade ${drawn?.fade ?? 0}, ${drawn?.drawn?.reduce((a, b) => a + b, 0) ?? 0} vertices`
     );
+    // AND IT IS A SHOT, NOT A SCRATCH. The road is a line and a line is all
+    // the player can follow — how hard they hit it is theirs — so the heading
+    // it is drawn along is played here at every power a thumb produces, and
+    // none of them may lose the cue. Reported as "it keeps giving me coach
+    // lines that point my cue ball into pockets where it scratches": the
+    // scratch was being judged only at the power that happened to achieve the
+    // goal, and only on the half of the path after contact.
+    const heading = (await game.route())?.heading;
+    if (heading != null) {
+      const tried = [];
+      for (const power of [0.5, 0.65, 0.8, 1.0]) {
+        const out = await game.shot({ deg: heading, power });
+        tried.push(`${power}:${out.scratched ? 'SCRATCH' : 'ok'}`);
+      }
+      check(
+        !tried.some((t) => t.includes('SCRATCH')),
+        `${id} — the road it draws is not a scratch`,
+        `${heading}° — ${tried.join(' ')}`
+      );
+    }
+    // AND THE ARROWS TRAVEL THE WAY THEY POINT. They marched backwards for a
+    // release: the road said "go left" and its arrows slid right.
+    const march = [];
+    for (let i = 0; i < 3; i += 1) {
+      march.push((await game.road())?.drawn ? (await game.road())?.head : null);
+      await game.page.waitForTimeout(80);
+    }
+    const moving = march.filter((h) => h != null);
+    check(
+      moving.length < 2 || moving[moving.length - 1] > moving[0],
+      `${id} — the arrows march the way they point`,
+      moving.join(' → ')
+    );
     // AND IT KEEPS OFF THE RED. The mine board drew its road straight over the
     // mine — the one line the card exists to tell the player not to take.
     if (road?.hazards) {
@@ -146,130 +179,59 @@ try {
     reads(miss.band, 'a miss');
   }
   /* ------------------------------------------------------------------ *
-   * THE MULTI-SHOT BOARD: a failed stroke is given back, not charged
+   * TWO IN ONE STROKE: one ball is not two
+   * ------------------------------------------------------------------ *
+   * The four-balls-five-strokes board that used to sit here is gone, and with
+   * it the rewind checks that were the only exercise of `clearRack` and its
+   * stroke budget. That machinery still stands in Tutorial for a board that
+   * declares it; nothing ships with it today, so nothing here covers it.
    * ------------------------------------------------------------------ */
-  await game.gotoBoard('budget');
-  console.log('\nbudget — four balls, five strokes\n');
+  await game.gotoBoard('two-in-one');
+  console.log('\ntwo-in-one\n');
 
   const opening = await game.route();
   check(opening?.lines > 0, 'the board draws its route', `${opening?.lines ?? 0} lines`);
   const openSolve = await game.solve();
   check(
     openSolve?.ok,
-    "budget's stored solution actually solves it",
+    "two-in-one's stored solution actually solves it",
     `${openSolve?.solve}° — ` + (openSolve?.tried ?? []).map((t) => `${t.power}:${t.ok ? 'yes' : 'no'}`).join(' ')
   );
 
-  // The opening shot of the route `verify-boards` finds. It pots.
-  const first = await game.play({ deg: 20, power: 0.7 });
-  check(first.pots.length >= 1, 'the opening shot pockets a ball', `${first.pots.join(', ')} in`);
-  check(first.strokes === 1, 'and spends a shot', `${first.strokes} spent`);
-  check(
-    /pocketed/i.test(first.band) && vocab(first.band),
-    'the band names what was pocketed, in the table\'s own word',
-    JSON.stringify(first.band)
-  );
-  check(
-    /strokes? left/.test(first.band) && /\d/.test(first.band),
-    'and names the next ball and its pocket'
-  );
-
-  const before = await game.table();
-
-  // A HEADING THAT SCRATCHES, found rather than assumed — the board's geometry
-  // is free to move, and a hard-coded number would quietly stop testing a
-  // scratch the first time it did.
-  let deg = null;
-  for (let d = 0; d < 360 && deg === null; d += 2) {
-    const probe = await game.shot({ deg: d, power: 1 });
-    if (probe.scratched) deg = d;
-  }
-  check(deg !== null, 'a scratch is reachable from here', deg === null ? '' : `${deg}°`);
-
-  if (deg !== null) {
-    const after = await game.play({ deg, power: 1 });
-    check(after.scratched, 'the stroke scratched');
-    check(
-      sameRack(after.rack, before.rack),
-      'the rack is exactly as it was before that stroke',
-      `${before.rack.map((b) => b.n).join(',')} → ${after.rack.map((b) => b.n).join(',')}`
-    );
-    check(
-      after.strokes === before.strokes,
-      'the stroke is not charged',
-      `${before.strokes} → ${after.strokes}`
-    );
-    check(
-      Math.hypot(after.player.x - before.player.x, after.player.z - before.player.z) < 0.05,
-      'the cue is back where it was played from',
-      `(${before.player.x}, ${before.player.z}) → (${after.player.x}, ${after.player.z})`
-    );
-    check(
-      /^Scratched/.test(after.band) && vocab(after.band),
-      'the band names the scratch first',
-      JSON.stringify(after.band)
-    );
-    check(
-      /Try the .* into the .*pocket/i.test(after.band),
-      'and then says what to play next'
-    );
-    // AND THE FELT AGREES WITH THE WORDS. The route re-solves from wherever
-    // the rewind left the cue, so the line the player follows is the line for
-    // the shot the sentence just named.
-    const again = await game.route();
-    check(again?.lines > 0, 'and a route for the shot it names', `${again?.lines ?? 0} lines`);
-  }
-
-  /* ------------------------------------------------------------------ *
-   * IT ONLY NAMES SHOTS THAT ARE THERE
-   *
-   * The guide used to pick the shortest ball-to-pocket run on the table and
-   * say it, which is the right ball to want and not necessarily one you can
-   * hit: from the wrong side of a ball parked on a pocket, every line to it is
-   * a scratch. An instruction that cannot be followed is worse than none,
-   * because the player spends their strokes believing it.
-   * ------------------------------------------------------------------ */
-  for (let stroke = 0; stroke < 3; stroke += 1) {
-    let deg = null;
-    for (let d = 0; d < 360 && deg === null; d += 6) {
-      const probe = await game.shot({ deg: d, power: 0.8 });
-      if (probe.hits && !probe.scratched) deg = d;
-    }
-    if (deg === null) break;
-    const played = await game.play({ deg, power: 0.8 });
-    const named = /hit the .*?(\d+).*? into the ([a-z ]+pocket|[a-z ]*corner)/i.exec(played.band);
-    if (!named) continue;
-    const route = await game.route();
-    check(
-      route?.plan?.number === Number(named[1]),
-      `the shot it names after stroke ${stroke + 1} is a shot that exists`,
-      `${JSON.stringify(played.band)} → route for ${JSON.stringify(route?.plan)}`
-    );
-  }
-
-  /* ------------------------------------------------------------------ *
-   * RUNNING OUT OF SHOTS: stated, and the attempt starts again
-   * ------------------------------------------------------------------ */
-  // The budget used to simply run past zero — the card counted down into
-  // negative numbers while the player went on shooting at a table that could
-  // no longer be cleared in three.
-  // A POTTING HEADING FROM WHEREVER THE CUE NOW IS, found the same way the
-  // scratch was: the board's geometry moves, and only a stroke that actually
-  // puts a ball down spends a shot.
-  let potDeg = null;
-  for (let d = 0; d < 360 && potDeg === null; d += 2) {
+  // ONE BALL IS NOT TWO. The rule counts pots within a single stroke, and the
+  // failure it refuses is the player who drops one, gets the table back, and
+  // drops the other — two strokes doing one thing each.
+  let oneOnly = null;
+  for (let d = 0; d < 360 && oneOnly === null; d += 2) {
     const probe = await game.shot({ deg: d, power: 0.7 });
-    if (probe.pots.length && !probe.scratched) potDeg = d;
+    if (probe.pots.length === 1 && !probe.scratched) oneOnly = d;
   }
-  check(potDeg !== null, 'a pot is reachable from here', potDeg === null ? '' : `${potDeg}°`);
-  const spent = await game.play({ deg: potDeg ?? 20, power: 0.7, spent: 4 });
-  check(spent.strokes === 0, 'the attempt starts over', `${spent.strokes} spent`);
-  check(spent.rack.length === 4, 'the whole rack is back up', `${spent.rack.length} balls`);
+  check(oneOnly !== null, 'a one-ball stroke is reachable from here', oneOnly === null ? '' : `${oneOnly}°`);
+  if (oneOnly !== null) {
+    const half = await game.play({ deg: oneOnly, power: 0.7 });
+    check(!half.done, 'one ball down does not finish the board', `${half.pots.length} pocketed`);
+    reads(half.band, 'one of two');
+  }
+
+  // AND THE SHOT THE CARD DESCRIBES PUTS BOTH DOWN, IN DIFFERENT POCKETS —
+  // the 4 into the side it is sitting on, the 1 carrying on into the corner.
+  //
+  // PLAYED AT SEVERAL POWERS, because that is the axis this board lives on: a
+  // window is an area in heading and power, and a check that plays one power
+  // reports whether the shot works for a player who always hits it that hard.
+  const solve = (await game.lesson()).solve;
+  const won = [];
+  for (const power of [0.5, 0.65, 0.8, 0.95]) {
+    const out = await game.shot({ deg: solve, power });
+    if (!out.scratched && out.pots.length >= 2) won.push(power);
+  }
   check(
-    /out of strokes/i.test(spent.band) && /Starting over/.test(spent.band) && vocab(spent.band),
-    'and the band says the budget ran out',
-    JSON.stringify(spent.band)
+    won.length >= 2,
+    'the stored shot puts both balls down, at more than one power',
+    `works at ${won.join(', ') || 'none'}`
   );
+  const both = await game.play({ deg: solve, power: won[0] ?? 0.8 });
+  check(both.done, 'and finishes the board', `${both.pots.join(', ')} in`);
 
   /* ------------------------------------------------------------------ *
    * THE LAST BOARD, checked after the one that comes before it — the
@@ -310,11 +272,11 @@ try {
    * having gone in — on a board whose whole subject is what counts as a pot.
    */
   const standing = (await game.table()).rack.length;
-  const won = await game.play({ deg: (await game.lesson()).solve, power: 0.6 });
+  const cleared = await game.play({ deg: (await game.lesson()).solve, power: 0.6 });
   check(
-    won.done && won.rack.length === standing - won.pots.length,
+    cleared.done && cleared.rack.length === standing - cleared.pots.length,
     'a completed board keeps every ball that did not go in',
-    `${standing} up, ${won.pots.length} pocketed, ${won.rack.length} left${won.done ? '' : ' (board not completed)'}`
+    `${standing} up, ${cleared.pots.length} pocketed, ${cleared.rack.length} left${cleared.done ? '' : ' (board not completed)'}`
   );
 
 } finally {
