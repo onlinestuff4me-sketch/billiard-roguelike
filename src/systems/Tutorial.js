@@ -152,7 +152,9 @@ const RULES = {
     // shot and not the one being taught.
     pot: (p) => (p.ball.number === 2 ? 'score' : null),
     needsPass: true,
-    route: { number: 2, slot: 'mr' },
+    // viaBall, because needsPass: a road that pots the 2 with the cue itself
+    // is a road to a stroke this board rejects.
+    route: { number: 2, slot: 'mr', viaBall: true },
     cheer: 'In — and you never touched the 2 yourself',
     scold: 'The <b>2</b> has to be knocked in by the <b>4</b>, not by your own ball. Start the shot on the 4',
     whiff: 'You missed the 4 completely — the shot has to start on that ball',
@@ -171,7 +173,9 @@ const RULES = {
     say: 'A barrier blocks the <b>3</b>. <em>Bounce</em> off the bottom wall to reach it',
     spot: 'first',
     bankThenHit: true,
-    route: { reach: 3 },
+    // viaRail, because bankThenHit: a road straight at the 3 is a road to a
+    // stroke this board rejects.
+    route: { reach: 3, viaRail: true },
     cheer: 'Off the wall and onto the 3 — and a bounce is worth more',
     scold: 'The barrier stopped your ball. Shoot down into the bottom wall instead, and bounce around it',
     whiff: 'You did not reach the <b>3</b>. Aim down into the bottom wall, and bounce around the barrier',
@@ -215,6 +219,15 @@ const RULES = {
   // seven powers out of eleven, and a road the felt can actually draw. The
   // resting aim, the road and the demonstration after a miss are then one
   // line rather than three.
+  //
+  // THE TWO BALLS SIT CLOSE TOGETHER BECAUSE THE SHOT NEEDS THEM TO. Asked
+  // whether they have to — a pair that nearly touches is hard to read — and
+  // measured across the gap: a ball's width apart is 4.5°, 1.7 apart is 2°,
+  // 2.2 apart is 1.5°. The near ball travels further before contact as they
+  // separate, so the same aim error opens into a bigger miss where it matters.
+  // Putting the pair on a corner instead, where the chain is oblique from the
+  // spawn rather than end-on, does not buy the picture anything either: every
+  // leader in that search is still this family.
   //
   // The board is the shape that was asked for: the cue clips the 1, the 1
   // sends the 4 into the side pocket, and the 1 carries on into the corner.
@@ -271,6 +284,12 @@ const RULES = {
   //   banked pot, the cue potting the 2 ....... 2°    (the floor: unplayable)
   //   banked into the 5, the 5 potting the 2 .. 4°
   //
+  // The two balls sit a ball's width apart for the same reason the two-in-one
+  // board's do, and it was measured the same way: 0.9 apart is 3.5°, 1.3 is
+  // 1.5°, and anything wider is under a degree. The 5 has to reach the 2 after
+  // a rail, and every unit of daylight between them is another unit for the
+  // error in that bank to grow across.
+  //
   // The last one is the board. It is also the right shape for the last lesson:
   // the rail from lesson four, the hand-off from lesson three, and the choice
   // between the two pads, in one stroke.
@@ -286,7 +305,7 @@ const RULES = {
     // predictor models one contact at a time and stops at the distance a ball
     // can carry, so asked to search for a heading that pots the 2 off a rail
     // and a hand-off it finds none — see roadAlong in main.js.
-    route: { fromSolve: true, reach: 5 },
+    route: { fromSolve: true, reach: 5, viaRail: true },
     cheer: 'Off the wall, past the red, and in',
     scold: 'The <b>2</b> goes in off the <b>5</b>. Come off the left wall, and take the <em>green</em> on the way',
     mined: 'You went over the red. Aim <em>away</em> from the balls — left, into the wall',
@@ -724,6 +743,24 @@ export class Tutorial {
    */
   roadNow() {
     if (!this.solveCoachRoute) return null;
+    // THE BOARD'S OWN LINE COMES FIRST, while the board is as it was authored.
+    //
+    // `solve` is measured through the real physics against the board's OWN
+    // RULE — `npm run verify` plays it and asks the board whether it passed.
+    // The sweep cannot make that statement: it works from projections and it
+    // only knows the goal it was handed, so on the plant board it found a line
+    // that pots the 2 directly and drew that, on a board whose entire subject
+    // is that the 2 has to be knocked in by the 4. Reported as "if I have to
+    // hit the 2 with the 4, why is the coach line telling me to shoot the cue
+    // into the wall and hit the 4 directly".
+    //
+    // The moment the player has changed the table the stored line describes a
+    // table that no longer exists, and the sweep — which solves from where the
+    // cue IS — is the only thing that can answer. That is the split.
+    if (this._authored() && Number.isFinite(this.lesson?.solve)) {
+      const stored = this.roadAlong?.(this.lesson.solve, this.lesson.route ?? {});
+      if (stored) return stored;
+    }
     // A rack-clearing board has already searched, to find out what it was
     // allowed to SAY; the road is that same search's answer rather than a
     // second one that could disagree with it. It is asked FIRST, because such
@@ -1928,6 +1965,24 @@ export class Tutorial {
   /** Is the cue sitting on the board's spawn, where `solve` was measured from? */
   _atSpawn() {
     return Math.hypot(this.player.x, this.player.z - this.spawnZ()) < 0.05;
+  }
+
+  /**
+   * Is this the table the board was authored as?
+   *
+   * The cue on its spot, every ball still up and none of them nudged. It is
+   * the question "does the board's stored solution still describe this table",
+   * and it is the difference between coaching a measured line and coaching a
+   * projection.
+   */
+  _authored() {
+    if (!this._atSpawn()) return false;
+    const rack = this.rooms.scriptedEnemies;
+    const spec = this.rooms.scriptedSpec?.enemies ?? [];
+    if (rack.filter((e) => e.alive).length !== spec.length) return false;
+    return rack.every(
+      (e) => !e.alive || Math.hypot(e.x - e.homeX, e.z - e.homeZ) < 0.05
+    );
   }
 
   /**

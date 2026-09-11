@@ -104,6 +104,20 @@ try {
       `${id} — the road is on the felt`,
       `${drawn?.bands ?? 0} bands, fade ${drawn?.fade ?? 0}, ${drawn?.drawn?.reduce((a, b) => a + b, 0) ?? 0} vertices`
     );
+    // AND IT IS THE BOARD'S OWN MEASURED LINE, while the board is untouched.
+    // The sweep works from projections and only knows the goal it was handed,
+    // so on the plant board it drew a line that pots the 2 with the cue — on
+    // the board whose whole subject is that the 2 must be knocked in by the 4
+    // — and on the bank board it drew a line straight at the ball.
+    const lesson = await game.lesson();
+    if (Number.isFinite(lesson?.solve)) {
+      const drawn = (await game.route())?.heading;
+      check(
+        drawn === lesson.solve,
+        `${id} — the road is the board's own solution`,
+        `road ${drawn}° vs solve ${lesson.solve}°`
+      );
+    }
     // AND IT IS A SHOT, NOT A SCRATCH. The road is a line and a line is all
     // the player can follow — how hard they hit it is theirs — so the heading
     // it is drawn along is played here at every power a thumb produces, and

@@ -2486,6 +2486,20 @@ function solveCoachRoute(want = {}) {
       if (pathHazard(shot.cuePath?.segments, objects)) continue;
       const found = goalLeg(shot, want, pockets);
       if (found.at < 0) continue;
+      // THE BOARD'S RULE, NOT JUST ITS GOAL.
+      //
+      // `goalLeg` answers "does this ball end up in that pocket", which is the
+      // goal and not the whole of what a board asks. The plant board wants the
+      // 2 knocked in BY THE 4 and the sweep drew a line that potted it
+      // directly; the bank board wants a rail first and the sweep drew a line
+      // straight at the ball. Both roads coached a stroke the board itself
+      // would have refused.
+      //
+      // A goal leg at index 0 is a ball the cue reached itself; anything
+      // further down the chain was handed on. A cue path in one segment never
+      // touched a rail.
+      if (want.viaBall && found.at < 1) continue;
+      if (want.viaRail && (shot.prediction?.segments?.length ?? 0) < 2) continue;
       const key = `${found.number}|${found.slot ?? ''}`;
       let goal = goals.get(key);
       if (!goal) {
@@ -2547,6 +2561,8 @@ function roadAlong(heading, want) {
     if (!shot.objectPath.length) continue;
     const found = goalLeg(shot, want, pockets);
     if (found.at < 0) continue;
+    if (want.viaBall && found.at < 1) continue;
+    if (want.viaRail && (shot.prediction?.segments?.length ?? 0) < 2) continue;
     return roadFor(
       { shot, at: found.at, approach: shot.prediction?.segments },
       { number: found.number, slot: found.slot, heading }

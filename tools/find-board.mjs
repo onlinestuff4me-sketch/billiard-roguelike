@@ -34,8 +34,13 @@ if (!board) {
  * before they notice the mine — has to run over it. Tried at both powers,
  * because a mine the cue rolls to a stop in front of is not a blocker.
  */
-const MINED_DIRECT = ({ place, shot }) => {
-  const two = place[2] || [-7, 2];
+const MINED_DIRECT = ({ place, rack, shot }) => {
+  // Wherever the ball actually is: the placement when the search is moving it,
+  // and the live table when it is not. A hard-coded pair of coordinates here
+  // silently tested a premise about a board that had moved on.
+  const live = rack.find((b) => b.number === 2);
+  const two = place[2] || (live ? [live.x, live.z] : null);
+  if (!two) return false;
   const deg = ((Math.atan2(two[0] - 0, -(two[1] - 6.4)) * 180) / Math.PI + 360) % 360;
   return [0.6, 0.85].every((power) => shot(deg, power).mine);
 };
@@ -121,11 +126,21 @@ const PLANS = {
       const round = (v) => +v.toFixed(2);
       const cue = { x: 0, z: 6.4 };
       const out = [];
-      // ONE SIDE ONLY. The table is symmetric in x and the cue spawns on the
-      // centre line, so the other side pocket is this search mirrored — and
-      // the budget is better spent on the offset, which is what sets how thin
-      // the hit is and therefore how much the near ball keeps.
-      for (const S of [{ x: -8.1, z: 0 }]) {
+      // THE POCKET THE PAIR SITS ON, searched along with the gap between them.
+      //
+      // Asked whether the two balls have to sit so close together, because a
+      // pair that nearly touches is hard to read and hard to plan an angle
+      // through. Measured, with the gap swept from a ball's width to two and a
+      // half: 1.2 apart is 4.5°, 1.7 is 2°, 2.2 is 1.5°. Separation costs the
+      // window because the near ball travels further before contact, so the
+      // same aim error opens into a bigger miss at the contact point.
+      //
+      // The corners are in the sweep because a side pocket puts the chain
+      // almost end-on from the spawn — the balls overlap in the PICTURE
+      // however far apart they are on the felt — and a corner is oblique from
+      // there. It does not help: every leader is still the side-pocket family,
+      // and the corner versions measure 1.5°.
+      for (const S of [{ x: -8.1, z: 0 }, { x: -8.1, z: -15.1 }, { x: 8.1, z: -15.1 }]) {
         const ux = cue.x - S.x;
         const uz = cue.z - S.z;
         const ul = Math.hypot(ux, uz);
@@ -144,7 +159,12 @@ const PLANS = {
           const bl = Math.hypot(bx, bz);
           const nx = -bz / bl;
           const nz = bx / bl;
-          for (const d of [1.0, 1.3, 1.7]) {
+          // FAR ENOUGH APART TO SEE THE ANGLE. The first pass let the two
+          // balls sit a ball's width apart, which measures well and plays
+          // badly: "do these 2 balls have to be so close together? It was
+          // hard to see what was happening and plan the angles." A cut you
+          // cannot see is not a cut you can learn.
+          for (const d of [1.0, 1.2, 1.5, 1.8, 2.2]) {
             for (const off of [-1.2, -1.0, -0.8, -0.6, -0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.8, 1.0, 1.2]) {
               // The 1: behind the 4 on the line back from the pocket, pushed
               // sideways. Straight behind is a full hit and the 1 stops dead;
@@ -378,6 +398,43 @@ const PLANS = {
       return new Set(out.pots.map((p) => p.slot)).size >= 2;
     }
   }
+,
+  // HOW FAR APART THE LAST BOARD'S TWO BALLS CAN SIT.
+  //
+  // They ship a ball's width apart, which measures well and reads as one
+  // blob: "it was hard to see what was happening and plan the angles". The
+  // shot is a rail into the 5 which puts the 2 in the side pocket, so pulling
+  // them apart makes the 5 travel further before it reaches the 2 — the same
+  // trade as the two-in-one board, and worth measuring rather than guessing.
+  'green-red-gap': {
+    board: 'green-red',
+    goal: 'the same shot, with daylight between the two balls',
+    balls: [5],
+    grid() {
+      const round = (v) => +v.toFixed(2);
+      const two = { x: 3.4, z: 0 };
+      const out = [];
+      for (const gap of [0.9, 1.3, 1.7, 2.1, 2.5, 3.0]) {
+        // The 5 on the side the cue arrives from, swung through the angles it
+        // can sit at and still be the ball the bank reaches first.
+        for (const deg of [140, 155, 170, 185, 200, 215]) {
+          const th = (deg * Math.PI) / 180;
+          const five = { x: two.x + Math.cos(th) * gap, z: two.z + Math.sin(th) * gap };
+          if (Math.abs(five.x) > 7.4 || Math.abs(five.z) > 14.4) continue;
+          out.push({ 5: [round(five.x), round(five.z)] });
+        }
+      }
+      return out;
+    },
+    ok: (out) =>
+      !out.scratched &&
+      !out.mine &&
+      out.green &&
+      out.bounces >= 1 &&
+      out.passes >= 1 &&
+      out.pots.some((p) => p.n === 2 && p.slot === 'mr'),
+    premise: MINED_DIRECT
+  }
 };
 
 const plan = PLANS[board];
@@ -465,8 +522,9 @@ try {
             const fn = new Function('api', `return (${premiseSource})(api);`);
             premise = !!fn({
               place,
+              rack: g.rooms.scriptedEnemies.map((e) => ({ number: e.number, x: e.x, z: e.z })),
               shot: (deg, power = 0.8) => window.__simShot({ deg, power }),
-              table: window.__game.rooms.table
+              table: g.rooms.table
             });
           }
           return { place, n: hits.length, widest: +best.toFixed(2), mid, premise };
