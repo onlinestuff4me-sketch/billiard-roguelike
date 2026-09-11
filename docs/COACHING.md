@@ -184,6 +184,14 @@ mistaken for a live one.
   calls one thing two things has taught a synonym instead of a game. Same for
   every other event the boards name.
 
+- **A rung on the ladder is not money until something drops on it.** Points are
+  paid at the instant a ball drops, at the multiplier standing then, so a rail
+  hit after the last pot has nothing left to pay. The ladder still climbs —
+  the next pot might be about to happen — but what is *remembered and
+  reported* is only ever the figure something was actually paid at. It used to
+  report the figure the ladder had reached, which is the same as being paid
+  wrongly from where the player sits. `npm run scoring`.
+
 `npm run coach` checks all three the way `npm run verify` checks solvability:
 it plays real strokes, reads the table and the band afterwards, and fails on a
 band that reaches for a word the game has not taught.
@@ -200,12 +208,97 @@ band that reaches for a word the game has not taught.
 - **Say what is on screen.** Only words for things the player can see and has
   been shown: the white circle, the lit pocket, the 4. No jargon the game has
   not taught.
+- **A board may not ask for a shot the physics does not hand out.** The
+  four-in-three board needed one stroke to drop two, and a double was measured
+  at 2° — the floor `verify` calls unplayable — across three families and about
+  550 placements. It is not an arrangement problem: a knocked ball carries its
+  own drag, so once the first ball has taken the impulse there is nothing left
+  in the second. The board's budget changed instead. When a board and the
+  physics disagree, the board is wrong.
+- **A lit pocket is a promise.** The game lights a pocket to mean *put a ball
+  in here*. A board that lights one and passes the player for something else is
+  lying, and two did: the angled combination and the bank were both judged on
+  reaching a ball, while their felt named a corner. A player who bounced the
+  ball off two walls and never came near it was told they had done it. Neither
+  lights a pocket now. `npm run coach` fails any board that lights one without
+  checking it.
+- **Draw the answer, and leave it drawn.** A sentence can name a ball and a
+  pocket; it cannot carry a *line*. So the route is on the felt the whole time,
+  as a soft translucent **road** about half a ball wide — not a line, because
+  the aim preview is already made of lines and two kinds of line on one table
+  is a picture nobody can read. Nothing else on the felt has width, so the road
+  cannot be mistaken for a prediction of the shot being aimed.
+
+  It is **solved from where the cue is now**, not authored: after the first
+  stroke of a multi-stroke board the cue is wherever the player left it, and a
+  stored line would be describing a table that no longer exists.
+
+  It is drawn as **a row of small arrows marching along it, with a larger one
+  at the end**. A dashed line was indistinguishable from the aim preview, which
+  is also dashed; a solid translucent band was unmistakable and too much —
+  laid over the preview it washed out the lines the player is actually
+  steering. Arrows use a fraction of the ink, say one thing neither could
+  (which way), and leave enough empty felt for the live preview to read
+  straight through. They **fade out over a third of a second the moment the
+  stroke is fired**: advice about a shot you are choosing is over once you have
+  chosen it.
+
+- **It may only name a shot that is there.** The guide used to pick the
+  shortest ball-to-pocket run on the table and say it — the right ball to
+  *want*, and not necessarily one that can be hit. From the wrong side of a
+  ball parked on a pocket, every line to it is a scratch, and the board spent
+  a player's strokes telling them to play it. The route solver sweeps every
+  heading once and files each under what it achieves, so asking it for the best
+  *available* shot costs no more than asking it to confirm one already chosen.
+  When nothing is on, the band says so.
+
+- **One rule picks the shot, for every board.** The route used to be the
+  projection of a stored heading with every leg it produced drawn — lines for
+  balls the card was not talking about, running off the table past the shot
+  being asked for. It read as wrong because it was answering a different
+  question. The rule now:
+
+  1. **The goal** comes from the board — `route: {number, slot}` for a ball
+     into a named pocket, `route: {reach}` for a ball that only has to be hit.
+     It is the goal the card's sentence describes, written once so the words
+     and the road cannot come from two different ideas of the shot.
+  2. **Every heading** is projected, at two powers, and marked as achieving it.
+  3. **The shot is the middle of the widest contiguous run** of headings that
+     do. Not the first that works and not the stored one: the middle of the
+     widest window is the shot with the most room for error either side, which
+     is the shot worth teaching.
+  4. **Only the goal is drawn** — the cue's run to its first contact and the
+     chain up to the goal leg, and not one leg further. What the other balls do
+     afterwards is true, irrelevant, and what made the first version of this
+     unreadable.
+- **A demonstrated shot has to be a shot that works.** Every board stores
+  `solve`, a heading, and two things teach it as the answer — the cue swinging
+  onto it after a miss, and the route. Two boards had drifted off theirs: the
+  bank's scratched at every power, and the four-in-three board's pocketed
+  nothing at all. `npm run coach` plays each board's stored solution through
+  the board's own rule.
+
+## Where the words go
+
+The band is **above the felt, not on it**. A lesson reserves a strip at the top
+of the screen for Skip and the sentence, and the table shrinks to fit what is
+left — measured against what the table actually draws, then held clear every
+frame, because the far rail stands above the pocket centres and a strip sized
+to the arena alone left it poking into the band.
+
+It used to be pinned to the one strip of felt no board places anything in,
+which is not the same as a strip no *ball* can reach. One rolled up under the
+band and out of sight, which is exactly how it was reported.
+
+The strip is bought instantly when a lesson starts and **given back over half a
+second** when the tutorial ends: the felt growing out to fill the screen is the
+curtain going up on the game itself.
 
 ## The four states
 
 | State | Trigger | What it must carry |
 |---|---|---|
-| **Instruct** | board loads | the one line, the highlighted region, the lit pocket, a resting aim near a real solution |
+| **Instruct** | board loads | the one line, the highlighted region, the lit pocket if the board checks one, the solved route, a resting aim near a real solution |
 | **Aiming** | thumb down | the instruction, unchanged and unfaded; the routes — your ball, the struck ball — each ending in a tag naming where it goes |
 | **Missed** | table at rest, rep not met | what happened in one line, naming a cause, and what to do next; the table is put back — a whole board on a single-stroke lesson, one stroke on a multi-stroke one — and then the cue swings from the line that failed to one that works |
 | **Complete** | table at rest, rep met | the lesson's own praise, the felt dimmed, shots refused, one CTA forward |

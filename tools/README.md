@@ -78,6 +78,96 @@ The scratch and the pot it needs are **found, not hard-coded** — the boards'
 geometry is free to move, and a fixed heading quietly stops testing the thing it
 was written for the first time it does.
 
+It also holds the boards to their promises:
+
+- **A lit pocket means "put a ball in here".** A board that lights one and
+  passes the player for something else is lying. Two were: the angled
+  combination and the bank, both judged on reaching a ball while their felt
+  named a corner. The check found the second one the day it was written for the
+  first.
+- **A stored solution has to solve the board.** Every board carries `solve`, a
+  heading, and the game teaches it twice — the cue swings onto it after a miss,
+  and the coach route is drawn from it. Two boards had drifted off theirs: the
+  bank's scratched at every power, and the four-in-three board's pocketed
+  nothing at all.
+- **Every board draws its route** before anything is asked of the player.
+
+## `npm run layout`
+
+Four viewports, from a 360px phone up. Nothing may cross the edge of the
+screen, a row that is meant to be centred has to be, buttons sharing a row have
+to be one width, and in a lesson the table must start below the coaching band.
+
+The menu's three secondary buttons were a flex row of items each carrying
+`width: 100%`. A flex item will not shrink below its min-content width, so
+three buttons each asking for the whole row — one holding the unbreakable word
+SETTINGS — could not fit and ran past the row's own right edge. On a 360px
+phone that put SOUND ON off the side of the screen. Obvious in a screenshot,
+invisible in a diff.
+
+## `npm run palette`
+
+Boots the game, renders a board, reads pixels. It measures three different
+questions, and the first version of it measured none of them:
+
+| | what | floor |
+|---|---|---|
+| **apart** | every pair of balls that can share a table, in normal vision and simulated protanopia, deuteranopia and tritanopia | CIE76 dE |
+| **visible** | each ball against the felt and against the obsidian | WCAG 1.4.11, 3:1 |
+| **readable** | each numeral against the ground it is printed on | WCAG 1.4.3, 4.5:1 |
+
+The second and third are why a player could report a ball as unreadable while a
+palette check passed: it was measuring only whether the balls differed from
+*each other*. Sampling runs at a phone's pixel ratio, because a numeral four
+device-pixels tall has no pure-ink pixel in it and a contrast measured there
+reports the limits of the sampling rather than the design.
+
+`npm run palette -- --pick` searches the **rendered** gamut: 432 candidates put
+through the real renderer and sampled back, filtered by the floors above and by
+the hue families the game has already spent (red means it hurts, green means a
+pick-up, cyan is your ball), then the four with the widest worst-case
+separation. Choosing hexes by eye, or by distance between source values, is how
+this palette went wrong twice.
+
+## `npm run scoring`
+
+The only check here that needs no browser: `Rules.js` is plain arithmetic. It
+exists because of a report that banks after a ball went down were counting as
+extra multipliers.
+
+They were not being *paid* — points are paid at the instant a ball drops, at
+the multiplier standing then. But the stroke's ledger line reported the
+multiplier the ladder had **reached**, and the run's best-multiplier stat
+recorded it too. The number the player was shown was the number they were told
+they had been paid at, and it was wrong — which is the same as being paid
+wrongly, from where they sit.
+
+## `npm run find-board -- <board>`
+
+`verify` answers *is this board solvable as authored*. This answers the
+question before it: **where should the balls go** so that the shot the card
+describes is a shot a beginner can find. It sweeps candidate placements, and
+for each one sweeps every heading at two powers through the real physics,
+reporting the widest **contiguous window** of heading that satisfies the goal.
+
+It exists because a board was caught claiming something it did not check, and
+the honest fix — require the pot the card names — was rejected on a search of
+*twenty* layouts that found nothing wider than 2°. Twenty layouts is not a
+search. Run properly it produced two results worth having:
+
+- **the plant board.** 320 placements over the middle of the table confirmed
+  the verdict for combinations played the long way — a pot's tolerance falls
+  off as one over the distance the object ball travels — and then found **6°**,
+  three times the playable floor, the moment the second ball was parked a
+  ball's width off a pocket mouth. The board requires the pot now.
+- **the budget board.** Three families, about 550 placements, looking for two
+  balls in one stroke: two in a line at a pocket, two in a line at the cue, two
+  hanging on the mouth together. The widest window anywhere was **2°**. A
+  knocked ball carries its own drag, so once the first ball has taken the
+  impulse there is nothing left in the second. A board cannot ask for a shot
+  the physics does not hand out, so that board's budget was changed to stop
+  needing one.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -93,8 +183,11 @@ underneath it.
 - `harness.js` — injected into the page; snapshot/restore, one fully-resolved
   stroke, the sweep, and the multi-stroke beam search.
 - `verify-boards.mjs` — the CLI and the thresholds.
-- `check-coach.mjs` — what the boards say and do when a stroke fails.
-- `check-palette.mjs` — the ball colours, sampled out of the framebuffer.
+- `check-coach.mjs` — what the boards say and do, and whether they mean it.
+- `check-palette.mjs` — the ball colours and contrasts, out of the framebuffer.
+- `check-layout.mjs` — nothing off the edge, at six viewports.
+- `find-board.mjs` — where should the balls go, searched rather than guessed.
+- `check-scoring.mjs` — the ladder pays for what happened (no browser needed).
 
 ## Beyond the tutorial
 

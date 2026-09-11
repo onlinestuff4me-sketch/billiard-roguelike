@@ -163,6 +163,10 @@ export class Rules {
     this.strokeEvents = [];
     this.ballsTouched = 0;
     this.banks = 0;
+    /** Banks that happened before the stroke last paid — the ones that earned. */
+    this.paidBanks = 0;
+    /** The multiplier the stroke actually paid at, as opposed to reached. */
+    this.paidMultiplier = 0;
     this.scratched = false;
   }
 
@@ -182,7 +186,8 @@ export class Rules {
       this.ledger.push({
         id: 'stroke',
         label: `Shot ${this.strokesUsed + 1}`,
-        detail: `×${this.multiplier}`,
+        // The figure it PAID at, not the one it reached afterwards.
+        detail: `×${this.paidMultiplier || this.multiplier}`,
         amount: paid
       });
     }
@@ -193,7 +198,8 @@ export class Rules {
       paid,
       voided,
       lost: voided ? this.strokeScore : 0,
-      multiplier: this.multiplier,
+      multiplier: this.paidMultiplier || this.multiplier,
+      banks: this.paidBanks,
       scratched: this.scratched
     };
     if (this.strokesLeft <= 0 && !this.filled) this.failed = true;
@@ -205,8 +211,31 @@ export class Rules {
    * The multiplier ladder
    * ---------------------------------------------------------------- */
 
+  /**
+   * A RUNG ON THE LADDER IS NOT MONEY UNTIL SOMETHING DROPS ON IT.
+   *
+   * `bestMultiplier` used to be recorded here, so a stroke that banked around
+   * the table after its last ball went down kept climbing a figure nothing was
+   * ever paid at — and the stroke's own ledger line then reported that figure
+   * as what it paid. Reported as banks after a pot counting as extra
+   * multipliers, which is exactly what the numbers said even though the score
+   * was right: points are paid at the instant a ball drops, at the multiplier
+   * standing THEN, and the ladder afterwards is a promise to a ball that never
+   * came.
+   *
+   * So the ladder still climbs on every bank, because the next pot might be
+   * about to happen — and what is REMEMBERED is only ever the figure something
+   * was actually paid at. See `_paid`.
+   */
   _step(amount) {
     this.multiplier = Math.min(RULES.multiplier.max, this.multiplier + amount);
+    return this.multiplier;
+  }
+
+  /** Called the instant the ladder pays out, and only then. */
+  _paid() {
+    this.paidMultiplier = this.multiplier;
+    this.paidBanks = this.banks;
     this.bestMultiplier = Math.max(this.bestMultiplier, this.multiplier);
     return this.multiplier;
   }
@@ -226,7 +255,6 @@ export class Rules {
   /** The double: multiply whatever has been built. */
   gold() {
     this.multiplier = Math.min(RULES.multiplier.max, this.multiplier * RULES.multiplier.goldFactor);
-    this.bestMultiplier = Math.max(this.bestMultiplier, this.multiplier);
     return this.multiplier;
   }
 
@@ -253,6 +281,7 @@ export class Rules {
    */
   pot(number) {
     this._step(RULES.multiplier.perBallDown);
+    this._paid();
     const value = Math.round(number * RULES.score.perPip * this.multiplier);
     this.strokeScore += value;
     this.ballsDown += 1;
