@@ -42,6 +42,107 @@ function segmentScratches(seg, pockets) {
   return false;
 }
 
+/**
+ * A POLYLINE WITH WIDTH, BECAUSE A LINE HAS NONE.
+ *
+ * GPU line width is capped at one physical pixel on virtually every platform.
+ * On a phone at three device pixels to the CSS pixel that is a THIRD of a
+ * pixel of coverage, and the aim preview — the thing the player is actually
+ * steering — was drawn out of those while the coach road beside it is drawn
+ * out of triangles. Reported as "it's hard to see the aiming guide lines of
+ * the ball trajectories": they were there, at a third of a pixel.
+ *
+ * The main beam has been geometry for exactly this reason since it was
+ * written. This is the same answer for every other predicted line: each
+ * segment becomes a quad of a real world-space width, so a line is as thick as
+ * it is asked to be on any screen.
+ */
+class Ribbon {
+  /** @param {THREE.Object3D} group @param {{color:number, opacity:number}} look */
+  constructor(group, look, quads = 96) {
+    this.positions = new Float32Array(quads * 6 * 3);
+    this.geo = new THREE.BufferGeometry();
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    this.geo.setDrawRange(0, 0);
+    this.mat = new THREE.MeshBasicMaterial({
+      color: look.color,
+      transparent: true,
+      opacity: look.opacity,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    this.mesh = new THREE.Mesh(this.geo, this.mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.visible = false;
+    group.add(this.mesh);
+  }
+
+  /**
+   * @param {Array<{ax:number,az:number,bx:number,bz:number}>} segs
+   * @param {{y:number, width:number, color?:number, opacity?:number,
+   *          dash?:number, gap?:number}} look
+   */
+  set(segs, look) {
+    let v = 0;
+    const half = look.width / 2;
+    const quad = (ax, az, bx, bz, nx, nz) => {
+      if ((v + 6) * 3 > this.positions.length) return;
+      const y = look.y;
+      this.positions.set(
+        [
+          ax + nx, y, az + nz, bx + nx, y, bz + nz, bx - nx, y, bz - nz,
+          ax + nx, y, az + nz, bx - nx, y, bz - nz, ax - nx, y, az - nz
+        ],
+        v * 3
+      );
+      v += 6;
+    };
+    // Dashes are cut here rather than by LineDashedMaterial, which needs line
+    // primitives. Carried across segments so a bank does not restart the
+    // pattern in the middle of a dash.
+    let phase = 0;
+    for (const seg of segs || []) {
+      const dx = seg.bx - seg.ax;
+      const dz = seg.bz - seg.az;
+      const len = Math.hypot(dx, dz);
+      if (len < 1e-5) continue;
+      const ux = dx / len;
+      const uz = dz / len;
+      const nx = -uz * half;
+      const nz = ux * half;
+      if (!look.dash) {
+        quad(seg.ax, seg.az, seg.bx, seg.bz, nx, nz);
+        continue;
+      }
+      const period = look.dash + look.gap;
+      let at = -phase;
+      while (at < len) {
+        const from = Math.max(at, 0);
+        const to = Math.min(at + look.dash, len);
+        if (to > from) quad(seg.ax + ux * from, seg.az + uz * from, seg.ax + ux * to, seg.az + uz * to, nx, nz);
+        at += period;
+      }
+      phase = (phase + len) % period;
+    }
+    if (look.color != null) this.mat.color.setHex(look.color);
+    if (look.opacity != null) this.mat.opacity = look.opacity;
+    this.geo.setDrawRange(0, v);
+    this.geo.attributes.position.needsUpdate = true;
+    this.mesh.visible = v > 0;
+    return v > 0;
+  }
+
+  hide() {
+    this.geo.setDrawRange(0, 0);
+    this.mesh.visible = false;
+  }
+
+  dispose() {
+    this.geo.dispose();
+    this.mat.dispose();
+  }
+}
+
 export const PLAYER_STATE = {
   IDLE: 'idle',
   AIMING: 'aiming',
@@ -275,21 +376,7 @@ class AimRenderer {
     // the second half of every combination.
     this.legLines = [];
     for (let i = 0; i < 4; i += 1) {
-      const positions = new Float32Array(8 * 6);
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      geo.setDrawRange(0, 0);
-      const mat = new THREE.LineBasicMaterial({
-        color: PALETTE.solid,
-        transparent: true,
-        opacity: 0.9,
-        depthWrite: false
-      });
-      const line = new THREE.LineSegments(geo, mat);
-      line.frustumCulled = false;
-      line.visible = false;
-      this.group.add(line);
-      this.legLines.push({ positions, geo, mat, line });
+      this.legLines.push(new Ribbon(this.group, { color: PALETTE.solid, opacity: 0.9 }));
     }
 
     // 4. The cue ball's own departure path — where YOU end up.
@@ -300,19 +387,7 @@ class AimRenderer {
     //    useful aid real pool players train with, and it only works if the
     //    line is the truth. See main.js `projectCuePath`.
     //    Room for one segment per previewed bank, plus the first.
-    this.tangentPositions = new Float32Array((TRAJECTORY.previewBounces + 2) * 6);
-    this.tangentGeo = new THREE.BufferGeometry();
-    this.tangentGeo.setAttribute('position', new THREE.BufferAttribute(this.tangentPositions, 3));
-    this.tangentGeo.setDrawRange(0, 0);
-    this.tangentMat = new THREE.LineDashedMaterial({
-      color: PALETTE.player,
-      transparent: true,
-      opacity: 0.75,
-      depthWrite: false
-    });
-    this.tangent = new THREE.LineSegments(this.tangentGeo, this.tangentMat);
-    this.tangent.frustumCulled = false;
-    this.group.add(this.tangent);
+    this.tangent = new Ribbon(this.group, { color: PALETTE.player, opacity: 0.75 });
 
     // Ghost ball — a full outline of the cue ball at its contact position.
     // Aiming at a whole shape reads faster than aiming at an abstract point,
@@ -618,39 +693,36 @@ class AimRenderer {
       const draw = [];
       for (let i = 0; i < legs.length; i += 1) {
         const ink = inks[i] ?? PALETTE.solid;
-        if (legs[i]?.segs?.length) draw.push({ segs: legs[i].segs, ink, opacity: i === 0 ? 0.92 : 0.5 });
-        if (legs[i]?.tail?.length) draw.push({ segs: legs[i].tail, ink, opacity: 0.24 });
+        // The leg the player is choosing is a full-width line; what the same
+        // ball does after handing off is narrower as well as fainter, so the
+        // two read apart at a glance rather than by brightness alone.
+        if (legs[i]?.segs?.length) {
+          draw.push({ segs: legs[i].segs, ink, opacity: i === 0 ? 0.95 : 0.62, width: TRAJECTORY.lineWidth });
+        }
+        if (legs[i]?.tail?.length) {
+          draw.push({ segs: legs[i].tail, ink, opacity: 0.34, width: TRAJECTORY.lineWidth * 0.62 });
+        }
       }
       for (let i = 0; i < this.legLines.length; i += 1) {
-        const slot = this.legLines[i];
         const item = draw[i];
         if (!item) {
-          slot.geo.setDrawRange(0, 0);
-          slot.line.visible = false;
+          this.legLines[i].hide();
           continue;
         }
-        let n = 0;
-        for (const seg of item.segs) {
-          if ((n + 1) * 6 > slot.positions.length) break;
-          slot.positions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
-          n += 1;
-        }
-        slot.mat.color.setHex(item.ink);
-        slot.mat.opacity = item.opacity;
-        slot.geo.setDrawRange(0, n * 2);
-        slot.geo.attributes.position.needsUpdate = true;
-        slot.line.visible = n > 0;
+        this.legLines[i].set(item.segs, {
+          y,
+          width: item.width,
+          color: item.ink,
+          opacity: item.opacity
+        });
       }
       // No chain at all: a stub in the carom direction, so a first-contact
       // shot still shows which way the ball it touches is going.
       if (!draw.length) {
-        const slot = this.legLines[0];
-        slot.positions.set([ox, y, oz, ox + Math.cos(angle) * L, y, oz + Math.sin(angle) * L]);
-        slot.mat.color.setHex(context.legInks?.[0] ?? PALETTE.solid);
-        slot.mat.opacity = 0.92;
-        slot.geo.setDrawRange(0, 2);
-        slot.geo.attributes.position.needsUpdate = true;
-        slot.line.visible = true;
+        this.legLines[0].set(
+          [{ ax: ox, az: oz, bx: ox + Math.cos(angle) * L, bz: oz + Math.sin(angle) * L }],
+          { y, width: TRAJECTORY.lineWidth, color: context.legInks?.[0] ?? PALETTE.solid, opacity: 0.95 }
+        );
       }
 
       // The ghost ball sits where the cue ball's centre stops at contact, which
@@ -699,43 +771,33 @@ class AimRenderer {
         // never lying about WHERE — only about how sure it is.
         const share = clamp(Math.abs(inX * tx + inZ * tz), 0, 1);
 
-        let n = 0;
         let scratch = false;
         for (const seg of path.segments) {
-          if ((n + 1) * 6 > this.tangentPositions.length) break;
-          this.tangentPositions.set([seg.ax, y, seg.az, seg.bx, y, seg.bz], n * 6);
-          n += 1;
           if (!scratch) scratch = segmentScratches(seg, context.pockets);
         }
-        this.tangentGeo.setDrawRange(0, n * 2);
-        this.tangentGeo.attributes.position.needsUpdate = true;
-        this.tangent.computeLineDistances();
-        this.tangentMat.color.setHex(scratch ? PALETTE.bad : PALETTE.aimGhost);
-        // The FLOOR is the fix, not the ramp. Confidence is still encoded —
-        // a full hit is dimmer and more broken up than a thin cut — but the
-        // bottom of the range was 0.25, which on this felt is a line you have
-        // to already know is there to see. A line nobody can find carries no
-        // information at all, however honest its opacity.
-        this.tangentMat.opacity = scratch ? 0.95 : 0.45 + share * 0.5;
-        // Confident lines are nearly solid; unconfident ones fall apart.
-        this.tangentMat.dashSize = 0.12 + share * 1.15;
-        this.tangentMat.gapSize = 0.5 - share * 0.34;
-        this.tangent.visible = n > 0;
+        this.tangent.set(path.segments, {
+          y,
+          width: TRAJECTORY.lineWidth,
+          color: scratch ? PALETTE.bad : PALETTE.aimGhost,
+          // The FLOOR is the fix, not the ramp. Confidence is still encoded —
+          // a full hit is dimmer and more broken up than a thin cut — but the
+          // bottom of the range was 0.25, which on this felt is a line you have
+          // to already know is there to see. A line nobody can find carries no
+          // information at all, however honest its opacity.
+          opacity: scratch ? 0.95 : 0.5 + share * 0.45,
+          // Confident lines are nearly solid; unconfident ones fall apart.
+          dash: 0.12 + share * 1.15,
+          gap: 0.5 - share * 0.34
+        });
       } else {
-        // Empty the draw range too, not just the visibility flag: the buffer
-        // still holds the last path, and anything that turns the line back on
-        // would draw a shot from three aims ago.
-        this.tangentGeo.setDrawRange(0, 0);
-        this.tangent.visible = false;
+        // Emptied, not just hidden: the buffer still holds the last path, and
+        // anything that turns the line back on would draw an old shot.
+        this.tangent.hide();
       }
     } else {
-      for (const slot of this.legLines) {
-        slot.geo.setDrawRange(0, 0);
-        slot.line.visible = false;
-      }
+      for (const slot of this.legLines) slot.hide();
       this.marker.visible = false;
-      this.tangentGeo.setDrawRange(0, 0);
-      this.tangent.visible = false;
+      this.tangent.hide();
     }
 
     // --- the cue shaft, behind the ball ---
@@ -773,12 +835,8 @@ class AimRenderer {
     this.primaryMat.dispose();
     this.dashGeo.dispose();
     this.dashMat.dispose();
-    for (const slot of this.legLines) {
-      slot.geo.dispose();
-      slot.mat.dispose();
-    }
-    this.tangentGeo.dispose();
-    this.tangentMat.dispose();
+    for (const slot of this.legLines) slot.dispose();
+    this.tangent.dispose();
     this.marker.geometry.dispose();
     this.markerMat.dispose();
     this.pullGeo.dispose();
