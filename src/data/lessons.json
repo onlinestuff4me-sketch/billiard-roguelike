@@ -142,17 +142,17 @@
       "id": "green-red",
       "name": "Green And Red",
       "rest": {
-        "x": -0.839,
-        "z": -0.545
+        "x": -0.948,
+        "z": -0.317
       },
-      "solve": 299.0,
-      "call": "ml",
+      "solve": 288.5,
+      "call": "mr",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": -7.0,
-          "z": 2.0,
+          "x": 3.4,
+          "z": 0.0,
           "number": 2
         },
         {
@@ -165,13 +165,13 @@
       "objects": [
         {
           "kind": "mine",
-          "x": -3.6,
-          "z": 4.4
+          "x": 1.53,
+          "z": 3.52
         },
         {
           "kind": "double",
-          "x": -2.4,
-          "z": 3.0
+          "x": -4.0,
+          "z": 2.0
         }
       ]
     }

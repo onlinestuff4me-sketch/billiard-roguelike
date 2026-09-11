@@ -10,7 +10,7 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES } from '../config.js';
+import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES, LAYER } from '../config.js';
 
 const clamp = (value, lo, hi) => Math.min(Math.max(value, lo), hi);
 
@@ -369,17 +369,39 @@ class AimRenderer {
         opacity: 0.62,
         depthWrite: false
       });
+      // THE COLLAR, for a ghost that sits inside a lit pocket.
+      //
+      // A called pocket is bone-white and blooming, and the bloom lays a
+      // blurred copy of that glow back over anything inside its radius — the
+      // same mechanism that erased the numerals off the balls. A hollow ring
+      // in the ball's own hue simply vanishes into it: "you can't see that the
+      // 2 is going to land inside the side pocket because the ball's ghost is
+      // obstructed by the brightness of the highlighted pocket". This is a
+      // near-black annulus drawn just outside the ring, so the ring has a dark
+      // ground of its own to read against whatever it is standing on.
+      const collarMat = new THREE.MeshBasicMaterial({
+        color: 0x05070a,
+        transparent: true,
+        opacity: 0.86,
+        depthWrite: false
+      });
       const fill = new THREE.Mesh(new THREE.CircleGeometry(1, 28), fillMat);
       const ring = new THREE.Mesh(new THREE.RingGeometry(0.76, 1.0, 28), ringMat);
+      const collar = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.34, 28), collarMat);
       fill.rotation.x = -Math.PI / 2;
       ring.rotation.x = -Math.PI / 2;
+      collar.rotation.x = -Math.PI / 2;
       fill.visible = false;
       ring.visible = false;
+      collar.visible = false;
       fill.frustumCulled = false;
       ring.frustumCulled = false;
+      collar.frustumCulled = false;
+      // Drawn in this order so the collar is under the ring it is backing.
+      this.group.add(collar);
       this.group.add(fill);
       this.group.add(ring);
-      this.endGhosts.push({ fill, ring, fillMat, ringMat });
+      this.endGhosts.push({ fill, ring, collar, fillMat, ringMat, collarMat });
     }
 
     // Pull band behind the player.
@@ -423,22 +445,33 @@ class AimRenderer {
       if (!spec || !Number.isFinite(spec.r)) {
         ghost.fill.visible = false;
         ghost.ring.visible = false;
+        ghost.collar.visible = false;
         continue;
       }
       // The ball's own hue, decided in main.js next to the geometry, so a
       // ghost is always the colour of the ball it is a ghost of.
       ghost.fillMat.color.setHex(spec.ink);
       ghost.ringMat.color.setHex(spec.ink);
-      // A SCRATCH GHOST IS NOT A NEUTRAL PROJECTION. It sits inside a pocket,
-      // and a called pocket is lit bone-white and blooming — a ghost at the
-      // strength the others use disappears into it. The one ghost that is a
-      // warning gets the weight of one.
+      // A GHOST IN A POCKET IS NOT A NEUTRAL PROJECTION, whichever ball it
+      // belongs to. A scratch is the outcome the player must not discover
+      // afterwards; a ball dropping is the outcome they are trying to cause,
+      // and on a lit pocket both were being lost in the glow. Either way the
+      // ghost stops being a hollow maybe and becomes a filled statement, with
+      // a dark collar behind it and drawn after the bloom composite so nothing
+      // can bleed across it.
       const warn = !!spec.text;
-      ghost.fillMat.opacity = warn ? 0.42 : 0.07;
-      ghost.ringMat.opacity = warn ? 1 : 0.62;
-      for (const mesh of [ghost.fill, ghost.ring]) {
+      const inPocket = warn || !!spec.sink;
+      ghost.fillMat.opacity = warn ? 0.42 : spec.sink ? 0.55 : 0.07;
+      ghost.ringMat.opacity = inPocket ? 1 : 0.62;
+      ghost.collar.visible = inPocket;
+      for (const mesh of [ghost.fill, ghost.ring, ghost.collar]) {
         mesh.position.set(spec.x, y, spec.z);
         mesh.scale.setScalar(spec.r);
+        // OUT OF THE LIT SCENE when it is standing in a pocket. Same move as
+        // the numerals on the balls: the overlay layer is drawn after the
+        // composite, so the pocket's bloom is already behind it.
+        mesh.layers.set(inPocket ? LAYER.overlay : LAYER.world);
+        mesh.material.depthTest = !inPocket;
         mesh.visible = true;
       }
     }

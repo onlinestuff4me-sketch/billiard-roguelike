@@ -25,7 +25,7 @@
  * afterwards.
  */
 
-import { openGame } from './sim.mjs';
+import { openGame, boardIds } from './sim.mjs';
 
 const game = await openGame();
 const fails = [];
@@ -82,6 +82,37 @@ try {
       `${board.id} lights ${board.lights.join(', ')} and checks a ball goes in`,
       board.checksAPot ? '' : 'lights a pocket it never checks'
     );
+  }
+
+  /* ------------------------------------------------------------------ *
+   * THE ROAD ON THE FELT — not the road in the solver
+   * ------------------------------------------------------------------ *
+   * Every route check above asks the solver whether a road exists, and for a
+   * whole release it answered yes to a player who could see nothing: the fade
+   * that retires the road when a stroke goes off was armed by the menu's own
+   * attract-mode strokes and never cleared, so each road was drawn at full
+   * strength and gone a third of a second later. The solver cannot see that.
+   * These read the meshes.
+   */
+  console.log('\nthe road the player can actually see\n');
+  for (const id of boardIds()) {
+    await game.gotoBoard(id);
+    const road = await game.road();
+    const drawn = road?.drawn;
+    check(
+      drawn?.bands > 0 && drawn.fade > 0.9 && !drawn.retiring && drawn.drawn.some((n) => n > 0),
+      `${id} — the road is on the felt`,
+      `${drawn?.bands ?? 0} bands, fade ${drawn?.fade ?? 0}, ${drawn?.drawn?.reduce((a, b) => a + b, 0) ?? 0} vertices`
+    );
+    // AND IT KEEPS OFF THE RED. The mine board drew its road straight over the
+    // mine — the one line the card exists to tell the player not to take.
+    if (road?.hazards) {
+      check(
+        road.clearance === null || road.clearance > 0,
+        `${id} — the road keeps off the mine`,
+        `clearance ${road.clearance}`
+      );
+    }
   }
 
   /* ------------------------------------------------------------------ *
@@ -248,6 +279,43 @@ try {
   console.log('\ngreen-red\n');
   const last = await game.play({ deg: 180, power: 0.35 });
   reads(last.band, 'a miss');
+
+  // THE RED IS A VERDICT. A board that says "not the red" used to pass a
+  // stroke that drove straight over it, because hitting a mine cost health and
+  // nothing else — and on the table that shipped, the red was the only way
+  // through, so the only way to pass was to do the forbidden thing.
+  let overTheRed = null;
+  for (let d = 0; d < 360 && overTheRed === null; d += 2) {
+    const probe = await game.shot({ deg: d, power: 0.8 });
+    if (probe.mine && !probe.scratched) overTheRed = d;
+  }
+  check(overTheRed !== null, 'the red is reachable from here', overTheRed === null ? '' : `${overTheRed}°`);
+  if (overTheRed !== null) {
+    const mined = await game.play({ deg: overTheRed, power: 0.8 });
+    check(!mined.done, 'a stroke over the red does not pass the board');
+    check(/red/i.test(mined.band) && vocab(mined.band), 'and the band says so', JSON.stringify(mined.band));
+    // AND THE RED IS STILL THERE FOR THE NEXT ATTEMPT. A hazard is spent when
+    // it goes off and stays spent for the rest of a run — which on a lesson
+    // meant the board that teaches "not the red" had no red on it from the
+    // second attempt onwards.
+    const again = await game.shot({ deg: overTheRed, power: 0.8 });
+    check(again.mine, 'and the red is still armed for the next attempt');
+  }
+
+  /* ------------------------------------------------------------------ *
+   * A FINISHED BOARD KEEPS ITS BALLS
+   * ------------------------------------------------------------------ *
+   * Completing a lesson used to blow the rest of the rack up with the same
+   * sparks a pot gets, which from the player's chair reads as those balls
+   * having gone in — on a board whose whole subject is what counts as a pot.
+   */
+  const standing = (await game.table()).rack.length;
+  const won = await game.play({ deg: (await game.lesson()).solve, power: 0.6 });
+  check(
+    won.done && won.rack.length === standing - won.pots.length,
+    'a completed board keeps every ball that did not go in',
+    `${standing} up, ${won.pots.length} pocketed, ${won.rack.length} left${won.done ? '' : ' (board not completed)'}`
+  );
 
 } finally {
   await game.close();

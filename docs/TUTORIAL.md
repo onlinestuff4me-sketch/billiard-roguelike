@@ -123,17 +123,18 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 `/tool`. What each lesson asks for, and how it is judged, lives in `RULES` in
 `src/systems/Tutorial.js`, keyed by the same id and merged at load.
 
-| # | id | Card | Complete when |
-|---|----|------|---------------|
-| 1 | `aim` | Aim and shoot the red ball | the cue ball hits it |
-| 2 | `goal` | Knock it into the goal | the red ball enters the lit bar |
-| 3 | `pass-straight` | Hit one ball into the other | the struck ball reaches the second |
-| 4 | `pass-angled` | Same shot, on an angle | the struck ball is cut into a second off to the side |
-| 5 | `pass-three` | Now run it through three | one strike, and all three end up somewhere else |
-| 6 | `power` | Pull back further | one shot clears a rack of three |
-| 7 | `bank-1` | Bounce off a wall first | a rail is touched before the ball |
-| 8 | `bank-2` | Again, other side | as above, mirrored |
-| 9 | `bank-two-rails` | Two bounces, then hit | 2+ bounces before the ball |
+| # | id | Card | Complete when | Window |
+|---|----|------|---------------|--------|
+| 1 | `angle` | Pull back, then hit the 3 into the side pocket | the 3 is pocketed | 6.5° |
+| 2 | `combo` | Hit the 4, so it knocks the 1 into the side pocket | the 1 is pocketed | 3.5° |
+| 3 | `cut-combo` | The 2 is sitting on the side pocket. Send the 4 into it | the 2 is pocketed, off the 4 | 4° |
+| 4 | `bank` | A barrier blocks the 3. Bounce off the bottom wall to reach it | a rail, then the 3 | 4° |
+| 5 | `budget` | Clear all four in five strokes. Every stroke counts | the rack is cleared inside the budget | 6° |
+| 6 | `green-red` | Off the left wall and through the green — the 5 puts the 2 in | the 2 is pocketed off the 5, having taken the green and missed the red | 4° |
+
+Window is the widest contiguous run of headings that satisfies the board's own
+rule, measured through the real physics at half a degree by `npm run verify`.
+Two degrees is the floor; below it a board is not a lesson, it is a lottery.
 
 `spot` picks what the lesson's spotlight frames: `player`, `goal`, `first` (the
 ball nearest the cue), `rack` (all of them in one shape) or `blocked` (the rack
@@ -142,6 +143,30 @@ sentence, and "the red ball is blocked" is unreadable with the barrier dimmed
 into the felt).
 
 Every table is frozen. Nothing moves until the player shoots.
+
+### Two boards that had to be measured rather than designed
+
+**The last board forces the rail.** Its mine sits on the line a player takes
+straight at the ball, and a hazard pad is a unit and a bit across at four
+units' range — about sixteen degrees of heading either side, against a potting
+window of four. There is no threading past a mine that is really on the line:
+with it there, a direct pot measures 0.5°, the cue potting the 2 itself off a
+rail measures 2°, and banking into the 5 so the 5 pots the 2 measures 4°. The
+board is the third one. Two rules follow from it being honest: the red is a
+verdict rather than a bruise (`rejectsMine`), and the felt re-arms with the
+rack, because a mine that stays spent means the second attempt at "not the red"
+has no red in it.
+
+**Two balls in one stroke is not a shot this table has.** Seven families and
+about 1,600 placements (`npm run find-board -- two-in-one`, `-- two-in-one-cue`):
+both balls pushed by one impulse, one cut off the other into a second pocket,
+both into the same pocket, the far ball hanging in the jaws, the cue potting
+both itself. Nothing anywhere is wider than two degrees. The reason is the
+table rather than the arrangement — every pair of pockets on it is at least
+fifteen units apart, so whichever ball goes second has a long run, and a pot's
+tolerance falls off as one over that distance. The only readings above the
+floor came from placements where the front ball started inside a pocket's own
+capture radius, which is a board with a ball already down on it.
 
 The sequence is deliberate: 3 and 4 give the *same instruction* on a different
 rack, so the player discovers for themselves that the shot can be angled. 5 is

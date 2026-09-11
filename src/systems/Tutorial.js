@@ -178,6 +178,31 @@ const RULES = {
     nudge: 'Aim <em>down</em> into the bottom wall. The dashed line swings back up to the <b>3</b>.'
   },
 
+  // TWO BALLS IN ONE STROKE IS NOT A SHOT THIS TABLE HAS.
+  //
+  // Asked for three times, and searched for properly before being answered:
+  // seven families and about 1,600 placements, every heading at two powers
+  // through the real physics, the leaders re-measured at half a degree
+  // (`npm run find-board -- two-in-one`, `-- two-in-one-cue`). Both balls
+  // pushed by one impulse; one cut off the other into a second pocket; both
+  // into the same pocket; the ball hanging in the jaws; the cue potting both
+  // itself. Nothing anywhere is wider than TWO DEGREES, the floor
+  // `npm run verify` calls unplayable.
+  //
+  // The reason is the table, not the arrangement. Every pair of pockets on it
+  // is at least fifteen units apart, so whichever ball goes second has a long
+  // way to travel, and a pot's tolerance falls off as one over that distance.
+  // The one shape that beats it — both balls into the SAME pocket — only
+  // measures wide when the front ball starts inside the pocket's own capture
+  // radius, which means the table drops it whether or not the player does
+  // anything. A 5.5° reading came from exactly that, and it is not a lesson,
+  // it is a board with a ball already down on it.
+  //
+  // So this board is still the budget one, for now, and the shot it cannot
+  // ask for is written down here rather than attempted again. What would make
+  // it real is a physics change — a cut ball keeping more of its speed — and
+  // that is a decision about how the whole game feels, not about one lesson.
+
   // FOUR BALLS, FIVE STROKES, AND EVERY STROKE COUNTS.
   //
   // It was four balls in THREE strokes, and only a stroke that pocketed
@@ -213,25 +238,59 @@ const RULES = {
     nudge: 'Take the ball the road on the felt is drawn to. It is the shortest pot on the table.'
   },
 
-  // THE RED SITS ON THE LAZY LINE. The obvious route to the 2 runs straight
-  // over a mine; the green sits just off it. So the board is a choice between
-  // the line you would take without looking and the line that pays — which is
-  // the whole game stated on one table.
+  // THE RED SITS ON THE LAZY LINE — AND NOW THE BOARD MEANS IT.
   //
-  // The original design put the green behind a bank. Measured, a route that
-  // banks, collects a pick-up and then pots is worth about a degree, so it was
-  // built as a thread instead: 4.5 degrees wide, and it still costs you the
-  // easy line.
+  // Three things were wrong with this one, and the first was the only one
+  // anybody could see: "it's not possible to complete the needed shot without
+  // also passing through the mine".
+  //
+  // 1. THE MINE WAS NOT A VERDICT. Rolling over it cost some health and
+  //    nothing else, so a stroke that went straight across the red still
+  //    passed a board whose card says "not the red". `rejectsMine` is the
+  //    board checking what it claims, like the lit pockets before it.
+  //
+  // 2. THE MINE WAS SPENT AFTER ONE MISTAKE. A hazard is consumed when it goes
+  //    off and stays consumed for the rest of a RUN, which is the run's rule.
+  //    A lesson is not a run: from the second attempt onwards this board had
+  //    no red on it at all. The felt re-arms with the rack now.
+  //
+  // 3. THE SHOT THE CARD DESCRIBED DID NOT EXIST. Measured with the mine
+  //    actually on the line to the ball — which, once (2) was fixed, is the
+  //    only table the search ever sees — a direct pot is not narrow, it is
+  //    GONE: the pad is a unit and a bit across at four units' range, so it
+  //    covers about sixteen degrees of heading either side and the window for
+  //    potting the 2 is four. There is no thread past a mine that is really on
+  //    the line. The board that shipped only had one because its mine was not.
+  //
+  // So the shot is a rail, as asked for. Three shapes were measured over the
+  // whole table (24 placements of ball and mine, every heading at two powers,
+  // leaders re-measured at half a degree):
+  //
+  //   direct pot, mine on the line ............ 0.5°
+  //   banked pot, the cue potting the 2 ....... 2°    (the floor: unplayable)
+  //   banked into the 5, the 5 potting the 2 .. 4°
+  //
+  // The last one is the board. It is also the right shape for the last lesson:
+  // the rail from lesson four, the hand-off from lesson three, and the choice
+  // between the two pads, in one stroke.
   'green-red': {
-    say: 'Hit the <b>2</b> into the side pocket, through the <em>green</em> — not the red',
+    say: 'Off the left wall and through the <em>green</em> — the <b>5</b> puts the <b>2</b> in',
     spot: 'rack',
     needsGreen: true,
-    pot: (p) => (p.tookGreen ? 'score' : 'reject'),
-    route: { number: 2, slot: 'ml' },
-    cheer: 'Past the red, through the green, and in',
-    scold: 'Pocketed, but your line went under the <em>green</em>. Aim a touch higher and collect it on the way in',
-    whiff: 'You missed the <b>2</b> completely. Steer your line between the red and the green',
-    nudge: 'Turn a few degrees <em>up</em> from the red. The <em>green</em> is the next thing your line touches.'
+    // The 2, off the 5, having collected the green and missed the red.
+    pot: (p) => (p.ball.number !== 2 ? null : p.tookGreen ? 'score' : 'reject'),
+    needsPass: true,
+    rejectsMine: true,
+    // DRAWN ALONG THE BOARD'S OWN MEASURED HEADING, trimmed at the 2. The
+    // predictor models one contact at a time and stops at the distance a ball
+    // can carry, so asked to search for a heading that pots the 2 off a rail
+    // and a hand-off it finds none — see roadAlong in main.js.
+    route: { fromSolve: true, reach: 5 },
+    cheer: 'Off the wall, past the red, and in',
+    scold: 'The <b>2</b> goes in off the <b>5</b>. Come off the left wall, and take the <em>green</em> on the way',
+    mined: 'You went over the red. Aim <em>away</em> from the balls — left, into the wall',
+    whiff: 'You reached nothing. Aim <em>left</em> into the wall and let it bring you back',
+    nudge: 'Aim <em>left</em> into the wall. The road on the felt shows where it brings you back.'
   }
 };
 
@@ -416,6 +475,7 @@ export class Tutorial {
     this._passes = 0;
     this._pots = 0;
     this._tookGreen = false;
+    this._tookMine = false;
     this._struck = new Set();
     /** Cue contacts this launch, in order, with whether each one killed. */
     this._strikes = [];
@@ -652,7 +712,19 @@ export class Tutorial {
       return;
     }
     const want = this.lesson?.route;
-    this.drawCoachRoute(want ? this.solveCoachRoute(want) : null);
+    if (!want) {
+      this.drawCoachRoute(null);
+      return;
+    }
+    // A BOARD MAY NAME ITS OWN LINE. Only where the shot is one the predictor
+    // cannot see to the end of — a rail into a hand-off — and only because
+    // `solve` is measured through the real physics rather than guessed. The
+    // search is still the default, because it is the only thing that can
+    // answer for a table the player has already changed.
+    const road = want.fromSolve
+      ? this.roadAlong?.(this.lesson.solve, want) ?? this.solveCoachRoute(want)
+      : this.solveCoachRoute(want);
+    this.drawCoachRoute(road);
   }
 
   /**
@@ -1304,6 +1376,7 @@ export class Tutorial {
       this._scored = false;
       this._pendingScore = null;
       this._tookGreen = false;
+      this._tookMine = false;
       this._struck.clear();
       this._strikes.length = 0;
       this._rejected = false;
@@ -1373,6 +1446,7 @@ export class Tutorial {
     // red is its own punishment and the board says so without failing you.
     if (name === 'object') {
       if (payload.object?.good) this._tookGreen = true;
+      else this._tookMine = true;
       return;
     }
 
@@ -1507,6 +1581,18 @@ export class Tutorial {
       this._rejected = true;
     }
 
+    // TWO IN ONE STROKE, and it has to be ONE stroke.
+    //
+    // Counting reps would pass a player who pocketed one ball, re-racked, and
+    // pocketed the other — which is two strokes doing one thing each, and the
+    // opposite of what the board teaches. The count is per stroke, taken at
+    // the end of it, so the two balls have to have gone down together.
+    if (stillIts && lesson.strokePots) {
+      counted = true;
+      if (this._pots >= lesson.strokePots && !this._scratched) this._score();
+      else this._rejected = true;
+    }
+
     // THE BANK. Same reasoning: a banked pot measures at one degree. Using the
     // cushion to reach a ball you could not otherwise touch is the lesson.
     if (stillIts && lesson.bankThenHit) {
@@ -1579,6 +1665,20 @@ export class Tutorial {
       }
     }
 
+    // THE RED IS A VERDICT, NOT A BRUISE.
+    //
+    // Running over the mine cost the player some health and nothing else: the
+    // board that says "not the red" passed a stroke that went straight over it
+    // as long as the ball dropped. A card making a claim its board does not
+    // check is the same failure as a lit pocket nothing looks at — and this
+    // one was worse, because the shipped table had no line that took the green
+    // WITHOUT the mine, so the only way to pass was to do the thing the card
+    // forbids.
+    if (stillIts && lesson.rejectsMine && this._tookMine) {
+      this._pendingScore = null;
+      this._rejected = true;
+    }
+
     // The held pot verdict. A scratch anywhere in the stroke takes it away —
     // that is the whole reason it was held.
     if (stillIts && this._pendingScore && !this._rejected) {
@@ -1604,11 +1704,13 @@ export class Tutorial {
     this._planned = undefined;
     const missed = this._rejected;
     const scratched = this._scratched;
+    const tookMine = this._tookMine;
     const wrongWay = this._wrongWay;
     const restart = this._restart;
     this._rejected = false;
     this._wrongWay = false;
     this._scratched = false;
+    this._tookMine = false;
     this._restart = false;
 
     // PUT THE TABLE RIGHT BEFORE SAYING ANYTHING ABOUT IT.
@@ -1622,11 +1724,10 @@ export class Tutorial {
     //
     // A reset is preparation for another attempt, and a passed board has no
     // next attempt — so re-racking one is the game tidying the table out from
-    // under a player who is still watching what they did. Worse here than
-    // anywhere, because completion has just DETONATED the rack in celebration:
-    // the balls went up in fireworks and then quietly reappeared, standing in
-    // formation, half a second later. The felt stays exactly as the winning
-    // shot left it, and the only thing asking for attention is the CTA. The
+    // under a player who is still watching what they did. The felt stays
+    // exactly as the winning shot left it (see _freeze, which is now the whole
+    // of what completing a board does to the table), and the only thing asking
+    // for attention is the CTA. The
     // next lesson rebuilds the table when it loads, which is where a rack that
     // does not match the new board was always going to be fixed.
     //
@@ -1689,9 +1790,11 @@ export class Tutorial {
         ? this._scratchLine(lesson, multi)
         : wrongWay
           ? lesson.facing
-          : this._hits === 0 && lesson.whiff
-            ? lesson.whiff
-            : lesson.scold || this._restateLine();
+          : tookMine && lesson.mined
+            ? lesson.mined
+            : this._hits === 0 && lesson.whiff
+              ? lesson.whiff
+              : lesson.scold || this._restateLine();
       // The multi-shot board has already written the sentence that names the
       // next ball; only a scratch, which is a fact about the cue rather than
       // about the rack, is sharper than what it said.
@@ -1732,27 +1835,30 @@ export class Tutorial {
     else this._showRoute();
   }
 
-  /** Clear the table with some ceremony. */
-  _detonate(primary = []) {
-    const at = primary.find((e) => e) || this.rooms.scriptedEnemies.find((e) => e);
+  /**
+   * THE TABLE STOPS WHERE IT IS.
+   *
+   * Completing a lesson used to blow the rest of the rack up: every ball still
+   * standing was force-killed with the same shockwave-and-sparks a pot gets,
+   * on the theory that finishing should feel like finishing. From the player's
+   * chair it reads as the balls going IN — "it seems we then also randomly
+   * make other balls disappear with a flourish, this is confusing because it
+   * looks like they also got pocketed". A lesson that teaches what counts as a
+   * pot cannot end by faking three of them.
+   *
+   * So nothing is removed and nothing is thrown. The balls stop where the
+   * stroke left them, which is the picture of what the player just did, and
+   * the card animates in over the top of it with the way forward. The sound
+   * stays: it says "that worked" without drawing a single ball off the felt.
+   */
+  _freeze() {
     for (const enemy of this.rooms.scriptedEnemies) {
-      if (enemy.alive) this.game.forceKill(enemy);
+      if (!enemy?.alive) continue;
+      enemy.vx = 0;
+      enemy.vz = 0;
     }
-    if (!at) return;
-    this.fx.shockwave(at.x, at.z, 0xff3d6e, 11, 0.55);
-    this.fx.shockwave(at.x, at.z, 0xfff6d8, 6.5, 0.38);
-    this.fx.shockwave(at.x, at.z, 0x2ef2c4, 16, 0.7);
-    this.fx.burst(at.x, at.z, 44, 0xff3d6e, 19, 1.6);
-    this.fx.burst(at.x, at.z, 26, 0xfff6d8, 26, 1.1);
-    this.fx.burst(at.x, at.z, 16, 0x2ef2c4, 13, 1.8);
-    // NO WORDS HERE. This used to throw the lesson's whole cheer across the
-    // felt in celebration type — which, now that the cheers are sentences
-    // rather than labels, ran off both edges of the screen ("AND YOU ARE
-    // STILL ON THE TABL") and said the same thing the band was already
-    // saying, twice as loud and half legible. The band has the words; the
-    // felt has the fireworks. One voice.
-    this.engine?.shake?.(20);
-    this.engine?.zoomPunch?.();
+    this.player.vx = 0;
+    this.player.vz = 0;
     this.game.audio?.roomClear?.();
   }
 
@@ -1878,6 +1984,12 @@ export class Tutorial {
    * unfailable lesson into an impossible one.
    */
   _reRack() {
+    // AND THE FELT, not only the rack. A mine is spent when it goes off and
+    // stays spent for the rest of a run, which is the run's rule and a fair
+    // one. A lesson is not a run: it is one table presented until the player
+    // gets it right. Leaving the mine spent meant the board that teaches "not
+    // the red" had no red on it from the second attempt onwards.
+    this.rooms.table.rearmBoard?.();
     // Chain targets are destroyed on contact, so a partial attempt leaves a
     // short rack. Rebuild the whole thing rather than tidying the survivors.
     if (this.rooms.scriptedEnemies.some((e) => !e.alive)) {
@@ -1917,10 +2029,7 @@ export class Tutorial {
       // as big, and the card's own done-state says it a third time. The small
       // line under the card is for corrections.
       this._setStatus('', null);
-      // Finishing a lesson should feel like finishing something. Everything
-      // still standing on the table goes up with it, so the reset that follows
-      // reads as a reward rather than as the room being taken away.
-      this._detonate(kills);
+      this._freeze();
       this._complete();
       return;
     }
