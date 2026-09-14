@@ -123,17 +123,21 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 `/tool`. What each lesson asks for, and how it is judged, lives in `RULES` in
 `src/systems/Tutorial.js`, keyed by the same id and merged at load.
 
-| # | id | Card | Complete when |
-|---|----|------|---------------|
-| 1 | `aim` | Aim and shoot the red ball | the cue ball hits it |
-| 2 | `goal` | Knock it into the goal | the red ball enters the lit bar |
-| 3 | `pass-straight` | Hit one ball into the other | the struck ball reaches the second |
-| 4 | `pass-angled` | Same shot, on an angle | the struck ball is cut into a second off to the side |
-| 5 | `pass-three` | Now run it through three | one strike, and all three end up somewhere else |
-| 6 | `power` | Pull back further | one shot clears a rack of three |
-| 7 | `bank-1` | Bounce off a wall first | a rail is touched before the ball |
-| 8 | `bank-2` | Again, other side | as above, mirrored |
-| 9 | `bank-two-rails` | Two bounces, then hit | 2+ bounces before the ball |
+| # | id | Card | Complete when | Window |
+|---|----|------|---------------|--------|
+| 1 | `angle` | Pull back, then hit the 3 into the side pocket | the 3 is pocketed | 6.5° |
+| 2 | `combo` | Hit the 4, so it knocks the 1 into the side pocket | the 1 is pocketed | 3.5° |
+| 3 | `cut-combo` | The 2 is sitting on the side pocket. Send the 4 into it | the 2 is pocketed, off the 4 | 4° |
+| 4 | `bank` | A barrier blocks the 3. Bounce off the bottom wall to reach it | a rail, then the 3 | 4° |
+| 5 | `two-in-one` | One stroke, two balls: clip the 4 in with the 1, and the 1 runs on | both balls are pocketed in the same stroke | 4.5° |
+| 6 | `green-red` | Off the left wall and through the green — the 5 puts the 2 in | the 2 is pocketed off the 5, having taken the green and missed the red | 4° |
+
+Window is the widest contiguous run of headings that satisfies the board's own
+rule, measured through the real physics at half a degree and six powers by
+`npm run verify`. Two degrees is the floor; below it a board is not a lesson,
+it is a lottery. The power axis matters as much as the heading one: the
+two-in-one board reads 0.5° at three powers, 1.5° at six, and 4.5° once its
+placement is chosen with the honest instrument.
 
 `spot` picks what the lesson's spotlight frames: `player`, `goal`, `first` (the
 ball nearest the cue), `rack` (all of them in one shape) or `blocked` (the rack
@@ -142,6 +146,40 @@ sentence, and "the red ball is blocked" is unreadable with the barrier dimmed
 into the felt).
 
 Every table is frozen. Nothing moves until the player shoots.
+
+### Two boards that had to be measured rather than designed
+
+**The last board forces the rail.** Its mine sits on the line a player takes
+straight at the ball, and a hazard pad is a unit and a bit across at four
+units' range — about sixteen degrees of heading either side, against a potting
+window of four. There is no threading past a mine that is really on the line:
+with it there, a direct pot measures 0.5°, the cue potting the 2 itself off a
+rail measures 2°, and banking into the 5 so the 5 pots the 2 measures 4°. The
+board is the third one. Two rules follow from it being honest: the red is a
+verdict rather than a bruise (`rejectsMine`), and the felt re-arms with the
+rack, because a mine that stays spent means the second attempt at "not the red"
+has no red in it.
+
+**Two balls in one stroke took three searches to find, and two of them were
+wrong about their own instrument.** Eight families and about 1,800 placements
+said nothing was wider than two degrees — measured at two powers. A window is
+an area in heading and power, and sampling the power axis twice reports the
+window for a player who only ever hits the ball two ways. Re-measured across
+the range a thumb produces, the family the board now uses is 4.5° wide.
+
+Two other resolution traps are in the same family of mistake. A heading sweep
+at two degrees cannot measure a window finer than two degrees — it joins hits
+either side of a gap and calls the space between them solid — so `find-board`
+ranks coarsely and re-measures its leaders at half a degree. And a placement
+whose far ball starts inside a pocket's own capture radius reads wide because
+the table drops that ball whether or not the player does anything; the search
+excludes those.
+
+One real limit survived all of it: **the predictor and the physics disagree by
+about three degrees on this shot.** The road is drawn from the predictor, so a
+board like this stores the most forgiving heading the two instruments agree
+on — which is how the resting aim, the road, and the demonstration after a
+miss stay one line rather than three.
 
 The sequence is deliberate: 3 and 4 give the *same instruction* on a different
 rack, so the player discovers for themselves that the shot can be angled. 5 is

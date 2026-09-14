@@ -293,6 +293,24 @@ export class Table {
     if (object.sprite) object.sprite.material.opacity = 0.2;
   }
 
+  /**
+   * EVERY OBJECT BACK, for a board that is about to be played again.
+   *
+   * `rearmForStroke` is the run's rule — a mine you have set off is gone, and
+   * that is the cost of setting it off. A tutorial board is not a run: it is
+   * the same table presented until the player gets it right, and a mine that
+   * stays spent means the second attempt at "not the red" has no red in it.
+   * The lesson quietly deletes itself the first time you fail it.
+   */
+  rearmBoard() {
+    for (const object of this.objects) {
+      object.armed = true;
+      if (object.ringMaterial) object.ringMaterial.opacity = 0.95;
+      if (object.tintMaterial) object.tintMaterial.opacity = 0.08;
+      if (object.sprite) object.sprite.material.opacity = 1;
+    }
+  }
+
   /** The double comes back every stroke. Everything else stays spent. */
   rearmForStroke() {
     for (const object of this.objects) {

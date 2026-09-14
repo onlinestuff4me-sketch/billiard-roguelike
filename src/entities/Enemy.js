@@ -68,7 +68,17 @@ const NUMBER_TEXTURES = new Map();
 
 let STRIPE_TEXTURE = null;
 
-/** The stripe band, circle-clipped so it never overhangs the ball. */
+/**
+ * The stripe band, circle-clipped so it never overhangs the ball.
+ *
+ * BONE ON THE BALL'S OWN COLOUR, which is the inverse of a real stripe and the
+ * right way round here. It used to be a violet band on a bone body, and that
+ * body is what a stripe ACTUALLY rendered as — the per-ball hue was applied to
+ * solids only, so every stripe on the table was the same pale ball with the
+ * same violet stripe whatever number it wore, at a sixth of a solid's emissive
+ * because a bone body at full strength whites out. That is the ball that kept
+ * being reported as too dark to make out.
+ */
 function stripeTexture() {
   if (STRIPE_TEXTURE) return STRIPE_TEXTURE;
   const size = 128;
@@ -80,7 +90,8 @@ function stripeTexture() {
   ctx.beginPath();
   ctx.arc(c, c, c * 0.98, 0, Math.PI * 2);
   ctx.clip();
-  ctx.fillStyle = `#${PALETTE.stripe.toString(16).padStart(6, '0')}`;
+  ctx.fillStyle = `#${PALETTE.bone.toString(16).padStart(6, '0')}`;
+  ctx.globalAlpha = 0.9;
   ctx.fillRect(0, c - size * 0.29, size, size * 0.58);
   STRIPE_TEXTURE = new THREE.CanvasTexture(canvas);
   STRIPE_TEXTURE.anisotropy = 4;
@@ -282,8 +293,13 @@ export class Enemy {
     // that was merely bright; now the 8 is the ball the contract names, and an
     // unreadable 8 makes "the 8 last" unplayable.
     // The 8 is a dark ball and stays dark: it reads by contrast against the
-    // felt, not by glow. Stripes are bone-bodied and would white out at the
-    // same intensity a solid needs.
+    // felt, not by glow. Stripes used to be held down to 0.08 because a bone
+    // BODY at a solid's intensity whites out — but the body carries the ball's
+    // own hue now and the bone is the band, so a stripe lights like anything
+    // else and stops being the one ball nobody can see.
+    // The number is not known yet here, so a stripe is built at the dim
+    // intensity its bone body needed; `setNumber` lifts it once the ball has a
+    // hue of its own to carry (a ball with no ink keeps the dim one).
     const emissive = this.type === 'heavy' ? 0.05 : this.type === 'stripe' ? 0.08 : 0.45;
     this.material = new THREE.MeshStandardMaterial({
       color,
@@ -515,11 +531,20 @@ export class Enemy {
     const hex = `#${ink.toString(16).padStart(6, '0')}`;
     // ONE HUE PER BALL — see PALETTE.ballInk. The BODY carries the identity;
     // the numeral only has to stay readable on top of it.
+    // EVERY ARCHETYPE, NOT JUST SOLIDS. A stripe kept the archetype's pale
+    // body and violet band however it was numbered, so "one hue per ball" was
+    // true of half the rack and the other half was one dim ball wearing
+    // different numerals.
     const own = PALETTE.ballInk?.[number];
-    if (own !== undefined && this.type === 'solid') {
+    if (own !== undefined && this.type !== 'heavy') {
       this.baseColor.setHex(own);
       this.material.color.setHex(own);
       this.material.emissive.setHex(own);
+      // A stripe is built dim because a bone BODY blows out under the bloom.
+      // Once it has its own hue the body is no longer bone, so it lights like
+      // every other ball — which is the whole of why the striped ones kept
+      // being the ones nobody could see.
+      this.material.emissiveIntensity = 0.45;
       // The ground marker and the spawn telegraph are built from the TYPE's
       // colour, before the number is known — so a violet 3 kept an amber halo
       // and read as an amber ball with an odd centre. Both follow the ball.

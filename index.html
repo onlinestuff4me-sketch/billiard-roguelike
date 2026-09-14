@@ -1583,6 +1583,20 @@
         to   { transform: scale(1); opacity: 1; }
       }
 
+      /* THE CARD ARRIVES; THE TABLE DOES NOT MOVE.
+         A finished board freezes exactly as the stroke left it (Tutorial's
+         _freeze — the rack used to be blown up here, which read as three more
+         balls being pocketed). With nothing moving on the felt, the change of
+         state has to be carried by the card, so the new sentence and the CTA
+         come in together rather than the text swapping in place. */
+      #coach.done .line {
+        animation: doneSay 0.32s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+      }
+      @keyframes doneSay {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
       /* A COMPLETED LESSON IS NOT A LIVE TABLE. The felt behind dims so the eye
          goes to the one live control, and the table stops taking shots (see
          Tutorial.awaitingNext, read by the input gate). */

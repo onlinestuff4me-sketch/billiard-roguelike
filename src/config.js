@@ -247,6 +247,16 @@ export const TRAJECTORY = {
    * the beam swells as the shot charges, and a bright wavefront fills it from
    * the ball outward, so the wind-up is legible without looking at a meter.
    */
+  /**
+   * How wide a predicted line is, in world units.
+   *
+   * A line, not the beam: the object-ball legs and the cue's own departure
+   * path. They were GPU lines, capped at one physical pixel — a third of a CSS
+   * pixel on a phone — and next to a coach road drawn out of triangles they
+   * read as absent. About three CSS pixels at the framing this game uses,
+   * which is thin enough to aim along and thick enough to find.
+   */
+  lineWidth: 0.13,
   beamSlices: 48,
   beamWidth: 0.45,
   beamWidthMax: 1.25,
@@ -749,9 +759,19 @@ export const PALETTE = {
    */
   ballInk: {
     1: 0xf0c775,
-    2: 0xa329a3,
-    3: 0x00aaff,
-    4: 0x3a4dff
+    2: 0xe085c2,
+    3: 0xcccc00,
+    4: 0x00aaff,
+    // 5 TO 7 ARE THE STRIPES, and they repeat the first three hues on purpose.
+    // Seven hues that each clear the contrast floor AND stay apart from each
+    // other do not exist in this gamut — the picker finds 27 candidates that
+    // clear the floor at all, and the best FOUR of them sit a tenth above the
+    // separation limit. Pool solved this a century ago: the 1 and the 9 are
+    // the same yellow and the band is what tells them apart. So the band is
+    // bone now (Enemy.stripeTexture) and it is the mark, not the hue.
+    5: 0xcccc00,
+    6: 0xf0c775,
+    7: 0xe085c2
   },
   /**
    * The ink every ball's numeral is printed in.
@@ -792,9 +812,12 @@ export const CSS_PALETTE = {
      that ball's own colour rather than in a generic "this is a ball" amber. */
   ballInk: {
     1: '#f0c775',
-    2: '#a329a3',
-    3: '#00aaff',
-    4: '#3a4dff'
+    2: '#e085c2',
+    3: '#cccc00',
+    4: '#00aaff',
+    5: '#cccc00',
+    6: '#f0c775',
+    7: '#e085c2'
   },
   bone: '#eaf6ff',
   obsidian: '#05070a',
@@ -917,6 +940,14 @@ export const INPUT = {
    * Long enough to swallow finger tremor, short enough to feel direct.
    */
   aimSmoothing: 0.055,
+  /**
+   * The ease used when the thumb is barely moving — see InputManager._updateAim.
+   * Long enough to average out the pixel grid the samples arrive on, short
+   * enough that it still feels like the line is attached to the thumb.
+   */
+  aimSmoothingFine: 0.17,
+  /** Turn rate (per second) at which the ease is fully back to responsive. */
+  aimSettleRate: 6,
   /**
    * Emergency dash is a DOUBLE TAP, not a flick.
    *

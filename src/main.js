@@ -2091,6 +2091,19 @@ function pathPocket(segments, pockets) {
   return null;
 }
 
+/**
+ * The armed hazard a path runs over, or null.
+ *
+ * Same test as pathPocket — a hazard pad is a circle on the felt with a radius
+ * like a pocket's — and it is here for the same reason: a route the coach
+ * draws over a mine is advice to blow yourself up. Only the CUE arms them (see
+ * the objectHit handler), so it is the cue's path that is asked.
+ */
+function pathHazard(segments, objects) {
+  const armed = (objects || []).filter((o) => o.armed && !o.good);
+  return armed.length ? pathPocket(segments, armed) : null;
+}
+
 /** The far end of a path, in world space. */
 function pathEnd(segments) {
   const last = segments?.[segments.length - 1];
@@ -2150,7 +2163,11 @@ function aimGhosts(prediction, cuePath, objectPath) {
       x: at.x,
       z: at.z,
       r: leg.ball?.radius ?? player.radius,
-      ink: inkOf(leg.ball)
+      ink: inkOf(leg.ball),
+      // "This one goes in" is a different claim from "this one ends up here",
+      // and the pocket it goes in is usually the brightest thing on the table.
+      // The renderer gives it weight and takes it out of the bloom.
+      sink: !!potted
     });
   }
   return ghosts;
@@ -2198,6 +2215,14 @@ function aimGhosts(prediction, cuePath, objectPath) {
  * over, and leaving it up puts a diagram of a shot that has already happened
  * across the shot that is happening.
  */
+/**
+ * The powers every road is judged at. THREE, and the soft one earns its keep:
+ * the last board's shot is a rail into a hand-off that only works at about
+ * half power, and at the two the sweep used to try the solver found no route
+ * at all for it.
+ */
+const POWERS = [0.45, 0.6, 0.75, 0.95];
+
 const ROUTE_SLOTS = 4;
 /** World units between chevrons, and how fast they march along the path. */
 const ROUTE_SPACING = 0.8;
@@ -2234,21 +2259,32 @@ let routePhase = 0;
 /** 1 while the route is advice; falls to 0 once the stroke is under way. */
 let routeFade = 1;
 
+/** 1 while a fade-out is running. */
+let routeRetiring = false;
+
 /** Hand the felt a solved route, or take it off with no argument. */
 function drawCoachRoute(list) {
   routeBands = list?.length ? list : null;
-  if (routeBands) routeFade = 1;
+  // A NEW ROUTE CANCELS THE OLD ONE'S FADE. Without this the road was handed
+  // over at full strength and then faded straight back out, because the fade
+  // flag was still set from a stroke played earlier — see below for the stroke
+  // that set it.
+  routeRetiring = false;
+  routeFade = routeBands ? 1 : 0;
   paintCoachRoute();
 }
 
 /** Fade the road out — the advice is over the moment the shot is taken. */
 function retireCoachRoute() {
-  if (routeBands) routeFade = Math.max(routeFade, 0.999);
-  routeBands = routeBands && routeFade > 0 ? routeBands : null;
-  routeFade = routeBands ? routeFade : 0;
+  // NOTHING ON THE FELT MEANS NOTHING TO RETIRE. Arming the fade with no route
+  // up is what made the road invisible for a whole session: the menu runs the
+  // real game behind it and its bot fires strokes, each one arming a fade that
+  // the update loop then never cleared, because it returns early when there is
+  // no route. The tutorial's first road was drawn into an armed fade and was
+  // gone a third of a second later, every board, every stroke.
+  if (!routeBands) return;
   routeRetiring = true;
 }
-let routeRetiring = false;
 
 function updateCoachRoute(dt) {
   if (!routeBands) return;
@@ -2294,7 +2330,11 @@ function paintCoachRoute() {
     };
 
     const size = band.size ?? 1;
-    let carried = ROUTE_SPACING - routePhase;
+    // THE MARCH GOES THE WAY THE ARROWS POINT. Subtracting the phase slid
+    // every arrow BACKWARDS along the path a little faster each frame, so a
+    // road drawn to send you left had its arrows travelling right: the two
+    // halves of the one thing the road exists to say, disagreeing.
+    let carried = routePhase;
     let last = null;
     for (const seg of band.segs) {
       const dx = seg.bx - seg.ax;
@@ -2326,6 +2366,34 @@ function paintCoachRoute() {
  * Project one heading at one power from where the cue is now, without
  * disturbing the aim the player is holding.
  */
+/**
+ * WHAT THE FELT IS ACTUALLY SHOWING — not what the solver would answer.
+ *
+ * The route checks all asked the solver whether a road EXISTS, which it always
+ * did; the road was invisible on the table for a different reason entirely (a
+ * fade left armed by a stroke played before it). A check that reads the solver
+ * cannot see that. This reads the meshes.
+ */
+if (typeof window !== 'undefined') {
+  window.__road = () => {
+    const lead = routeSlots.find((s) => s.mesh.visible && s.geo.drawRange.count > 0);
+    const seg = routeBands?.[0]?.segs?.[0] ?? null;
+    return {
+      bands: routeBands?.length ?? 0,
+      fade: +routeFade.toFixed(3),
+      retiring: routeRetiring,
+      drawn: routeSlots.filter((s) => s.mesh.visible).map((s) => s.geo.drawRange.count),
+      // WHERE THE FIRST ARROW IS, as a distance along the first segment of the
+      // first band. Sampled twice a frame apart, it says which way the march
+      // is going — which for a while was backwards, against the arrowheads.
+      head:
+        lead && seg
+          ? +Math.hypot(lead.positions[0] - seg.ax, lead.positions[2] - seg.az).toFixed(3)
+          : null
+    };
+  };
+}
+
 function projectShot(dir, power) {
   const held = player.aimPower;
   player.aimPower = power;
@@ -2384,20 +2452,54 @@ function solveCoachRoute(want = {}) {
   // it affordable for a board to ask "what CAN be done from here" before it
   // opens its mouth.
   const goals = new Map();
+  const sweep = (strict) => {
   for (let deg = 0; deg < 360; deg += STEP) {
     const th = (deg * Math.PI) / 180;
     const dir = { x: Math.sin(th), z: -Math.cos(th) };
-    for (const power of [0.65, 0.95]) {
-      const shot = projectShot(dir, power);
+    // THREE POWERS, AND THE SOFT ONE EARNS ITS KEEP. The last board's shot is
+    // a rail into a hand-off, and it only works at about half power — at the
+    // two the sweep used to try, the solver found no route at all and the
+    // hardest board in the tutorial was the one board with no road on it.
+    const tries = POWERS.map((power) => projectShot(dir, power));
+    // A HEADING IS COACHED ONLY IF IT IS SAFE AT EVERY POWER, and useful at
+    // one. The road is a line, and a line is all the player can follow — how
+    // hard they hit it is theirs. Judging the scratch at the same power that
+    // happened to achieve the goal meant recommending a heading that pots at
+    // half power and goes straight down a pocket at full: "it keeps giving me
+    // coach lines that point my cue ball into pockets where it scratches".
+    //
+    // ON THE SECOND PASS the rule relaxes to "safe at the power that works",
+    // because a table can reach a state where nothing at all is safe at every
+    // power — the four-ball board does, once the cue is parked among what is
+    // left — and a board with no road is what sent the player looking for one
+    // in the first place.
+    if (strict && tries.some((shot) => scratches(shot, pockets))) continue;
+    for (const shot of tries) {
       if (!shot.objectPath.length) continue;
-      // Losing the cue is judged on where it GOES after contact; the road is
-      // drawn along how it gets there.
-      const departure = shot.cuePath?.segments?.length
-        ? shot.cuePath.segments
-        : shot.prediction?.segments;
-      if (pathPocket(departure, pockets)) continue;
+      if (!strict && scratches(shot, pockets)) continue;
+      // THE ROAD DOES NOT GO OVER THE RED. The mine board's road was drawn
+      // straight across the mine, which is the one line the card is telling
+      // the player not to take — an instruction to do the thing the lesson is
+      // about avoiding is worse than no instruction at all.
+      const objects = rooms.table.objects;
+      if (pathHazard(shot.prediction?.segments, objects)) continue;
+      if (pathHazard(shot.cuePath?.segments, objects)) continue;
       const found = goalLeg(shot, want, pockets);
       if (found.at < 0) continue;
+      // THE BOARD'S RULE, NOT JUST ITS GOAL.
+      //
+      // `goalLeg` answers "does this ball end up in that pocket", which is the
+      // goal and not the whole of what a board asks. The plant board wants the
+      // 2 knocked in BY THE 4 and the sweep drew a line that potted it
+      // directly; the bank board wants a rail first and the sweep drew a line
+      // straight at the ball. Both roads coached a stroke the board itself
+      // would have refused.
+      //
+      // A goal leg at index 0 is a ball the cue reached itself; anything
+      // further down the chain was handed on. A cue path in one segment never
+      // touched a rail.
+      if (want.viaBall && found.at < 1) continue;
+      if (want.viaRail && (shot.prediction?.segments?.length ?? 0) < 2) continue;
       const key = `${found.number}|${found.slot ?? ''}`;
       let goal = goals.get(key);
       if (!goal) {
@@ -2409,6 +2511,9 @@ function solveCoachRoute(want = {}) {
       break;
     }
   }
+  };
+  sweep(true);
+  if (!goals.size) sweep(false);
   if (!goals.size) return null;
 
   const chosen = bestGoal([...goals.values()], want);
@@ -2416,7 +2521,72 @@ function solveCoachRoute(want = {}) {
   const mid = widestMiddle(chosen.hits, STEP);
   const picked = chosen.shots.get(mid);
   if (!picked) return null;
+  return roadFor(picked, { ...chosen, heading: mid });
+}
 
+/**
+ * THE ROAD FOR A HEADING THE BOARD ALREADY KNOWS WORKS.
+ *
+ * The sweep above answers "what can be done from here", which is the right
+ * question for a table the player has changed and the only question a board
+ * with a moving rack can ask. It is not the only kind of board. The last
+ * lesson's shot is a rail into a hand-off, and the predictor — which models
+ * one contact at a time and stops at the distance the ball can carry — does
+ * not see the far end of it: asked whether any heading pots the 2, it says no,
+ * and the hardest board in the tutorial ends up as the one board with no road.
+ *
+ * A stored `solve` is not a guess. It is a heading measured through the real
+ * physics by `npm run verify`, which is a stronger statement than the
+ * predictor can make about any heading at all. So a board may ask for the road
+ * to be drawn along it, and the drawing is trimmed to the goal exactly as
+ * before — the trimming is what makes a road a plan rather than a scribble,
+ * and it does not care where the heading came from.
+ */
+function roadAlong(heading, want) {
+  const pockets = rooms.table.pockets;
+  if (!Number.isFinite(heading) || !pockets?.length) return null;
+  const th = (heading * Math.PI) / 180;
+  const dir = { x: Math.sin(th), z: -Math.cos(th) };
+  // NO PREDICTION VETO HERE, deliberately. The sweep refuses a heading the
+  // projection says loses the cue, because a projection is all it has to go
+  // on. A stored `solve` has something stronger behind it: `npm run verify`
+  // plays it through the real physics at four powers against the board's own
+  // rule, and `npm run coach` plays it again at seven to confirm it neither
+  // scratches nor takes a hazard at any of them. Vetoing that on the
+  // predictor's approximation of a rail into a hand-off — which is exactly
+  // the shot the predictor cannot follow to the end — is preferring the
+  // weaker instrument, and it cost the last board its road.
+  const tries = POWERS.map((power) => projectShot(dir, power));
+  for (const shot of tries) {
+    if (!shot.objectPath.length) continue;
+    const found = goalLeg(shot, want, pockets);
+    if (found.at < 0) continue;
+    if (want.viaBall && found.at < 1) continue;
+    if (want.viaRail && (shot.prediction?.segments?.length ?? 0) < 2) continue;
+    return roadFor(
+      { shot, at: found.at, approach: shot.prediction?.segments },
+      { number: found.number, slot: found.slot, heading }
+    );
+  }
+  return null;
+}
+
+/**
+ * Does this projection lose the cue?
+ *
+ * Both halves of its path: the run up to the ball, and where it goes after.
+ * The road must never be drawn along a line that pockets the player's own
+ * ball — reported as "it keeps giving me coach lines that point my cue ball
+ * into pockets where it scratches".
+ */
+function scratches(shot, pockets) {
+  const approach = shot.prediction?.segments;
+  const departure = shot.cuePath?.segments;
+  return !!(pathPocket(approach, pockets) || pathPocket(departure, pockets));
+}
+
+/** The bands themselves: the line to aim along, then the chain up to the goal. */
+function roadFor(picked, goal) {
   const bands = [];
   // THE LINE TO AIM ALONG, not the one the cue leaves on. Where your ball ends
   // up after contact is what the live preview is for and what the ghost marks;
@@ -2439,7 +2609,10 @@ function solveCoachRoute(want = {}) {
   // search, or the two eventually describe different strokes — which is how a
   // board came to tell a player to pot a ball that could not be reached from
   // where their cue was standing.
-  bands.plan = { number: chosen.number, slot: chosen.slot };
+  // THE HEADING ITSELF, so a check can play the road the player is being shown
+  // and find out whether it does what the felt says it does.
+  bands.plan = { number: goal.number, slot: goal.slot };
+  bands.heading = goal.heading ?? null;
   return bands;
 }
 
@@ -2842,6 +3015,7 @@ const tutorial = new Tutorial({
   spawnZ,
   setBandReserve,
   solveCoachRoute,
+  roadAlong,
   drawCoachRoute,
   resetRun: resetRunState,
   finish: () => startRun()

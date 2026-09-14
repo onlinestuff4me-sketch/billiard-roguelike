@@ -140,10 +140,24 @@ export async function openGame(opts = {}) {
   return {
     page,
     errors,
-    /** Move to the board with this id, from wherever the tutorial currently is. */
+    /**
+     * Move to the board with this id, from wherever the tutorial currently is.
+     *
+     * BACKWARDS TOO. Walking with _advance is what a player does and is the
+     * right default, but it only goes one way — so a check that visited every
+     * board to look at something harmless (is the road drawn?) left the
+     * tutorial on the last one and every check after it failed to find its
+     * board. Entering the index directly costs nothing and makes the order of
+     * the checks a choice rather than a constraint.
+     */
     async gotoBoard(id) {
       const ok = await page.evaluate(async (want) => {
         const g = window.__game;
+        const at = (g.tutorial?.boards || []).findIndex((b) => b.id === want);
+        if (at >= 0 && at !== g.tutorial.index) {
+          g.tutorial._enter(at);
+          await new Promise((r) => setTimeout(r, 60));
+        }
         for (let i = 0; i < 24; i++) {
           if (g.tutorial?.lesson?.id === want) return true;
           g.tutorial?._advance?.();
@@ -160,6 +174,8 @@ export async function openGame(opts = {}) {
     promises: () => page.evaluate(() => window.__simPromises()),
     /** The coach route the current board draws. */
     route: () => page.evaluate(() => window.__simRoute()),
+    /** The road as the FELT has it: meshes, fade, and clearance from a mine. */
+    road: () => page.evaluate(() => window.__simRoad()),
     /** Whether the board's stored `solve` heading actually solves it. */
     solve: () => page.evaluate(() => window.__simSolve()),
     /** One stroke, fully resolved, with where every ball came to rest. */

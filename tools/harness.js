@@ -39,7 +39,12 @@
   function restore(snap) {
     const game = g();
     game.rooms.restoreScripted(snap.balls);
-    game.rooms.table.rearmForStroke();
+    // THE WHOLE TABLE, not just the double. A probe that leaves a mine spent
+    // hands every later probe a different board — which is how a search for
+    // "a line that misses the mine" came back with every placement passing:
+    // the first heading that hit it removed it, and the other 179 headings
+    // measured a table with no mine on it at all.
+    game.rooms.table.rearmBoard();
     game.player.placeAt(snap.px, snap.pz);
     game.player.vx = 0;
     game.player.vz = 0;
@@ -122,10 +127,19 @@
 
   function passes(lesson, out) {
     if (out.scratched) return false;
+    // A board that says "not the red" fails a stroke that took it — and the
+    // gate has to know, or every measurement of that board counts strokes the
+    // board itself refuses.
+    if (lesson.rejectsMine && out.mine) return false;
     // A pot that has to come off another ball: the board's own `pot` rule
     // decides which ball, and `needsPass` decides that the cue did not do it.
     if (lesson.needsPass && out.passes < 1) return false;
     if (lesson.bankThenHit) return out.hits >= 1 && out.bounces >= 1;
+    // TWO IN ONE STROKE. Without this the gate fell through to "any pot at
+    // all" and reported the board four and a half degrees wide when what it
+    // asks for is two balls down together — a board measuring a claim it does
+    // not make is the failure this whole tool exists to catch.
+    if (lesson.strokePots) return out.pots.length >= lesson.strokePots;
     if (lesson.clearRack) return out.pots.length >= 1;
     if (typeof lesson.pot === 'function') {
       // The board's OWN predicate, called with the same payload the game sends.
@@ -184,7 +198,7 @@
     (g().tutorial?.boards || []).map((L) => ({
       id: L.id,
       lights: L.call == null ? [] : Array.isArray(L.call) ? L.call : [L.call],
-      checksAPot: !!(L.pot || L.clearRack || L.clearsRack || L.usesGoal)
+      checksAPot: !!(L.pot || L.strokePots || L.clearRack || L.clearsRack || L.usesGoal)
     }));
 
   /**
@@ -229,16 +243,60 @@
   window.__simRoute = () => {
     const t = g().tutorial;
     if (!t?.lesson) return null;
+    // THE ROAD THE FELT IS SHOWING, through the tutorial's own function. This
+    // used to re-ask the sweep, which on a board that draws its own stored
+    // line reported a heading the player was never shown.
     const want = t.lesson.clearRack ? {} : t.lesson.route;
-    const lines = want ? t.solveCoachRoute(want) : null;
+    const lines = t.roadNow();
     return {
       id: t.lesson.id,
       want,
       plan: lines?.plan ?? null,
+      // The heading the road is drawn along, so a check can PLAY it.
+      heading: lines?.heading ?? null,
       lines: (lines || []).length,
       // Which balls the route is about — the route and the sentence above it
       // have to be describing the same shot.
       inks: (lines || []).map((l) => l.ink)
+    };
+  };
+
+  /**
+   * WHAT THE ROAD IS DOING ON THE FELT, and whether it keeps off the red.
+   *
+   * `__simRoute` asks the solver whether a road exists. It always said yes
+   * while the player saw nothing at all: the fade that retires the road when a
+   * stroke is fired was left armed by the menu's own attract-mode strokes, so
+   * every road drawn after boot was gone a third of a second later. A check
+   * that reads the solver cannot see that; this reads the meshes, through the
+   * probe main.js exposes, and the clearance of the cue's own band from any
+   * armed hazard — a road over a mine is advice to blow yourself up.
+   */
+  window.__simRoad = () => {
+    const t = g().tutorial;
+    const game = g();
+    const drawn = window.__road?.() ?? null;
+    const want = t?.lesson?.clearRack ? {} : t?.lesson?.route;
+    const bands = want && t?.solveCoachRoute ? t.solveCoachRoute(want) : null;
+    const armed = (game.rooms.table.objects || []).filter((o) => o.armed && !o.good);
+    let clearance = Infinity;
+    for (const seg of bands?.[0]?.segs || []) {
+      const dx = seg.bx - seg.ax;
+      const dz = seg.bz - seg.az;
+      const len2 = dx * dx + dz * dz;
+      if (len2 < 1e-9) continue;
+      for (const o of armed) {
+        const raw = ((o.x - seg.ax) * dx + (o.z - seg.az) * dz) / len2;
+        const u = Math.max(0, Math.min(1, raw));
+        const d = Math.hypot(o.x - (seg.ax + dx * u), o.z - (seg.az + dz * u)) - (o.radius ?? 0);
+        clearance = Math.min(clearance, d);
+      }
+    }
+    return {
+      id: t?.lesson?.id ?? null,
+      drawn,
+      hazards: armed.length,
+      clearance: Number.isFinite(clearance) ? +clearance.toFixed(2) : null
     };
   };
 
@@ -252,7 +310,9 @@
       solve: L.solve ?? null,
       call: L.call,
       shots: L.shots ?? null,
-      gate: L.needsPass
+      gate: L.strokePots
+        ? `${L.strokePots} in one stroke`
+        : L.needsPass
         ? 'pot off a ball'
         : L.bankThenHit
           ? 'bank+strike'
@@ -302,6 +362,14 @@
       passes: out.passes,
       hits: out.hits,
       scratched: out.scratched,
+      // Whether the stroke ran over either kind of pad. A board whose lesson
+      // is "come through the green, not the red" cannot be searched without
+      // them: the shot it wants is defined by which one the cue touched.
+      green: out.green,
+      mine: out.mine,
+      // How many rails the cue took on the way — a board that teaches a bank
+      // has to be able to tell one from a straight shot that happened to work.
+      bounces: out.bounces,
       resting
     };
   };
@@ -372,7 +440,13 @@
     const game = g();
     const L = game.tutorial.lesson;
     const step = spec.step ?? 0.5;
-    const powers = spec.powers ?? [0.5, 0.75, 1.0];
+    // SIX POWERS, NOT THREE. A thumb produces a continuum; a sweep samples it,
+    // and a sparse sample reports the window for a player who only ever hits
+    // the ball three ways. The two-in-one board reads 0.5° at three powers and
+    // 3.5° at six, because the headings between its islands work at two thirds
+    // power and nothing else — the same failure as measuring headings at two
+    // degrees and calling everything between two hits solid.
+    const powers = spec.powers ?? [0.45, 0.55, 0.65, 0.75, 0.85, 1.0];
     const notify = game.tutorial.notify;
     game.tutorial.notify = () => {};
     const base = snapshot();

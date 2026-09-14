@@ -29,6 +29,22 @@ if (!board) {
   process.exit(1);
 }
 
+/**
+ * The mine board's premise: aiming straight at the 2 — the line a player takes
+ * before they notice the mine — has to run over it. Tried at both powers,
+ * because a mine the cue rolls to a stop in front of is not a blocker.
+ */
+const MINED_DIRECT = ({ place, rack, shot }) => {
+  // Wherever the ball actually is: the placement when the search is moving it,
+  // and the live table when it is not. A hard-coded pair of coordinates here
+  // silently tested a premise about a board that had moved on.
+  const live = rack.find((b) => b.number === 2);
+  const two = place[2] || (live ? [live.x, live.z] : null);
+  if (!two) return false;
+  const deg = ((Math.atan2(two[0] - 0, -(two[1] - 6.4)) * 180) / Math.PI + 360) % 360;
+  return [0.6, 0.85].every((power) => shot(deg, power).mine);
+};
+
 /** Candidate placements per board, and what a stroke has to do to count. */
 const PLANS = {
   'cut-combo': {
@@ -82,46 +98,342 @@ const PLANS = {
     },
     ok: (out) => out.pots.some((p) => p.n === 2) && out.passes >= 1 && !out.scratched
   },
-  budget: {
-    // The card asks for four balls in three shots, which means at least one
-    // stroke has to drop two — and a player who cannot see WHICH stroke that
-    // is has been asked to find something invisible.
+  'two-in-one': {
+    // THE CARD NOW ASKS FOR A CAROM, AND A CAROM IS NOT A DOUBLE.
     //
-    // A first search put two balls on the line from the cue to a pocket and
-    // found nothing wider than two degrees. Same lesson as the plant board
-    // learned: it is not the LINE that makes a shot findable, it is how far
-    // the object balls have to travel. So both balls go on the mouth — one
-    // parked a ball's width off it and the second directly behind, so a single
-    // stroke sends the front one in and follows it with the back one.
-    goal: 'two balls pocketed in one stroke, both hanging on the mouth',
+    // The first version of this board asked for four balls in three strokes,
+    // which meant one stroke had to drop two. That was searched across three
+    // families and about 550 placements — two balls in a line at a pocket, two
+    // in a line at the cue, two hanging on the mouth together — and the widest
+    // window anywhere was two degrees, because a knocked ball carries its own
+    // drag and once the first has taken the impulse there is nothing left in
+    // the second. Both balls being PUSHED by one impulse is the shape that
+    // does not work.
+    //
+    // This is a different shape, and the difference is the whole point: the
+    // object ball is not pushed twice, it is cut thin. A thin cut sends the
+    // second ball off along the line of centres with very little of the
+    // energy and leaves the first ball almost all of it, still travelling
+    // nearly where it was going. So the second ball drops in the side pocket
+    // it is parked on, and the first carries on into a corner.
+    //
+    // The search is over where those two balls sit: the far one backed off the
+    // side pocket along the line the cue is coming from, the near one behind
+    // it with a lateral offset, and the offset is what sets the cut.
+    goal: 'one stroke, two pockets: the far ball in the side, the near one on into a corner',
     balls: [1, 4],
     grid() {
       const round = (v) => +v.toFixed(2);
+      const cue = { x: 0, z: 6.4 };
       const out = [];
-      for (const pocket of [
-        { x: 8.1, z: 0, ax: 1, az: 0 },
-        { x: -8.1, z: 0, ax: -1, az: 0 }
-      ]) {
-        // Both balls parked ON the mouth rather than in a line at it: one a
-        // little in front of the other and to the side, so a stroke into the
-        // pair pushes the near one in and the far one after it. A ball this
-        // close to a pocket needs almost no speed and almost no accuracy,
-        // which is where the window has to come from — every family that put
-        // the second ball out on the table measured two degrees.
-        for (const near of [0.95, 1.15, 1.4]) {
-          for (const far of [1.5, 1.85, 2.2]) {
-            for (const side of [0.5, 0.75, 1] ) {
-              const a = { x: pocket.x + pocket.ax * -near, z: pocket.z + side * 0.5 };
-              const b = { x: pocket.x + pocket.ax * -far, z: pocket.z - side };
-              if (Math.abs(b.x) > 7.5 || Math.abs(a.x) > 7.5) continue;
-              out.push({ 1: [round(a.x), round(a.z)], 4: [round(b.x), round(b.z)] });
+      // THE POCKET THE PAIR SITS ON, searched along with the gap between them.
+      //
+      // Asked whether the two balls have to sit so close together, because a
+      // pair that nearly touches is hard to read and hard to plan an angle
+      // through. Measured, with the gap swept from a ball's width to two and a
+      // half: 1.2 apart is 4.5°, 1.7 is 2°, 2.2 is 1.5°. Separation costs the
+      // window because the near ball travels further before contact, so the
+      // same aim error opens into a bigger miss at the contact point.
+      //
+      // The corners are in the sweep because a side pocket puts the chain
+      // almost end-on from the spawn — the balls overlap in the PICTURE
+      // however far apart they are on the felt — and a corner is oblique from
+      // there. It does not help: every leader is still the side-pocket family,
+      // and the corner versions measure 1.5°.
+      for (const S of [{ x: -8.1, z: 0 }, { x: -8.1, z: -15.1 }, { x: 8.1, z: -15.1 }]) {
+        const ux = cue.x - S.x;
+        const uz = cue.z - S.z;
+        const ul = Math.hypot(ux, uz);
+        // NOT IN THE JAWS. Closer than the pocket's own capture radius and the
+        // ball is not hanging over the pocket, it is IN it: the table drops it
+        // the moment anything moves, with no contact at all. The first run of
+        // this search leaned on exactly that — every leading placement had the
+        // far ball 0.55 to 0.7 from a mouth whose radius is 0.82, so "two
+        // balls in one stroke" included one that was already down.
+        for (const back of [1.15, 1.35, 1.6, 1.9]) {
+          // The 4: parked off the side pocket's mouth, so its own run is short
+          // — which is where every workable window in this game has come from.
+          const four = { x: S.x + (ux / ul) * back, z: S.z + (uz / ul) * back };
+          const bx = S.x - four.x;
+          const bz = S.z - four.z;
+          const bl = Math.hypot(bx, bz);
+          const nx = -bz / bl;
+          const nz = bx / bl;
+          // FAR ENOUGH APART TO SEE THE ANGLE. The first pass let the two
+          // balls sit a ball's width apart, which measures well and plays
+          // badly: "do these 2 balls have to be so close together? It was
+          // hard to see what was happening and plan the angles." A cut you
+          // cannot see is not a cut you can learn.
+          for (const d of [1.0, 1.2, 1.5, 1.8, 2.2]) {
+            for (const off of [-1.2, -1.0, -0.8, -0.6, -0.45, -0.3, -0.15, 0, 0.15, 0.3, 0.45, 0.6, 0.8, 1.0, 1.2]) {
+              // The 1: behind the 4 on the line back from the pocket, pushed
+              // sideways. Straight behind is a full hit and the 1 stops dead;
+              // the further off that line it sits the thinner the cut and the
+              // more of its speed the 1 keeps for the corner.
+              const one = {
+                x: four.x - (bx / bl) * d + nx * off,
+                z: four.z - (bz / bl) * d + nz * off
+              };
+              if (Math.abs(one.x) > 7.4 || Math.abs(one.z) > 14.4) continue;
+              if (Math.hypot(one.x - four.x, one.z - four.z) < 0.95) continue;
+              // Same rule for the near ball, wherever the offset put it.
+              const sunk = (b) =>
+                [
+                  { x: -8.1, z: 0, r: 0.82 },
+                  { x: 8.1, z: 0, r: 0.82 },
+                  { x: -8.1, z: -15.1, r: 0.98 },
+                  { x: 8.1, z: -15.1, r: 0.98 },
+                  { x: -8.1, z: 15.1, r: 0.98 },
+                  { x: 8.1, z: 15.1, r: 0.98 }
+                ].some((p) => Math.hypot(p.x - b.x, p.z - b.z) < p.r + 0.25);
+              if (sunk(one) || sunk(four)) continue;
+              out.push({ 1: [round(one.x), round(one.z)], 4: [round(four.x), round(four.z)] });
             }
           }
         }
       }
       return out;
     },
-    ok: (out) => out.pots.length >= 2 && !out.scratched
+    // TWO BALLS DOWN IN ONE STROKE. Which pockets is left open deliberately.
+    //
+    // Asking for a side AND a corner — the shape the request described — was
+    // measured across two grids and 500 placements at two degrees, and the
+    // stroke-by-stroke trace says why: the near ball has to cross thirteen
+    // units to reach the second pocket, and the band of headings that sends it
+    // that far barely overlaps the band that drops the far ball. In the
+    // thicker half of that band the near ball stops a single unit short of the
+    // SAME pocket. So the requirement that the pockets be different is the
+    // expensive half of the claim, and it is the half the lesson does not
+    // need: two balls in one stroke is the thing being taught.
+    ok: (out) => !out.scratched && out.pots.length >= 2
+  }
+,
+  'green-red': {
+    // THE BOARD'S WHOLE POINT IS THAT THE DIRECT SHOT IS SHUT.
+    //
+    // The mine is meant to stand in front of the 2 so the player has to give
+    // up the obvious line and come at it off the far rail, through the green.
+    // It was doing half that job: it blocked the direct shot AND sat where the
+    // bank came through, so the shot the card asked for could not be played at
+    // all — "it's not possible to complete the needed shot without also
+    // passing through the mine".
+    //
+    // Both halves are searchable, and they pull in opposite directions, which
+    // is why eyeballing a position for it kept landing on one or the other:
+    //   the PREMISE — aiming straight at the 2 has to run over the mine, or
+    //   the board is teaching nothing;
+    //   the WINDOW — there has to be a run of headings that banks off a rail,
+    //   crosses the green, pots the 2 in the side pocket it lights, and never
+    //   touches the mine.
+    goal: 'the 2 in the left side pocket off a rail and through the green, with the direct line mined',
+    balls: [],
+    grid() {
+      const round = (v) => +v.toFixed(2);
+      const cue = { x: 0, z: 6.4 };
+      const two = { x: -7, z: 2 };
+      const dx = two.x - cue.x;
+      const dz = two.z - cue.z;
+      const dl = Math.hypot(dx, dz);
+      const ux = dx / dl;
+      const uz = dz / dl;
+      const nx = -uz;
+      const nz = ux;
+      const out = [];
+      // The mine ON the line the cue would take if it simply aimed at the ball,
+      // at a range of distances along it and a little either side of it.
+      for (const along of [0.32, 0.45, 0.58, 0.7]) {
+        for (const off of [-0.35, 0, 0.35]) {
+          const mine = {
+            x: cue.x + ux * dl * along + nx * off,
+            z: cue.z + uz * dl * along + nz * off
+          };
+          // The green sits where the bank comes back across the table. Its own
+          // position is searched too: a pad the winning shot cannot cross is a
+          // pad the card is lying about.
+          for (const pad of [
+            { x: 1.6, z: 2.2 },
+            { x: 2.6, z: 0.6 },
+            { x: 0.6, z: 3.4 },
+            { x: -1.2, z: 1.2 }
+          ]) {
+            out.push({ mine: [round(mine.x), round(mine.z)], double: [round(pad.x), round(pad.z)] });
+          }
+        }
+      }
+      return out;
+    },
+    // What the card says, every clause of it: the 2 down in the pocket the
+    // board lights, off a rail, through the green, and not over the red.
+    ok: (out) =>
+      !out.scratched && !out.mine && out.green && out.pots.some((p) => p.n === 2 && p.slot === 'ml'),
+    premise: MINED_DIRECT
+  }
+,
+  // THE WHOLE BOARD, not just where the mine sits.
+  //
+  // With the mine anywhere on the line to the ball, a DIRECT pot is gone
+  // outright: the pad is a unit and a bit across at four units' range, so it
+  // covers about sixteen degrees either side, and the window for potting the 2
+  // is four. There is no thread past it — the board that shipped only had one
+  // because its mine was not actually on the line the pot needs.
+  //
+  // Which leaves the rail, as the request said. Whether a banked route exists
+  // is not a question about the mine, it is a question about where the BALL
+  // is: a ball out in the middle has no rail behind it to come off. So the
+  // ball moves too, the mine follows it onto the line, and the search reports
+  // which of those tables has a route wide enough to teach.
+  'green-red-bank': {
+    board: 'green-red',
+    goal: 'the 2 potted off a rail, with the direct line mined',
+    balls: [2],
+    grid() {
+      const round = (v) => +v.toFixed(2);
+      const cue = { x: 0, z: 6.4 };
+      const out = [];
+      for (const x of [-6.6, -5, -3.4, 3.4, 5, 6.6]) {
+        for (const z of [-6, -3, 0, 3]) {
+          // The mine on the line the cue would take straight at it, half way,
+          // where it covers the widest span of the lines that matter.
+          const mine = { x: cue.x + (x - cue.x) * 0.45, z: cue.z + (z - cue.z) * 0.45 };
+          out.push({
+            2: [round(x), round(z)],
+            // The other ball parked well out of the traffic. Left where it
+            // was, it turned out to be load-bearing: every winning heading in
+            // the first pass banked into the 5 and let the 5 knock the 2 in,
+            // which is lesson three with a rail in front of it, not the shot
+            // this card describes.
+            5: [6.6, -11],
+            mine: [round(mine.x), round(mine.z)],
+            // Parked off the felt for this pass: where the green goes is a
+            // question for the route that wins, not one to search blind.
+            double: [14, 14]
+          });
+        }
+      }
+      return out;
+    },
+    // THE CUE'S OWN SHOT: off a rail, onto the 2, into a pocket. `passes` is
+    // any ball reaching another, so requiring none of them is what separates
+    // "you banked onto the ball" from "you banked into a ball that happened to
+    // knock the ball in".
+    ok: (out) =>
+      !out.scratched &&
+      !out.mine &&
+      out.bounces >= 1 &&
+      out.passes === 0 &&
+      out.pots.some((p) => p.n === 2),
+    premise: MINED_DIRECT
+  }
+,
+  // THE CUE DOING BOTH — THE SECOND SHAPE ASKED FOR, SEARCHED PROPERLY.
+  //
+  // "Shooting the cue at ball 1, making ball 1 go into a pocket, while the cue
+  // ball continues onward and hits ball 2 into a different pocket."
+  //
+  // Nothing is handed on here, which is what makes it different from every
+  // family that measured at the floor: the cue clips the first ball into its
+  // pocket, keeps most of its own speed — a thin cut barely slows the striker
+  // — and carries on into a second ball sitting on a second pocket. The first
+  // pass at this family only tried pairs of pockets down one rail, which is
+  // the one place the cue's tangent line does NOT go. This one grids the
+  // second ball over the table and lets the sweep find the line.
+  'two-in-one-cue': {
+    board: 'budget',
+    goal: 'the cue potting one ball and carrying on into another, two pockets',
+    balls: [1, 4],
+    grid() {
+      const round = (v) => +v.toFixed(2);
+      const cue = { x: 0, z: 6.4 };
+      const POCKETS = [
+        { x: -8.1, z: 0, r: 0.82 },
+        { x: 8.1, z: 0, r: 0.82 },
+        { x: -8.1, z: -15.1, r: 0.98 },
+        { x: 8.1, z: -15.1, r: 0.98 },
+        { x: -8.1, z: 15.1, r: 0.98 },
+        { x: 8.1, z: 15.1, r: 0.98 }
+      ];
+      const sunk = (b) => POCKETS.some((p) => Math.hypot(p.x - b.x, p.z - b.z) < p.r + 0.25);
+      const out = [];
+      // The first ball, off the mouth of the left side pocket on the line the
+      // cue comes in on, with a little sideways play — the offset is what
+      // makes the hit a cut and decides which way the cue leaves.
+      const A = { x: -8.1, z: 0 };
+      const ux = cue.x - A.x;
+      const uz = cue.z - A.z;
+      const ul = Math.hypot(ux, uz);
+      for (const back of [1.2, 1.5, 1.9]) {
+        for (const side of [-0.5, 0, 0.5]) {
+          const one = {
+            x: A.x + (ux / ul) * back + (-uz / ul) * side,
+            z: A.z + (uz / ul) * back + (ux / ul) * side
+          };
+          if (sunk(one)) continue;
+          // The second ball, off the mouth of each of the other pockets, at a
+          // couple of distances and either side of the line in.
+          for (const B of POCKETS.slice(1)) {
+            const vx = 0 - B.x;
+            const vz = 0 - B.z;
+            const vl = Math.hypot(vx, vz) || 1;
+            for (const back2 of [1.2, 1.6]) {
+              for (const side2 of [-0.7, 0, 0.7]) {
+                const two = {
+                  x: B.x + (vx / vl) * back2 + (-vz / vl) * side2,
+                  z: B.z + (vz / vl) * back2 + (vx / vl) * side2
+                };
+                if (sunk(two)) continue;
+                if (Math.abs(two.x) > 7.4 || Math.abs(two.z) > 14.4) continue;
+                if (Math.hypot(two.x - one.x, two.z - one.z) < 1.2) continue;
+                out.push({ 1: [round(one.x), round(one.z)], 4: [round(two.x), round(two.z)] });
+              }
+            }
+          }
+        }
+      }
+      return out;
+    },
+    // Two balls down, in different pockets, and no ball touched another: the
+    // cue did all of it, which is the shape the card would describe.
+    ok: (out) => {
+      if (out.scratched || out.passes !== 0 || out.pots.length < 2) return false;
+      return new Set(out.pots.map((p) => p.slot)).size >= 2;
+    }
+  }
+,
+  // HOW FAR APART THE LAST BOARD'S TWO BALLS CAN SIT.
+  //
+  // They ship a ball's width apart, which measures well and reads as one
+  // blob: "it was hard to see what was happening and plan the angles". The
+  // shot is a rail into the 5 which puts the 2 in the side pocket, so pulling
+  // them apart makes the 5 travel further before it reaches the 2 — the same
+  // trade as the two-in-one board, and worth measuring rather than guessing.
+  'green-red-gap': {
+    board: 'green-red',
+    goal: 'the same shot, with daylight between the two balls',
+    balls: [5],
+    grid() {
+      const round = (v) => +v.toFixed(2);
+      const two = { x: 3.4, z: 0 };
+      const out = [];
+      for (const gap of [0.9, 1.3, 1.7, 2.1, 2.5, 3.0]) {
+        // The 5 on the side the cue arrives from, swung through the angles it
+        // can sit at and still be the ball the bank reaches first.
+        for (const deg of [140, 155, 170, 185, 200, 215]) {
+          const th = (deg * Math.PI) / 180;
+          const five = { x: two.x + Math.cos(th) * gap, z: two.z + Math.sin(th) * gap };
+          if (Math.abs(five.x) > 7.4 || Math.abs(five.z) > 14.4) continue;
+          out.push({ 5: [round(five.x), round(five.z)] });
+        }
+      }
+      return out;
+    },
+    ok: (out) =>
+      !out.scratched &&
+      !out.mine &&
+      out.green &&
+      out.bounces >= 1 &&
+      out.passes >= 1 &&
+      out.pots.some((p) => p.n === 2 && p.slot === 'mr'),
+    premise: MINED_DIRECT
   }
 };
 
@@ -133,7 +445,7 @@ if (!plan) {
 
 const game = await openGame();
 try {
-  await game.gotoBoard(board);
+  await game.gotoBoard(plan.board ?? board);
   await game.page.waitForTimeout(600);
   console.log(`\n${board} — searching for: ${plan.goal}\n`);
   // ONE PLACEMENT PER CALL. The whole grid in a single evaluate crashed the
@@ -142,24 +454,38 @@ try {
   // trip each and finishes.
   const grid = plan.grid();
   const results = [];
-  for (let i = 0; i < grid.length; i += 1) {
-    if (i % 20 === 0) process.stdout.write(`  ${i}/${grid.length}\r`);
-    results.push(
-      await game.page.evaluate(
-        ({ place, okSource, step }) => {
+  const sweep = async (place, step, powers) =>
+    game.page.evaluate(
+        ({ place, okSource, premiseSource, step, powers }) => {
           const g = window.__game;
           const ok = new Function('out', `return (${okSource})(out);`);
-          for (const slot of g.rooms.scriptedSpec.enemies) {
+          const spec = g.rooms.scriptedSpec;
+          for (const slot of spec.enemies || []) {
             const at = place[slot.number];
             if (at) {
               slot.x = at[0];
               slot.z = at[1];
             }
           }
-          g.rooms.reRackScripted();
+          // A PAD IS NOT A BALL. Balls are re-racked from the spec every
+          // placement; the felt's objects are built once when the room loads,
+          // so moving one means building the room again — the same call the
+          // board itself makes, so a searched placement and a played one are
+          // the same table.
+          let rebuilt = false;
+          for (const object of spec.objects || []) {
+            const at = place[object.kind];
+            if (at) {
+              object.x = at[0];
+              object.z = at[1];
+              rebuilt = true;
+            }
+          }
+          if (rebuilt) g.tutorial._buildRoom();
+          else g.rooms.reRackScripted();
           const hits = [];
           for (let deg = 0; deg < 360; deg += step) {
-            for (const power of [0.6, 0.85]) {
+            for (const power of powers) {
               if (ok(window.__simShot({ deg, power }))) {
                 hits.push(deg);
                 break;
@@ -167,30 +493,99 @@ try {
             }
           }
           let best = 0;
+          let mid = null;
           let start = null;
           let prev = null;
+          const close = () => {
+            if (start === null) return;
+            if (prev - start >= best) {
+              best = prev - start;
+              mid = (start + prev) / 2;
+            }
+          };
           for (const d of hits) {
             if (start === null) start = d;
             else if (d - prev > step * 1.5) {
-              best = Math.max(best, prev - start);
+              close();
               start = d;
             }
             prev = d;
           }
-          if (start !== null) best = Math.max(best, prev - start);
-          return { place, n: hits.length, widest: +best.toFixed(2) };
+          close();
+          // THE PLACEMENT'S OWN CLAIM, not this or that heading's.
+          // "Blocked by the mine" is a fact about where the mine sits, and a
+          // sweep of headings that succeed cannot see it: the headings that
+          // prove it are exactly the ones that FAIL. A board whose premise is
+          // false is not a candidate however wide its window.
+          let premise = true;
+          if (premiseSource) {
+            const fn = new Function('api', `return (${premiseSource})(api);`);
+            premise = !!fn({
+              place,
+              rack: g.rooms.scriptedEnemies.map((e) => ({ number: e.number, x: e.x, z: e.z })),
+              shot: (deg, power = 0.8) => window.__simShot({ deg, power }),
+              table: g.rooms.table
+            });
+          }
+          return { place, n: hits.length, widest: +best.toFixed(2), mid, premise };
         },
-        { place: grid[i], okSource: plan.ok.toString(), step: 2 }
-      )
+      {
+        place,
+        okSource: plan.ok.toString(),
+        premiseSource: plan.premise ? plan.premise.toString() : null,
+        step,
+        powers
+      }
     );
+
+  // TWO PASSES, AND THE COARSE ONE IS ONLY FOR RANKING.
+  //
+  // A single pass at two degrees reported this board's family at SIX degrees
+  // wide. It is not: at half a degree the same placement is a pair of
+  // one-degree islands with a gap between them. A sweep cannot measure a
+  // window finer than its own step — it joins two hits two degrees apart into
+  // a run and calls the space between them solid, which is exactly the claim
+  // being tested. So the grid is ranked coarsely, because ranking is all it
+  // can honestly do, and the leaders are then measured properly.
+  const COARSE = 2;
+  const FINE = 0.5;
+  // TWO POWERS TO RANK, FIVE TO MEASURE. The same mistake as the heading step,
+  // in the other axis: a sweep that tries two powers reports the window for a
+  // player who only ever hits at those two. The board this search was written
+  // for measured 2° at [0.6, 0.85] and 3.5° across the range a thumb actually
+  // produces — the difference between "unplayable" and "in line with lesson
+  // two". Ranking can be cheap; measuring cannot.
+  const RANK_POWERS = [0.6, 0.85];
+  const FINE_POWERS = [0.5, 0.6, 0.7, 0.85, 1.0];
+  for (let i = 0; i < grid.length; i += 1) {
+    if (i % 20 === 0) process.stdout.write(`  ${i}/${grid.length}\r`);
+    results.push(await sweep(grid[i], COARSE, RANK_POWERS));
   }
   process.stdout.write('        \r');
-  results.sort((a, b) => b.widest - a.widest || b.n - a.n);
-  for (const r of results.slice(0, 12)) {
+  const kept = results.filter((r) => r.premise);
+  if (kept.length !== results.length) {
+    console.log(`  ${results.length - kept.length} of ${results.length} placements fail the board's premise\n`);
+  }
+  kept.sort((a, b) => b.widest - a.widest || b.n - a.n);
+  const leaders = kept.slice(0, 8);
+  console.log(`  re-measuring the best ${leaders.length} at ${FINE}°\n`);
+  for (let i = 0; i < leaders.length; i += 1) {
+    process.stdout.write(`  ${i}/${leaders.length}\r`);
+    const fine = await sweep(leaders[i].place, FINE, FINE_POWERS);
+    leaders[i].widest = fine.widest;
+    leaders[i].mid = fine.mid;
+    leaders[i].n = fine.n;
+  }
+  process.stdout.write('        \r');
+  leaders.sort((a, b) => b.widest - a.widest || b.n - a.n);
+  for (const r of leaders) {
     const where = Object.entries(r.place)
       .map(([n, at]) => `${n}@(${at[0]}, ${at[1]})`)
       .join('  ');
-    console.log(`  widest ${String(r.widest).padStart(5)}°   headings ${String(r.n).padStart(3)}   ${where}`);
+    const mid = r.mid == null ? '   —' : `${String(+r.mid.toFixed(2)).padStart(6)}°`;
+    console.log(
+      `  widest ${String(r.widest).padStart(5)}°   mid ${mid}   headings ${String(r.n).padStart(3)}   ${where}`
+    );
   }
   console.log('');
 } finally {

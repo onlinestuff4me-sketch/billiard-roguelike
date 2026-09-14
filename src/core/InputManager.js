@@ -61,6 +61,8 @@ export class InputManager {
     this.startY = 0;
     this.currentX = 0;
     this.currentY = 0;
+    /** Smoothed angular speed of the aim target, for the adaptive ease. */
+    this._turnRate = 0;
     this.startTime = 0;
     this.holdTime = 0;
 
@@ -274,8 +276,22 @@ export class InputManager {
     // Thumb effectively on top of the ball: no axis to speak of, so the last
     // good heading is held rather than allowed to spin.
 
-    // Ease toward the target so tremor never reaches the drawn line.
-    const alpha = 1 - Math.exp(-dt / INPUT.aimSmoothing);
+    // EASE HARDER WHEN THE THUMB IS NEARLY STILL.
+    //
+    // One time constant has to serve two jobs that want opposite numbers: keep
+    // up with a swing across the table, and hold steady while a pocket is
+    // being lined up. Set fast, the quantised input steps straight through to
+    // the line; set slow, the cue lags a real movement.
+    //
+    // So it is set from how fast the target is actually turning. A thumb
+    // crossing the screen gets the responsive constant; a thumb feeling for
+    // the last half degree gets one three times longer, which averages the
+    // grid the samples arrive on instead of landing on it.
+    const turn = Math.abs(this._targetX - this._dirX) + Math.abs(this._targetZ - this._dirZ);
+    this._turnRate += (turn / Math.max(dt, 1 / 240) - this._turnRate) * 0.25;
+    const settle = Math.min(1, this._turnRate / INPUT.aimSettleRate);
+    const tau = INPUT.aimSmoothingFine + (INPUT.aimSmoothing - INPUT.aimSmoothingFine) * settle;
+    const alpha = 1 - Math.exp(-dt / tau);
     this._dirX += (this._targetX - this._dirX) * alpha;
     this._dirZ += (this._targetZ - this._dirZ) * alpha;
     const len = Math.hypot(this._dirX, this._dirZ) || 1;
@@ -378,11 +394,41 @@ export class InputManager {
     this.handlers.onAimUpdate?.(this.aim);
   }
 
+  /**
+   * WHERE THE THUMB IS, FINER THAN THE SCREEN REPORTS IT.
+   *
+   * Touch coordinates arrive on a whole-pixel grid on most devices, and the
+   * aim is an angle taken from them: at a full pull the lever is about a
+   * hundred pixels, so one pixel of thumb is half a degree of heading and the
+   * far end of a long line moves several pixels at once. Reported as "it's
+   * hard to aim precisely at pockets because the line will jump pixels".
+   *
+   * A pointermove carries every sample the digitiser took since the last
+   * frame. Averaging them puts the thumb BETWEEN grid points — three samples
+   * spanning two pixels give a third of a pixel — which is the resolution the
+   * hardware actually had all along, thrown away by reading only the last one.
+   */
+  _track(event) {
+    const points = event.getCoalescedEvents?.() ?? null;
+    if (!points?.length) {
+      this.currentX = event.clientX;
+      this.currentY = event.clientY;
+      return;
+    }
+    let x = 0;
+    let y = 0;
+    for (const p of points) {
+      x += p.clientX;
+      y += p.clientY;
+    }
+    this.currentX = x / points.length;
+    this.currentY = y / points.length;
+  }
+
   _handleMove(event) {
     if (event.pointerId !== this.pointerId) return;
     event.preventDefault();
-    this.currentX = event.clientX;
-    this.currentY = event.clientY;
+    this._track(event);
     const aim = this._updateAim(performance.now());
     if (this.state === STATE.AIMING) this.handlers.onAimUpdate?.(aim);
   }
@@ -390,8 +436,7 @@ export class InputManager {
   _handleUp(event) {
     if (event.pointerId !== this.pointerId) return;
     event.preventDefault();
-    this.currentX = event.clientX;
-    this.currentY = event.clientY;
+    this._track(event);
 
     const now = performance.now();
     const aim = this._updateAim(now);

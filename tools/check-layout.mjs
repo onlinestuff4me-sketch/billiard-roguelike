@@ -24,7 +24,7 @@
  * is not the same as a strip no BALL can reach — one rolled up under it and
  * out of sight, which is why the table now shrinks to make room.
  */
-import { openGame } from './sim.mjs';
+import { openGame, boardIds } from './sim.mjs';
 
 // Narrow, common, large, short-and-wide. The last one is not a phone held
 // upright; it is a phone whose browser chrome has eaten half the screen, and
@@ -105,7 +105,7 @@ for (const size of SIZES) {
     );
 
     // In a lesson: the coach has its own strip and the felt starts below it.
-    await game.gotoBoard('budget');
+    await game.gotoBoard('two-in-one');
     await game.page.waitForTimeout(400);
     const lesson = await game.page.evaluate(() => {
       const g = window.__game;
@@ -144,7 +144,7 @@ for (const size of SIZES) {
     // undone every frame by the Engine, which rewrites the camera position it
     // was being applied to. Reported as the table animating on every step.
     const reserves = [];
-    for (const id of ['angle', 'combo', 'cut-combo', 'bank', 'budget', 'green-red']) {
+    for (const id of boardIds()) {
       await game.gotoBoard(id);
       await game.page.waitForTimeout(250);
       reserves.push(await game.page.evaluate(() => window.__reserve().target));

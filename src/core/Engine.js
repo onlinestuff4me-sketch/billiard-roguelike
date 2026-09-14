@@ -102,6 +102,23 @@ export class Engine {
     this.shakeAmplitude = Math.min(this.shakeAmplitude + impulse, FEEL.shake.max);
   }
 
+  /**
+   * STOP MOVING, NOW.
+   *
+   * Shake and the zoom punch decay over a few hundred milliseconds, which is
+   * the right behaviour while a stroke is still playing out and the wrong one
+   * the instant a board is finished: with the table frozen and every ball
+   * standing still, the only thing left moving is the camera, and a camera
+   * wobbling around a still ball reads as the ball itself twitching —
+   * reported as "the cue ball has a jitter after the goal is completed".
+   */
+  settle() {
+    this.shakeAmplitude = 0;
+    this.zoom = 1;
+    this.hitStopRemaining = 0;
+    this.camera.position.set(this.basePosition.x, this.basePosition.y, this.basePosition.z);
+  }
+
   /** Momentary ortho-zoom compression, released over ~170 ms. */
   zoomPunch(amount = FEEL.zoomPunch) {
     if (this.reducedMotion) return;

@@ -99,23 +99,38 @@ const MIN_FELT = 14;
  * A ball is exactly that, and it has two backgrounds — the felt it rolls on
  * and the obsidian around the table — so it clears both.
  *
- * The bar was briefly raised to the 4.5:1 text one, because a ball at 4.1:1
- * had been reported as hard to make out. Measured, that costs too much to be
- * right: only 16 of 432 rendered candidates clear 4.5:1 against a near-black
- * table, they are all bright warm colours, and the best four of them sit at
- * 1.26x the separation floors against 1.83x at the standard's own number. It
- * would buy a little contrast by giving up the thing contrast is FOR — telling
- * the balls apart, including under dichromacy.
+ * THE FLOOR HERE IS FOUR, WHICH IS ABOVE THE STANDARD'S, and it took two
+ * reports to get there. The first was read as being about the numeral, which
+ * had its own cause and its own fix; the bar was left at the standard's 3:1
+ * because raising it to the 4.5:1 TEXT bar collapses the separation the
+ * palette exists to provide (16 of 432 candidates clear it, all warm, best set
+ * at 1.26x the separation floors against 1.83x).
  *
- * The report was also about the numeral rather than the body, and the numeral
- * had its own cause and its own fix (Enemy.numberTexture). So the floor is
- * the standard's, and the picker maximises separation above it.
+ * The second report — same ball, same words — turned out not to be about the
+ * palette at all: the per-ball hue was applied to SOLIDS ONLY, so a stripe
+ * rendered as the archetype's pale body and violet band at a sixth of a
+ * solid's emissive, whatever number it wore (Enemy.js). With that fixed, four
+ * is reachable: the picker's best set at this floor puts every ball between
+ * 4.1:1 and 8.5:1 on the felt and still clears every separation floor.
+ *
+ * Which is the lesson for the number itself. The standard's 3:1 is the floor
+ * BELOW WHICH a graphic is a failure, not the level at which it is good, and
+ * on a near-black table with a bloom pass over it a ball at 3.2:1 is a ball
+ * players tell you they cannot see. Twice.
  *
  * 1.4.3 asks 4.5:1 of small text. The numeral on a ball is about as small as
  * text gets, so it takes the text bar against the ball it is written on rather
  * than the graphic one.
  */
-const MIN_ON_BACKGROUND = 3;
+/**
+ * Raisable from the command line, because the right number here is a judgement
+ * about a particular table and not a fact about the standard: `--floor 4`.
+ * The standard is the floor the CHECK enforces; a search may be asked for more.
+ */
+const MIN_ON_BACKGROUND = (() => {
+  const at = process.argv.indexOf('--floor');
+  return at > 0 ? Number(process.argv[at + 1]) : 4;
+})();
 /**
  * What --pick aims for, as opposed to what the check enforces.
  *
@@ -207,21 +222,49 @@ const config = readFileSync(resolve(HERE, 'src/config.js'), 'utf8');
 function coOccurring() {
   const pairs = new Set();
   const add = (list) => {
-    const solids = [...new Set(list)].sort((a, b) => a - b);
-    for (let i = 0; i < solids.length; i += 1) {
-      for (let j = i + 1; j < solids.length; j += 1) pairs.add(`${solids[i]}|${solids[j]}`);
+    const balls = [...new Set(list)].sort((a, b) => a - b);
+    for (let i = 0; i < balls.length; i += 1) {
+      for (let j = i + 1; j < balls.length; j += 1) pairs.add(`${balls[i]}|${balls[j]}`);
     }
   };
+  // EVERY NUMBERED BALL, not only the solids. Stripes were left out because a
+  // stripe did not carry a hue — it rendered as the archetype's pale body
+  // whatever number it wore — so there was nothing to tell apart. Now that the
+  // body carries the ball's own colour they are balls like any other, and the
+  // pair a player has to read is any pair that can sit on one table.
   const arch = /archetypeByNumber:\s*\[([^\]]*)\]/.exec(config);
   if (arch) {
     const types = arch[1].split(',').map((t) => t.trim().replace(/['"]/g, ''));
-    add(types.map((t, i) => (t === 'solid' ? i + 1 : null)).filter(Boolean));
+    add(types.map((t, i) => (t === 'heavy' ? null : i + 1)).filter(Boolean));
   }
   const lessons = JSON.parse(readFileSync(resolve(HERE, 'src/data/lessons.json'), 'utf8'));
   for (const board of lessons.lessons ?? []) {
-    add((board.enemies ?? []).filter((e) => e.type === 'solid' && e.number).map((e) => e.number));
+    add((board.enemies ?? []).filter((e) => e.type !== 'heavy' && e.number).map((e) => e.number));
   }
   return pairs;
+}
+
+/**
+ * The archetype each number is racked as, and the ink each one wears.
+ *
+ * A SOLID AND A STRIPE OF THE SAME HUE ARE A PAIR THE BAND TELLS APART, which
+ * is how a pool table has been solved since before any of this: the 1 and the
+ * 9 are the same yellow. Seven hues that each clear the contrast floor and
+ * stay apart from one another do not exist in this gamut, so the rack repeats
+ * three of them and the band carries the difference — and the band is then the
+ * thing that has to be measured, not the hue.
+ */
+function rackShape() {
+  const arch = /archetypeByNumber:\s*\[([^\]]*)\]/.exec(config);
+  const types = arch ? arch[1].split(',').map((t) => t.trim().replace(/['"]/g, '')) : [];
+  const inks = {};
+  const block = /ballInk:\s*\{([^}]*)\}/.exec(config);
+  if (block) {
+    for (const [, n, hex] of block[1].matchAll(/(\d+)\s*:\s*0x([0-9a-fA-F]{6})/g)) {
+      inks[n] = parseInt(hex, 16);
+    }
+  }
+  return { type: (n) => types[Number(n) - 1] ?? 'solid', ink: (n) => inks[n] };
 }
 
 /* ------------------------------------------------------------------ *
@@ -231,14 +274,37 @@ function coOccurring() {
 const RESERVED = { bad: 0xff5a3d, good: 0x2ef2c4, bone: 0xeaf6ff };
 
 const picking = process.argv.includes('--pick');
+/** The numbered balls the game racks, in order, as their real archetypes. */
+const RACK = (() => {
+  const arch = /archetypeByNumber:\s*\[([^\]]*)\]/.exec(config);
+  const types = arch ? arch[1].split(',').map((t) => t.trim().replace(/['"]/g, '')) : [];
+  return types.filter((t) => t !== 'heavy');
+})();
 const game = await openGame({ preserveDrawingBuffer: true, deviceScaleFactor: 3 });
 let measured;
 let candidates = null;
 try {
-  // The four-in-three board, because it is the one that racks every numbered
-  // ball the palette defines — three solids and the stripe — so the numerals
-  // can be measured on the balls they are actually printed on.
-  await game.gotoBoard('budget');
+  // A RACK BUILT FOR THE MEASUREMENT, rather than whichever board happens to
+  // hold the most balls. This used to borrow the four-in-three board because
+  // it racked every numbered ball the palette defines; that board has since
+  // been replaced by a two-ball one and the check went looking for a board
+  // that no longer exists. What it needs is all four numerals on the felt at
+  // once, which is a rig, not a lesson — so it puts them there itself.
+  await game.gotoBoard('angle');
+  await game.page.evaluate((rack) => {
+    const g = window.__game;
+    const spec = g.rooms.scriptedSpec;
+    spec.enemies.length = 0;
+    // THE ARCHETYPE EACH NUMBER IS ACTUALLY RACKED AS. The rig used to spawn
+    // the fourth ball as a stripe for variety, which measured a ball the game
+    // never racks — and while stripes carried the archetype's colour instead
+    // of their own, that one substitution was the difference between measuring
+    // the palette and measuring a pale ball with a violet band on it.
+    spec.enemies.push(
+      ...rack.map((type, i) => ({ type, x: -4.5 + i * 1.5, z: -4, number: i + 1 }))
+    );
+    g.tutorial._buildRoom();
+  }, RACK);
   await game.page.waitForTimeout(700);
   measured = await game.page.evaluate((reserved) => {
     const g = window.__game;
@@ -453,6 +519,7 @@ async function pick(page) {
  * ------------------------------------------------------------------ */
 
 const together = coOccurring();
+const rack = rackShape();
 const ids = Object.keys(measured.balls).sort((a, b) => Number(a) - Number(b));
 const L = Object.fromEntries(ids.map((n) => [n, labsOf(measured.balls[n])]));
 const ML = Object.fromEntries(
@@ -474,8 +541,12 @@ for (let i = 0; i < ids.length; i += 1) {
       if (d < worst.d) worst = { d, view: v };
     }
     const shares = together.has(`${a}|${b}`);
-    rows.push({ pair: `${a} vs ${b}`, norm, ...worst, shares });
-    if (!shares) continue;
+    // Same hue, different archetype: the band is the difference, and it is
+    // checked below rather than here.
+    const banded =
+      rack.ink(a) != null && rack.ink(a) === rack.ink(b) && rack.type(a) !== rack.type(b);
+    rows.push({ pair: `${a} vs ${b}`, norm, ...worst, shares: shares && !banded });
+    if (!shares || banded) continue;
     if (norm < MIN_NORMAL) {
       failures.push(
         `balls ${a} and ${b} share a table and render only dE ${norm.toFixed(1)} apart ` +
