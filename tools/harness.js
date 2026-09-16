@@ -419,6 +419,102 @@
     };
   };
 
+  /**
+   * THE PROMISE, THEN THE STROKE THAT TESTS IT.
+   *
+   * Every other probe here asks what a stroke DID. This one first asks what
+   * the felt told the player it would do — through `window.__aim`, which is
+   * the same projection the preview draws — and only then plays it, so the
+   * two can be set side by side.
+   *
+   * The step size is a parameter because it is a suspect: the preview solves
+   * the exact moment of contact, and the table resolves whatever overlap a
+   * step happens to end in. A probe pinned to one step size cannot see the
+   * difference between "the model is wrong" and "the model is right and the
+   * table is coarse".
+   *
+   * @param {{deg:number, power?:number, dt?:number}} spec
+   */
+  window.__simAim = (spec = {}) => {
+    const game = g();
+    const notify = game.tutorial?.notify;
+    if (game.tutorial) game.tutorial.notify = () => {};
+    const base = snapshot();
+    restore(base);
+
+    const promise = window.__aim(spec.deg ?? 0, spec.power ?? 0.7);
+
+    const P = game.player;
+    const out = { pots: [], scratched: false };
+    const real = { scratch: game.on.scratch, potted: game.on.potted };
+    game.on.scratch = (p) => {
+      out.scratched = true;
+      return real.scratch(p);
+    };
+    game.on.potted = (p) => {
+      out.pots.push({ n: p.ball.number ?? null, slot: p.pocket.slot });
+      return real.potted(p);
+    };
+
+    P.scratchGuard = 0;
+    const th = ((spec.deg ?? 0) * Math.PI) / 180;
+    P.launch({ dirX: Math.sin(th), dirZ: -Math.cos(th), power: spec.power ?? 0.7 }, game);
+    game.midStroke = true;
+    game.phase = 'resolve';
+    // A FRAME, not a physics step: `update` subdivides, so feeding it the
+    // frame time is the only way to reproduce the sub-stepping the player's
+    // device actually performs.
+    const dt = spec.dt ?? 1 / 60;
+    const cueTrail = [];
+    const ballTrails = {};
+    const watch = spec.trails ? game.rooms.scriptedEnemies.filter((e) => e.alive) : [];
+    for (const e of watch) ballTrails[e.number] = [];
+    for (let i = 0; i < Math.ceil(20 / dt); i++) {
+      // A WHOLE FRAME, in the order main.js runs one. The entities carry state
+      // machines that change their drag as they slow, and a probe that steps
+      // only the physics is measuring a table the player never plays on. (On a
+      // static table the creep assist happens to dominate both switches, so
+      // this changes nothing today — which is worth knowing rather than
+      // assuming.)
+      game.player?.update?.(dt, dt, game, false);
+      for (const e of game.enemies || []) e.update?.(dt, game);
+      game.physics.update(dt, game);
+      if (i % 2 === 0 && P.alive) cueTrail.push([+P.x.toFixed(3), +P.z.toFixed(3)]);
+      for (const e of watch) {
+        if (e.alive && i % 2 === 0) ballTrails[e.number].push([+e.x.toFixed(3), +e.z.toFixed(3)]);
+      }
+    }
+
+    const resting = game.rooms.scriptedEnemies
+      .filter((e) => e.alive)
+      .map((e) => ({ n: e.number, x: +e.x.toFixed(3), z: +e.z.toFixed(3) }));
+    const cueRest = { x: +P.x.toFixed(3), z: +P.z.toFixed(3) };
+    let travelled = 0;
+    for (let i = 1; i < cueTrail.length; i++) {
+      travelled += Math.hypot(cueTrail[i][0] - cueTrail[i - 1][0], cueTrail[i][1] - cueTrail[i - 1][1]);
+    }
+
+    Object.assign(game.on, { scratch: real.scratch, potted: real.potted });
+    restore(base);
+    game.midStroke = false;
+    game.phase = 'aim';
+    if (game.tutorial) game.tutorial.notify = notify;
+
+    return {
+      promise,
+      actual: {
+        pots: out.pots,
+        scratched: out.scratched,
+        resting,
+        cueRest,
+        cueTrail,
+        bounces: P.bouncesUsed,
+        travelled: +travelled.toFixed(2),
+        ballTrails
+      }
+    };
+  };
+
   /** The table as the lesson currently has it — no stroke, no side effects. */
   window.__simTable = () => {
     const game = g();

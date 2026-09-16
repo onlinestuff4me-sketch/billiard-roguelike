@@ -51,17 +51,26 @@ export function reflect(vx, vz, nx, nz, restitution = 1) {
  * Both functions below walk the fast regime first, then the creep regime.
  */
 
-/** Speed remaining after coasting `dist` from `v0`. */
-export function speedAfterDistance(v0, dist) {
+/**
+ * Speed remaining after coasting `dist` from `v0`.
+ *
+ * `drag` is the body's own fast-regime friction and it MATTERS: this used to
+ * take the cue ball's number whatever body it was asked about, so every
+ * object-ball line was drawn as though the ball were sliding on the cue's
+ * friction (0.9 against a struck ball's 0.8). The leg came out about five
+ * percent short — which is nothing across the felt and everything when the
+ * line stops just outside a pocket the ball rolls into.
+ */
+export function speedAfterDistance(v0, dist, drag = PLAYER.dragLaunched) {
   let v = v0;
   let s = Math.max(0, dist);
   if (RULES.staticTable && v > RULES.creepSpeed) {
-    const fast = (v - RULES.creepSpeed) / PLAYER.dragLaunched;
-    if (s <= fast) return v - PLAYER.dragLaunched * s;
+    const fast = (v - RULES.creepSpeed) / drag;
+    if (s <= fast) return v - drag * s;
     s -= fast;
     v = RULES.creepSpeed;
   } else if (!RULES.staticTable) {
-    return Math.max(0, v - PLAYER.dragLaunched * s);
+    return Math.max(0, v - drag * s);
   }
   return Math.max(0, v - RULES.creepDrag * s);
 }
@@ -76,11 +85,20 @@ export function speedAfterDistance(v0, dist) {
  *   if it borrowed the cue's number.
  */
 export function carryDistance(v0, drag = PLAYER.dragLaunched) {
-  const floor = RULES.staticTable ? RULES.settleSpeed : PLAYER.settleSpeed;
-  if (v0 <= floor) return 0;
-  if (!RULES.staticTable) return (v0 - floor) / drag;
-  if (v0 <= RULES.creepSpeed) return (v0 - floor) / RULES.creepDrag;
-  return (v0 - RULES.creepSpeed) / drag + (RULES.creepSpeed - floor) / RULES.creepDrag;
+  // WHERE THE BALL STOPS, NOT WHERE THE GAME STOPS WATCHING IT.
+  //
+  // This used to subtract a settle speed — the speed below which the table is
+  // declared still and the next stroke may be aimed. But nothing anywhere
+  // zeroes a velocity: `integrate` damps exponentially, so a ball keeps
+  // creeping after the game has stopped caring, and the total distance it
+  // covers from any speed is exactly v/drag. Ending the drawn line at the
+  // settle speed left it a third of a unit short of the truth — invisible in
+  // the middle of the table, and the difference between a trickle that drops
+  // and one that does not when the line ends at a pocket's lip.
+  if (v0 <= 0) return 0;
+  if (!RULES.staticTable) return v0 / drag;
+  if (v0 <= RULES.creepSpeed) return v0 / RULES.creepDrag;
+  return (v0 - RULES.creepSpeed) / drag + RULES.creepSpeed / RULES.creepDrag;
 }
 
 /**
@@ -122,23 +140,36 @@ export function sweepCircleBox(px, pz, dx, dz, radius, box) {
   let axis = -1;
   let sign = 0;
 
+  // THE ENTRY FACE'S NORMAL ALWAYS OPPOSES TRAVEL. A body moving right enters
+  // through the left face, whose outward normal is -x; moving left, through
+  // the right face, whose outward normal is +x. So the sign is -sign(d) in
+  // both cases — but the swap branch used to set it to +sign(d), which handed
+  // back a normal pointing INTO the box for every hit taken travelling in the
+  // negative direction on the dominant axis.
+  //
+  // `reflect` is blind to the sign (a mirror is a mirror whichever way its
+  // normal faces) so the drawn line looked right, and the corner branch below
+  // has always returned an outward normal, so the two halves of this function
+  // disagreed with each other. What it broke was everything that asks which
+  // SIDE the body is on: the standoff after a bounce pushed the ball further
+  // in, and the table's "only reflect if we are moving into the surface" guard
+  // read a real contact as a departure and let the ball through — then caught
+  // it a step later, deep in the corner, and sent it somewhere no line drew.
   if (Math.abs(dx) < EPS) {
     if (px < exMin || px > exMax) return null;
   } else {
     const inv = 1 / dx;
     let t1 = (exMin - px) * inv;
     let t2 = (exMax - px) * inv;
-    let s = -Math.sign(dx);
     if (t1 > t2) {
       const tmp = t1;
       t1 = t2;
       t2 = tmp;
-      s = Math.sign(dx);
     }
     if (t1 > tMin) {
       tMin = t1;
       axis = 0;
-      sign = s;
+      sign = -Math.sign(dx);
     }
     if (t2 < tMax) tMax = t2;
   }
@@ -149,17 +180,15 @@ export function sweepCircleBox(px, pz, dx, dz, radius, box) {
     const inv = 1 / dz;
     let t1 = (ezMin - pz) * inv;
     let t2 = (ezMax - pz) * inv;
-    let s = -Math.sign(dz);
     if (t1 > t2) {
       const tmp = t1;
       t1 = t2;
       t2 = tmp;
-      s = Math.sign(dz);
     }
     if (t1 > tMin) {
       tMin = t1;
       axis = 1;
-      sign = s;
+      sign = -Math.sign(dz);
     }
     if (t2 < tMax) tMax = t2;
   }
@@ -370,14 +399,36 @@ export class PhysicsSystem {
     const table = game.table;
     const player = game.player;
 
+    // ALONG THE PATH, not at the end of it. See Table.pocketAlong.
+    const walk = (body, fn) => {
+      const t = body.trail;
+      const n = body.trailN || 0;
+      if (!t || n < 2) return fn(body.x, body.z, body.x, body.z);
+      for (let k = 1; k < n; k++) {
+        const out = fn(t[(k - 1) * 2], t[(k - 1) * 2 + 1], t[k * 2], t[k * 2 + 1]);
+        if (out) return out;
+      }
+      return null;
+    };
+
     if (player && player.alive) {
-      const pocket = table.pocketAt(player.x, player.z);
-      if (pocket) game.on?.scratch?.({ player, pocket });
-      else {
-        const objects = table.objectsAt(player.x, player.z, player.radius);
-        for (const object of objects) {
-          game.on?.objectHit?.({ object, body: player, isCue: true });
-        }
+      const drop = walk(player, (ax, az, bx, bz) => table.pocketAlong(ax, az, bx, bz));
+      if (drop) {
+        // Stand the ball in the mouth it actually entered, so what is drawn
+        // falling is where it fell.
+        player.x = drop.x;
+        player.z = drop.z;
+        game.on?.scratch?.({ player, pocket: drop.pocket });
+      } else {
+        const seen = new Set();
+        walk(player, (ax, az, bx, bz) => {
+          for (const object of table.objectsAlong(ax, az, bx, bz, player.radius)) {
+            if (seen.has(object)) continue;
+            seen.add(object);
+            game.on?.objectHit?.({ object, body: player, isCue: true });
+          }
+          return null;
+        });
       }
     }
 
@@ -385,16 +436,22 @@ export class PhysicsSystem {
     for (let i = 0; i < enemies.length; i++) {
       const ball = enemies[i];
       if (!ball.alive || ball.state === ENEMY_STATE.SPAWNING) continue;
-      const pocket = table.pocketAt(ball.x, ball.z);
-      if (pocket) {
-        game.on?.potted?.({ ball, pocket });
+      const drop = walk(ball, (ax, az, bx, bz) => table.pocketAlong(ax, az, bx, bz));
+      if (drop) {
+        ball.x = drop.x;
+        ball.z = drop.z;
+        game.on?.potted?.({ ball, pocket: drop.pocket });
         continue;
       }
-      const objects = table.objectsAt(ball.x, ball.z, ball.radius);
-      for (const object of objects) {
-        game.on?.objectHit?.({ object, body: ball, isCue: false });
-        if (!ball.alive) break;
-      }
+      const seen = new Set();
+      walk(ball, (ax, az, bx, bz) => {
+        for (const object of table.objectsAlong(ax, az, bx, bz, ball.radius)) {
+          if (seen.has(object) || !ball.alive) continue;
+          seen.add(object);
+          game.on?.objectHit?.({ object, body: ball, isCue: false });
+        }
+        return null;
+      });
     }
   }
 
@@ -443,8 +500,15 @@ export class PhysicsSystem {
 
   /** Semi-implicit integration with per-state exponential drag. */
   integrate(body, h) {
-    body.x += body.vx * h;
-    body.z += body.vz * h;
+    // WHERE THIS BODY WAS BEFORE THE STEP, kept so a contact discovered after
+    // the step can be traced back to the moment it actually happened. Every
+    // resolver below works from this instead of from the overlap it landed in
+    // — see `_rewind`.
+    body.stepX = body.x;
+    body.stepZ = body.z;
+    body.stepH = h;
+    this._trailStart(body);
+
     let drag = body.drag || 0;
     // The creep assist: a body too slow to reach anything stops being allowed
     // to hold the stroke open. See RULES.creepSpeed.
@@ -452,11 +516,37 @@ export class PhysicsSystem {
       const speed = Math.hypot(body.vx, body.vz);
       if (speed > 0 && speed < RULES.creepSpeed) drag = Math.max(drag, RULES.creepDrag);
     }
+
+    // THE EXACT DISPLACEMENT, NOT A STEP AT THE OLD SPEED.
+    //
+    // This moved the body by v·h and then damped v, which over a whole stroke
+    // overshoots the drag it is modelling by about half a step's worth of
+    // decay — roughly 1% at 180 Hz, and MORE on a slower phone. Two
+    // consequences, both of which showed up as the preview lying:
+    //
+    //   the ball travels further than `carryDistance` — the closed-form
+    //   solution of this same drag — says it will, so a line drawn to the lip
+    //   of a pocket was short of a ball that trickled in;
+    //
+    //   and how much further depends on the frame rate, so the same stroke
+    //   landed in different places on different devices.
+    //
+    // Integrating the exponential in closed form is not more expensive and it
+    // is exact at any step size: over a step the body covers v·(1-e^-dh)/d,
+    // and over the whole coast it covers v/d, which is exactly what the
+    // preview draws.
     if (drag > 0) {
       const damp = Math.exp(-drag * h);
+      const travel = (1 - damp) / drag;
+      body.x += body.vx * travel;
+      body.z += body.vz * travel;
       body.vx *= damp;
       body.vz *= damp;
+    } else {
+      body.x += body.vx * h;
+      body.z += body.vz * h;
     }
+    this._trailPush(body);
   }
 
   /* ---------------------------------------------------------------- *
@@ -464,14 +554,136 @@ export class PhysicsSystem {
    * ---------------------------------------------------------------- */
 
   resolvePlayerGeometry(player, game) {
-    const rail = this.resolveRails(player, PHYSICS.wallRestitution);
-    if (rail) this.onPlayerRebound(player, game, rail, 'rail');
+    // TWICE, because a step that ends past a corner crossed two cushions and
+    // resolving one of them leaves the ball still outside the other.
+    for (let pass = 0; pass < 2; pass += 1) {
+      const rail = this.resolveRails(player, PHYSICS.wallRestitution);
+      if (!rail) break;
+      this.onPlayerRebound(player, game, rail, 'rail');
+    }
 
     for (let i = 0; i < this.colliders.length; i++) {
       const collider = this.colliders[i];
       const hit = this.resolveCollider(player, collider);
       if (hit) this.onPlayerRebound(player, game, hit, collider.kind || 'obstacle', collider);
     }
+  }
+
+  /* ---------------------------------------------------------------- *
+   * CONTACTS RESOLVED WHERE THEY HAPPEN
+   *
+   * A step moves a ball by v*h in a straight line, and a collision is then
+   * noticed because the step ENDED inside something. Resolving it there —
+   * taking the normal from the overlap, reflecting from the overlap — is
+   * wrong in a way that is invisible on any single bounce and ruinous over a
+   * chain of them:
+   *
+   *   - the turn happens up to v*h past the cushion the ball really touched,
+   *     which slides the whole outgoing line sideways;
+   *   - on a ball, the line of centres taken while the two are overlapping is
+   *     rotated away from the line of centres at the touch, so the object ball
+   *     leaves on the wrong heading — by degrees, on a thin cut;
+   *   - and the deeper the overlap, the bigger both errors, so the same shot
+   *     played on a slower phone lands somewhere else.
+   *
+   * The aim preview never had any of this: it solves the exact swept contact.
+   * So the preview and the table disagreed, and the preview was the one
+   * telling the truth. These helpers put the table on the preview's geometry:
+   * rewind along the step to the moment of touch, resolve THERE, and spend
+   * whatever is left of the step on the new heading.
+   * ------------------------------------------------------------------ */
+
+  /**
+   * How much of this step is left after `t`, in seconds, given the step the
+   * body just took. Reconstructed from the step itself so nothing has to
+   * thread `h` through every resolver.
+   */
+  _stepRemainder(body, t) {
+    return (body.stepH || 0) * Math.max(0, 1 - t);
+  }
+
+  /* THE PATH A SUBSTEP ACTUALLY TOOK, corner by corner.
+   *
+   * Pockets and pads are tested against this rather than against the point the
+   * step ended on, and a step with a cushion in the middle of it is a bent
+   * line, not a chord — testing the chord would drop a ball into the corner
+   * pocket it banked cleanly past. Four corners is more than any one substep
+   * can produce. */
+  _trailStart(body) {
+    if (!body.trail) body.trail = new Float64Array(12);
+    body.trail[0] = body.x;
+    body.trail[1] = body.z;
+    body.trailN = 1;
+  }
+
+  _trailPush(body) {
+    if (!body.trail || body.trailN >= 6) return;
+    body.trail[body.trailN * 2] = body.x;
+    body.trail[body.trailN * 2 + 1] = body.z;
+    body.trailN += 1;
+  }
+
+  /** Move the last recorded corner to wherever the body has just been put. */
+  _trailMoveLast(body) {
+    if (!body.trail || !body.trailN) return;
+    body.trail[(body.trailN - 1) * 2] = body.x;
+    body.trail[(body.trailN - 1) * 2 + 1] = body.z;
+  }
+
+  /** The straight line this step travelled, or null if there was none. */
+  _step(body) {
+    if (!Number.isFinite(body.stepX)) return null;
+    const dx = body.x - body.stepX;
+    const dz = body.z - body.stepZ;
+    const len = Math.hypot(dx, dz);
+    if (len < EPS) return null;
+    return { x: body.stepX, z: body.stepZ, dx: dx / len, dz: dz / len, len };
+  }
+
+  /**
+   * THE REST OF THE STEP IS NOW THE STEP.
+   *
+   * Called once a contact has been resolved and the body re-advanced along its
+   * new heading. Without this, a second contact in the same substep — a bank
+   * into a ball, which is exactly the shot this whole change is about — would
+   * be rewound along the leg BEFORE the bounce, and land the ball somewhere it
+   * never went.
+   */
+  _rebase(body, cx, cz, left) {
+    body.stepX = cx;
+    body.stepZ = cz;
+    body.stepH = left;
+  }
+
+  /**
+   * Did `mover`'s step reach `target` at any point along it?
+   * @returns {{step: object, toi: number} | null}
+   */
+  _sweepsInto(mover, target) {
+    const step = this._step(mover);
+    if (!step) return null;
+    const toi = sweepCircleCircle(
+      step.x,
+      step.z,
+      step.dx,
+      step.dz,
+      mover.radius,
+      target.x,
+      target.z,
+      target.radius
+    );
+    return Number.isFinite(toi) && toi <= step.len ? { step, toi } : null;
+  }
+
+  /**
+   * Put the body at the contact `dist` along its own step, and hand back the
+   * seconds of the step that remain to be spent on the new heading.
+   */
+  _rewind(body, step, dist) {
+    body.x = step.x + step.dx * dist;
+    body.z = step.z + step.dz * dist;
+    this._trailMoveLast(body);
+    return this._stepRemainder(body, step.len > EPS ? dist / step.len : 1);
   }
 
   /**
@@ -481,43 +693,110 @@ export class PhysicsSystem {
   resolveRails(body, restitution) {
     const limitX = ARENA.halfW - body.radius;
     const limitZ = ARENA.halfH - body.radius;
+    if (
+      body.x >= -limitX &&
+      body.x <= limitX &&
+      body.z >= -limitZ &&
+      body.z <= limitZ
+    ) {
+      return null;
+    }
+
+    // WHICH CUSHION, AND WHERE ALONG IT. A step that ends outside two rails at
+    // once touched ONE of them first; the earliest crossing of the step is
+    // that one, and resolving the other here would turn a cushion into a
+    // corner pocket the table does not have.
+    const step = this._step(body);
     let nx = 0;
     let nz = 0;
-    let hit = false;
-
-    if (body.x < -limitX) {
-      body.x = -limitX + PHYSICS.skin;
-      nx = 1;
-      hit = true;
-    } else if (body.x > limitX) {
-      body.x = limitX - PHYSICS.skin;
-      nx = -1;
-      hit = true;
+    let t = 1;
+    if (step) {
+      const dx = body.x - step.x;
+      const dz = body.z - step.z;
+      const cross = (from, to, span) => (Math.abs(span) < EPS ? Infinity : (to - from) / span);
+      if (body.x < -limitX) {
+        const tt = cross(step.x, -limitX, dx);
+        if (tt >= 0 && tt < t) {
+          t = tt;
+          nx = 1;
+          nz = 0;
+        }
+      } else if (body.x > limitX) {
+        const tt = cross(step.x, limitX, dx);
+        if (tt >= 0 && tt < t) {
+          t = tt;
+          nx = -1;
+          nz = 0;
+        }
+      }
+      if (body.z < -limitZ) {
+        const tt = cross(step.z, -limitZ, dz);
+        if (tt >= 0 && tt < t) {
+          t = tt;
+          nx = 0;
+          nz = 1;
+        }
+      } else if (body.z > limitZ) {
+        const tt = cross(step.z, limitZ, dz);
+        if (tt >= 0 && tt < t) {
+          t = tt;
+          nx = 0;
+          nz = -1;
+        }
+      }
     }
 
-    if (body.z < -limitZ) {
-      body.z = -limitZ + PHYSICS.skin;
-      nz = 1;
-      hit = true;
-    } else if (body.z > limitZ) {
-      body.z = limitZ - PHYSICS.skin;
-      nz = -1;
-      hit = true;
+    // No usable step (a body placed into a rail rather than driven into one):
+    // fall back to the clamp, which is all the information there is.
+    if (!step || t >= 1) {
+      nx = 0;
+      nz = 0;
+      if (body.x < -limitX) {
+        body.x = -limitX + PHYSICS.skin;
+        nx = 1;
+      } else if (body.x > limitX) {
+        body.x = limitX - PHYSICS.skin;
+        nx = -1;
+      }
+      if (body.z < -limitZ) {
+        body.z = -limitZ + PHYSICS.skin;
+        nz = 1;
+      } else if (body.z > limitZ) {
+        body.z = limitZ - PHYSICS.skin;
+        nz = -1;
+      }
+      const l = Math.hypot(nx, nz) || 1;
+      nx /= l;
+      nz /= l;
+      const sp = Math.hypot(body.vx, body.vz);
+      if (body.vx * nx + body.vz * nz < 0) {
+        const r = reflect(body.vx, body.vz, nx, nz, restitution);
+        body.vx = r.x;
+        body.vz = r.z;
+      }
+      return { nx, nz, x: body.x, z: body.z, speed: sp };
     }
 
-    if (!hit) return null;
-
-    const len = Math.hypot(nx, nz) || 1;
-    nx /= len;
-    nz /= len;
+    const left = this._rewind(body, step, step.len * t);
+    // Stand off the cushion by a skin so the next step does not re-detect the
+    // contact it just resolved.
+    body.x += nx * PHYSICS.skin;
+    body.z += nz * PHYSICS.skin;
+    const cx = body.x;
+    const cz = body.z;
     const speed = Math.hypot(body.vx, body.vz);
-    // Only reflect if we are actually travelling into the rail.
     if (body.vx * nx + body.vz * nz < 0) {
       const r = reflect(body.vx, body.vz, nx, nz, restitution);
       body.vx = r.x;
       body.vz = r.z;
     }
-    return { nx, nz, x: body.x, z: body.z, speed };
+    // Spend the rest of the step on the new heading, so a bounce costs the
+    // ball no distance and the rebound starts where the cushion is.
+    body.x += body.vx * left;
+    body.z += body.vz * left;
+    this._trailPush(body);
+    this._rebase(body, cx, cz, left);
+    return { nx, nz, x: cx, z: cz, speed };
   }
 
   /**
@@ -529,6 +808,93 @@ export class PhysicsSystem {
     let nx = 0;
     let nz = 0;
     let depth = 0;
+
+    // The same rewind the rails and the balls get: an obstacle struck from
+    // inside the overlap turns the ball at the wrong place, on a normal that
+    // is wrong by however deep the step drove. On a board with something in
+    // the middle of it that is the first bounce of five, and every one after
+    // it inherits the error.
+    //
+    // ALONG THE STEP, NOT AT THE END OF IT.
+    //
+    // A body was only considered to have hit a collider if its step FINISHED
+    // inside one. A step is v·h long and a barrier's corner is a point, so a
+    // ball that clipped the corner and was already past it by the end of the
+    // step went through untouched — while the preview, which sweeps, drew the
+    // bounce. Every remaining disagreement on the one board with something in
+    // the middle of it was this.
+    //
+    // The swept test comes first and the overlap test is the fallback, for a
+    // body placed inside a collider rather than driven into one.
+    let left = 0;
+    let sweptNx = null;
+    let sweptNz = 0;
+    {
+      const step = this._step(body);
+      if (step) {
+        let toi = Infinity;
+        let hitNx = null;
+        let hitNz = 0;
+        if (collider.type === 'circle') {
+          toi = sweepCircleCircle(
+            step.x,
+            step.z,
+            step.dx,
+            step.dz,
+            body.radius,
+            collider.x,
+            collider.z,
+            collider.radius
+          );
+          if (Number.isFinite(toi)) {
+            const ix = step.x + step.dx * toi - collider.x;
+            const iz = step.z + step.dz * toi - collider.z;
+            const l = Math.hypot(ix, iz) || 1;
+            hitNx = ix / l;
+            hitNz = iz / l;
+          }
+        } else {
+          const box = sweepCircleBox(step.x, step.z, step.dx, step.dz, body.radius, collider);
+          if (box) {
+            toi = box.t;
+            hitNx = box.nx;
+            hitNz = box.nz;
+          }
+        }
+        if (hitNx !== null && Number.isFinite(toi) && toi <= step.len) {
+          left = this._rewind(body, step, toi);
+          sweptNx = hitNx;
+          sweptNz = hitNz;
+        }
+      }
+      if (sweptNx === null && !this.overlapsCollider(body.x, body.z, body.radius, collider)) {
+        return null;
+      }
+    }
+
+    if (sweptNx !== null) {
+      nx = sweptNx;
+      nz = sweptNz;
+      // Standing exactly on the surface: no penetration left to push out of,
+      // just the skin that keeps the next step from re-detecting this contact.
+      body.x += nx * PHYSICS.skin;
+      body.z += nz * PHYSICS.skin;
+      const cx = body.x;
+      const cz = body.z;
+      const speed = Math.hypot(body.vx, body.vz);
+      if (body.vx * nx + body.vz * nz < 0) {
+        const r = reflect(body.vx, body.vz, nx, nz, rest);
+        body.vx = r.x;
+        body.vz = r.z;
+      }
+      if (left > 0) {
+        body.x += body.vx * left;
+        body.z += body.vz * left;
+        this._trailPush(body);
+      }
+      this._rebase(body, cx, cz, left);
+      return { nx, nz, x: cx, z: cz, speed };
+    }
 
     if (collider.type === 'circle') {
       const dx = body.x - collider.x;
@@ -596,6 +962,7 @@ export class PhysicsSystem {
       body.vx = r.x;
       body.vz = r.z;
     }
+    this._trailMoveLast(body);
     return { nx, nz, x: body.x, z: body.z, speed };
   }
 
@@ -626,8 +993,11 @@ export class PhysicsSystem {
     const knocked = enemy.state === ENEMY_STATE.KNOCKED;
     const speedBefore = enemy.speed;
 
-    const rail = this.resolveRails(enemy, PHYSICS.enemyWallRestitution);
-    if (rail) this._afterEnemyImpact(enemy, game, rail, knocked, speedBefore, 'rail', null);
+    for (let pass = 0; pass < 2; pass += 1) {
+      const rail = this.resolveRails(enemy, PHYSICS.enemyWallRestitution);
+      if (!rail) break;
+      this._afterEnemyImpact(enemy, game, rail, knocked, speedBefore, 'rail', null);
+    }
 
     for (let i = 0; i < this.colliders.length; i++) {
       const collider = this.colliders[i];
@@ -669,19 +1039,46 @@ export class PhysicsSystem {
    * ---------------------------------------------------------------- */
 
   resolvePlayerEnemy(player, enemy, game) {
-    const dx = player.x - enemy.x;
-    const dz = player.z - enemy.z;
-    const dist = Math.hypot(dx, dz);
+    let dx = player.x - enemy.x;
+    let dz = player.z - enemy.z;
+    let dist = Math.hypot(dx, dz);
     const min = player.radius + enemy.radius;
-    if (dist >= min) return;
 
     // Spawning bodies have no collision — you cannot be ambushed by a telegraph.
     if (enemy.state === ENEMY_STATE.SPAWNING) return;
 
+    // A contact is anywhere ALONG the step. At full power the cue covers a
+    // third of a ball's width per substep, so it cannot pass clean through
+    // one — but it can clip the edge of one and be past it by the time the
+    // step ends, which the old end-of-step test scored as a clean miss while
+    // the preview drew the carom.
+    const grazed = this._sweepsInto(player, enemy);
+    if (!grazed && dist >= min) return;
+
+    // THE LINE OF CENTRES AT THE TOUCH, not at the overlap.
+    //
+    // This is the one that matters most. An object ball leaves along the line
+    // of centres, so every degree of error here is a degree of error in where
+    // it goes — and a cut taken from inside an overlap is rotated toward
+    // head-on, by more the deeper the step drove in. It is why a thin cut the
+    // preview drew into the corner came off the table somewhere else, and why
+    // it did it differently on a slower phone.
+    //
+    // `sweepCircleCircle` is the predictor's own solver: rewinding the step
+    // through it puts the table on exactly the geometry the drawn line was
+    // promising.
+    let left = 0;
+    if (grazed) {
+      left = this._rewind(player, grazed.step, grazed.toi);
+      dx = player.x - enemy.x;
+      dz = player.z - enemy.z;
+      dist = Math.hypot(dx, dz) || min;
+    }
+
     // Normal points from the enemy toward the player.
     const nx = dist > EPS ? dx / dist : 0;
     const nz = dist > EPS ? dz / dist : -1;
-    const depth = min - dist;
+    const depth = Math.max(0, min - dist);
 
     const launched =
       player.state === PLAYER_STATE.LAUNCHED || player.state === PLAYER_STATE.DASHING;
@@ -712,6 +1109,11 @@ export class PhysicsSystem {
         const retention = player.stats.pierceRetention;
         player.vx *= retention;
         player.vz *= retention;
+        if (left > 0) {
+          player.x += player.vx * left;
+          player.z += player.vz * left;
+          this._trailPush(player);
+        }
         return;
       }
 
@@ -725,6 +1127,25 @@ export class PhysicsSystem {
 
       player.x += nx * (depth + PHYSICS.skin);
       player.z += nz * (depth + PHYSICS.skin);
+      const cx = player.x;
+      const cz = player.z;
+      const ex = enemy.x;
+      const ez = enemy.z;
+      // Both balls spend the rest of the step on the headings the impulse just
+      // gave them. Without this the collision costs the stroke a whole step of
+      // travel, which on a chain is a ball's width of lost carry per link.
+      if (left > 0) {
+        player.x += player.vx * left;
+        player.z += player.vz * left;
+        this._trailPush(player);
+        if (enemy.alive) {
+          enemy.x += enemy.vx * left;
+          enemy.z += enemy.vz * left;
+          this._trailPush(enemy);
+        }
+      }
+      this._rebase(player, cx, cz, left);
+      if (enemy.alive) this._rebase(enemy, ex, ez, left);
       return;
     }
 
@@ -746,19 +1167,32 @@ export class PhysicsSystem {
    * ---------------------------------------------------------------- */
 
   resolveEnemyPair(a, b, game) {
-    const dx = b.x - a.x;
-    const dz = b.z - a.z;
-    const dist = Math.hypot(dx, dz);
+    let dx = b.x - a.x;
+    let dz = b.z - a.z;
+    let dist = Math.hypot(dx, dz);
     const min = a.radius + b.radius;
-    if (dist >= min) return;
     if (a.state === ENEMY_STATE.SPAWNING || b.state === ENEMY_STATE.SPAWNING) return;
-
-    const nx = dist > EPS ? dx / dist : 1; // from a toward b
-    const nz = dist > EPS ? dz / dist : 0;
-    const depth = min - dist;
 
     // Which body is doing the hitting: the faster one, whatever its state.
     const striker = a.speed >= b.speed ? a : b;
+    const grazed = this._sweepsInto(striker, striker === a ? b : a);
+    if (!grazed && dist >= min) return;
+
+    // THE SAME REWIND THE CUE GETS. A combination is two of these collisions
+    // in a row, so a normal taken from inside the overlap is an error the
+    // second link inherits and multiplies — which is why the boards whose
+    // lesson is a plant were the least predictable of all.
+    let left = 0;
+    if (grazed) {
+      left = this._rewind(striker, grazed.step, grazed.toi);
+      dx = b.x - a.x;
+      dz = b.z - a.z;
+      dist = Math.hypot(dx, dz) || min;
+    }
+
+    const nx = dist > EPS ? dx / dist : 1; // from a toward b
+    const nz = dist > EPS ? dz / dist : 0;
+    const depth = Math.max(0, min - dist);
     const target = striker === a ? b : a;
     const sx = striker === a ? nx : -nx; // striker → target
     const sz = striker === a ? nz : -nz;
@@ -795,6 +1229,21 @@ export class PhysicsSystem {
     a.z -= nz * push;
     b.x += nx * push;
     b.z += nz * push;
+    // …and both spend what is left of the step on their new headings.
+    const ax0 = a.x;
+    const az0 = a.z;
+    const bx0 = b.x;
+    const bz0 = b.z;
+    if (left > 0) {
+      a.x += a.vx * left;
+      a.z += a.vz * left;
+      this._trailPush(a);
+      b.x += b.vx * left;
+      b.z += b.vz * left;
+      this._trailPush(b);
+      this._rebase(a, ax0, az0, left);
+      this._rebase(b, bx0, bz0, left);
+    }
   }
 
   /* ---------------------------------------------------------------- *
@@ -887,9 +1336,36 @@ export class PhysicsSystem {
   predictTrajectory(origin, dir, opts = {}) {
     const radius = opts.radius ?? PLAYER.radius;
     const maxBounces = opts.maxBounces ?? TRAJECTORY.previewBounces;
-    const maxDistance = opts.maxDistance ?? TRAJECTORY.maxDistance;
     const bodies = opts.bodies || [];
     const colliders = opts.colliders || this.colliders;
+
+    // A SPEED, NOT A LENGTH.
+    //
+    // The preview used to be handed one distance — how far the ball would roll
+    // on an open table — and walk it down segment by segment. A cushion takes
+    // four percent of a ball's speed every time it touches one, and a flat
+    // distance cannot know that, so the line ran on past where the ball stops:
+    // by a couple of units after one rail, by five or six after three. That is
+    // the whole difference between a drawn line that reaches a pocket and a
+    // ball that does not, and it is why banked shots were the ones that lied.
+    //
+    // Given a speed the preview spends it the way the table does: coast, lose
+    // a bite of it at each cushion, and end where the ball runs out.
+    const drag = opts.drag ?? PLAYER.dragLaunched;
+    // THE HOLES IN THE CUSHION.
+    //
+    // `rayRails` reflects off an unbroken rectangle, so a line arriving at a
+    // pocket was drawn bouncing cleanly off the rail beside it while the ball
+    // dropped in — the single largest source of scratches the preview never
+    // warned about. A pocket ends the line.
+    const pockets = opts.pockets || [];
+    // A cushion charges a struck ball more than it charges the cue (0.82
+    // against 0.96), so a preview that used one number for both drew object
+    // legs running a third further than the ball goes.
+    const railRestitution = opts.railRestitution ?? PHYSICS.wallRestitution;
+    let speed = Number.isFinite(opts.speed) ? opts.speed : null;
+    const ceiling = opts.maxDistance ?? TRAJECTORY.maxDistance;
+    const budget = () => (speed === null ? ceiling : Math.min(ceiling, carryDistance(speed, drag)));
 
     const segments = [];
     let px = origin.x;
@@ -902,13 +1378,21 @@ export class PhysicsSystem {
       hit: null,
       caromDir: null,
       bounces: 0,
-      totalDistance: 0
+      totalDistance: 0,
+      // The speed left at the end of the drawn line, and at the contact if
+      // there was one. A caller that chains a second prediction onto this one
+      // must not re-derive it from the distance: after a cushion the distance
+      // no longer says what the speed is.
+      hitSpeed: null,
+      endSpeed: speed,
+      // The pocket this line ends in, if it ends in one.
+      pocket: null
     };
     if (dirLen < EPS) return result;
     dx /= dirLen;
     dz /= dirLen;
 
-    let remaining = maxDistance;
+    let remaining = budget();
     let bounces = 0;
 
     while (remaining > EPS && bounces <= maxBounces) {
@@ -973,9 +1457,44 @@ export class PhysicsSystem {
         }
       }
 
+      // --- nearest pocket -------------------------------------------------
+      // Capture is on the CENTRE, so the sweep radius is zero: this asks where
+      // the centre-line first enters a mouth, which is the table's own test.
+      let pocketT = Infinity;
+      let pocketRef = null;
+      for (let i = 0; i < pockets.length; i++) {
+        const k = pockets[i];
+        const t0 = sweepCircleCircle(px, pz, dx, dz, 0, k.x, k.z, k.radius);
+        if (t0 < pocketT) {
+          pocketT = t0;
+          pocketRef = k;
+        }
+      }
+
       // --- resolve the nearest event ------------------------------------
       const bodyFirst = bodyT <= geomT;
       const t = Math.min(bodyT, geomT, remaining);
+
+      if (pocketRef && pocketT <= Math.min(t, remaining)) {
+        // INTO THE MOUTH, NOT UP TO ITS LIP. Ending the segment at the entry
+        // point left every downstream test — the SCRATCH ghost, the coach's
+        // own veto, anything that asks `pathPocket` whether this line finds a
+        // hole — measuring a closest approach of exactly the pocket radius,
+        // which is a coin toss in floating point. Drawing it to the centre is
+        // both what happens and what makes the answer unambiguous.
+        segments.push({
+          ax: px,
+          az: pz,
+          bx: pocketRef.x,
+          bz: pocketRef.z,
+          bounce: bounces,
+          kind: 'pocket'
+        });
+        result.totalDistance += pocketT;
+        if (speed !== null) result.endSpeed = speedAfterDistance(speed, pocketT, drag);
+        result.pocket = pocketRef;
+        break;
+      }
       const ax = px;
       const az = pz;
       const bx = px + dx * t;
@@ -997,14 +1516,29 @@ export class PhysicsSystem {
           bounces
         };
         result.caromDir = { x: cdx / len, z: cdz / len };
+        if (speed !== null) speed = speedAfterDistance(speed, t, drag);
+        result.hitSpeed = speed;
+        result.endSpeed = speed;
         break;
       }
 
       if (Number.isFinite(geomT) && geomT <= remaining) {
-        remaining -= t;
+        // The cushion's tax, taken here so the rest of the line is drawn at
+        // the speed the ball will really have.
+        if (speed !== null) {
+          const rest =
+            geomKind === 'rail'
+              ? railRestitution
+              : geomRef?.restitution ?? PHYSICS.obstacleRestitution;
+          speed = speedAfterDistance(speed, t, drag) * rest;
+          result.endSpeed = speed;
+          remaining = budget();
+        } else {
+          remaining -= t;
+        }
         // Step marginally off the surface so the next sweep does not re-hit it.
-        px = bx + geomNx * (PHYSICS.skin * 4);
-        pz = bz + geomNz * (PHYSICS.skin * 4);
+        px = bx + geomNx * PHYSICS.skin;
+        pz = bz + geomNz * PHYSICS.skin;
         const r = reflect(dx, dz, geomNx, geomNz, 1);
         dx = r.x;
         dz = r.z;
@@ -1013,7 +1547,8 @@ export class PhysicsSystem {
         continue;
       }
 
-      break; // ran out of preview distance
+      if (speed !== null) result.endSpeed = speedAfterDistance(speed, t, drag);
+      break; // the ball has run out of legs
     }
 
     return result;

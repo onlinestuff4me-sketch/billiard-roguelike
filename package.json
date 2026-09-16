@@ -14,7 +14,8 @@
     "coach": "node tools/check-coach.mjs",
     "layout": "node tools/check-layout.mjs",
     "find-board": "node tools/find-board.mjs",
-    "scoring": "node tools/check-scoring.mjs"
+    "scoring": "node tools/check-scoring.mjs",
+    "aim": "node tools/check-aim.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"

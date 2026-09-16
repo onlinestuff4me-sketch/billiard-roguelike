@@ -212,6 +212,123 @@ The whole stick is drawn, which is what sells the metaphor:
 
 ---
 
+## 6a. What the line PROMISES, and why it is now kept
+
+The preview is a claim, made before the stroke, about what the table will do.
+It was measured for the first time in September and the claim was false far
+more often than anyone had noticed: on a heading that banked before it found a
+ball, the drawn line agreed with the played stroke **71%** of the time; on a
+shot that moved two object balls, **63%**. Reported as "50% of the time the
+projected guide lines are inaccurate — it ends up in a scratch or a missed
+pocket when the line showed a successful pocket and no scratch."
+
+There were two independent causes, and they needed opposite fixes.
+
+### The table was approximate where the preview was exact
+
+`predictTrajectory` solves the exact swept contact; the table resolved whatever
+overlap a step happened to end in. Taking the normal from inside an overlap
+rotates it toward head-on, so a thin cut left on a heading that was wrong by
+degrees — and, because the overlap depth is `v·h`, it was wrong by a DIFFERENT
+amount on a slower phone. The table now rewinds every contact to the moment it
+happened, through the predictor's own solvers, and spends the rest of the step
+on the new heading:
+
+| contact | rewound with |
+| --- | --- |
+| cushion | the step's first crossing of the rail line |
+| obstacle | `sweepCircleBox` / `sweepCircleCircle` |
+| cue on a ball | `sweepCircleCircle` |
+| ball on a ball | `sweepCircleCircle` |
+
+Capture moved the same way: a pocket is tested against the PATH a substep took
+(`Table.pocketAlong`), not the point it ended on, so a ball moving faster than
+a pocket is wide can no longer step clean over one.
+
+Halving the substep used to move the chain agreement from 64% to 81%. It no
+longer moves it at all, which is the point: the table is frame-rate independent
+now, and two players on different phones get the same shot.
+
+### The preview was modelling a table that does not exist
+
+None of the following could be fixed by a finer step, and none of them were
+visible as a wrong-LOOKING line — only as a line of the wrong length:
+
+- **A cushion is free.** The preview was handed one distance — how far the ball
+  rolls on an open table — and walked it down. A rail costs the cue 4% of its
+  speed and a struck ball 18%. It now carries a SPEED and spends it.
+- **A cushion has holes in it.** `rayRails` reflects off an unbroken rectangle,
+  so a line arriving at a pocket was drawn bouncing cleanly off the rail beside
+  it while the ball dropped in. This was the single largest source of scratches
+  the preview never warned about. A pocket now ends the line — drawn to the
+  pocket's CENTRE, because ending it on the lip leaves every downstream test
+  measuring a closest approach of exactly the radius, which is a coin toss.
+- **Only four cushions were drawn** while the stroke is allowed six.
+- **A struck ball's line stopped at the first rail**, so a banked pot was
+  invisible.
+- **A ball that hands off and carries on** — the faint "tail" — was drawn and
+  then never asked whether it ends in a pocket.
+- **`speedAfterDistance` used the cue's friction for every body**, so object
+  legs were drawn about 5% short.
+- **Two balls that start touching** produced a zero-length leg, and the chain
+  read its heading off that segment: `hypot(0,0) || 1` gave a direction of
+  (0,0) and the rest of the chain was silently dropped.
+
+`npm run aim` is the instrument. It reads what the felt is showing the player —
+the same projection, through `window.__aim` — then plays that heading and
+compares two verdicts: did the cue go down, and which balls went in which
+pockets. It does **not** compare resting positions: the preview does not
+promise a resting place to within a ball's width, and holding it to one would
+report failures nobody would notice while hiding the two that everybody does.
+
+Measured over 2880 previews — every board, every 3°, at four powers:
+
+| | before | after |
+| --- | --- | --- |
+| every heading | 90.1% | **99.5%** |
+| banked, then a ball | 71.5% | **99.4%** |
+| two balls or more | 63.0% | **96.3%** |
+| scratches | 45 wrong | **4 wrong** |
+
+### What is still wrong, and why this approach cannot fix it
+
+Nearly all of the residual is one shape: a struck ball banks off a cushion and
+then meets **the cue ball, still rolling**, which sends it somewhere — often
+into a pocket — that no line drew.
+
+The projection cannot see this. It solves each ball's path as a curve through
+static geometry, one ball at a time: the object legs are swept against the
+other object balls, but the cue is not among them, because by the time the
+object ball gets there the cue is no longer where it was, and there is nowhere
+in a purely geometric solution to put a body that MOVES.
+
+Two ways out, neither taken here:
+
+1. **Parameterise both paths by time rather than distance.** Both start at the
+   same instant and both have a known speed profile, so "do these two moving
+   circles meet, and when" is answerable. It is a real solver, with its own
+   failure modes, and it has to re-enter the chain when the answer is yes.
+2. **Predict by simulating.** Run the actual physics forward on a scratch copy
+   of the table and draw where the balls went. This is accurate by
+   construction — it is not a model of the table, it IS the table — at the cost
+   of a few hundred substeps every time the aim moves, on a phone, while the
+   player is dragging their thumb.
+
+Until one of those, the honest statement is the one above: the line keeps its
+promise on better than 99 in 100 headings, and the shots where it does not are
+ricochets rather than shots anyone aims at.
+
+### Frame rate
+
+The table used to move a body by `v·h` and then damp `v`, which overshoots the
+drag it is modelling by about half a step of decay. `integrate` now uses the
+closed-form displacement, so a coast covers exactly `v/drag` — the same number
+`carryDistance` gives the preview — at any step size. Playing the same 720
+strokes at 30, 60 and 120 Hz lands the cue in the same place to a median of
+0.0000 units and a 90th percentile of 0.006 (it was 0.025).
+
+---
+
 ## 7. Verification
 
 | property | expected |

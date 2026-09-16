@@ -215,8 +215,25 @@ export const CHAIN = {
 export const TRAJECTORY = {
   /** How far the prediction sweep runs before giving up (world units). */
   maxDistance: 46,
-  /** Reflection segments drawn beyond the first rail contact. */
+  /* A FALLBACK ONLY. The cue's own preview asks for `player.maxBounces` — the
+     number of rails the stroke is actually allowed — because this used to be
+     the smaller of the two, and the last two cushions of a long shot were
+     simply not drawn: a cue ball that found a pocket on its fifth rail
+     scratched with no warning on the felt. This is what `predictTrajectory`
+     falls back to when a caller does not say. */
   previewBounces: 4,
+  /* How many cushions a STRUCK ball's line follows. It used to be none — the
+     leg stopped at the first rail — which made a banked pot invisible to the
+     player and, worse, drew a line that said the ball ended there. Two is what
+     a plannable shot needs; beyond that the ball has lost most of its speed
+     and the line is clutter. */
+  objectBounces: 2,
+  /* How many balls deep one branch of the chain is followed. Two used to be
+     the cap, on the reasoning that a third link is below the noise floor of a
+     real shot — but a plant that drops two balls and nudges a third into a
+     pocket is a shot the table plays, and a preview that stops at two reports
+     it as one pot short. */
+  chainLinks: 3,
   /** Length of the predicted object-ball departure line. */
   caromConeLength: 6.5,
   /**
