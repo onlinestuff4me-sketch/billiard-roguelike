@@ -1476,17 +1476,24 @@ export class PhysicsSystem {
       const t = Math.min(bodyT, geomT, remaining);
 
       if (pocketRef && pocketT <= Math.min(t, remaining)) {
-        // INTO THE MOUTH, NOT UP TO ITS LIP. Ending the segment at the entry
-        // point left every downstream test — the SCRATCH ghost, the coach's
-        // own veto, anything that asks `pathPocket` whether this line finds a
-        // hole — measuring a closest approach of exactly the pocket radius,
-        // which is a coin toss in floating point. Drawing it to the centre is
-        // both what happens and what makes the answer unambiguous.
+        // TO THE LIP, AND THE VERDICT SEPARATELY.
+        //
+        // This drew the segment all the way to the pocket's CENTRE, because
+        // every downstream test re-derived "does this line find a hole" by
+        // measuring the closest approach of the drawn segments, and a segment
+        // ending exactly ON the radius is a coin toss in floating point.
+        //
+        // But it also meant that the instant a sweeping aim crossed into the
+        // mouth the far end of the line teleported to the centre, and back out
+        // again — a visible jump at exactly the place the player is trying to
+        // line up. The verdict lives in `result.pocket` now, which is exact and
+        // needs no re-derivation, so the line can be drawn where the ball
+        // actually reaches: the lip it goes in at.
         segments.push({
           ax: px,
           az: pz,
-          bx: pocketRef.x,
-          bz: pocketRef.z,
+          bx: px + dx * pocketT,
+          bz: pz + dz * pocketT,
           bounce: bounces,
           kind: 'pocket'
         });

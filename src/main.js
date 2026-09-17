@@ -2089,6 +2089,8 @@ function chainFrom(shot, mass, seen) {
     legs.push({
       segs: path.segments,
       ball: struck,
+      // The predictor's own answer, not a re-measurement of the drawn line.
+      pocket: path.pocket ?? null,
       contact: path.hit ? { x: path.hit.x, z: path.hit.z } : null
     });
 
@@ -2262,8 +2264,11 @@ function aimGhosts(prediction, cuePath, objectPath) {
   // to rest is already drawn — the departure line ends there — and a ghost on
   // it was one more shape competing with the balls. A scratch is different: it
   // is the one outcome the player must not discover afterwards.
-  const cueSegs = cuePath?.segments?.length ? cuePath.segments : prediction?.segments;
-  const down = pathPocket(cueSegs, pockets);
+  // THE PREDICTOR'S VERDICT, not a re-measurement of what got drawn. Asking
+  // `pathPocket` whether the drawn line finds a hole was a second opinion on a
+  // question already answered exactly, and it disagreed with the first at the
+  // lip of every pocket.
+  const down = cuePath ? cuePath.pocket : prediction?.pocket ?? null;
   if (down) {
     ghosts.push({
       x: down.x,
@@ -2279,7 +2284,7 @@ function aimGhosts(prediction, cuePath, objectPath) {
     if (!leg?.segs?.length) continue;
     // Where this ball finishes: the pocket on its own leg, or — if it handed
     // off and carried on — the pocket at the end of that.
-    const potted = pathPocket(leg.segs, pockets) || leg.tailPocket || null;
+    const potted = leg.pocket || leg.tailPocket || null;
     const contact = leg.contact;
     const rest = leg.tail?.length ? pathEnd(leg.tail) : pathEnd(leg.segs);
     const at = potted ? { x: potted.x, z: potted.z } : contact || rest;
@@ -2529,6 +2534,26 @@ if (typeof window !== 'undefined') {
  * hands back the ghosts the player can see plus the geometry behind them.
  */
 if (typeof window !== 'undefined') {
+  /* THE HEADING THE CONTROL IS PRODUCING, so a synthetic drag can be played
+     through the real InputManager and the steps it takes measured. Reported as
+     "the aiming should feel smooth"; nothing could see the control's own
+     output before this. */
+  window.__heading = () => {
+    const h = input.heading;
+    return {
+      x: h.x,
+      z: h.z,
+      deg: (Math.atan2(h.x, -h.z) * 180) / Math.PI,
+      // Where the floating pad was seated, so a drag can be swept around it
+      // the way a thumb lining up a shot actually moves.
+      pad: input._pad ? { x: input._pad.x, y: input._pad.y } : null
+    };
+  };
+  window.__stage = () => stage;
+  /* The aim tuning constants, live, so a drag harness can A/B them without a
+     rebuild between every reading. */
+  window.__inputCfg = INPUT;
+
   window.__aim = (headingDeg, power) => {
     const th = (headingDeg * Math.PI) / 180;
     player.aimDir.x = Math.sin(th);
@@ -2540,7 +2565,7 @@ if (typeof window !== 'undefined') {
     const cuePath = projectCuePath(pred);
     const objectPath = projectObjectPath(pred, cuePath);
     const cueSegs = cuePath?.segments?.length ? cuePath.segments : pred?.segments;
-    const scratch = pathPocket(cueSegs, pockets);
+    const scratch = cuePath ? cuePath.pocket : pred?.pocket ?? null;
     return {
       heading: headingDeg,
       power,
@@ -2562,7 +2587,7 @@ if (typeof window !== 'undefined') {
         budget: player.maxBounces
       },
       legs: (objectPath ?? []).map((leg) => {
-        const at = pathPocket(leg.segs, pockets) || leg.tailPocket || null;
+        const at = leg.pocket || leg.tailPocket || null;
         return {
           number: leg.ball?.number ?? null,
           segs: leg.segs.map((s) => [s.ax, s.az, s.bx, s.bz]),
@@ -2657,10 +2682,10 @@ function solveCoachRoute(want = {}) {
     // power — the four-ball board does, once the cue is parked among what is
     // left — and a board with no road is what sent the player looking for one
     // in the first place.
-    if (strict && tries.some((shot) => scratches(shot, pockets))) continue;
+    if (strict && tries.some((shot) => scratches(shot))) continue;
     for (const shot of tries) {
       if (!shot.objectPath.length) continue;
-      if (!strict && scratches(shot, pockets)) continue;
+      if (!strict && scratches(shot)) continue;
       // THE ROAD DOES NOT GO OVER THE RED. The mine board's road was drawn
       // straight across the mine, which is the one line the card is telling
       // the player not to take — an instruction to do the thing the lesson is
@@ -2763,10 +2788,9 @@ function roadAlong(heading, want) {
  * ball — reported as "it keeps giving me coach lines that point my cue ball
  * into pockets where it scratches".
  */
-function scratches(shot, pockets) {
-  const approach = shot.prediction?.segments;
-  const departure = shot.cuePath?.segments;
-  return !!(pathPocket(approach, pockets) || pathPocket(departure, pockets));
+function scratches(shot) {
+  // Both halves carry their own verdict now, so neither has to be re-measured.
+  return !!(shot.prediction?.pocket || shot.cuePath?.pocket);
 }
 
 /** The bands themselves: the line to aim along, then the chain up to the goal. */
@@ -2864,7 +2888,7 @@ function goalLeg(shot, want, pockets) {
       continue;
     }
     if (want.number != null && leg.ball?.number !== want.number) continue;
-    const at = pathPocket(leg.segs, pockets);
+    const at = leg.pocket || leg.tailPocket || null;
     if (!at) continue;
     if (want.slot && at.slot !== want.slot) continue;
     return { at: i, number: leg.ball?.number, slot: at.slot };

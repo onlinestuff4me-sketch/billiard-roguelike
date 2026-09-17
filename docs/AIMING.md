@@ -318,6 +318,69 @@ Until one of those, the honest statement is the one above: the line keeps its
 promise on better than 99 in 100 headings, and the shots where it does not are
 ricochets rather than shots anyone aims at.
 
+### The control is smooth; the LINE is what jumps
+
+Reported as "it's very hard to get the projection lines to lock onto the
+pocket, they keep jumping short distances" — and, when a first guess blamed the
+draw length, corrected with "I don't think I am pulling back less; the jumping
+happens no matter how far back I pull." That correction was right.
+
+The control was measured by playing a synthetic drag through the real
+`InputManager`: the thumb sweeps a circle about the seated pad at a steady
+40°/s while the number of coalesced samples per frame varies 1-4, the way a
+touchscreen sampling faster than the display actually delivers them.
+
+| easing | lever | delivery | aim follows at | jitter |
+| --- | --- | --- | --- | --- |
+| adaptive (shipped) | 30px | varying | 40.1°/s | 1.7 (4%) |
+| adaptive (shipped) | 104px | varying | 40.3°/s | 1.9 (5%) |
+| fixed τ 0.055 | 30px | varying | 40.3°/s | 2.0 (5%) |
+
+Three to five percent, at every draw length. **The aim itself is not the
+problem** — a conclusion that took three wrong harnesses to reach, each of
+which produced a confident wrong answer:
+
+1. the thumb's speed was made to vary with the batch size, so the "roughness"
+   measured was the test's own lurching;
+2. the thumb was swept straight through the pad, where the lever passes
+   through zero and the angle genuinely does go wild;
+3. all seventy frames were dispatched inside one millisecond, so a
+   time-based filter saw no elapsed time and the aim barely moved at all.
+
+What jumps is the projection. Sweeping the heading in 0.05° steps and watching
+the far end of everything drawn:
+
+| board | median step | p95 | teleports > 2 units |
+| --- | --- | --- | --- |
+| `angle` | 0.130 | 0.334 | 1.4% |
+| `bank` | 0.045 | 2.444 | 8.2% |
+| `cut-combo` | 0.532 | 2.146 | 5.0% |
+
+One cause was self-inflicted and is fixed: the line used to be drawn to the
+pocket's CENTRE, so the instant a sweeping aim crossed into a mouth the far end
+teleported there and back — at exactly the spot the player is lining up. It
+ends at the lip now, and the pot verdict comes from `result.pocket`, which is
+exact and needs no re-derivation. On `angle` that took the median step from
+**0** (pinned at the centre through the whole window) to 0.130.
+
+The rest are the path genuinely changing: classified on `bank`, of the
+teleports that remain five are pure geometry — a four-to-six-cushion path
+amplifies a hundredth of a degree into units at the far end — and the others
+are a cushion gained or lost, a scratch appearing, or the ball being struck
+rather than missed. Those are not noise; they are the answer changing, and the
+player needs to see it.
+
+### A bank shot's most important line was its faintest
+
+"When aiming the cue at a wall for a bank shot, the dotted line at the wall is
+very faint, which is strange." It was the last `THREE.LineSegments` in the
+preview. Everything up to the first cushion gets the wide beam; everything
+past it was one-physical-pixel dots in a desaturated slate — a third of a CSS
+pixel of colour on a 3x phone. On the banking lesson the leg past the cushion
+IS the shot, so the player was being asked to plan from the faintest thing on
+the felt. It is a ribbon now at the cue line's own width and hue, still dashed,
+because dashed is what says "after a bounce".
+
 ### Frame rate
 
 The table used to move a body by `v·h` and then damp `v`, which overshoots the
