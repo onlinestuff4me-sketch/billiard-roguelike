@@ -1547,13 +1547,41 @@
          because the sentence has the left side and a player two boards in
          wants to know how many are left rather than read the phrase again. */
       #coach .prog {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+        white-space: nowrap;
+      }
+      #coach .prog[hidden] { display: none; }
+      #coach .progNum {
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.18em;
         color: #7c8794;
-        white-space: nowrap;
       }
-      #coach .prog[hidden] { display: none; }
+      /* THE BAR AND THE NUMERALS BOTH. The numerals say exactly how many are
+         left; the bar says how far along you are without being read at all.
+         Fixed width so the band's shape does not move from board to board —
+         the same reason the band itself is a fixed height. */
+      #coach .progBar {
+        display: block;
+        width: 46px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(124, 135, 148, 0.28);
+        overflow: hidden;
+      }
+      #coach .progBar i {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: inherit;
+        background: #2ef2c4;
+        transform-origin: left center;
+        transform: scaleX(0);
+        transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1);
+      }
 
       /* The CTA takes the progress chip's PLACE rather than sitting beside it:
          on a finished board there is exactly one control, and it goes forward. */

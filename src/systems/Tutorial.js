@@ -406,11 +406,17 @@ export class Tutorial {
     el.id = 'coach';
     el.innerHTML =
       '<div class="line"></div>' +
-      '<div class="prog"></div>' +
+      // THE BAR AND THE NUMERALS, not one or the other. The numerals answer
+      // "how many are left" exactly; the bar answers "how far along am I" at a
+      // glance, without reading. Every learning app worth copying carries both.
+      '<div class="prog"><span class="progBar"><i></i></span>' +
+      '<span class="progNum"></span></div>' +
       '<button class="next" type="button" hidden></button>';
     this.el = el;
     this.lineEl = el.querySelector('.line');
     this.progEl = el.querySelector('.prog');
+    this.progFill = el.querySelector('.progBar i');
+    this.progNum = el.querySelector('.progNum');
     this.nextEl = el.querySelector('.next');
     this.layer.appendChild(el);
 
@@ -610,7 +616,7 @@ export class Tutorial {
     // in the DOM for a possible replay, and is otherwise one class toggle away
     // from reappearing over live play.
     this.lineEl.textContent = '';
-    this.progEl.textContent = '';
+    this._setProgress(0, LESSONS.length);
     this.progEl.hidden = false;
     this.el.classList.remove('good', 'bad');
     this._hideTags();
@@ -2176,7 +2182,7 @@ export class Tutorial {
     // It is two numerals because the band's left side is spoken for, and
     // because a player two boards in wants to know how many are left, not to
     // read the phrase again.
-    this.progEl.textContent = `${this.index + 1} / ${LESSONS.length}`;
+    this._setProgress(this.index + 1, LESSONS.length);
     this._say(lesson.say, null);
     this.el.classList.add('show');
   }
@@ -2190,6 +2196,20 @@ export class Tutorial {
    * matters is coloured. Nothing here is player-supplied — every string is a
    * constant in RULES above — so there is nothing to escape.
    */
+  /**
+   * How far through, said twice: a bar to see and a pair of numerals to read.
+   *
+   * The bar fills to the board you are ON, not the one you have finished, so
+   * arriving at the last lesson does not read as having completed the course.
+   */
+  _setProgress(step, total) {
+    if (this.progFill) {
+      const at = total > 0 ? Math.max(0, Math.min(1, step / total)) : 0;
+      this.progFill.style.transform = `scaleX(${at})`;
+    }
+    if (this.progNum) this.progNum.textContent = step > 0 ? `${step} / ${total}` : '';
+  }
+
   _say(html, tone) {
     // A BALL NAMED IN THE SENTENCE IS INKED IN THAT BALL'S OWN COLOUR.
     //
