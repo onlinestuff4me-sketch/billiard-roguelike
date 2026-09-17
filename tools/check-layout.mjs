@@ -184,6 +184,73 @@ for (const size of SIZES) {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * NO SENTENCE THE COACH WRITES IS EVER CUT OFF
+ * ------------------------------------------------------------------ *
+ * The band clamps to two lines and hides what does not fit, and on a phone it
+ * read as "Scratched — your own ball went in the pocket. Hit the target ball
+ * off to one side,…" — the half that says what to DO, gone.
+ *
+ * It survived because every line fits here. Headless Chromium substitutes a
+ * narrower face than an iPhone renders, so a check measuring this band was
+ * measuring a font the player does not have. So the type is STRESSED: each
+ * line is measured again at 115% and with a little extra tracking, which is
+ * wider than any face the platform will hand back. A sentence that survives
+ * that survives the real thing.
+ *
+ * Tutorial._fitLine shrinks the type at runtime to absorb the difference; this
+ * checks the copy is inside what that can absorb.
+ */
+{
+  const game = await openGame({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+  console.log('  every line the coach can write, with the type stressed wider than any real font');
+  try {
+    const lines = [];
+    for (const id of boardIds()) {
+      await game.gotoBoard(id);
+      lines.push(...(await game.page.evaluate(() => {
+        const t = window.__game.tutorial;
+        const out = [];
+        const push = (html) => html && out.push(html);
+        push(t.lesson?.say);
+        for (const k of ['whiff', 'scold', 'mined', 'missed', 'scratched', 'short']) push(t.lesson?.[k]);
+        // The two the coach composes rather than stores.
+        push('Scratched — your own ball went in the pocket. Hit the target ball off to one side, and yours rolls clear instead');
+        push('That one did not go in — line your ball up with the lit pocket and try again');
+        return out;
+      })));
+    }
+    const over = await game.page.evaluate((all) => {
+      const el = document.querySelector('#coach .line');
+      const held = el.innerHTML;
+      const bad = [];
+      const seen = new Set();
+      for (const html of all) {
+        if (seen.has(html)) continue;
+        seen.add(html);
+        el.style.fontSize = '';
+        el.innerHTML = html;
+        const base = parseFloat(getComputedStyle(el).fontSize) || 14;
+        // The floor Tutorial._fitLine can shrink to, then stressed wider.
+        el.style.fontSize = `${base * 0.8 * 1.15}px`;
+        el.style.letterSpacing = '0.01em';
+        if (el.scrollHeight > el.clientHeight + 1) bad.push(el.textContent.trim());
+        el.style.letterSpacing = '';
+      }
+      el.style.fontSize = '';
+      el.innerHTML = held;
+      return bad;
+    }, lines);
+    check(
+      over.length === 0,
+      'no coaching line is cut off',
+      over.length ? `${over.length} of ${lines.length} overflow: "${over[0].slice(0, 60)}…"` : `${lines.length} lines fit`
+    );
+  } finally {
+    await game.close();
+  }
+}
+
 console.log('');
 if (fails.length) {
   console.log(`${fails.length} check${fails.length === 1 ? '' : 's'} failed`);
