@@ -3,6 +3,36 @@
 The contract for `src/systems/Tutorial.js`. Read this before changing a lesson.
 If a change conflicts with a goal below, the goal wins.
 
+### The arrows say when you have arrived on them
+
+The road shows the line that works and the player matches their aim to it. What
+it did not say was *when they had got there* — on a board two and a half degrees
+wide you can eyeball two dashed lines into agreement and still be outside the
+run.
+
+So the arrows brighten. Not a new element, not a button, not an animation that
+moves: the same road, at full strength in the aim's own cyan, once the aim is
+inside the board's measured window.
+
+The tolerance is the board's own. Each lesson stores `window` — the contiguous
+run of working headings containing its `solve`, exactly as `npm run verify`
+reports it — so the signal's claim is "this heading is one that works" rather
+than "you are near a number someone picked". `verify` re-measures it on every
+run and fails if the file has drifted from the table, which is what stops a
+board that moves from lighting its arrows on headings that miss. The band is
+inset by half the sweep's own step, so the signal never lights on a heading
+nothing actually measured.
+
+`npm run coach` checks it off the felt rather than off the function that
+decides it: lit at the solve and across the run, dark half a degree outside.
+
+One trap worth recording. The frame loop re-derives `player.aimDir` from
+`input.heading` every frame while the cue is at rest, so a test that sets the
+aim and then awaits anything is measuring the RESTING heading, not the one
+under test — the first version of the check came back reporting boards that
+were always lit and boards that were always dark, both wrong. Set and read in
+the same tick, or point the control itself with `window.__setHeading`.
+
 ### Why lessons 5 and 6's two balls sit where they do
 
 Lesson 5 cost nothing at all. Re-searching its grid with the daylight floor

@@ -56,6 +56,24 @@ try {
     const problems = [];
     if (width < MIN_WIDTH) problems.push(`widest window ${width}° < ${MIN_WIDTH}°`);
     if (reach > MAX_REACH) problems.push(`rest aim ${reach}° from any solution`);
+
+    /* THE STORED WINDOW IS THE ONE THE FELT LIGHTS UP ON, so it has to be the
+       one this sweep measures. The coach's arrows brighten when the aim is
+       inside `lesson.window`, which is a promise that the heading works — and
+       a promise made from a number in a data file is only as good as the last
+       time anyone checked it against the table. A board that moves and leaves
+       its window behind would light the arrows on headings that miss. */
+    const stored = lesson.window;
+    if (!stored) problems.push('no stored window for the coach to light up on');
+    else {
+      const run = (sweep.runs || []).find((r) => r.from <= lesson.solve && lesson.solve <= r.to);
+      if (!run) problems.push(`stored solve ${lesson.solve}° is in no working run`);
+      else if (Math.abs(run.from - stored[0]) > step || Math.abs(run.to - stored[1]) > step) {
+        problems.push(
+          `stored window ${stored[0]}–${stored[1]} is not the measured run ${run.from}–${run.to}`
+        );
+      }
+    }
     if (plan && !plan.cleared) {
       problems.push(`cannot clear ${plan.total} balls in ${plan.strokes} shots (best ${plan.bestDown})`);
     }

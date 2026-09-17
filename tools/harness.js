@@ -308,6 +308,8 @@
       id: L.id,
       rest: +restDeg.toFixed(2),
       solve: L.solve ?? null,
+      // The run the coach's arrows light up on — verify re-measures it.
+      window: L.window ?? null,
       call: L.call,
       shots: L.shots ?? null,
       gate: L.strokePots

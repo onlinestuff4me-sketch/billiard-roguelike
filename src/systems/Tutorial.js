@@ -324,6 +324,12 @@ export const LESSONS = lessonData.lessons.map((table) => ({
   // A measured, scratch-free potting heading in degrees. The scratch demo
   // swings the cue onto it so the fix is shown rather than described.
   solve: table.solve,
+  /* THE RUN OF HEADINGS THAT ACTUALLY WORKS, as `npm run verify` measures it —
+     the contiguous band containing `solve`. It is here so the felt can tell the
+     player when their aim has arrived on the road rather than near it, with a
+     tolerance that is the board's own rather than a number someone picked.
+     `verify` fails if it drifts from what it measures. */
+  window: table.window || null,
   room: {
     id: `lesson-${table.id}`,
     name: table.name,

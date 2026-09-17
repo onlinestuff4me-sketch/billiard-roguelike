@@ -2386,6 +2386,15 @@ for (let i = 0; i < ROUTE_SLOTS; i += 1) {
 /** The route currently being shown, and how far through its march it is. */
 let routeBands = null;
 let routePhase = 0;
+/* HOW FAR ONTO THE ROAD THE AIM HAS ARRIVED, 0 to 1, eased.
+   The arrows say which line works; without this the player has to eyeball two
+   dashed lines into agreement, and on a board whose window is two and a half
+   degrees you can look aligned and be outside it. See aimOnRoute. */
+let routeLock = 0;
+/** The hue the arrows take when the aim arrives; hoisted so the paint loop
+    allocates nothing per frame. */
+const ROUTE_LOCK_INK = new THREE.Color(PALETTE.aim);
+const ROUTE_INK = new THREE.Color();
 /** 1 while the route is advice; falls to 0 once the stroke is under way. */
 let routeFade = 1;
 
@@ -2416,9 +2425,38 @@ function retireCoachRoute() {
   routeRetiring = true;
 }
 
+/**
+ * IS THE AIM ON THE ROAD?
+ *
+ * Not "near the stored heading by some number I picked": inside the board's
+ * own measured run of working headings, the same one `npm run verify` reports
+ * and `verify` re-checks against the file. So the signal's claim is exactly
+ * "this heading is one that works", and it cannot quietly come to mean
+ * something else as a board moves.
+ *
+ * The run is swept at half a degree, so its edges are only known to within
+ * that — the band is inset by half a step, and the signal never lights on a
+ * heading nothing actually measured.
+ */
+function aimOnRoute() {
+  const win = tutorial?.lesson?.window;
+  if (!win || !player.alive || !routeBands) return false;
+  const half = (win[1] - win[0]) / 2 - 0.25;
+  if (half <= 0) return false;
+  const mid = (win[0] + win[1]) / 2;
+  const deg = (Math.atan2(player.aimDir.x, -player.aimDir.z) * 180) / Math.PI;
+  const off = ((deg - mid + 540) % 360) - 180;
+  return Math.abs(off) <= half;
+}
+
 function updateCoachRoute(dt) {
   if (!routeBands) return;
   routePhase = (routePhase + dt * ROUTE_MARCH) % ROUTE_SPACING;
+  // Eased rather than switched: an arrival should read as the road taking hold,
+  // and a flag flipping on a frame where the thumb wobbles across the edge
+  // reads as a fault in the display.
+  const want = aimOnRoute() ? 1 : 0;
+  routeLock += (want - routeLock) * Math.min(1, dt / 0.09);
   if (routeRetiring) {
     routeFade -= dt / 0.33;
     if (routeFade <= 0) {
@@ -2459,7 +2497,7 @@ function paintCoachRoute() {
       v += 3;
     };
 
-    const size = band.size ?? 1;
+    const size = (band.size ?? 1) * (1 + routeLock * 0.22);
     // THE MARCH GOES THE WAY THE ARROWS POINT. Subtracting the phase slid
     // every arrow BACKWARDS along the path a little faster each frame, so a
     // road drawn to send you left had its arrows travelling right: the two
@@ -2484,8 +2522,13 @@ function paintCoachRoute() {
     // THE POINTER AT THE END. A row of arrows says which way; this says where.
     if (last) put(last.x, last.z, last.ux, last.uz, 0.58 * size, 0.38 * size);
 
-    slot.mat.color.setHex(band.ink ?? PALETTE.bone);
-    slot.mat.opacity = (band.opacity ?? 0.5) * routeFade;
+    // ON THE ROAD: the arrows take the aim's own bright cyan and come up to
+    // full strength. Off it they stay the dim diagram they have always been.
+    // Nothing moves and nothing is added — the road you are already reading
+    // simply tells you that you have arrived on it.
+    ROUTE_INK.setHex(band.ink ?? PALETTE.bone).lerp(ROUTE_LOCK_INK, routeLock * 0.8);
+    slot.mat.color.copy(ROUTE_INK);
+    slot.mat.opacity = Math.min(1, (band.opacity ?? 0.5) * (1 + routeLock * 1.05)) * routeFade;
     slot.geo.setDrawRange(0, v);
     slot.geo.attributes.position.needsUpdate = true;
     slot.mesh.visible = v > 0;
@@ -2511,6 +2554,10 @@ if (typeof window !== 'undefined') {
     return {
       bands: routeBands?.length ?? 0,
       fade: +routeFade.toFixed(3),
+      // Whether the aim has arrived on the road, and how far the arrows have
+      // eased into saying so.
+      onRoute: aimOnRoute(),
+      lock: +routeLock.toFixed(3),
       retiring: routeRetiring,
       drawn: routeSlots.filter((s) => s.mesh.visible).map((s) => s.geo.drawRange.count),
       // WHERE THE FIRST ARROW IS, as a distance along the first segment of the
@@ -2550,6 +2597,14 @@ if (typeof window !== 'undefined') {
     };
   };
   window.__stage = () => stage;
+  /* Point the CONTROL at a heading, not just the ball. The frame loop
+     re-derives `player.aimDir` from `input.heading` every frame while the cue
+     is at rest, so setting the ball's aim alone lasts exactly one frame —
+     which is how a screenshot of the road's lit state came back dark. */
+  window.__setHeading = (deg) => {
+    const th = (deg * Math.PI) / 180;
+    input.setHeading(Math.sin(th), -Math.cos(th));
+  };
   /* The aim tuning constants, live, so a drag harness can A/B them without a
      rebuild between every reading. */
   window.__inputCfg = INPUT;
