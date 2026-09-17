@@ -409,27 +409,68 @@ export class InputManager {
    * hardware actually had all along, thrown away by reading only the last one.
    */
   _track(event) {
+    this.currentX = event.clientX;
+    this.currentY = event.clientY;
+  }
+
+  /**
+   * EVERY SAMPLE THE TOUCHSCREEN TOOK, IN ORDER — NOT THEIR AVERAGE.
+   *
+   * A touchscreen samples faster than the screen refreshes, so one `pointermove`
+   * carries a batch of real positions and the batch size varies frame to frame:
+   * one sample on this frame, four on the next.
+   *
+   * This used to AVERAGE the batch into a single point, which was wrong in a
+   * way that is invisible in a still image and obvious in the hand: a
+   * one-sample frame reports where the thumb actually is, a four-sample frame
+   * reports where it was one and a half samples ago. So the thumb position
+   * jumps backwards and forwards against the truth as the batch size wobbles,
+   * and a perfectly steady drag comes out as alternating steps of about one
+   * and two degrees — measured at 77% roughness, and reported as "the lines
+   * keep jumping" at every draw length, because the lever has nothing to do
+   * with it.
+   *
+   * Feeding each sample through the easing in its own right fixes both halves:
+   * the position is never stale, and the filter now integrates at the screen's
+   * touch rate instead of the frame rate, which is strictly smoother than any
+   * single sample could be.
+   *
+   * @returns {object|null} the aim after the last sample
+   */
+  _trackPath(event, now) {
     const points = event.getCoalescedEvents?.() ?? null;
     if (!points?.length) {
-      this.currentX = event.clientX;
-      this.currentY = event.clientY;
-      return;
+      this._track(event);
+      return this._updateAim(now);
     }
-    let x = 0;
-    let y = 0;
-    for (const p of points) {
-      x += p.clientX;
-      y += p.clientY;
+    const startedAt = this._lastAimTime || now;
+    const frame = Math.max(0, now - startedAt);
+    // Real samples carry their own timestamps. Synthetic ones — and some
+    // browsers — stamp the whole batch with the dispatch time, which would
+    // hand the first sample the entire frame and the rest nothing; spreading
+    // them evenly is the honest fallback.
+    const t0 = points[0].timeStamp;
+    const tN = points[points.length - 1].timeStamp;
+    const timed = Number.isFinite(t0) && Number.isFinite(tN) && tN - t0 > frame * 0.25;
+    let aim = null;
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      this.currentX = p.clientX;
+      this.currentY = p.clientY;
+      const at = timed
+        ? Math.min(Math.max(p.timeStamp, startedAt), now)
+        : startedAt + (frame * (i + 1)) / points.length;
+      aim = this._updateAim(at);
     }
-    this.currentX = x / points.length;
-    this.currentY = y / points.length;
+    // The event's own coordinates are the authority on where the thumb ended.
+    this._track(event);
+    return aim;
   }
 
   _handleMove(event) {
     if (event.pointerId !== this.pointerId) return;
     event.preventDefault();
-    this._track(event);
-    const aim = this._updateAim(performance.now());
+    const aim = this._trackPath(event, performance.now());
     if (this.state === STATE.AIMING) this.handlers.onAimUpdate?.(aim);
   }
 

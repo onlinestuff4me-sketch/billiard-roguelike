@@ -275,6 +275,76 @@ export class Table {
     return null;
   }
 
+  /**
+   * THE WHOLE STEP, NOT THE END OF IT.
+   *
+   * Capture used to be sampled where a step happened to leave the ball, which
+   * means a ball moving faster than a pocket is wide could pass clean through
+   * one between two samples. The aim preview has always tested the line — it
+   * measures the closest approach of a segment — so the two disagreed exactly
+   * where it hurts most: the preview drew a scratch and the table did not take
+   * it, or the preview reflected off a cushion the ball actually fell into.
+   *
+   * Same predicate as the preview's, on the same geometry.
+   *
+   * @returns {{pocket: object, x: number, z: number} | null} the pocket and
+   *   where along the step the centre entered it.
+   */
+  pocketAlong(ax, az, bx, bz) {
+    const dx = bx - ax;
+    const dz = bz - az;
+    const len2 = dx * dx + dz * dz;
+    if (len2 < 1e-12) {
+      const at = this.pocketAt(ax, az);
+      return at ? { pocket: at, x: ax, z: az } : null;
+    }
+    const len = Math.sqrt(len2);
+    const ux = dx / len;
+    const uz = dz / len;
+    let best = null;
+    for (const pocket of this.pockets) {
+      // Where the centre-line first comes within the pocket's radius: the
+      // entry root of the ray/circle test, clamped to this step.
+      const mx = ax - pocket.x;
+      const mz = az - pocket.z;
+      const b = mx * ux + mz * uz;
+      const c = mx * mx + mz * mz - pocket.radius * pocket.radius;
+      if (c > 0 && b > 0) continue; // starts outside and moving away
+      const disc = b * b - c;
+      if (disc < 0) continue;
+      const t = c <= 0 ? 0 : -b - Math.sqrt(disc);
+      if (t < 0 || t > len) continue;
+      if (!best || t < best.t) best = { t, pocket, x: ax + ux * t, z: az + uz * t };
+    }
+    return best ? { pocket: best.pocket, x: best.x, z: best.z } : null;
+  }
+
+  /** Every armed object this step passes through, in the order it meets them. */
+  objectsAlong(ax, az, bx, bz, radius = 0) {
+    const dx = bx - ax;
+    const dz = bz - az;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-6) return this.objectsAt(ax, az, radius);
+    const ux = dx / len;
+    const uz = dz / len;
+    const hits = [];
+    for (const object of this.objects) {
+      if (!object.armed) continue;
+      const reach = object.radius + radius * 0.4;
+      const mx = ax - object.x;
+      const mz = az - object.z;
+      const b = mx * ux + mz * uz;
+      const c = mx * mx + mz * mz - reach * reach;
+      if (c > 0 && b > 0) continue;
+      const disc = b * b - c;
+      if (disc < 0) continue;
+      const t = c <= 0 ? 0 : -b - Math.sqrt(disc);
+      if (t < 0 || t > len) continue;
+      hits.push({ object, t });
+    }
+    return hits.sort((a, b2) => a.t - b2.t).map((h) => h.object);
+  }
+
   /** Every armed object this body is currently inside. */
   objectsAt(x, z, radius = 0) {
     const hits = [];

@@ -288,8 +288,6 @@ class TrailRibbon {
  *   3. carom deflection cone off the first body struck
  * ------------------------------------------------------------------ */
 
-const MAX_DASH_VERTS = 900;
-
 class AimRenderer {
   constructor() {
     this.group = new THREE.Group();
@@ -342,20 +340,18 @@ class AimRenderer {
     this.primary.frustumCulled = false;
     this.group.add(this.primary);
 
-    // 2. Ghosted reflections (manual dashes for consistent world-space spacing).
-    this.dashPositions = new Float32Array(MAX_DASH_VERTS * 3);
-    this.dashGeo = new THREE.BufferGeometry();
-    this.dashGeo.setAttribute('position', new THREE.BufferAttribute(this.dashPositions, 3));
-    this.dashGeo.setDrawRange(0, 0);
-    this.dashMat = new THREE.LineBasicMaterial({
-      color: PALETTE.aimGhost,
-      transparent: true,
-      opacity: 0.7,
-      depthWrite: false
-    });
-    this.dashes = new THREE.LineSegments(this.dashGeo, this.dashMat);
-    this.dashes.frustumCulled = false;
-    this.group.add(this.dashes);
+    // 2. THE REST OF THE CUE'S JOURNEY — every leg after the first cushion.
+    //
+    // This was the last `LineSegments` in the preview. GPU line width is
+    // clamped to one PHYSICAL pixel, so on a phone at 3x the whole of a bank
+    // shot past the wall — which on the banking lesson is the entire point of
+    // the shot — was a third of a CSS pixel of dimmed colour. Reported as
+    // "when aiming the cue at a wall for a bank shot, the dotted line at the
+    // wall is very faint, which is strange".
+    //
+    // It is a ribbon now, like every other predicted line, and it carries the
+    // dash phase on from the beam rather than restarting at each cushion.
+    this.reflections = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.9 }, 220);
 
     // 3. Carom deflection cone.
     // Two legs, each allowed one bank, plus headroom. See main.js
@@ -640,31 +636,27 @@ class AimRenderer {
       this.primary.visible = false;
     }
 
-    // --- ghosted reflections ---
-    let v = 0;
-    for (let i = 1; i < segments.length && v < MAX_DASH_VERTS - 2; i++) {
-      const s = segments[i];
-      const dx = s.bx - s.ax;
-      const dz = s.bz - s.az;
-      const len = Math.hypot(dx, dz);
-      if (len < 1e-4) continue;
-      const ux = dx / len;
-      const uz = dz / len;
-      const stride = TRAJECTORY.dashLength + TRAJECTORY.dashGap;
-      for (let d = 0; d < len && v < MAX_DASH_VERTS - 2; d += stride) {
-        const e = Math.min(d + TRAJECTORY.dashLength, len);
-        this.dashPositions[v * 3] = s.ax + ux * d;
-        this.dashPositions[v * 3 + 1] = y;
-        this.dashPositions[v * 3 + 2] = s.az + uz * d;
-        v++;
-        this.dashPositions[v * 3] = s.ax + ux * e;
-        this.dashPositions[v * 3 + 1] = y;
-        this.dashPositions[v * 3 + 2] = s.az + uz * e;
-        v++;
-      }
+    // --- the rest of the cue's journey, past the first cushion ---
+    const past = segments.slice(1);
+    if (past.length) {
+      this.reflections.set(past, {
+        y,
+        // THE SAME WEIGHT AS THE LINE IT CONTINUES. This was drawn in a
+        // desaturated slate at a hairline's width, on the reasoning that a
+        // path past a cushion is less certain than the path to it. On the
+        // banking lesson that reasoning is exactly inverted: the leg past the
+        // cushion IS the shot, and the player was being asked to plan it from
+        // the faintest thing on the felt. It stays DASHED, which is what says
+        // "after a bounce"; it no longer whispers.
+        width: TRAJECTORY.lineWidth,
+        dash: TRAJECTORY.dashLength,
+        gap: TRAJECTORY.dashGap,
+        color: PALETTE.aim,
+        opacity: 0.9
+      });
+    } else {
+      this.reflections.hide();
     }
-    this.dashGeo.setDrawRange(0, v);
-    this.dashGeo.attributes.position.needsUpdate = true;
 
     this._showEndGhosts(context.ghosts, y);
 
@@ -833,8 +825,7 @@ class AimRenderer {
     this.beamMat.dispose();
     this.primaryGeo.dispose();
     this.primaryMat.dispose();
-    this.dashGeo.dispose();
-    this.dashMat.dispose();
+    this.reflections.dispose();
     for (const slot of this.legLines) slot.dispose();
     this.tangent.dispose();
     this.marker.geometry.dispose();

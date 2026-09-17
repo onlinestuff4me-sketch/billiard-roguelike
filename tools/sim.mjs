@@ -184,6 +184,8 @@ export async function openGame(opts = {}) {
     play: (spec) => page.evaluate((sp) => window.__simPlay(sp), spec),
     /** The table as the lesson currently has it. */
     table: () => page.evaluate(() => window.__simTable()),
+    /** What the preview promised, and what the same stroke actually did. */
+    aim: (spec) => page.evaluate((s) => window.__simAim(s), spec),
     sweep: (spec) => page.evaluate((s) => window.__simSweep(s), spec),
     plan: (spec) => page.evaluate((s) => window.__simPlan(s), spec),
     async close() {

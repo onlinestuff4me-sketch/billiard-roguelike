@@ -1874,48 +1874,105 @@ function launchSpeed() {
  * @returns {{segments: Array}|null} null when the departure is not worth drawing
  */
 function projectCuePath(prediction) {
-  const hit = prediction?.hit;
-  if (!hit || !hit.body) return null;
-  const last = prediction.segments[prediction.segments.length - 1];
-  if (!last) return null;
+  let from = prediction;
+  let struck = [];
+  const segments = [];
+  // `spent` is what the approach already took out of the stroke's rail budget;
+  // `bounces` is what the departure itself uses. Reporting the sum as the
+  // departure's own count double-charges the approach.
+  let spent = prediction?.bounces ?? 0;
+  let bounces = 0;
+  let pocket = null;
+  const hits = [];
 
-  // Speed at contact: what is left of the launch after coasting to the ball.
-  const arrival = speedAfterDistance(launchSpeed(), prediction.totalDistance);
-  if (arrival <= 0) return null;
+  // THE CUE DOES NOT STOP AT THE FIRST BALL, AND NEITHER DOES THE DRAWING.
+  //
+  // This used to run the impulse once and project a single departure. When
+  // that departure reached a second ball the line simply ended there — so a
+  // cue ball that clipped one ball, carried on into another and went down the
+  // pocket behind it was drawn stopping politely in mid-felt. The scratch
+  // arrived with nothing on the table having warned about it, which is most of
+  // what "it ends up in a scratch when the line showed no scratch" was.
+  for (let link = 0; link < TRAJECTORY.chainLinks; link += 1) {
+    const hit = from?.hit;
+    if (!hit || !hit.body) break;
+    const last = from.segments[from.segments.length - 1];
+    if (!last) break;
 
-  let dx = last.bx - last.ax;
-  let dz = last.bz - last.az;
-  const dl = Math.hypot(dx, dz);
-  if (dl < 1e-5) return null;
-  dx /= dl;
-  dz /= dl;
+    // Speed at contact, as the predictor measured it on the way in. Deriving
+    // it from the distance instead — which is what this did — is only right on
+    // a line with no cushions in it: after a bank the ball has paid a tax the
+    // distance cannot see, and every number downstream inherited the error.
+    const arrival =
+      from.hitSpeed ?? speedAfterDistance(launchSpeed(), from.totalDistance);
+    if (arrival <= 0) break;
 
-  const vx = dx * arrival;
-  const vz = dz * arrival;
-  const vn = vx * hit.nx + vz * hit.nz;
-  if (vn <= 0) return null;
-
-  const invA = 1 / player.mass;
-  const invB = 1 / (hit.body.mass || 1);
-  const j = (-(1 + PHYSICS.ballRestitution) * vn) / (invA + invB);
-  const ox = vx + j * invA * hit.nx;
-  const oz = vz + j * invA * hit.nz;
-  const outSpeed = Math.hypot(ox, oz);
-
-  const carry = carryDistance(outSpeed);
-  if (carry < TRAJECTORY.minDraw) return null;
-
-  return physics.predictTrajectory(
-    { x: hit.x, z: hit.z },
-    { x: ox / outSpeed, z: oz / outSpeed },
-    {
-      radius: player.radius,
-      maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
-      maxDistance: carry,
-      // The ball we just struck is leaving; it is not in our way any more.
-      bodies: game.enemies.filter((b) => b !== hit.body)
+    let dx = last.bx - last.ax;
+    let dz = last.bz - last.az;
+    const dl = Math.hypot(dx, dz);
+    // A cue ball already resting against the object ball has no segment to
+    // read a heading from; it is travelling the way it is aimed.
+    if (dl < 1e-5) {
+      dx = player.aimDir.x;
+      dz = player.aimDir.z;
+      const al = Math.hypot(dx, dz) || 1;
+      dx /= al;
+      dz /= al;
+    } else {
+      dx /= dl;
+      dz /= dl;
     }
+
+    const vx = dx * arrival;
+    const vz = dz * arrival;
+    const vn = vx * hit.nx + vz * hit.nz;
+    if (vn <= 0) break;
+
+    const invA = 1 / player.mass;
+    const invB = 1 / (hit.body.mass || 1);
+    const j = (-(1 + PHYSICS.ballRestitution) * vn) / (invA + invB);
+    const ox = vx + j * invA * hit.nx;
+    const oz = vz + j * invA * hit.nz;
+    const outSpeed = Math.hypot(ox, oz);
+    if (outSpeed <= 1e-5 || carryDistance(outSpeed) < TRAJECTORY.minDraw) break;
+
+    hits.push(from);
+    struck = [...struck, hit.body];
+
+    const run = physics.predictTrajectory(
+      { x: hit.x, z: hit.z },
+      { x: ox / outSpeed, z: oz / outSpeed },
+      {
+        radius: player.radius,
+        // The departure is the half of the cue's journey that ends in a
+        // scratch, so it gets the same allowance as the approach rather than a
+        // shorter one: a cue ball that finds a pocket on its fifth rail has to
+        // be drawn finding it.
+        maxBounces: Math.max(0, player.maxBounces - spent),
+        speed: outSpeed,
+        drag: PLAYER.dragLaunched,
+        pockets: rooms.table.pockets,
+        // The balls it has already struck are leaving; they are not in its way.
+        bodies: game.enemies.filter((b) => !struck.includes(b))
+      }
+    );
+
+    segments.push(...run.segments);
+    bounces += run.bounces;
+    spent += run.bounces;
+    if (run.pocket) {
+      pocket = run.pocket;
+      break;
+    }
+    from = run;
+  }
+
+  if (!segments.length) return null;
+  const totalDistance = segments.reduce(
+    (t, g) => t + Math.hypot(g.bx - g.ax, g.bz - g.az),
+    0
   );
+  return { segments, bounces, pocket, hits, totalDistance };
 }
 
 /**
@@ -1935,30 +1992,65 @@ function projectCuePath(prediction) {
  *
  * @returns {Array<{segs:Array, ball:object|null}>} legs, nearest first
  */
-function projectObjectPath(prediction) {
-  const legs = [];
-  const first = prediction?.hit;
-  if (!first || !first.body || !prediction.caromDir) return legs;
+function projectObjectPath(prediction, cuePath = null) {
+  let legs = chainFrom(prediction, player.mass, []);
 
-  const last = prediction.segments[prediction.segments.length - 1];
+  // AND EVERY BALL THE CUE FINDS AFTER THAT.
+  //
+  // The cue ball does not stop when it has struck something: it deflects and
+  // carries on, and on a cut it carries on fast. Hitting a second ball on the
+  // way is not an exotic case — it is one of the two shapes lesson five is
+  // built to teach — and none of it was drawn, because the projection only
+  // ever looked at the FIRST contact. The player was shown a cue ball rolling
+  // through a ball and out the other side with nothing said about it.
+  //
+  // `cuePath.hits` holds one prediction per ball the cue reaches, in order;
+  // the first of them is the contact already walked above.
+  for (const shot of cuePath?.hits?.slice(1) ?? []) {
+    const already = legs.map((leg) => leg.ball).filter(Boolean);
+    legs = legs.concat(chainFrom(shot, player.mass, already));
+  }
+  return legs;
+}
+
+/**
+ * Every ball set moving by one contact, and the balls those balls reach.
+ *
+ * @param {object} shot a prediction whose `hit` is the first contact
+ * @param {number} mass the mass of whatever did the striking
+ * @param {Array} seen balls already drawn by another branch of the same stroke
+ */
+function chainFrom(shot, mass, seen) {
+  const legs = [];
+  const first = shot?.hit;
+  if (!first || !first.body || seen.includes(first.body)) return legs;
+
+  const last = shot.segments[shot.segments.length - 1];
   if (!last) return legs;
   let dx = last.bx - last.ax;
   let dz = last.bz - last.az;
   const dl = Math.hypot(dx, dz);
-  if (dl < 1e-5) return legs;
-  dx /= dl;
-  dz /= dl;
+  if (dl < 1e-5) {
+    dx = player.aimDir.x;
+    dz = player.aimDir.z;
+    const al = Math.hypot(dx, dz) || 1;
+    dx /= al;
+    dz /= al;
+  } else {
+    dx /= dl;
+    dz /= dl;
+  }
 
-  const arrival = speedAfterDistance(launchSpeed(), prediction.totalDistance);
+  const arrival = shot.hitSpeed ?? speedAfterDistance(launchSpeed(), shot.totalDistance);
   let struck = first.body;
   let nx = first.nx;
   let nz = first.nz;
   let vx = dx * arrival;
   let vz = dz * arrival;
-  let strikerMass = player.mass;
-  let exclude = [struck];
+  let strikerMass = mass;
+  let exclude = [...seen, struck];
 
-  for (let link = 0; link < 2; link += 1) {
+  for (let link = 0; link < TRAJECTORY.chainLinks; link += 1) {
     const vn = vx * nx + vz * nz;
     if (vn <= 0) break;
     const invA = 1 / strikerMass;
@@ -1975,12 +2067,18 @@ function projectObjectPath(prediction) {
       { x: struck.x, z: struck.z },
       { x: bx / speed, z: bz / speed },
       {
-        // No banks on an object leg. A struck ball that reaches a cushion is
-        // past the part of the shot the player is choosing, and drawing its
-        // rebound turns a two-line answer into a scribble across the table.
-        maxBounces: 0,
+        // BANKS, NOW. This drew no rebound at all — the leg stopped dead at
+        // the first cushion — on the reasoning that a struck ball reaching a
+        // rail is past the part of the shot the player is choosing. It is not:
+        // a ball banked into a pocket is a shot people plan, and a line that
+        // stops at the cushion says the opposite of what happens next. Two
+        // rails is enough for that and still short of a scribble.
+        maxBounces: TRAJECTORY.objectBounces,
         radius: struck.radius,
-        maxDistance: carry,
+        speed,
+        drag: PHYSICS.knockedDrag,
+        railRestitution: PHYSICS.enemyWallRestitution,
+        pockets: rooms.table.pockets,
         bodies: game.enemies.filter((b) => !exclude.includes(b))
       }
     );
@@ -1991,6 +2089,8 @@ function projectObjectPath(prediction) {
     legs.push({
       segs: path.segments,
       ball: struck,
+      // The predictor's own answer, not a re-measurement of the drawn line.
+      pocket: path.pocket ?? null,
       contact: path.hit ? { x: path.hit.x, z: path.hit.z } : null
     });
 
@@ -2000,10 +2100,23 @@ function projectObjectPath(prediction) {
     const leg = path.segments[path.segments.length - 1];
     let ex = leg.bx - leg.ax;
     let ez = leg.bz - leg.az;
-    const el = Math.hypot(ex, ez) || 1;
-    ex /= el;
-    ez /= el;
-    const at = speedAfterDistance(speed, path.totalDistance);
+    const el = Math.hypot(ex, ez);
+    if (el > 1e-5) {
+      ex /= el;
+      ez /= el;
+    } else {
+      // TWO BALLS THAT START TOUCHING travel no distance before they meet, so
+      // the leg is a point and its direction cannot be read off it. Taking
+      // `hypot(0,0) || 1` — which is what this did — handed the chain a
+      // heading of (0,0), and the loop then quietly stopped: on the board
+      // whose two balls are authored a fraction closer than their own
+      // diameter, the second ball's line was never drawn at all, and the
+      // preview said nothing goes down while the table potted it. The heading
+      // is the one the impulse gave this ball.
+      ex = bx / speed;
+      ez = bz / speed;
+    }
+    const at = path.hitSpeed ?? speedAfterDistance(speed, path.totalDistance, PHYSICS.knockedDrag);
 
     // WHERE THIS BALL GOES AFTER IT HANDS OFF.
     //
@@ -2028,16 +2141,28 @@ function projectObjectPath(prediction) {
       const tailSpeed = Math.hypot(tx, tz);
       const tailCarry = carryDistance(tailSpeed, PHYSICS.knockedDrag);
       if (tailSpeed > 1e-5 && tailCarry >= TRAJECTORY.minDraw) {
-        legs[legs.length - 1].tail = physics.predictTrajectory(
+        const run = physics.predictTrajectory(
           { x: next.x, z: next.z },
           { x: tx / tailSpeed, z: tz / tailSpeed },
           {
-            maxBounces: 0,
+            maxBounces: TRAJECTORY.objectBounces,
             radius: struck.radius,
-            maxDistance: tailCarry,
+            speed: tailSpeed,
+            drag: PHYSICS.knockedDrag,
+            railRestitution: PHYSICS.enemyWallRestitution,
+            pockets: rooms.table.pockets,
             bodies: game.enemies.filter((b) => !exclude.includes(b) && b !== next.body)
           }
-        ).segments;
+        );
+        legs[legs.length - 1].tail = run.segments;
+        // A BALL THAT GOES IN AFTER IT HANDS OFF STILL GOES IN.
+        //
+        // The tail was drawn and then forgotten: nothing asked whether it ends
+        // in a pocket, so on the plant board the 4 knocked the 2 into the side
+        // and then rolled into the far side pocket itself, and the preview
+        // claimed one ball down out of two. The tail is the same ball on the
+        // same stroke — its pocket counts.
+        legs[legs.length - 1].tailPocket = run.pocket ?? null;
       }
     }
 
@@ -2139,8 +2264,11 @@ function aimGhosts(prediction, cuePath, objectPath) {
   // to rest is already drawn — the departure line ends there — and a ghost on
   // it was one more shape competing with the balls. A scratch is different: it
   // is the one outcome the player must not discover afterwards.
-  const cueSegs = cuePath?.segments?.length ? cuePath.segments : prediction?.segments;
-  const down = pathPocket(cueSegs, pockets);
+  // THE PREDICTOR'S VERDICT, not a re-measurement of what got drawn. Asking
+  // `pathPocket` whether the drawn line finds a hole was a second opinion on a
+  // question already answered exactly, and it disagreed with the first at the
+  // lip of every pocket.
+  const down = cuePath ? cuePath.pocket : prediction?.pocket ?? null;
   if (down) {
     ghosts.push({
       x: down.x,
@@ -2154,9 +2282,11 @@ function aimGhosts(prediction, cuePath, objectPath) {
   // EVERY BALL THE SHOT MOVES, at the moment its own journey commits.
   for (const leg of objectPath ?? []) {
     if (!leg?.segs?.length) continue;
-    const potted = pathPocket(leg.segs, pockets);
+    // Where this ball finishes: the pocket on its own leg, or — if it handed
+    // off and carried on — the pocket at the end of that.
+    const potted = leg.pocket || leg.tailPocket || null;
     const contact = leg.contact;
-    const rest = pathEnd(leg.segs);
+    const rest = leg.tail?.length ? pathEnd(leg.tail) : pathEnd(leg.segs);
     const at = potted ? { x: potted.x, z: potted.z } : contact || rest;
     if (!at) continue;
     ghosts.push({
@@ -2394,20 +2524,99 @@ if (typeof window !== 'undefined') {
   };
 }
 
+/**
+ * WHAT THE PLAYER WAS PROMISED, in the form the promise is made.
+ *
+ * `npm run aim` plays the stroke the preview describes and asks whether the
+ * table agreed. For that comparison to mean anything it has to read the SAME
+ * projection the felt is drawing — not a fresh solve with its own options —
+ * so this aims the cue exactly as a touch would, refreshes the preview, and
+ * hands back the ghosts the player can see plus the geometry behind them.
+ */
+if (typeof window !== 'undefined') {
+  /* THE HEADING THE CONTROL IS PRODUCING, so a synthetic drag can be played
+     through the real InputManager and the steps it takes measured. Reported as
+     "the aiming should feel smooth"; nothing could see the control's own
+     output before this. */
+  window.__heading = () => {
+    const h = input.heading;
+    return {
+      x: h.x,
+      z: h.z,
+      deg: (Math.atan2(h.x, -h.z) * 180) / Math.PI,
+      // Where the floating pad was seated, so a drag can be swept around it
+      // the way a thumb lining up a shot actually moves.
+      pad: input._pad ? { x: input._pad.x, y: input._pad.y } : null
+    };
+  };
+  window.__stage = () => stage;
+  /* The aim tuning constants, live, so a drag harness can A/B them without a
+     rebuild between every reading. */
+  window.__inputCfg = INPUT;
+
+  window.__aim = (headingDeg, power) => {
+    const th = (headingDeg * Math.PI) / 180;
+    player.aimDir.x = Math.sin(th);
+    player.aimDir.z = -Math.cos(th);
+    player.aimPower = power;
+    refreshPrediction();
+    const pockets = rooms.table.pockets;
+    const pred = player.prediction;
+    const cuePath = projectCuePath(pred);
+    const objectPath = projectObjectPath(pred, cuePath);
+    const cueSegs = cuePath?.segments?.length ? cuePath.segments : pred?.segments;
+    const scratch = cuePath ? cuePath.pocket : pred?.pocket ?? null;
+    return {
+      heading: headingDeg,
+      power,
+      // The approach, then the departure: the whole of the cue's drawn line.
+      cue: {
+        approach: (pred?.segments ?? []).map((s) => [s.ax, s.az, s.bx, s.bz]),
+        departure: (cuePath?.segments ?? []).map((s) => [s.ax, s.az, s.bx, s.bz]),
+        rest: pathEnd(cueSegs),
+        scratch: scratch ? scratch.slot : null
+      },
+      hit: pred?.hit ? pred.hit.body.number ?? null : null,
+      // What the drawn line claims about the journey's LENGTH and how many
+      // rails it covers — the two numbers a truncated or loss-free preview
+      // gets wrong without the shape of the line ever looking wrong.
+      span: {
+        approach: +(pred?.totalDistance ?? 0).toFixed(2),
+        departure: +(cuePath?.totalDistance ?? 0).toFixed(2),
+        bounces: (pred?.bounces ?? 0) + (cuePath?.bounces ?? 0),
+        budget: player.maxBounces
+      },
+      legs: (objectPath ?? []).map((leg) => {
+        const at = leg.pocket || leg.tailPocket || null;
+        return {
+          number: leg.ball?.number ?? null,
+          segs: leg.segs.map((s) => [s.ax, s.az, s.bx, s.bz]),
+          tail: (leg.tail ?? []).map((s) => [s.ax, s.az, s.bx, s.bz]),
+          rest: pathEnd(leg.tail?.length ? leg.tail : leg.segs),
+          potted: at ? at.slot : null
+        };
+      })
+    };
+  };
+}
+
 function projectShot(dir, power) {
   const held = player.aimPower;
   player.aimPower = power;
   try {
     const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, dir, {
       radius: player.radius,
-      maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
-      maxDistance: Math.min(TRAJECTORY.maxDistance, carryDistance(launchSpeed())),
+      maxBounces: player.maxBounces,
+      speed: launchSpeed(),
+      drag: PLAYER.dragLaunched,
+      pockets: rooms.table.pockets,
       bodies: game.enemies
     });
+    const cuePath = projectCuePath(prediction);
     return {
       prediction,
-      cuePath: projectCuePath(prediction),
-      objectPath: projectObjectPath(prediction)
+      cuePath,
+      objectPath: projectObjectPath(prediction, cuePath)
     };
   } finally {
     player.aimPower = held;
@@ -2473,10 +2682,10 @@ function solveCoachRoute(want = {}) {
     // power — the four-ball board does, once the cue is parked among what is
     // left — and a board with no road is what sent the player looking for one
     // in the first place.
-    if (strict && tries.some((shot) => scratches(shot, pockets))) continue;
+    if (strict && tries.some((shot) => scratches(shot))) continue;
     for (const shot of tries) {
       if (!shot.objectPath.length) continue;
-      if (!strict && scratches(shot, pockets)) continue;
+      if (!strict && scratches(shot)) continue;
       // THE ROAD DOES NOT GO OVER THE RED. The mine board's road was drawn
       // straight across the mine, which is the one line the card is telling
       // the player not to take — an instruction to do the thing the lesson is
@@ -2579,10 +2788,9 @@ function roadAlong(heading, want) {
  * ball — reported as "it keeps giving me coach lines that point my cue ball
  * into pockets where it scratches".
  */
-function scratches(shot, pockets) {
-  const approach = shot.prediction?.segments;
-  const departure = shot.cuePath?.segments;
-  return !!(pathPocket(approach, pockets) || pathPocket(departure, pockets));
+function scratches(shot) {
+  // Both halves carry their own verdict now, so neither has to be re-measured.
+  return !!(shot.prediction?.pocket || shot.cuePath?.pocket);
 }
 
 /** The bands themselves: the line to aim along, then the chain up to the goal. */
@@ -2680,7 +2888,7 @@ function goalLeg(shot, want, pockets) {
       continue;
     }
     if (want.number != null && leg.ball?.number !== want.number) continue;
-    const at = pathPocket(leg.segs, pockets);
+    const at = leg.pocket || leg.tailPocket || null;
     if (!at) continue;
     if (want.slot && at.slot !== want.slot) continue;
     return { at: i, number: leg.ball?.number, slot: at.slot };
@@ -2692,18 +2900,25 @@ function refreshPrediction() {
   if (!player.alive) return;
   const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
     radius: player.radius,
-    // Never preview more banks than the launch can actually survive — the
-    // prediction lines are a promise, not a suggestion.
-    maxBounces: Math.min(TRAJECTORY.previewBounces, player.maxBounces),
-    // Nor more DISTANCE than the launch can survive. A preview that runs 46
-    // units when the shot only carries 12 promises a shot nobody played.
-    maxDistance: Math.min(TRAJECTORY.maxDistance, carryDistance(launchSpeed())),
+    // EVERY BANK THE LAUNCH IS ALLOWED. This used to stop at
+    // TRAJECTORY.previewBounces, which is four, while the stroke itself is
+    // allowed six — so the last two rails of a long shot were not drawn at
+    // all, and a scratch taken on one of them arrived with no warning. The
+    // speed budget below is what ends the line now; the bounce count only has
+    // to agree with what the stroke may actually spend.
+    maxBounces: player.maxBounces,
+    // THE SPEED, so the preview can spend it the way the table will: a cushion
+    // costs four percent, and a line drawn without that tax reaches pockets
+    // the ball stops short of.
+    speed: launchSpeed(),
+    drag: PLAYER.dragLaunched,
+    pockets: rooms.table.pockets,
     bodies: game.enemies
   });
   // The pockets go in so the preview can warn about a scratch: a line that
   // ends down a hole is the one prediction the player most needs in advance.
   const cuePath = projectCuePath(prediction);
-  const objectPath = projectObjectPath(prediction);
+  const objectPath = projectObjectPath(prediction, cuePath);
   // ONE LIST, TWO RENDERERS. The ghost balls on the felt and the labels on the
   // UI layer are both drawn from these, so the shape you see and the words
   // next to it can never end up describing different places.
