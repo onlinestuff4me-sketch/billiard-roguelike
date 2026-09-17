@@ -2200,6 +2200,42 @@ export class Tutorial {
     );
     this.el.classList.remove('good', 'bad');
     if (tone) this.el.classList.add(tone);
+    this._fitLine();
+  }
+
+  /**
+   * NO SENTENCE THE COACH WRITES IS EVER CUT OFF.
+   *
+   * The band clamps to two lines and hides the overflow, which on a phone read
+   * as: "Scratched — your own ball went in the pocket. Hit the target ball off
+   * to one side,…" — an instruction that stops mid-clause, with the half that
+   * says what to do missing. Every line fits at every phone width in a
+   * headless check, which is exactly how it survived: headless Chromium
+   * substitutes a narrower face than the one an iPhone renders, so the
+   * measurement was taken in a font the player does not have.
+   *
+   * The band is a fixed 46px on purpose — its value is being the same shape in
+   * the same place on every board — so a third line is not available: the
+   * container would clip it just the same. What is available is the type. The
+   * band fits itself by stepping the size down until the sentence is inside
+   * its two lines, to a floor of four fifths, which is still legible and is
+   * enough to absorb any font the platform substitutes.
+   *
+   * If a sentence will not fit even at the floor, that is a copy bug rather
+   * than a rendering one, and `npm run layout` fails on it — measured with the
+   * type stressed wider than any real face, so the check cannot be fooled by
+   * the font the headless browser happens to have.
+   */
+  _fitLine() {
+    const el = this.lineEl;
+    if (!el) return;
+    el.style.fontSize = '';
+    if (el.scrollHeight <= el.clientHeight + 1) return;
+    const base = parseFloat(getComputedStyle(el).fontSize) || 14;
+    for (let size = base - 0.5; size >= base * 0.8; size -= 0.5) {
+      el.style.fontSize = `${size}px`;
+      if (el.scrollHeight <= el.clientHeight + 1) return;
+    }
   }
 
   /**
