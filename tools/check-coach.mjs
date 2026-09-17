@@ -293,6 +293,54 @@ try {
     `${standing} up, ${cleared.pots.length} pocketed, ${cleared.rack.length} left${cleared.done ? '' : ' (board not completed)'}`
   );
 
+  /* ------------------------------------------------------------------ *
+   * THE ARROWS SAY WHEN YOU HAVE ARRIVED ON THEM
+   * ------------------------------------------------------------------ *
+   * The road shows the line that works and the player matches their aim to
+   * it — but on a board two and a half degrees wide you can look aligned and
+   * be outside. So the arrows brighten once the aim is inside the board's own
+   * measured run of working headings.
+   *
+   * The claim is "this heading is one that works", so it is checked as such:
+   * on across the run, off just outside it. Read off the felt via `__road`,
+   * not off the function that decides it.
+   *
+   * The aim is set and read in the SAME tick on purpose — the frame loop
+   * re-derives `aimDir` from the live input every frame, so anything awaited
+   * between the two measures the resting heading instead of the one under
+   * test, which is how the first version of this check came back reporting
+   * boards that were always on and always off.
+   */
+  for (const id of boardIds()) {
+    await game.gotoBoard(id);
+    const r = await game.page.evaluate(() => {
+      const les = window.__game.tutorial.lesson;
+      const at = (deg) => {
+        window.__aim(deg, 0.7);
+        return window.__road().onRoute;
+      };
+      return {
+        win: les.window,
+        solve: les.solve,
+        atSolve: at(les.solve),
+        inLow: at(les.window[0] + 0.4),
+        inHigh: at(les.window[1] - 0.4),
+        justOut: at(les.window[1] + 0.5),
+        wayOut: at(les.window[0] - 3)
+      };
+    });
+    check(
+      r.atSolve && r.inLow && r.inHigh,
+      `${id} — the arrows light up across the working run`,
+      `${r.win[0]}–${r.win[1]}, solve ${r.solve}`
+    );
+    check(
+      !r.justOut && !r.wayOut,
+      `${id} — and stay dark outside it`,
+      `half a degree out: ${r.justOut ? 'lit' : 'dark'}, three degrees out: ${r.wayOut ? 'lit' : 'dark'}`
+    );
+  }
+
 } finally {
   await game.close();
 }
