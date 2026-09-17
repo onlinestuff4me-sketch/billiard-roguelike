@@ -133,19 +133,19 @@
         "x": -0.948,
         "z": -0.317
       },
-      "solve": 288.5,
+      "solve": 286.75,
       "call": "mr",
       "obstacles": [],
       "enemies": [
         {
           "type": "solid",
-          "x": 3.4,
+          "x": 6.95,
           "z": 0.0,
           "number": 2
         },
         {
           "type": "stripe",
-          "x": 2.34,
+          "x": 5.25,
           "z": 0.0,
           "number": 5
         }
@@ -153,8 +153,8 @@
       "objects": [
         {
           "kind": "mine",
-          "x": 1.53,
-          "z": 3.52
+          "x": 4.17,
+          "z": 2.56
         },
         {
           "kind": "double",

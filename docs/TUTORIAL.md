@@ -3,6 +3,38 @@
 The contract for `src/systems/Tutorial.js`. Read this before changing a lesson.
 If a change conflicts with a goal below, the goal wins.
 
+### Why lesson 6's two balls sit where they do
+
+Asked three times whether the pair has to be so close together — "it's hard to
+see what exactly is happening between the balls". A ball is 21 CSS px across on
+a phone; the gap between these two was **1.3 CSS px**, narrower than the glow
+around each one, so they rendered as a single object.
+
+The first two answers measured the gap against the window and reported the
+trade: separation costs the window, because in a plant the cue's aim error
+rotates the first ball by about δ/2r and that error then opens over the gap
+before it reaches the second. That is true and it was not an answer, because it
+only ever moved one ball. The second ball's heading error only matters relative
+to how far it still has to travel, and the 2 was sitting **4.7 units from its
+pocket** — the whole tolerance budget spent on the journey, with none left over
+to pay for daylight.
+
+So the 2 moved to the mouth it is being sent to. Backed off `mr` by 1.15 it is
+a hanger, and a hanger forgives a much larger error in the 5's departure, which
+is what buys the gap:
+
+| | before | after |
+| --- | --- | --- |
+| daylight between the balls | 0.06 (1.3 CSS px) | **0.70 (15.1 CSS px)** |
+| widest window | 4° | 2.5° |
+
+Two and a half degrees is what lesson 5 already measures and above the 2° floor.
+The lesson's difficulty was never the plant — it is the bank through the green
+and past the red, and that is untouched. `npm run find-board green-red-daylight
+--daylight 0.55` is the search; it moves the 2, the 5 and the mine together,
+keeps the mine on the line from the spawn so the board's premise survives, and
+still plays that premise rather than assuming it.
+
 ## The four goals
 
 These are absolute. Every one of them has been broken at least once by a change
@@ -130,7 +162,7 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 | 3 | `cut-combo` | The 2 is sitting on the side pocket. Send the 4 into it | the 2 is pocketed, off the 4 | 4° |
 | 4 | `bank` | A barrier blocks the 3. Bounce off the bottom wall to reach it | a rail, then the 3 | 4.5° |
 | 5 | `two-in-one` | One stroke, two balls: clip the 4 in with the 1, and the 1 runs on | both balls are pocketed in the same stroke | 2.5° |
-| 6 | `green-red` | Off the left wall and through the green — the 5 puts the 2 in | the 2 is pocketed off the 5, having taken the green and missed the red | 4° |
+| 6 | `green-red` | Off the left wall and through the green — the 5 puts the 2 in | the 2 is pocketed off the 5, having taken the green and missed the red | 2.5° |
 
 Window is the widest contiguous run of headings that satisfies the board's own
 rule, measured through the real physics at half a degree and six powers by
