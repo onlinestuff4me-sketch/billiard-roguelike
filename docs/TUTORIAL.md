@@ -3,7 +3,16 @@
 The contract for `src/systems/Tutorial.js`. Read this before changing a lesson.
 If a change conflicts with a goal below, the goal wins.
 
-### Why lesson 6's two balls sit where they do
+### Why lessons 5 and 6's two balls sit where they do
+
+Lesson 5 cost nothing at all. Re-searching its grid with the daylight floor
+turned up a placement that is better on both counts — the 1 at (-5.65, 1.17)
+and the 4 at (-7.2, 0.71) measure **3°** against the old 2.5°, with **0.62**
+units of daylight against 0.17 (13.3 CSS px against 3.7). The old winner was
+picked by a search that ranked on window alone and had no reason to prefer the
+roomier of two placements that measured the same.
+
+Lesson 6 is where the trade was real.
 
 Asked three times whether the pair has to be so close together — "it's hard to
 see what exactly is happening between the balls". A ball is 21 CSS px across on
@@ -161,7 +170,7 @@ Geometry lives in `src/data/lessons.json` and is editable in the level tool at
 | 2 | `combo` | Hit the 4, so it knocks the 1 into the side pocket | the 1 is pocketed | 3° |
 | 3 | `cut-combo` | The 2 is sitting on the side pocket. Send the 4 into it | the 2 is pocketed, off the 4 | 4° |
 | 4 | `bank` | A barrier blocks the 3. Bounce off the bottom wall to reach it | a rail, then the 3 | 4.5° |
-| 5 | `two-in-one` | One stroke, two balls: clip the 4 in with the 1, and the 1 runs on | both balls are pocketed in the same stroke | 2.5° |
+| 5 | `two-in-one` | One stroke, two balls: clip the 4 in with the 1, and the 1 runs on | both balls are pocketed in the same stroke | 3° |
 | 6 | `green-red` | Off the left wall and through the green — the 5 puts the 2 in | the 2 is pocketed off the 5, having taken the green and missed the red | 2.5° |
 
 Window is the widest contiguous run of headings that satisfies the board's own
