@@ -406,6 +406,77 @@ const PLANS = {
   // shot is a rail into the 5 which puts the 2 in the side pocket, so pulling
   // them apart makes the 5 travel further before it reaches the 2 — the same
   // trade as the two-in-one board, and worth measuring rather than guessing.
+  'green-red-daylight': {
+    board: 'green-red',
+    // WHY THE BALLS HAVE TO NEARLY TOUCH, AND WHAT BUYS THEM ROOM.
+    //
+    // Asked a third time whether the pair on this board has to sit so close:
+    // "it's hard to see what exactly is happening between the balls." Sweeping
+    // the gap alone answers no — 0.06 units of daylight measures 4°, 0.26
+    // measures 2.5°, 0.46 measures 1°. But that sweep only moves one ball, and
+    // the reason separation costs so much is not the gap itself.
+    //
+    // In a plant the cue's aim error δ rotates the first ball's departure by
+    // about δ/2r, and that error then opens over the GAP before it reaches the
+    // second ball, where it rotates the second ball's departure by roughly
+    // δ·gap/4r². So the second ball's heading error grows linearly with the
+    // gap — and whether that error still drops the ball depends on how far it
+    // then has to travel. The 2 sits 4.7 units from its pocket, which spends
+    // the whole budget on the journey and leaves none for the gap.
+    //
+    // So this searches the thing the gap sweep held fixed: how far the 2 is
+    // backed off its own pocket, together with where the 5 sits. A shorter run
+    // for the 2 is what pays for daylight between the balls.
+    //
+    // The mine moves with them, kept on the line from the spawn to the 2, so
+    // the board's premise — the direct shot is shut — survives the 2 moving.
+    // It is still CHECKED rather than assumed: MINED_DIRECT plays it.
+    goal: 'the same banked plant, with space enough to see the angle',
+    balls: [5, 2],
+    grid() {
+      const round = (v) => +v.toFixed(2);
+      const cue = { x: 0, z: 6.4 };
+      const mr = { x: 8.1, z: 0 };
+      const out = [];
+      // NOT IN THE JAWS: closer than the mouth's own radius and the table
+      // drops the 2 before anything touches it.
+      for (const back of [1.15, 1.5, 2.0, 2.6, 3.4, 4.7]) {
+        const two = { x: mr.x - back, z: 0 };
+        for (const gap of [1.0, 1.3, 1.7, 2.1, 2.6]) {
+          for (const deg of [150, 165, 180, 195, 210]) {
+            const th = (deg * Math.PI) / 180;
+            const five = { x: two.x + Math.cos(th) * gap, z: two.z + Math.sin(th) * gap };
+            if (Math.abs(five.x) > 7.4 || Math.abs(five.z) > 14.4) continue;
+            // The mine, on the line the player would take if the 2 were open.
+            const dx = two.x - cue.x;
+            const dz = two.z - cue.z;
+            const dl = Math.hypot(dx, dz) || 1;
+            for (const along of [0.45, 0.6]) {
+              const mine = { x: cue.x + (dx / dl) * dl * along, z: cue.z + (dz / dl) * dl * along };
+              // A mine on top of either ball is a different board.
+              if (Math.hypot(mine.x - five.x, mine.z - five.z) < 1.6) continue;
+              if (Math.hypot(mine.x - two.x, mine.z - two.z) < 1.6) continue;
+              out.push({
+                2: [round(two.x), round(two.z)],
+                5: [round(five.x), round(five.z)],
+                mine: [round(mine.x), round(mine.z)]
+              });
+            }
+          }
+        }
+      }
+      return out;
+    },
+    ok: (out) =>
+      !out.scratched &&
+      !out.mine &&
+      out.green &&
+      out.bounces >= 1 &&
+      out.passes >= 1 &&
+      out.pots.some((p) => p.n === 2 && p.slot === 'mr'),
+    premise: MINED_DIRECT
+  },
+
   'green-red-gap': {
     board: 'green-red',
     goal: 'the same shot, with daylight between the two balls',
@@ -436,6 +507,16 @@ const PLANS = {
     premise: MINED_DIRECT
   }
 };
+
+/**
+ * The least space a placement may leave between two balls and still be
+ * considered. Two balls closer than a fifth of a ball read as one blob on a
+ * phone, whatever the window measures.
+ */
+const DAYLIGHT = (() => {
+  const at = process.argv.indexOf('--daylight');
+  return at > 0 && process.argv[at + 1] ? Number(process.argv[at + 1]) : 0;
+})();
 
 const plan = PLANS[board];
 if (!plan) {
@@ -527,7 +608,29 @@ try {
               table: g.rooms.table
             });
           }
-          return { place, n: hits.length, widest: +best.toFixed(2), mid, premise };
+          // HOW MUCH SPACE THERE IS BETWEEN THE BALLS, measured off the racked
+          // table rather than off the placement, so it knows each archetype's
+          // real radius. A board can be perfectly playable and still unreadable
+          // — "it's hard to see what exactly is happening between the balls" —
+          // and a search that only ranks by window cannot tell the difference.
+          let daylight = Infinity;
+          const live = g.rooms.scriptedEnemies.filter((e) => e.alive);
+          for (let a = 0; a < live.length; a += 1) {
+            for (let b = a + 1; b < live.length; b += 1) {
+              const gap =
+                Math.hypot(live[a].x - live[b].x, live[a].z - live[b].z) -
+                (live[a].radius + live[b].radius);
+              if (gap < daylight) daylight = gap;
+            }
+          }
+          return {
+            place,
+            n: hits.length,
+            widest: +best.toFixed(2),
+            mid,
+            premise,
+            daylight: Number.isFinite(daylight) ? +daylight.toFixed(3) : null
+          };
         },
       {
         place,
@@ -562,9 +665,16 @@ try {
     results.push(await sweep(grid[i], COARSE, RANK_POWERS));
   }
   process.stdout.write('        \r');
-  const kept = results.filter((r) => r.premise);
+  let kept = results.filter((r) => r.premise);
   if (kept.length !== results.length) {
     console.log(`  ${results.length - kept.length} of ${results.length} placements fail the board's premise\n`);
+  }
+  if (DAYLIGHT > 0) {
+    const roomy = kept.filter((r) => r.daylight == null || r.daylight >= DAYLIGHT);
+    console.log(
+      `  ${roomy.length} of ${kept.length} placements leave ${DAYLIGHT} units between the balls\n`
+    );
+    kept = roomy;
   }
   kept.sort((a, b) => b.widest - a.widest || b.n - a.n);
   const leaders = kept.slice(0, 8);
@@ -575,6 +685,7 @@ try {
     leaders[i].widest = fine.widest;
     leaders[i].mid = fine.mid;
     leaders[i].n = fine.n;
+    leaders[i].daylight = fine.daylight;
   }
   process.stdout.write('        \r');
   leaders.sort((a, b) => b.widest - a.widest || b.n - a.n);
@@ -583,8 +694,9 @@ try {
       .map(([n, at]) => `${n}@(${at[0]}, ${at[1]})`)
       .join('  ');
     const mid = r.mid == null ? '   —' : `${String(+r.mid.toFixed(2)).padStart(6)}°`;
+    const gap = r.daylight == null ? '  —  ' : String(r.daylight.toFixed(2)).padStart(5);
     console.log(
-      `  widest ${String(r.widest).padStart(5)}°   mid ${mid}   headings ${String(r.n).padStart(3)}   ${where}`
+      `  widest ${String(r.widest).padStart(5)}°   mid ${mid}   daylight ${gap}   headings ${String(r.n).padStart(3)}   ${where}`
     );
   }
   console.log('');
