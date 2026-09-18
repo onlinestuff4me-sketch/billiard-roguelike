@@ -392,6 +392,39 @@ strokes at 30, 60 and 120 Hz lands the cue in the same place to a median of
 
 ---
 
+## 6b. The release fires the line, not the lift
+
+Reported from play: *"I line up the shot to hit the ball into the pocket, but
+then when I release somehow it changes my angle and I miss."* The recording
+showed a line drawn into the top-left pocket and a ball played a whisker wide of
+it, into a scratch.
+
+Nothing was wrong with the projection or with the sensitivity. The release
+handler tracked the `pointerup`'s **own coordinates** and re-derived the heading
+from them before firing. A finger rolls as it leaves the glass, so the up event
+carries a position the last `pointermove` never had — and at the hundred pixels
+of lever a loaded cue has, a few pixels of roll is degrees.
+
+Measured, by dispatching a lift with the offset a thumb really produces:
+
+| roll on the lift | how far the shot moved |
+| --- | --- |
+| 0 px | 0.000° |
+| 5 px | **4.474°** |
+| 12 px | **10.570°** |
+| 22 px | **17.465°** |
+
+The tightest lesson window on this table is 2.5° wide, so a clean-feeling lift
+could miss a shot that had been lined up perfectly — and the drift accumulated,
+because the heading persists between strokes.
+
+**The shot now fires `this.aim`**: the payload the felt is drawn from, refreshed
+every frame while the thumb is down. The lift's coordinates are still tracked,
+because tap and double-tap detection are about where the finger went — but
+nothing about the release is allowed to move the line. `npm run release` lifts
+at each of those offsets and fails if the shot moves by more than a quarter of a
+degree.
+
 ## 7. Verification
 
 | property | expected |

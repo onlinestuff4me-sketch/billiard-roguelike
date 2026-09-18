@@ -140,6 +140,14 @@ late rather than early. A worked example, matching the design canvas:
 Taking the ring *after* the bank would have doubled a ×2 into a ×4 and paid **3,500**
 for the same shape. That gap is the game.
 
+**The readout is a report, not the ladder.** The ladder goes on climbing after a
+ball drops, because the next ball might be about to drop onto it. The figure on
+screen does not: it holds what the last pot was **paid** at, and the rails and
+balls that earned it, until something pays again — and the next pot then jumps
+it to its own figure, which includes every rail taken between the two. A number
+that goes up after your ball is already in the pocket reads as points still
+being added to it, which is not what happened.
+
 ### 3.1a The order pays and never demands
 
 Every rack has a natural order — 1, 2, 3, and the 8 last, because the 8 wears the

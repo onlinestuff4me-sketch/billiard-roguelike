@@ -79,6 +79,31 @@ white-hot one is knocked and lethal to its own allies.
 | **Floating text** | "CAROM!", "SPLAT!", "BACKSTAB", "×2.5" — DOM elements projected from world space, rising 70 px and fading over 0.85 s. Runs on real time, so a hit-stop never stalls the read. |
 | **Door labels** | Persistent world-projected chips under each exit naming its reward, so the choice is legible before the shot is committed. |
 
+**One loud thing per stroke, and it is the pocket.** A ball going down gets the
+big ring, the shake, the zoom punch and the score. Everything else on the way
+there is subordinate by a wide margin:
+
+| Event | What it gets |
+| --- | --- |
+| **A ball drops** | A 5.5-unit ring at the mouth, a hard shake, a zoom punch, the figure in full size — then its breakdown as staggered **words only**. |
+| **A contact** (cue on ball, ball on ball) | A 1.7–1.9-unit ring at the point of impact and the running multiplier in small type. No zoom punch. |
+| **A rail** | Sparks, and a rung on the ladder. No ring. |
+| **The launch** | One ring, scaled by power. Once per stroke. |
+
+This was measured against a recording, not argued: every contact used to fire a
+ring of 4.2–5.2 units — as big as the celebration — and every line of a pot's
+breakdown brought another ring and another zoom punch, so a three-ball stroke
+put seven rings and five punches on the felt in about a second. Reported as
+"it's hard to see the most important actions". Rings are for arrivals; contacts
+get a tick.
+
+**A finished shot draws nothing.** The resting cue line is the invitation to
+take a shot, so it belongs only to a table that will accept one. It is off
+while the ball is travelling, off between the ball coming to rest and the
+lesson judging it — one frame, and the flash reported at the end of every
+board — and off for good once the card says the lesson is over. `npm run flash`
+holds it to that.
+
 ### 1.5 Layout & framing
 
 - Hard **9:16 portrait** stage, letterboxed and centred on desktop, full-height on

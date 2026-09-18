@@ -974,6 +974,25 @@
         text-shadow: 0 0 16px rgba(255, 179, 64, 0.85), 0 2px 6px rgba(0, 0, 0, 0.9);
       }
 
+      /* A CONTACT'S RECEIPT. Small, quiet, and in the cue ball's own hue: it
+         says "that counted" without competing with the pocket, which is the
+         only thing on this table that gets to shout. */
+      .float-text.tick {
+        color: var(--cyan);
+        font-size: clamp(10px, 2.7vmin, 15px);
+        letter-spacing: 0.08em;
+        text-shadow: 0 0 10px rgba(53, 242, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.9);
+      }
+
+      /* The pot's breakdown, stacked under the score it explains. Smaller than
+         the figure it belongs to, because it is the receipt and not the event. */
+      .float-text.tally {
+        color: var(--amber);
+        font-size: clamp(11px, 3vmin, 17px);
+        letter-spacing: 0.1em;
+        text-shadow: 0 0 12px rgba(255, 179, 64, 0.7), 0 1px 4px rgba(0, 0, 0, 0.9);
+      }
+
       .float-text.block {
         color: rgba(234, 246, 255, 0.6);
         font-size: clamp(11px, 3vmin, 17px);
