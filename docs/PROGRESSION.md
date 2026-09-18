@@ -207,23 +207,30 @@ the tuning surface should not be rebuilt as a standalone page. A copy of the tab
 constants is a copy that drifts, and the day it drifts is the day the editor is
 confidently wrong.
 
-The honest gap is measurement. Today the editor can tell you where a ball is and not
-whether the board is any good. Four additions close it, all wrappers around checks that
-already exist on the command line:
+The gap was measurement, and it is now closed. The editor drives the real game
+in a frame beside the canvas — the same probes `npm run verify` and `npm run aim`
+drive — so every number below is the game's answer, not the editor's opinion:
 
-| Addition | What it answers | Built on |
+| In the editor | What it answers | Built on |
 | --- | --- | --- |
-| **Measure** | Sweep at 0.5° and draw the solving runs round a dial: widest window, midpoint, scratch share. | `tools/find-board.mjs` |
-| **Daylight** | The closest pair of balls in the solution, live, while you drag. | `find-board` spacing filter |
-| **Play it** | Run the intended solution: strokes used, pots, fouls — the board as the table plays it. | `tools/check-aim.mjs` |
-| **Ship** | Write the measured window back into the board file in the shape the build check expects. | `tools/verify-boards.mjs` |
+| **Measure** | Sweeps at 0.5° and draws every solving run round a dial: the widest, where `solve` falls, how far the resting aim is from one. | `__simSweep`, an arc at a time |
+| **Daylight** | The closest pair of balls, live while you drag — plus the gap to the cue ball and how many balls sit behind the instruction card. | the radii in `config.js` |
+| **Play it** | One heading played on the real table: what went down, how many rails, and whether the preview drew the same shot. | `__simAim` |
+| **Clear the rack** | Whether the rack comes down inside the board's budget, and the route that does it. | `__simPlan` |
+| **Ship** | Writes the measured run into the lesson as its `window`. | the sweep it just ran |
 
-With those four the editor becomes the place a gate is *designed* rather than merely
-positioned: drag, measure, see the window narrow, drag back. The same Measure panel run
-against a generated seed is how the acceptance rules above get eyeballed when one of
-them is wrong.
+At 0.5° — the step `verify` uses — a board takes about fifteen seconds and comes
+back with the number `verify` will come back with. `npm run editor` holds it to
+exactly that: it drives the editor's own buttons headlessly and fails if the run
+it measures is not the stored window, if the stored solve does not pot, or if
+**Ship** cannot be clicked.
 
----
+So the editor is now the place a gate is *designed* rather than merely
+positioned: drag, measure, see the window narrow, drag back. Two things it still
+cannot do — place felt objects (it draws them, read-only, so a board is never
+measured against something invisible), and roll a procedural seed to run the
+acceptance rules in §6 against. Both are the same machinery pointed at a
+different document.
 
 ## 8. Open
 

@@ -15,7 +15,8 @@
     "layout": "node tools/check-layout.mjs",
     "find-board": "node tools/find-board.mjs",
     "scoring": "node tools/check-scoring.mjs",
-    "aim": "node tools/check-aim.mjs"
+    "aim": "node tools/check-aim.mjs",
+    "editor": "node tools/check-editor.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"

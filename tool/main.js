@@ -19,8 +19,10 @@
 
 import sourceDoc from '../src/data/layouts.json';
 import lessonDoc from '../src/data/lessons.json';
-import { ARENA, ENEMY, ROOM } from '../src/config.js';
+import { ARENA, ENEMY, PLAYER, ROOM, TABLE } from '../src/config.js';
 import { makeRng, roomSeed, buildWaves, budgetFor, waveCountFor } from '../src/systems/ThreatDirector.js';
+import { pocketSlots, objectLabel, isPickup } from '../src/systems/Table.js';
+import * as measure from './measure.js';
 
 /* ------------------------------------------------------------------ *
  * Constants drawn from the game
@@ -28,10 +30,26 @@ import { makeRng, roomSeed, buildWaves, budgetFor, waveCountFor } from '../src/s
 
 const TYPE_COLOR = { solid: '#ff3d6e', stripe: '#a05cff', heavy: '#ffb340' };
 const TYPE_LABEL = { solid: 'Solid', stripe: 'Stripe', heavy: 'Eight-Ball' };
-/** The cue ball's own radius — the safe-spawn ring is drawn around its spawn. */
-const PLAYER_RADIUS = 0.62;
-/** Where the ball actually starts: ARENA.halfH - height * PLAYER.spawnFromBottom. */
-const BALL_SPAWN_Z = 6.4;
+/**
+ * The cue ball's own radius — the safe-spawn ring is drawn around its spawn,
+ * and the daylight readout measures gaps against it.
+ *
+ * TAKEN FROM CONFIG, NOT COPIED. It was copied, as 0.62, which is the number
+ * before `RULES.pieceScale` is applied — so the editor was drawing a cue ball
+ * a third larger than the game's, and any gap measured against it would have
+ * been wrong in the direction that hides a problem.
+ */
+const PLAYER_RADIUS = PLAYER.radius;
+/** Where the ball actually starts, by the rule ThreatDirector uses. */
+const BALL_SPAWN_Z = ARENA.halfH - ARENA.height * PLAYER.spawnFromBottom;
+/**
+ * The least daylight a pair of balls may leave and still be readable on a
+ * phone. Lessons 5 and 6 were both re-searched against this number after
+ * "it's hard to see what exactly is happening between the balls".
+ */
+const MIN_DAYLIGHT = 0.55;
+/** What `verify` calls an unplayable window. */
+const MIN_WIDTH = 2.0;
 /**
  * The instruction card covers this band of the table. Racks placed inside it
  * are invisible to the player, which is the single easiest mistake to make when
@@ -69,8 +87,31 @@ const state = {
   level: 5,
   seed: 1337,
   rolled: null,
-  drag: null
+  drag: null,
+  /** The last sweep, and the board it was a sweep OF — see `boardKey`. */
+  measured: null,
+  measuredKey: null,
+  /** The paths the last played stroke drew, in world units. */
+  trails: null
 };
+
+/**
+ * A board's geometry, as a string. A measurement is a fact about a placement,
+ * so the moment the placement moves the number on screen stops being true —
+ * and a stale window that still looks measured is worse than no window at all.
+ */
+function boardKey(record = layout()) {
+  return JSON.stringify([
+    record.id,
+    record.enemies || [],
+    record.obstacles || [],
+    record.objects || [],
+    record.goal || null,
+    record.rest || null
+  ]);
+}
+
+const measurementFresh = () => !!state.measured && state.measuredKey === boardKey();
 
 const undo = [];
 const redo = [];
@@ -188,6 +229,59 @@ function draw() {
   ctx.fillText('EXIT DOORS', 8, 14);
 
   const l = layout();
+
+  // --- the pockets: the same six, in the same places, in every room ---
+  //
+  // Drawn from `pocketSlots()` rather than from six coordinates typed in here,
+  // because the thing a lesson is authored AROUND is where the holes are. The
+  // solid ring is the capture radius — a ball whose centre gets inside it is
+  // taken — and the faint one is the wider mouth the player is shown.
+  for (const p of pocketSlots()) {
+    const r = (p.radius ?? TABLE.pocket.radius) * scale;
+    ctx.fillStyle = 'rgba(4, 6, 10, 0.9)';
+    ctx.beginPath();
+    ctx.arc(sx(p.x), sy(p.z), r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(29, 111, 122, 0.85)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(29, 111, 122, 0.3)';
+    ctx.beginPath();
+    ctx.arc(sx(p.x), sy(p.z), r * TABLE.pocket.mouthScale, 0, Math.PI * 2);
+    ctx.stroke();
+    const called = Array.isArray(l.call) ? l.call.includes(p.slot) : l.call === p.slot;
+    if (called) {
+      ctx.strokeStyle = 'rgba(234, 246, 255, 0.9)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(sx(p.x), sy(p.z), r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // --- felt objects: mint helps you, red costs you ---
+  //
+  // The editor cannot place these yet, but a board measured without them on
+  // screen is a board measured against something invisible — the green-red
+  // lesson is a mine and a double and almost nothing else.
+  for (const o of l.objects || []) {
+    const good = isPickup(o.kind);
+    const r = TABLE.object.radius * scale;
+    ctx.strokeStyle = good ? '#2ef2c4' : '#ff5a3d';
+    ctx.fillStyle = good ? 'rgba(46, 242, 196, 0.10)' : 'rgba(255, 90, 61, 0.10)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.arc(sx(o.x), sy(o.z), r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = good ? 'rgba(46, 242, 196, 0.85)' : 'rgba(255, 90, 61, 0.85)';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(objectLabel(o.kind).toUpperCase(), sx(o.x), sy(o.z) + 3.5);
+    ctx.textAlign = 'left';
+  }
 
   // --- safe spawn ring: the director will not place anything inside it ---
   if (!isLessons() && l.spawn) {
@@ -324,6 +418,42 @@ function draw() {
   ctx.fill();
   ctx.stroke();
   if (on) drawRing(spawnX, spawnZ, PLAYER_RADIUS * scale + 7);
+
+  drawTrails();
+}
+
+/**
+ * Where every body actually went on the last played stroke.
+ *
+ * This is the part of measuring that an editor can show and a table of numbers
+ * cannot: a window is a claim about a path, and the path is right there on the
+ * felt you are dragging balls around on.
+ */
+function drawTrails() {
+  const t = state.trails;
+  if (!t) return;
+  const line = (pts, color, width) => {
+    if (!pts || pts.length < 2) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx(pts[0][0]), sy(pts[0][1]));
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(sx(pts[i][0]), sy(pts[i][1]));
+    ctx.stroke();
+  };
+  for (const [n, pts] of Object.entries(t.balls || {})) {
+    line(pts, 'rgba(255, 179, 64, 0.75)', 1.6);
+    const end = pts?.[pts.length - 1];
+    if (end) {
+      ctx.fillStyle = 'rgba(255, 179, 64, 0.9)';
+      ctx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(n, sx(end[0]), sy(end[1]) - 6);
+      ctx.textAlign = 'left';
+    }
+  }
+  line(t.cue, 'rgba(53, 242, 255, 0.9)', 2);
 }
 
 function drawRing(x, z, r) {
@@ -586,6 +716,11 @@ function renderLayoutList() {
       state.layout = i;
       state.wave = 0;
       state.sel = null;
+      // Another board, so the last one's window and the last stroke's paths
+      // are about something that is no longer on screen.
+      state.measured = null;
+      state.measuredKey = null;
+      state.trails = null;
       // Re-roll on arrival: a table whose contents are still procedural would
       // otherwise open completely empty, which reads as "this room has no
       // enemies" rather than "its enemies have not been rolled yet".
@@ -760,6 +895,11 @@ function renderTableFields() {
   $('f-id').value = l.id || '';
   $('f-tags').value = (l.tags || []).join(', ');
   if (isLessons()) {
+    // The heading Play it opens on is the board's own stored answer — the one
+    // the coach demonstrates — so the first thing you can play is the shot the
+    // lesson claims is there.
+    const deg = $('m-deg');
+    if (deg && document.activeElement !== deg) deg.value = Number.isFinite(l.solve) ? l.solve : 0;
     $('context-title').textContent = 'This lesson';
     $('room-rule').textContent =
       `Lesson ${state.layout + 1} of ${records().length}. The dashed gold line is where the cue rests when the lesson opens — it should point at the solution.`;
@@ -778,8 +918,73 @@ function renderAll() {
   renderTableFields();
   renderWaveTabs();
   renderInspector();
+  renderReads();
+  renderMeasure();
   refreshHistory();
   draw();
+}
+
+/* ------------------------------------------------------------------ *
+ * Daylight — the one reading that has to be live
+ *
+ * Every other measurement here costs a sweep. This one is arithmetic over the
+ * radii the game itself is configured with, so it can sit under the canvas and
+ * answer while the ball is still under the cursor — which is the only time the
+ * answer is useful. A board can be perfectly playable and still unreadable,
+ * and a search that only ranks by window cannot tell the two apart.
+ * ------------------------------------------------------------------ */
+
+const ballRadius = (e) => (ENEMY[e.type] || ENEMY.solid).radius;
+
+/** The closest pair of balls on the table, and how much felt is between them. */
+function daylight() {
+  const live = waves()[state.wave] || [];
+  let best = null;
+  for (let a = 0; a < live.length; a += 1) {
+    for (let b = a + 1; b < live.length; b += 1) {
+      const gap =
+        Math.hypot(live[a].x - live[b].x, live[a].z - live[b].z) - ballRadius(live[a]) - ballRadius(live[b]);
+      if (!best || gap < best.gap) best = { gap, a: live[a], b: live[b] };
+    }
+  }
+  return best;
+}
+
+function renderReads() {
+  const host = $('reads');
+  if (!host) return;
+  host.textContent = '';
+  const l = layout();
+  const live = waves()[state.wave] || [];
+  const add = (label, value, warn) => {
+    const span = document.createElement('span');
+    const b = document.createElement('b');
+    b.textContent = value;
+    if (warn) b.classList.add('warn');
+    span.append(`${label} `, b);
+    host.appendChild(span);
+  };
+
+  const near = daylight();
+  if (near) {
+    const names = [near.a, near.b].map((e) => (e.number != null ? e.number : TYPE_LABEL[e.type])).join(' / ');
+    add('daylight', `${near.gap.toFixed(2)} between ${names}`, near.gap < MIN_DAYLIGHT);
+  } else {
+    add('daylight', live.length < 2 ? 'one ball' : '—');
+  }
+
+  // A ball on top of the cue ball is not a puzzle, it is a foul waiting to
+  // happen: the rack is drawn AROUND the spawn, never over it.
+  const cx = isLessons() ? 0 : l.spawn ? l.spawn.x : 0;
+  const cz = isLessons() ? BALL_SPAWN_Z : l.spawn ? l.spawn.z : 11;
+  let toCue = Infinity;
+  for (const e of live) toCue = Math.min(toCue, Math.hypot(e.x - cx, e.z - cz) - ballRadius(e) - PLAYER_RADIUS);
+  if (Number.isFinite(toCue)) add('cue', toCue.toFixed(2), toCue < MIN_DAYLIGHT);
+
+  if (isLessons()) {
+    const hidden = live.filter((e) => e.z > CARD_TOP_Z && e.z < CARD_BOTTOM_Z).length;
+    add('under the card', String(hidden), hidden > 0);
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -927,10 +1132,27 @@ function setMode(mode) {
   $('list-title').textContent = DOCS[mode].label;
   $('btn-add-layout').textContent = mode === 'lessons' ? '+ New lesson' : '+ New table';
   $('btn-export').textContent = `Download ${DOCS[mode].file}`;
-  for (const el of document.querySelectorAll('[data-rooms-only]')) {
-    el.style.display = mode === 'lessons' ? 'none' : '';
-  }
+  applyModeVisibility();
+  // A measurement belongs to the board it was taken on, and switching document
+  // is the one move that guarantees it is not that board any more.
+  state.measured = null;
+  state.measuredKey = null;
+  state.trails = null;
   renderAll();
+}
+
+/**
+ * Rooms carry a threat director and no pass rule; lessons carry a pass rule
+ * and no director. Each side's panels are hidden on the other, so nothing on
+ * screen is an instrument that cannot answer.
+ */
+function applyModeVisibility() {
+  for (const el of document.querySelectorAll('[data-rooms-only]')) {
+    el.style.display = isLessons() ? 'none' : '';
+  }
+  for (const el of document.querySelectorAll('[data-lessons-only]')) {
+    el.style.display = isLessons() ? '' : 'none';
+  }
 }
 $('mode-rooms').addEventListener('click', () => setMode('rooms'));
 $('mode-lessons').addEventListener('click', () => setMode('lessons'));
@@ -997,7 +1219,305 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+/* ------------------------------------------------------------------ *
+ * Measure, Play it, Ship
+ *
+ * The editor places balls; these three say whether the placement is any good.
+ * None of them decides anything itself — every number here comes back from the
+ * real game running in the frame at the corner of the screen, through the same
+ * probes `npm run verify` and `npm run aim` drive. See tool/measure.js.
+ * ------------------------------------------------------------------ */
+
+let busy = false;
+
+function mSay(msg) {
+  $('m-status').textContent = msg;
+}
+
+function mBusy(on, msg) {
+  busy = on;
+  for (const id of ['m-open', 'm-sweep', 'm-play', 'm-plan', 'm-ship']) $(id).disabled = on;
+  if (msg) mSay(msg);
+  if (!on) renderMeasure();
+}
+
+/** Put what is on the canvas onto the real table, then keep going. */
+async function syncBoard() {
+  await measure.useBoard(clone(layout()), mSay);
+}
+
+async function openGame() {
+  if (busy) return;
+  mBusy(true);
+  try {
+    await measure.boot(mSay);
+    await syncBoard();
+    mSay(`The game is up, sitting on ${layout().name || layout().id}.`);
+  } catch (err) {
+    mSay(err.message);
+  } finally {
+    mBusy(false);
+  }
+}
+
+async function doSweep() {
+  if (busy) return;
+  if (!isLessons()) return mSay('Only lessons carry a pass rule to measure against.');
+  const step = Number($('m-step').value) || 0.5;
+  const key = boardKey();
+  state.trails = null;
+  mBusy(true, 'measuring…');
+  const bar = $('m-bar');
+  try {
+    await measure.boot(mSay);
+    await syncBoard();
+    const res = await measure.sweep({
+      step,
+      onProgress: (at) => {
+        bar.style.width = `${Math.round(at * 100)}%`;
+        mSay(`measuring… ${Math.round(at * 100)}%`);
+      }
+    });
+    state.measured = res;
+    state.measuredKey = key;
+    mSay(
+      res.widest
+        ? `Widest window ${res.widest.width}° at ${res.widest.from}–${res.widest.to}°.`
+        : 'Nothing on this board passes at any heading.'
+    );
+  } catch (err) {
+    mSay(err.message);
+  } finally {
+    bar.style.width = '0';
+    mBusy(false);
+    draw();
+  }
+}
+
+async function doPlay() {
+  if (busy) return;
+  if (!isLessons()) return mSay('Only lessons can be played — a room has no lesson to judge the stroke.');
+  const deg = Number($('m-deg').value);
+  const power = Number($('m-power').value) || 0.8;
+  if (!Number.isFinite(deg)) return mSay('Give it a heading first.');
+  mBusy(true, `playing ${deg}° at ${power}…`);
+  try {
+    await measure.boot(mSay);
+    await syncBoard();
+    const { promise, actual } = measure.playShot({ deg, power });
+    state.trails = { cue: actual.cueTrail, balls: actual.ballTrails };
+    const pots = actual.pots.filter((p) => p.n != null).map((p) => `${p.n}→${p.slot}`);
+    const said = promise.legs.filter((l) => l.potted).map((l) => `${l.number}→${l.potted}`);
+    const agrees =
+      pots.sort().join(',') === said.sort().join(',') && !!promise.cue.scratch === !!actual.scratched;
+    $('m-play-note').textContent =
+      `${actual.scratched ? 'SCRATCH. ' : ''}${pots.length ? `Down: ${pots.join(', ')}.` : 'Nothing down.'} ` +
+      `${actual.bounces} rail${actual.bounces === 1 ? '' : 's'}, ${actual.travelled} units travelled. ` +
+      (agrees
+        ? 'The preview drew the same shot.'
+        : `The preview drew something else: ${promise.cue.scratch ? 'SCRATCH, ' : ''}${said.join(', ') || 'nothing down'}.`);
+    mSay('Played. The cue path is cyan, the balls amber.');
+  } catch (err) {
+    mSay(err.message);
+  } finally {
+    mBusy(false);
+    draw();
+  }
+}
+
+async function doPlan() {
+  if (busy) return;
+  if (!isLessons()) return mSay('Only lessons have a shot budget.');
+  mBusy(true, 'searching for a way to clear the rack — this one takes a while…');
+  try {
+    await measure.boot(mSay);
+    await syncBoard();
+    const les = measure.lesson();
+    const strokes = les?.shots ?? (layout().enemies || []).length;
+    const plan = measure.clearRack({ strokes });
+    $('m-play-note').textContent = plan.cleared
+      ? `Clears ${plan.total} in ${plan.line.length} strokes: ` +
+        plan.line.map((st) => `${st.deg}° @${st.power}`).join(' → ')
+      : `Best it can do is ${plan.bestDown} of ${plan.total} in ${plan.strokes} strokes.`;
+    mSay(plan.cleared ? 'The rack clears inside the budget.' : 'The rack does not clear inside the budget.');
+  } catch (err) {
+    mSay(err.message);
+  } finally {
+    mBusy(false);
+  }
+}
+
+/**
+ * Write the measured window into the lesson.
+ *
+ * `verify` re-measures every board and fails the build when the stored window
+ * is not the run it finds — so this writes the run this sweep actually found,
+ * and nothing else. The coach's arrows light up on that window, which makes it
+ * a promise to the player that the heading works; typing one in by hand is how
+ * that promise stops being true.
+ */
+function doShip() {
+  const m = state.measured;
+  if (!measurementFresh() || !m) return;
+  const l = layout();
+  snapshot();
+  const run = m.solveRun || m.widest;
+  if (!m.solveRun && m.widest) {
+    l.solve = +(((m.widest.from + m.widest.to) / 2)).toFixed(2);
+  }
+  l.window = [run.from, run.to];
+  renderAll();
+  status(
+    `Wrote window ${run.from}–${run.to}° (solve ${l.solve}°) into ${l.id}. ` +
+      (m.step > 0.5
+        ? `Measured at ${m.step}° — verify re-measures at 0.5° and may disagree. Re-measure at 0.5° before shipping.`
+        : 'Download lessons.json to keep it.')
+  );
+}
+
+/* ---- the dial: every run of heading, round the circle ---- */
+
+function drawDial() {
+  const cvD = $('m-dial');
+  const c = cvD.getContext('2d');
+  const size = cvD.width;
+  const cx = size / 2;
+  const cy = size / 2;
+  const R = size * 0.38;
+  c.clearRect(0, 0, size, size);
+
+  // Heading 0 is straight up the table, and grows clockwise — the same
+  // convention every probe speaks, so a number read here can be typed in there.
+  const at = (deg, r) => [cx + Math.sin((deg * Math.PI) / 180) * r, cy - Math.cos((deg * Math.PI) / 180) * r];
+  const arc = (from, to, r, width, color) => {
+    c.strokeStyle = color;
+    c.lineWidth = width;
+    c.lineCap = 'butt';
+    c.beginPath();
+    c.arc(cx, cy, r, ((from - 90) * Math.PI) / 180, ((to - 90) * Math.PI) / 180);
+    c.stroke();
+  };
+  const tick = (deg, color, width, inner, outer) => {
+    const a = at(deg, inner);
+    const b = at(deg, outer);
+    c.strokeStyle = color;
+    c.lineWidth = width;
+    c.beginPath();
+    c.moveTo(a[0], a[1]);
+    c.lineTo(b[0], b[1]);
+    c.stroke();
+  };
+
+  arc(0, 360, R, 2, '#12202b');
+  for (let deg = 0; deg < 360; deg += 30) tick(deg, '#1b2a36', 2, R - 8, R + 8);
+  tick(0, '#2a3f4e', 3, R - 14, R + 12);
+
+  const m = measurementFresh() ? state.measured : null;
+  const stale = !!state.measured && !m;
+
+  if (m) {
+    for (const run of m.runs) {
+      // A RUN NARROWER THAN THE FLOOR IS NOT A SOLUTION, it is a coincidence
+      // the sweep happened to land on — drawn, because it is true, but never
+      // in the colour that means "this is the shot".
+      const ok = run.width >= MIN_WIDTH;
+      arc(run.from, Math.max(run.to, run.from + 0.4), R, 16, ok ? 'rgba(46, 242, 196, 0.85)' : 'rgba(255, 179, 64, 0.7)');
+    }
+    if (m.solve != null) tick(m.solve, '#35f2ff', 3, R - 22, R + 20);
+    if (m.rest != null) tick(m.rest, '#ffe27a', 2, 0, R - 24);
+  }
+
+  const stored = layout().window;
+  if (Array.isArray(stored)) arc(stored[0], Math.max(stored[1], stored[0] + 0.4), R + 16, 4, 'rgba(234, 246, 255, 0.55)');
+
+  c.textAlign = 'center';
+  c.fillStyle = stale ? '#ff5a3d' : '#eaf6ff';
+  c.font = `700 ${Math.round(size * 0.115)}px ui-sans-serif, system-ui, sans-serif`;
+  c.fillText(m ? `${m.widest ? m.widest.width.toFixed(1) : '0'}°` : stale ? 'stale' : '—', cx, cy + size * 0.04);
+  c.fillStyle = '#7e93a5';
+  c.font = `${Math.round(size * 0.045)}px ui-sans-serif, system-ui, sans-serif`;
+  c.fillText(m ? 'widest window' : stale ? 'the board moved' : 'not measured', cx, cy + size * 0.11);
+  c.textAlign = 'left';
+}
+
+function renderMeasure() {
+  if (!$('m-dial')) return;
+  $('m-frame').textContent = frameShown ? 'Hide frame' : 'Show frame';
+  drawDial();
+
+  const host = $('m-readout');
+  host.textContent = '';
+  const row = (k, v, cls) => {
+    const a = document.createElement('span');
+    a.className = 'k';
+    a.textContent = k;
+    const b = document.createElement('span');
+    b.className = `v${cls ? ` ${cls}` : ''}`;
+    b.textContent = v;
+    host.append(a, b);
+  };
+
+  const m = measurementFresh() ? state.measured : null;
+  const l = layout();
+  if (m) {
+    row('widest', m.widest ? `${m.widest.width}°` : 'none', m.widest && m.widest.width >= MIN_WIDTH ? 'ok' : 'warn');
+    if (m.widest) row('where', `${m.widest.from}–${m.widest.to}°`);
+    row('runs', String(m.runs.length));
+    row('headings', `${m.headings} of ${Math.round(360 / m.step)}`);
+    row(
+      'solve',
+      m.solve == null ? 'none' : m.solveRun ? `${m.solve}° · inside` : `${m.solve}° · outside`,
+      m.solve != null && !m.solveRun ? 'warn' : ''
+    );
+    row('rest reaches', m.restGap == null ? '—' : `${m.restGap}° away`, (m.restGap ?? 0) > 12 ? 'warn' : '');
+    row('swept at', `${m.step}°`);
+  } else if (state.measured) {
+    row('measurement', 'stale', 'warn');
+  }
+  row('stored window', Array.isArray(l.window) ? `${l.window[0]}–${l.window[1]}°` : 'none', Array.isArray(l.window) ? '' : 'warn');
+
+  const ship = $('m-ship');
+  const note = $('m-ship-note');
+  if (!isLessons()) {
+    ship.disabled = true;
+    ship.textContent = 'Lessons only';
+    note.textContent = 'A room has no coach arrows to light up, so there is no window to store.';
+  } else if (!m) {
+    ship.disabled = true;
+    ship.textContent = 'Write the measured window in';
+    note.textContent = state.measured
+      ? 'The board has moved since it was measured. Measure it again.'
+      : 'Measure the board first.';
+  } else if (m.solveRun) {
+    ship.disabled = busy;
+    ship.textContent = `Write ${m.solveRun.from}–${m.solveRun.to}° in`;
+    note.textContent = `The run the stored solve sits in — what verify expects to find.`;
+  } else if (m.widest) {
+    ship.disabled = busy;
+    const mid = ((m.widest.from + m.widest.to) / 2).toFixed(2);
+    ship.textContent = `Move solve to ${mid}° and write its run in`;
+    note.textContent = `The stored solve ${m.solve ?? '—'}° is in no working run, so it moves to the middle of the widest one.`;
+  } else {
+    ship.disabled = true;
+    ship.textContent = 'Nothing to write';
+    note.textContent = 'No heading on this board passes at any power. There is no window to store.';
+  }
+}
+
+let frameShown = true;
+$('m-open').addEventListener('click', openGame);
+$('m-frame').addEventListener('click', () => {
+  frameShown = !frameShown;
+  measure.showFrame(frameShown);
+  renderMeasure();
+});
+$('m-sweep').addEventListener('click', doSweep);
+$('m-play').addEventListener('click', doPlay);
+$('m-plan').addEventListener('click', doPlan);
+$('m-ship').addEventListener('click', doShip);
+
 window.addEventListener('resize', fitCanvas);
+applyModeVisibility();
 renderAll();
 fitCanvas();
 roll();

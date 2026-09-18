@@ -532,12 +532,23 @@
 
   /**
    * Sweep every heading and report where the board is satisfied.
-   * @param {{step?:number, powers?:number[]}} spec
+   *
+   * `from`/`to` exist for callers that cannot afford to block for the whole
+   * sweep — the table editor measures a board while a person watches, so it
+   * asks for an arc at a time and yields a frame between them. A slice's
+   * `runs` are the runs OF THAT SLICE; a caller that stitches slices together
+   * merges `hits` and hands the result to `__simRuns`, which is the same
+   * grouping this function uses. Left alone it sweeps the whole circle and
+   * nothing about it changes.
+   *
+   * @param {{step?:number, powers?:number[], from?:number, to?:number}} spec
    */
   window.__simSweep = (spec = {}) => {
     const game = g();
     const L = game.tutorial.lesson;
     const step = spec.step ?? 0.5;
+    const from = spec.from ?? 0;
+    const to = spec.to ?? 360;
     // SIX POWERS, NOT THREE. A thumb produces a continuum; a sweep samples it,
     // and a sparse sample reports the window for a player who only ever hits
     // the ball three ways. The two-in-one board reads 0.5° at three powers and
@@ -551,7 +562,7 @@
 
     const good = [];
     const byPower = {};
-    for (let deg = 0; deg < 360; deg += step) {
+    for (let deg = from; deg < to; deg += step) {
       for (const power of powers) {
         restore(base);
         const out = shoot(deg, power);
@@ -585,7 +596,11 @@
     return {
       step,
       powers,
+      from,
+      to,
       headings: good.length,
+      // The passing headings themselves, so a sliced sweep can be stitched.
+      hits: good,
       runs,
       widest,
       rest: +rest.toFixed(2),
@@ -651,6 +666,17 @@
     game.tutorial.notify = notify;
     return { total, strokes, cleared: best.down >= total, bestDown: best.down, line: best.line };
   };
+
+  /**
+   * The game's own grouping of passing headings into runs.
+   *
+   * Exposed because a caller that sweeps in slices has to join them back up,
+   * and a second implementation of "what counts as contiguous" is exactly the
+   * kind of small divergence that makes one tool report a window another one
+   * cannot find. A run's width is what a human has to hit; the step is what
+   * decides whether two hits are one run or two, so pass the step you swept at.
+   */
+  window.__simRuns = (degrees, step = 0.5) => toRuns(degrees, step);
 
   window.installSimHarness = () => true;
 })();
