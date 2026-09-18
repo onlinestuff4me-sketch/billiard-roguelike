@@ -198,6 +198,25 @@ headless browser and fails if the run it measures is not the window stored in
 clicked — which it could not, once, because the game's own frame was laid out
 on top of it.
 
+## `npm run foul`
+
+The mission can refuse a pot — the 8 before its turn, and under strict order any ball
+that is not the next one — and a refusal that arrives AFTER the stroke is spent reads as
+a bug however correct it is, because the preview had already drawn the shot. The line
+never lies is the pillar; a line that draws a pot the game will not accept is the line
+lying in the only way it still could.
+
+So the preview asks the mission the same question the pot will ask, over the table each
+earlier pot leaves behind, and this sweeps every heading through the real game and holds
+the drawn line to that verdict three ways at once: whether there is a refusal, which leg
+it is about, and the words the player is shown. Then it hands the HUD a snapshot
+directly and checks the mission block draws it.
+
+An earlier version drove a real thumb across the glass — press, drag, read. It worked
+two runs in three: a heading is EASED toward, so the line a hand settles on is a
+fraction off the one the sweep found, and a fraction is enough to sink a different ball.
+The thumb is a good way to test the input and a bad way to test a verdict.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -219,6 +238,7 @@ underneath it.
 - `find-board.mjs` — where should the balls go, searched rather than guessed.
 - `check-scoring.mjs` — the ladder pays for what happened (no browser needed).
 - `check-editor.mjs` — the editor's instruments agree with these ones.
+- `check-foul.mjs` — the line goes red before the stroke, not after it.
 - `../tool/measure.js` — the editor's side of it: the frame, and the driving.
 
 ## Beyond the tutorial

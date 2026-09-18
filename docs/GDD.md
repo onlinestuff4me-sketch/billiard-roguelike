@@ -154,6 +154,12 @@ bonus of `500 × room` on its own line of the scorecard. That line is small on
 purpose: the order's real income is the ladder it built along the way, and the
 sweep bonus is there to name what happened.
 
+**The preview refuses before the stroke does.** A pot the mission would turn away —
+the 8 early, or any ball out of turn under strict order — is drawn in red while the
+player is still aiming, with the words naming the ball to take instead. The line never
+lies is the pillar; a line that draws a pot the game will not accept is the line lying
+in the only way it still could.
+
 **"The 8 goes last" is this same order made mandatory for one ball.** Which is why
 the strict version of it — every ball, or the pot is a foul — is a mode rather than
 a rule: it is unlocked by sweeping a room in order of your own accord, because a
