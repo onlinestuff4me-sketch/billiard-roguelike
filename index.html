@@ -184,17 +184,17 @@
         color: var(--muted);
       }
 
-      /* THE CONTRACT.
+      /* THE MISSION.
          The one thing on screen that says what winning means, written as a
          sentence. It sits dead centre of the top band because that is where
          the eye lands between strokes. */
-      .hud-contract {
+      .hud-mission {
         flex: 1 1 44%;
         text-align: center;
         min-width: 0;
       }
 
-      .contract-text {
+      .mission-text {
         font-size: clamp(11px, 3.1vmin, 16px);
         font-weight: 700;
         line-height: 1.1;
@@ -202,27 +202,48 @@
         color: var(--bone);
         text-shadow: 0 0 16px rgba(53, 242, 255, 0.45);
       }
-      .contract-text.done {
+      .mission-text.done {
         color: #2ef2c4;
         text-shadow: 0 0 16px rgba(46, 242, 196, 0.6);
       }
 
-      .contract-pips {
+      .mission-pips {
         margin-top: 0.45em;
         display: flex;
         gap: 3px;
         justify-content: center;
       }
-      .contract-pips .pip {
+      .mission-pips .pip {
         width: clamp(9px, 2.6vmin, 14px);
         height: 3px;
         border-radius: 2px;
         background: rgba(53, 242, 255, 0.22);
         transition: background 0.18s ease;
       }
-      .contract-pips .pip.on {
+      .mission-pips .pip.on {
         background: var(--cyan);
         box-shadow: 0 0 8px rgba(53, 242, 255, 0.8);
+      }
+
+      /* WHICH BALL THE ORDER WANTS NEXT.
+         Quiet by default — it is a bonus, not a demand, and a line that shouts
+         reads as a rule. It brightens only while a run is actually going, and
+         turns red in the mode where the order is not optional. */
+      .mission-order {
+        margin-top: 0.35em;
+        font-size: clamp(7px, 1.9vmin, 10px);
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        color: rgba(234, 246, 255, 0.42);
+        transition: color 0.2s ease, text-shadow 0.2s ease;
+      }
+      .mission-order.on {
+        color: #2ef2c4;
+        text-shadow: 0 0 10px rgba(46, 242, 196, 0.5);
+      }
+      .mission-order.strict {
+        color: #ff5a3d;
+        text-shadow: 0 0 10px rgba(255, 90, 61, 0.45);
       }
 
       .hud-score {
@@ -356,7 +377,7 @@
         100% { transform: scale(1); }
       }
 
-      /* A lesson has no contract, no stroke budget and no way to be hurt, so
+      /* A lesson has no mission, no stroke budget and no way to be hurt, so
          every one of these would be stating a number nothing is enforcing.
          They fade in together with the first real room.
 
@@ -365,7 +386,7 @@
          band, and two of the six boards call one of them. A board that lights
          a pocket to say "there" and then covers it has not pointed at
          anything. With the readouts gone the corners are clear felt. */
-      #ui-layer.coaching .hud-contract,
+      #ui-layer.coaching .hud-mission,
       #ui-layer.coaching .hud-strokes,
       #ui-layer.coaching .hud-score,
       #ui-layer.coaching .hud-hp,
@@ -373,7 +394,7 @@
         opacity: 0;
         pointer-events: none;
       }
-      .hud-contract, .hud-strokes, .hud-score, .hud-hp {
+      .hud-mission, .hud-strokes, .hud-score, .hud-hp {
         transition: opacity 0.45s ease;
       }
 
@@ -1650,7 +1671,7 @@
          The band has room for one sentence and one control, and the control
          has to be the one that moves forward; a way out beside it at the same
          size is a way out that gets pressed by mistake. The HUD's score,
-         contract and stroke readouts are all hidden during a lesson, so this
+         mission and stroke readouts are all hidden during a lesson, so this
          corner is free. */
       #coach-skip {
         position: absolute;
@@ -1756,6 +1777,11 @@
               <span class="mode-name">Sink the Rack</span>
               <span class="mode-desc">The table is still between shots. Call a pocket, spend your strokes, run the rack.</span>
               <span class="mode-tag">Playing now</span>
+            </button>
+            <button class="mode-card" id="mode-strict" type="button">
+              <span class="mode-name">Strict Order</span>
+              <span class="mode-desc">The order stops being a bonus. Sink one out of turn and it comes back, and the shot pays nothing.</span>
+              <span class="mode-tag alt" id="mode-strict-tag">Locked</span>
             </button>
             <a class="mode-card" id="mode-classic" href="./classic/">
               <span class="mode-name">Classic</span>

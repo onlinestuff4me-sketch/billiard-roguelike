@@ -42,11 +42,11 @@ rooms and door rolls with no ceremony.
 
 Rack and stroke counts follow the ramp in GDD §5 unchanged. **Spare** is strokes
 minus balls. **Window** is the measured width, in degrees, of the run of cue headings
-that fills the contract: the floor a board must clear before it ships.
+that fills the mission: the floor a board must clear before it ships.
 
 | # | Kind | Name | New noun | Rack | Strokes | Spare | Window floor |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Gate | Calling It | the contract | 4 | 7 | +3 | 5.0° |
+| 1 | Gate | Calling It | the mission, and the order that pays | 4 | 7 | +3 | 5.0° |
 | 2 | Procedural | Open felt | — | 4 | 7 | +3 | 5.0° |
 | 3 | Gate | Pay Twice | Double | 5 | 7 | +2 | 3.0° (paying line) |
 | 4 | Procedural | Doubles on the roll | — | 5 | 7 | +2 | 4.0° |
@@ -63,6 +63,11 @@ that fills the contract: the floor a board must clear before it ships.
 spare strokes. The 3 sits in front of the called pocket and the 1 in front of an
 uncalled one, so the easiest pot on the table pays nothing. The lesson is the sentence
 at the top of the screen, not the angle.
+
+It also carries the **order**, which costs the room nothing to teach: the mission line
+names the ball the order wants next, sinking it pays extra rungs on the ladder, and
+missing it takes nothing away. A player who never notices still clears the room; a
+player who does gets told, the first time the bonus lands, that the rack has a shape.
 
 **03 · Pay Twice.** The called pocket has a clean straight-in line and the double sits
 off it at forty degrees. Taking the pot pays once; banking through the double and then
@@ -166,7 +171,7 @@ last, with procedural rooms held to the floor of the gate before them.
 the cue ball a third of the time does not feel harder, it feels arbitrary — the player
 did the thing the preview drew. Tighten the window and the budget first; reach for
 scratch risk only when a room is meant to be a genuine risk–reward fork, and say so in
-the contract.
+the mission.
 
 ---
 
@@ -179,7 +184,7 @@ test in `RoomManager`.
 Before a seed is accepted it is played headlessly against the same solver the preview
 uses:
 
-- **Solvable inside the budget.** A sequence of strokes fills the contract with the
+- **Solvable inside the budget.** A sequence of strokes fills the mission with the
   strokes the room deals.
 - **Wide enough to aim.** The first stroke of that sequence sits in a run of headings
   at least as wide as the room's window floor.
@@ -247,7 +252,7 @@ different document.
   moment the game says plainly that this one is not predictable.
 - **Run two's floor.** Replacing gates with procedural rooms at the same window floors
   keeps the curve but loses the authored beats entirely. A middle setting — gates kept,
-  contracts rerolled — is probably better, and is worth a playtest before either is
+  missions rerolled — is probably better, and is worth a playtest before either is
   built.
 
 ---

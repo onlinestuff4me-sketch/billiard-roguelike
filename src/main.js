@@ -207,7 +207,7 @@ function buildComposer(width, height) {
  * has to be more generous than the rule, never less.
  */
 /**
- * Live handles on each pocket's "called" ring, so a contract or a lesson can
+ * Live handles on each pocket's "called" ring, so a mission or a lesson can
  * point at one. Brightness is the only channel a pocket has.
  */
 const calledRings = [];
@@ -467,7 +467,7 @@ function buildTable(target) {
     ring.position.set(slot.x, 0.86, slot.z);
     table.add(ring);
 
-    // The called state: the contract names this pocket. Brightness and nothing
+    // The called state: the mission names this pocket. Brightness and nothing
     // else — no hue, because hue belongs to the felt objects.
     const called = new THREE.Mesh(
       new THREE.RingGeometry(m * 0.86, m * 1.2, 48, 1, start, SWEEP),
@@ -1096,7 +1096,7 @@ function resumeStroke() {
 
 /**
  * The table has stopped. Bank what the stroke paid, spend one from the budget,
- * and ask the contract whether the room is over.
+ * and ask the mission whether the room is over.
  */
 function finishStroke() {
   game.midStroke = false;
@@ -1126,7 +1126,7 @@ function finishStroke() {
   } else if (rules.strokesLeft <= 0) {
     failRoom();
   } else if (rules.strokesLeft === 1) {
-    hud.showBanner('Last shot', `${rules.contract.rack - rules.ballsDown} still on the table`, 1.8);
+    hud.showBanner('Last shot', `${rules.mission.rack - rules.ballsDown} still on the table`, 1.8);
   }
 }
 
@@ -1162,7 +1162,7 @@ game.tryFreeze = tryFreeze;
  * A live pocket pays double, then fires the ball straight back out at you.
  *
  * The ball is kept rather than replaced: it is marked spent — no number, no
- * value, no longer part of the contract — so it counts once, comes back as a
+ * value, no longer part of the mission — so it counts once, comes back as a
  * pure hazard, and can still carom into whatever is in its way. Which is the
  * risk you accepted when you chose that pocket.
  */
@@ -1288,21 +1288,36 @@ game.on = {
   potted({ ball, pocket }) {
     if (!ball.alive) return;
 
-    // An unnumbered body is not part of the contract and pays nothing.
+    // An unnumbered body is not part of the mission and pays nothing.
     if (ball.number <= 0) {
       removeBall(ball);
       return;
     }
 
-    // The 8 down early under an "8 last" contract: a foul. It comes back and
-    // the shot it happened on pays nothing.
-    if (rules.isFoul(ball.number)) {
+    // A ball the mission refuses right now: the 8 under an "8 last" mission, or
+    // — in strict order — anything that is not the next number. Both come back
+    // and the shot they happened on pays nothing. One rule at two strengths, so
+    // one branch, with the sentence following the reason.
+    // NOT DURING A LESSON. The tutorial racks its own boards with whatever
+    // numbers a board needs and never begins a room, so the mission's idea of
+    // what is next is about a rack that is not on the table — and under strict
+    // order it would refuse the very pot a lesson is asking for, leaving the
+    // board unpassable for anyone who had turned the mode on.
+    const foul = tutorial.running ? null : rules.foulReason(ball.number);
+    if (foul) {
       rules.scratch();
       audio.playerHurt();
       engine.shake(9);
       fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
-      fx.floatText(ball.x, ball.z, 'THE 8 GOES LAST', 'splat');
-      hud.showBanner('Too early', 'The 8 goes last — back on the table', 1.8);
+      const next = rules.nextInOrder;
+      fx.floatText(ball.x, ball.z, foul === 'eight' ? 'THE 8 GOES LAST' : 'OUT OF ORDER', 'splat');
+      hud.showBanner(
+        foul === 'eight' ? 'Too early' : 'Out of order',
+        foul === 'eight'
+          ? 'The 8 goes last — back on the table'
+          : `The ${next} is next — back on the table`,
+        1.8
+      );
       rooms.respot(ball);
       return;
     }
@@ -1359,6 +1374,12 @@ game.on = {
     if (banks > 0) beat(`${banks} BANK${banks > 1 ? 'S' : ''} ×${1 + banks}`, PALETTE.player);
     if (tookGreen) beat('GREEN ×2', PALETTE.good);
     if (touched > 1) beat(`${touched} BALLS ×${touched}`, PALETTE.solid);
+    // THE ORDER PAYS, SO THE ORDER IS SAID OUT LOUD. A bonus nobody can see
+    // land is a bonus that teaches nothing, and this one has to teach: it is
+    // the only thing telling a player the rack has an order at all.
+    if (paid.inOrder && paid.rungs > 0) {
+      beat(paid.streak > 1 ? `IN ORDER ×${paid.streak} +${paid.rungs}` : `IN ORDER +${paid.rungs}`, PALETTE.lip);
+    }
     if (steps.length) celebrate(steps);
 
     removeBall(ball, pocket);
@@ -1571,7 +1592,7 @@ function doorLabelText(door) {
 const cssHex = (value) => `#${value.toString(16).padStart(6, '0')}`;
 
 /**
- * The contract is filled. Pay for every stroke left in the budget — the skill
+ * The mission is filled. Pay for every stroke left in the budget — the skill
  * income — put the scorecard up, and open the exits.
  */
 function completeRoom() {
@@ -1580,6 +1601,13 @@ function completeRoom() {
   const result = rules.endRoom();
   audio.roomClear();
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
+  // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
+  // promise to do something harder, and a promise you have never kept once is
+  // not a difficulty setting, it is a trap with a menu entry.
+  if (result.swept && !strictOrder.unlocked) {
+    strictOrder.unlock();
+    hud.showBanner('Swept in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
+  }
   openExits();
   hud.showScorecard({
     level: game.level,
@@ -1664,7 +1692,7 @@ function exitChoices() {
 }
 
 function handleRoomClear() {
-  // Kept for the RoomManager handler contract; the contract decides clears now.
+  // Kept for the RoomManager handler contract; the mission decides clears now.
   completeRoom();
 }
 
@@ -1701,6 +1729,65 @@ function handleDoorEntered(door) {
       break;
   }
   advanceRoom();
+}
+
+/* ------------------------------------------------------------------ *
+ * STRICT ORDER — a mode, remembered, and never the default.
+ *
+ * Three states in one stored value: absent means the player has never swept a
+ * room in order, so the mode is not offered at all; '0' means unlocked and
+ * off; '1' means on. One key, because two keys for one idea is how a mode ends
+ * up both locked and switched on.
+ * ------------------------------------------------------------------ */
+const strictOrder = {
+  on: RULES.order.strict,
+  unlocked: false,
+  _read() {
+    try {
+      return localStorage.getItem(RULES.order.storageKey);
+    } catch {
+      return null;
+    }
+  },
+  _write(value) {
+    try {
+      localStorage.setItem(RULES.order.storageKey, value);
+    } catch {
+      /* private mode — the mode lasts this session and no longer */
+    }
+  },
+  load() {
+    const stored = this._read();
+    this.unlocked = stored !== null;
+    this.on = stored === '1';
+    return this;
+  },
+  unlock() {
+    if (!this.unlocked) {
+      this.unlocked = true;
+      this._write('0');
+    }
+  },
+  set(on) {
+    if (!this.unlocked) return false;
+    this.on = !!on;
+    this._write(this.on ? '1' : '0');
+    return true;
+  }
+}.load();
+
+/**
+ * Deal this room's mission. ONE PLACE, because there are two ways into a room —
+ * the first of a run and every one after it — and the mode flags belong to the
+ * run rather than to either path. They were passed at one of the two, which
+ * meant Strict Order was on everywhere except the room where a player would
+ * first meet it.
+ */
+function beginMission() {
+  rules.beginRoom(game.level, {
+    strictOrder: strictOrder.on,
+    ...(game.strokeBonus ? { strokes: rooms.mission.strokes + game.strokeBonus } : {})
+  });
 }
 
 function openBoonModal(phase) {
@@ -1748,9 +1835,7 @@ function advanceRoom() {
 
   rooms.generate(game.level);
   callPocket(null);
-  rules.beginRoom(game.level, game.strokeBonus
-    ? { strokes: rooms.contract.strokes + game.strokeBonus }
-    : null);
+  beginMission();
   player.placeAt(rooms.layout.spawn.x, spawnZ());
   game.state = 'playing';
   game.phase = 'aim';
@@ -1766,7 +1851,7 @@ function spawnZ() {
 
 /**
  * Lead with the lesson while there is still one to teach, and otherwise state
- * the contract — which is the one thing the player has to know to play.
+ * the mission — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
   // EVERY ONE OF THESE INTRODUCES A RULE, so every one of them waits to be
@@ -1778,10 +1863,10 @@ function showRoomBanner() {
     hud.showBanner(lesson.title, lesson.sub, HOLD);
     return;
   }
-  const c = rules.contract;
-  // The contract holds until it is tapped away. It is the terms of the room,
+  const c = rules.mission;
+  // The mission holds until it is tapped away. It is the terms of the room,
   // not a report on something already watched, and it decides every shot.
-  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().contractText} · ${c.strokes} shots`, HOLD);
+  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
 }
 
 /** Everything a fresh start clears, minus the room itself. */
@@ -1812,7 +1897,7 @@ function startRun() {
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
   callPocket(null);
-  rules.beginRoom(game.level);
+  beginMission();
   player.respawn(rooms.layout.spawn.x, spawnZ());
   input.setHeading(0, -1);
   showRoomBanner();
@@ -3339,6 +3424,7 @@ function openMenu() {
   menuSettings.hidden = true;
   menuModes.hidden = true;
   showTutorialState();
+  showModesState();
 }
 
 function play() {
@@ -3376,12 +3462,41 @@ $('set-back').addEventListener('click', () => {
 // left the button showing in exactly the build it was written to hide it in.
 // The `typeof` guard survives a config that forgets to define it, and is
 // itself substituted down to a constant in every build that does.
+//
+// THE CARD, NOT THE DOOR. This used to hide the Modes button itself, which was
+// right while every mode was a separate built page. Strict Order is not a page
+// — it is a rule this build can turn on — so hiding the way in would take a
+// working mode away from the one build that cannot get it back.
 if (typeof __SINGLE_FILE__ !== 'undefined' && __SINGLE_FILE__) {
-  $('btn-modes').hidden = true;
+  $('mode-classic').hidden = true;
 }
 $('btn-modes').addEventListener('click', () => {
   menuMain.hidden = true;
   menuModes.hidden = false;
+  showModesState();
+});
+
+/**
+ * The Strict Order card: locked until the player has swept a room in order,
+ * then a toggle. The tag is the whole of its state, so it says which of the
+ * three it is in words rather than by being differently shaped.
+ */
+function showModesState() {
+  const card = $('mode-strict');
+  const tag = $('mode-strict-tag');
+  if (!card || !tag) return;
+  card.classList.toggle('is-current', strictOrder.on);
+  card.disabled = !strictOrder.unlocked;
+  tag.classList.toggle('alt', !strictOrder.on);
+  tag.textContent = !strictOrder.unlocked ? 'Locked' : strictOrder.on ? 'On' : 'Off';
+  card.querySelector('.mode-desc').textContent = strictOrder.unlocked
+    ? 'The order stops being a bonus. Sink one out of turn and it comes back, and the shot pays nothing.'
+    : 'Locked. Sweep a room in order — every ball, lowest first — and it opens.';
+}
+$('mode-strict').addEventListener('click', () => {
+  if (!strictOrder.set(!strictOrder.on)) return;
+  audio.unlock();
+  showModesState();
 });
 $('mode-back').addEventListener('click', () => {
   menuModes.hidden = true;

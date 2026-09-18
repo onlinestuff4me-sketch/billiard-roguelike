@@ -5,7 +5,7 @@
 **Counted from:** the code, not the design doc
 **Companion artifact:** https://claude.ai/artifact/9rueNogQDHaPMHwiQ9dEBP
 
-41 entries — **31 shipped, 3 designed, 7 proposed**. Everything the game can put in
+43 entries — **34 shipped, 3 designed, 6 proposed**. Everything the game can put in
 front of a player, sorted by the two questions that decide where any of it can go:
 *does it change how you aim or in what order you shoot*, and *can the projection line
 still tell the truth about it*.
@@ -39,8 +39,8 @@ not a hard mechanic, it is an unfair one.
 | --- | --- | --- | --- | --- |
 | Draw-the-cue aim | Thumb below the ball; the shot runs `ball − thumb`. Draw distance is power, and the lever arm is longest exactly when the shot matters. | Shipped | the control | free |
 | Projection lines | Four layers: cue path, ghosted rail reflections, a ghost ball at the contact position, the departure line of the ball you would strike, with the cue's tangent at right angles. | Shipped | the promise | free |
-| The contract | A sentence at the top of the screen. Never inferred, never a number to decode. | Shipped | yes — gate 1 | free |
-| Called pocket | A bone-white lip on the pocket the contract names. The only extra state a pocket has. | Shipped | with the contract | free |
+| The mission | A sentence at the top of the screen: *SINK ALL 5 · 8 LAST*. Never inferred, never a number to decode. Called the mission because it is addressed to the player. | Shipped | yes — gate 1 | free |
+| Called pocket | A bone-white lip on the pocket the mission names. The only extra state a pocket has. | Shipped | with the mission | free |
 | Stroke budget | Strokes minus balls is *spare*: +3 in room 1, −2 from room 11. | Shipped | the pressure | free |
 | Saved strokes | 500 × room for every stroke left unspent. The only score source that pays for *not* doing something. | Shipped | payout only | free |
 | Bank multiplier | +1 on the ladder per rail the cue ball takes. | Shipped | payout only | free |
@@ -48,19 +48,27 @@ not a hard mechanic, it is an unfair one.
 | Paid at the drop | A ball pays number × 100 at the multiplier standing *the instant it drops*. Bank before you pot and the same shape pays 40% more. | Shipped | payout only | free |
 | Multi-ball in one stroke | Two balls down on one stroke pay at two different rungs — the first steps the ladder before the second drops. No separate bonus. | Shipped | yes — archetype | free |
 | The 8 goes last | From room 5. Potting it early is a foul: re-spotted, stroke pays nothing. | Shipped | yes — order | free |
-| Scratch | Your own ball down a pocket. The shot pays nothing and you re-spot. | Shipped | with the contract | free |
+| Scratch | Your own ball down a pocket. The shot pays nothing and you re-spot. | Shipped | with the mission | free |
 | Pockets | Six, identical, colourless, in the same six places. Capture zones: the drawn mouth is 1.18× the radius that takes a ball, so what looks in, goes in. | Shipped | architecture | free |
 | Rails | Cushions that reflect, resolved at the exact time of impact rather than out of whatever overlap a frame ended in. | Shipped | architecture | free |
 | Piece scale | One multiplier on every piece radius, 0.78 today, 0.66 the floor. The difficulty axis that teaches nothing new. | Shipped | tuning | free |
 | Hull | Damage only lands while a stroke resolves: mine 12, kickback 10, 8 per ball still standing at the end. | Shipped | payout only | free |
 | Coach road | Arrows along the solving line that brighten as the aim arrives on it, inside a measured window. Tutorial only. | Shipped | teaching | free |
 | Rails count double | A boon making banks worth +2. | **Designed** | payout only | free |
-| **Order contract** | The rack is a sequence and the next ball wears the called ring; touch one out of order and the stroke is void. The 8-last clause generalised from one ball to all of them. | **Proposed** | yes — order | free |
+| The order | Every rack has one — 1, 2, 3, and the 8 last, because the 8 wears the highest number. Sinking them in it is **never required**: the first in order is +1 on the ladder, the second +2, the third and after +3, and breaking it takes nothing away but the streak. | Shipped | yes — gate 1 | free |
+| Clean sweep | A whole rack with nothing out of place pays `500 × room` on its own line of the scorecard. Small on purpose — the order's real income is the ladder it built on the way. | Shipped | payout only | free |
+| Strict order | The same order, made mandatory: out of turn is a foul, the way an early 8 is. A **mode**, never a default, unlocked by sweeping a room in order of your own accord. | Shipped, locked | yes — a mode | free |
 
-**The order contract is the cheapest new mechanic here and the one that changes the
-game most.** It needs no physics and no new line: the preview already knows which ball
-the cue reaches first, so it can turn the drawn line red *before* the stroke is spent.
-Everything else costs a segment rule or an integrator.
+**The order was the cheapest new mechanic here and it is now built.** No physics and no
+new line: the ladder already existed, so the order pays in rungs rather than in a
+separate pot of money, and the HUD names the ball it wants next rather than describing a
+rule. It pays rather than demands because a rule that only takes things away teaches
+nothing — a player who has not yet seen the order just loses to it, where a bonus tells
+them the moment it lands what the game was hoping for.
+
+Still unbuilt on it: the **preview turning red** under strict order before the stroke is
+spent. The projection already knows which ball the cue reaches first, so a refusal never
+has to come as a surprise — see §6.
 
 ---
 
@@ -81,7 +89,7 @@ felt object** — an object ball rolling over a mine would make routing unreadab
 | **Teleporter** | A pair of rings; a ball entering one leaves the other with the same speed and heading, so a pocket with no route suddenly has exactly one. | **Proposed** | yes — aim | a new line |
 | **Black hole · swallower** | A seventh hole that is not yours: takes any ball, cue or object, and pays nothing. A pocket's code with a different verdict. | **Proposed** | yes — routing | free |
 | **Black hole · gravity** | A radial pull that bends a rolling ball as it passes. The most interesting thing here and the most expensive. | **Proposed** | yes — aim | integrate |
-| **Order balls** | The hazard face of the order contract: the out-of-order ball is the trap, and it is the easiest ball on the table to hit. | **Proposed** | yes — order | free |
+| Out of turn | The hazard face of the order, under strict mode: the out-of-turn ball is the trap, and it is usually the easiest ball on the table to hit. Comes straight back, and the shot pays nothing. | Shipped, locked | yes — a mode | free |
 
 **The kicker is already the exception, and it should stay the only one.** Every other
 hazard is visible to the projection before the stroke is spent; the kicker fires a ball
@@ -134,7 +142,7 @@ cannot tell which of the two beat them.
 
 | Room | Gate | Window floor |
 | --- | --- | --- |
-| 1 | The contract | 5.0° |
+| 1 | The mission, and the order that pays | 5.0° |
 | 3 | The Double | 3.0° |
 | 5 | The Mine | 3.5° |
 | 7 | Freeze | 3.0° |
@@ -146,11 +154,11 @@ cannot tell which of the two beat them.
 
 | Room | Gate | Why here |
 | --- | --- | --- |
-| 13 | **The order contract** | First, because it needs nothing built. Three balls, because the lesson is the rule, not the routing — the rack grows in 15. |
-| 15 | **The teleporter** | One pocket with no route, one pair of rings, exactly one heading that uses them. The exit must be on screen with the entrance. |
-| 17 | **The black hole** (swallower) | A hazard *and* a way to lose a target you need. Ships first because it is a pocket with a different verdict. |
-| 19 | **Phantom cue balls** | Three lines from one stroke. Introduced as a felt cell the room can take back, before it is ever a boon you keep. |
-| 21 · 23 | Combinations — no new nouns | An order contract on a table with a teleporter is a different puzzle from either alone. |
+| 13 | **The teleporter** | One pocket with no route, one pair of rings, exactly one heading that uses them. The exit must be on screen with the entrance. |
+| 15 | **The black hole** (swallower) | A hazard *and* a way to lose a target you need. Ships first because it is a pocket with a different verdict. |
+| 17 | **Phantom cue balls** | Three lines from one stroke. Introduced as a felt cell the room can take back, before it is ever a boon you keep. |
+| 19 · 21 · 23 | Combinations — no new nouns | Strict order on a table with a teleporter is a different puzzle from either alone. |
+| — | **Strict order** | Not a room. It is a mode the player unlocks by sweeping a room in order, and from then on it is their choice, on any run. |
 | 14 · 16 · 18 · 20 · 22 · 24 | Procedural | `maxPerRoom: 3` matters far more with ten kinds of object than with six. |
 
 **The room banners in the code still name the old order.** `TUTORIAL.lessons` keys its
@@ -162,12 +170,11 @@ Re-keying that table is part of building the ladder, not a separate job.
 
 ## 6. Before any of it is built
 
-- **The order contract** — what does "void" mean: the stroke pays nothing, or pays
-  nothing *and* costs a stroke? The 8-last precedent says the first. And does the
-  preview refuse to fire, or fire and pay nothing? Refusing is kinder and is a lie about
-  the physics; paying nothing is honest and will feel like a bug the first time.
-  Recommendation: fire, pay nothing, and turn the drawn line red while the player is
-  still aiming so the refusal is never a surprise.
+- **Strict order, and the preview** — built as: the ball comes back and the shot pays
+  nothing, exactly as an early 8 does, which was the 8-last precedent's answer to "what
+  does a refusal cost". What is *not* built is the warning: the projection knows which
+  ball the cue reaches first, so under strict order the drawn line should go red while
+  the player is still aiming. Until it does, the first refusal will read as a bug.
 - **The teleporter** — preserve heading, or mirror it? Preserving makes the pair a
   wormhole and is readable; mirroring is not. Preserve. And does it move object balls,
   or only the cue ball? Every felt object today triggers on the cue ball alone, and

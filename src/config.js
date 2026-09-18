@@ -359,7 +359,7 @@ export const ENEMY = {
 };
 
 /* ------------------------------------------------------------------ *
- * RULES — the billiards layer: contracts, stroke budgets and score
+ * RULES — the billiards layer: missions, stroke budgets and score
  *
  * The redesign turns every room into a static rack. Nothing moves between
  * strokes, so the pressure is not "something is walking at me" but "I have
@@ -448,6 +448,47 @@ export const RULES = {
 
   /** The room where the 8 starts having to go last. */
   eightLastFrom: 5,
+
+  /**
+   * THE ORDER, AND WHY IT PAYS RATHER THAN DEMANDS.
+   *
+   * Every mission's rack has a natural order — 1, 2, 3, and the 8 last,
+   * because the 8 wears the highest number. Sinking them in that order pays
+   * more and is never required, which is the whole design of it: a rule that
+   * only takes things away teaches nothing, because a player who does not yet
+   * see the order just loses to it. A bonus teaches, because the moment it
+   * lands the player learns what the game was hoping for.
+   *
+   * "The 8 goes last" is the one piece of the order that IS mandatory, from
+   * room 5 — so the mandatory version already exists, applied to one ball, and
+   * strict mode is that same rule applied to all of them.
+   */
+  order: {
+    /**
+     * Extra rungs on the ladder for a pot that is next in order, growing with
+     * the streak and capped. One in a row is worth +1, two +2, three or more
+     * +3 — on top of the +1 every pot gets — so a run of them is worth much
+     * more than the same balls in any other sequence.
+     */
+    bonusRung: 1,
+    streakCap: 3,
+    /**
+     * The whole rack, in order, with nothing out of place: pays this times the
+     * room at the end of it, on its own line of the scorecard. Priced at one
+     * saved stroke, deliberately — it should be worth routing for and never
+     * worth more than playing well.
+     */
+    cleanSweep: 500,
+    /**
+     * STRICT: out of order is a foul, the way an early 8 is. Never on by
+     * default and never rolled — it is a mode the player turns on, and it is
+     * locked until they have swept a room in order of their own accord. You
+     * cannot be asked to promise something you have not done once.
+     */
+    strict: false,
+    /** Where the unlock is remembered. */
+    storageKey: 'billiard-strict-order-v1'
+  },
 
   score: {
     /**
@@ -996,7 +1037,7 @@ export const TUTORIAL = {
    * now keyed to the room where that thing genuinely first appears.
    */
   lessons: {
-    1: { title: 'The Contract', sub: 'Knock every ball in · the shots you save are points' },
+    1: { title: 'The Mission', sub: 'Sink every ball · in order pays more, and the shots you save are points' },
     2: { title: 'The Double', sub: 'Green is good · hit it and the shot is worth twice as much' },
     3: { title: 'Mines', sub: 'Red is bad · they only bite your ball, so go around' },
     4: { title: 'The Freeze', sub: 'Three charges · tap while the table is still moving' },
