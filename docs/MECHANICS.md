@@ -5,7 +5,7 @@
 **Counted from:** the code, not the design doc
 **Companion artifact:** https://claude.ai/artifact/9rueNogQDHaPMHwiQ9dEBP
 
-43 entries — **34 shipped, 3 designed, 6 proposed**. Everything the game can put in
+44 entries — **35 shipped, 3 designed, 6 proposed**. Everything the game can put in
 front of a player, sorted by the two questions that decide where any of it can go:
 *does it change how you aim or in what order you shoot*, and *can the projection line
 still tell the truth about it*.
@@ -58,6 +58,7 @@ not a hard mechanic, it is an unfair one.
 | The order | Every rack has one — 1, 2, 3, and the 8 last, because the 8 wears the highest number. Sinking them in it is **never required**: the first in order is +1 on the ladder, the second +2, the third and after +3, and breaking it takes nothing away but the streak. | Shipped | yes — gate 1 | free |
 | Clean sweep | A whole rack with nothing out of place pays `500 × room` on its own line of the scorecard. Small on purpose — the order's real income is the ladder it built on the way. | Shipped | payout only | free |
 | Strict order | The same order, made mandatory: out of turn is a foul, the way an early 8 is. A **mode**, never a default, unlocked by sweeping a room in order of your own accord. | Shipped, locked | yes — a mode | free |
+| The refusal, drawn | A pot the mission would turn away is drawn in red before the stroke — the ball's line, its ghost in the pocket, and the words naming the ball to take instead. Covers the 8-last rule too, which had the same unfairness and nobody had noticed. | Shipped | with the order | free |
 
 **The order was the cheapest new mechanic here and it is now built.** No physics and no
 new line: the ladder already existed, so the order pays in rungs rather than in a
@@ -170,11 +171,14 @@ Re-keying that table is part of building the ladder, not a separate job.
 
 ## 6. Before any of it is built
 
-- **Strict order, and the preview** — built as: the ball comes back and the shot pays
-  nothing, exactly as an early 8 does, which was the 8-last precedent's answer to "what
-  does a refusal cost". What is *not* built is the warning: the projection knows which
-  ball the cue reaches first, so under strict order the drawn line should go red while
-  the player is still aiming. Until it does, the first refusal will read as a bug.
+- **Strict order, and the preview** — both built. A refusal costs what an early 8 costs:
+  the ball comes back and the shot pays nothing. And the warning arrives *before* the
+  stroke — the ball the mission would turn away travels in red, its ghost sits red in the
+  pocket it would drop into, and the mission block reads `THE 1 FIRST` (or `8 GOES LAST`).
+  The preview asks the mission the same question the pot will ask, over the table each
+  earlier pot leaves behind, so a line that sinks the 1 and then the 2 is two legal pots
+  rather than one refusal. `npm run foul` sweeps every heading and holds the drawn line to
+  the mission's verdict in words and in colour.
 - **The teleporter** — preserve heading, or mirror it? Preserving makes the pair a
   wormhole and is readable; mirroring is not. Preserve. And does it move object balls,
   or only the cue ball? Every felt object today triggers on the cue ball alone, and

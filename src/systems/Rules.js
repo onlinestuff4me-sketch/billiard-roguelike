@@ -333,27 +333,70 @@ export class Rules {
    * ---------------------------------------------------------------- */
 
   /**
-   * Is potting this ball legal right now, and if not, why not?
+   * Is potting this ball legal, on a table with these balls still standing and
+   * this many already down?
    *
    * Two rules, and they are the same rule at two strengths. Under an "8 last"
    * mission the 8 is a foul until it is the only ball left. Under STRICT
    * order, every ball but the next one in order is a foul — which is that same
    * sentence with "the 8" replaced by "whatever is next".
    *
-   * @returns {'order'|'eight'|null}
+   * The table is a parameter rather than `this`, because the preview has to
+   * ask the same question about a table that does not exist yet: the second
+   * ball of a two-ball stroke is judged on the table the FIRST one leaves.
+   *
+   * @returns {{reason: 'order'|'eight', next: number|null}|null}
    */
-  foulReason(number) {
+  _foulOn(number, standing, ballsDown) {
     if (this.mission.strictOrder) {
-      const next = this.nextInOrder;
-      return next !== null && number !== next ? 'order' : null;
+      let next = null;
+      for (const n of standing) if (next === null || n < next) next = n;
+      return next !== null && number !== next ? { reason: 'order', next } : null;
     }
     if (!this.mission.eightLast) return null;
     if (number !== RACK.eight) return null;
-    return this.ballsDown < this.mission.rack - 1 ? 'eight' : null;
+    return ballsDown < this.mission.rack - 1 ? { reason: 'eight', next: null } : null;
+  }
+
+  /** @returns {'order'|'eight'|null} */
+  foulReason(number) {
+    return this._foulOn(number, this.standing, this.ballsDown)?.reason ?? null;
   }
 
   isFoul(number) {
     return this.foulReason(number) !== null;
+  }
+
+  /**
+   * WHAT THE MISSION WOULD SAY TO A STROKE THAT HAS NOT HAPPENED YET.
+   *
+   * Given the balls a drawn line claims to sink, in the order it sinks them,
+   * which of them the mission would refuse. This is what lets the preview go
+   * red while the player is still aiming, instead of the refusal arriving
+   * after the stroke is spent — and it walks a COPY of the table, because a
+   * pot that is a foul right now may be perfectly legal by the time the stroke
+   * gets to it: under strict order, sinking the 1 and then the 2 is two legal
+   * pots, and asking about the 2 against the table as it stands today would
+   * call the second one a foul.
+   *
+   * The order is the order the line hands them off in, which is the best a
+   * static projection has: two balls travelling at once can drop in either
+   * order, and nothing drawn before the stroke can know which.
+   *
+   * @param {number[]} numbers
+   * @returns {Array<{reason: 'order'|'eight', next: number|null}|null>}
+   */
+  foulsAhead(numbers) {
+    const standing = new Set(this.standing);
+    let down = this.ballsDown;
+    return numbers.map((number) => {
+      const foul = this._foulOn(number, standing, down);
+      if (!foul) {
+        standing.delete(number);
+        down += 1;
+      }
+      return foul;
+    });
   }
 
   /**

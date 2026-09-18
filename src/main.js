@@ -831,6 +831,10 @@ const game = {
   enemies: [],
   projectiles: [],
   zones: [],
+  /** Ghost balls and words for the drawn line, rebuilt every aim frame. */
+  aimTags: null,
+  /** Why the mission would refuse the drawn line, in words, or null. */
+  aimFoul: null,
   level: PROGRESSION.startRoom,
   running: false,
   /** 'playing' | 'cleared' | 'modal' | 'dead' */
@@ -2341,7 +2345,7 @@ function inkOf(ball) {
  *
  * @returns {Array<{x:number,z:number,r:number,ink:number,text?:string,dim?:boolean}>}
  */
-function aimGhosts(prediction, cuePath, objectPath) {
+function aimGhosts(prediction, cuePath, objectPath, fouls = new Map()) {
   const ghosts = [];
   const pockets = rooms.table.pockets;
 
@@ -2365,7 +2369,9 @@ function aimGhosts(prediction, cuePath, objectPath) {
   }
 
   // EVERY BALL THE SHOT MOVES, at the moment its own journey commits.
-  for (const leg of objectPath ?? []) {
+  const legs = objectPath ?? [];
+  for (let i = 0; i < legs.length; i += 1) {
+    const leg = legs[i];
     if (!leg?.segs?.length) continue;
     // Where this ball finishes: the pocket on its own leg, or — if it handed
     // off and carried on — the pocket at the end of that.
@@ -2374,11 +2380,18 @@ function aimGhosts(prediction, cuePath, objectPath) {
     const rest = leg.tail?.length ? pathEnd(leg.tail) : pathEnd(leg.segs);
     const at = potted ? { x: potted.x, z: potted.z } : contact || rest;
     if (!at) continue;
+    // A POT THE MISSION WOULD REFUSE IS NOT A POT, AND IT SAYS WHY.
+    //
+    // Red alone only says "bad". The word says what to do instead, which is
+    // the whole reason to warn before the stroke rather than after it: "the 3
+    // first" is a thing the player can act on with the cue still in their hand.
+    const foul = fouls.get(i);
     ghosts.push({
       x: at.x,
       z: at.z,
       r: leg.ball?.radius ?? player.radius,
-      ink: inkOf(leg.ball),
+      ink: foul ? PALETTE.bad : inkOf(leg.ball),
+      text: foul ? (foul.reason === 'eight' ? '8 GOES LAST' : `THE ${foul.next} FIRST`) : undefined,
       // "This one goes in" is a different claim from "this one ends up here",
       // and the pocket it goes in is usually the brightest thing on the table.
       // The renderer gives it weight and takes it out of the bloom.
@@ -2386,6 +2399,35 @@ function aimGhosts(prediction, cuePath, objectPath) {
     });
   }
   return ghosts;
+}
+
+/**
+ * WHICH OF THE BALLS THIS LINE SINKS THE MISSION WOULD TURN AWAY.
+ *
+ * Keyed by leg index, so the drawing can colour exactly the leg that is the
+ * problem and leave the rest of the shot in its own colours — a whole preview
+ * gone red would say "this shot is wrong" when what is true is "this one ball
+ * is early".
+ *
+ * Lessons are exempt for the same reason they are exempt from the foul itself:
+ * the tutorial racks boards with whatever numbers a board needs and never
+ * begins a room, so the mission's idea of what is next is about a rack that is
+ * not on the table.
+ */
+function foulPreview(objectPath) {
+  const out = new Map();
+  if (tutorial.running || !objectPath?.length) return out;
+  const sinking = [];
+  objectPath.forEach((leg, i) => {
+    const number = leg?.ball?.number ?? 0;
+    if (number > 0 && (leg.pocket || leg.tailPocket)) sinking.push({ i, number });
+  });
+  if (!sinking.length) return out;
+  const reasons = rules.foulsAhead(sinking.map((x) => x.number));
+  sinking.forEach((x, k) => {
+    if (reasons[k]) out.set(x.i, reasons[k]);
+  });
+  return out;
 }
 
 /* ------------------------------------------------------------------ *
@@ -2706,9 +2748,19 @@ if (typeof window !== 'undefined') {
     const objectPath = projectObjectPath(pred, cuePath);
     const cueSegs = cuePath?.segments?.length ? cuePath.segments : pred?.segments;
     const scratch = cuePath ? cuePath.pocket : pred?.pocket ?? null;
+    const fouls = foulPreview(objectPath);
     return {
       heading: headingDeg,
       power,
+      /**
+       * WHAT THE MISSION SAYS ABOUT THIS LINE, in the words the player is
+       * shown and in the colour the felt uses. Both come from the refresh
+       * above rather than from a second opinion formed here, so a check can
+       * hold the drawn line to the verdict the game actually reached.
+       */
+      foul: game.aimFoul,
+      foulLegs: [...fouls.keys()],
+      legInks: (objectPath ?? []).map((leg, i) => (fouls.has(i) ? PALETTE.bad : inkOf(leg.ball))),
       // The approach, then the departure: the whole of the cue's drawn line.
       cue: {
         approach: (pred?.segments ?? []).map((s) => [s.ax, s.az, s.bx, s.bz]),
@@ -3062,14 +3114,22 @@ function refreshPrediction() {
   // ONE LIST, TWO RENDERERS. The ghost balls on the felt and the labels on the
   // UI layer are both drawn from these, so the shape you see and the words
   // next to it can never end up describing different places.
-  game.aimTags = aimGhosts(prediction, cuePath, objectPath);
+  const fouls = foulPreview(objectPath);
+  // The words that go with the red line. The first refusal is the one that
+  // matters: it is the one the stroke reaches first, and fixing it is what the
+  // player is about to do.
+  const first = fouls.values().next().value;
+  game.aimFoul = first ? (first.reason === 'eight' ? '8 GOES LAST' : `THE ${first.next} FIRST`) : null;
+  game.aimTags = aimGhosts(prediction, cuePath, objectPath, fouls);
   player.showTrajectory(prediction, {
     pockets: rooms.table.pockets,
     power: player.aimPower,
     cuePath,
     objectPath,
-    // One hue per leg, taken from the ball travelling it.
-    legInks: objectPath.map((leg) => inkOf(leg.ball)),
+    // One hue per leg, taken from the ball travelling it — except a ball the
+    // mission would refuse, which travels in red. The line is the promise, so
+    // the line is where a refusal has to appear.
+    legInks: objectPath.map((leg, i) => (fouls.has(i) ? PALETTE.bad : inkOf(leg.ball))),
     ghosts: game.aimTags
   });
 }
@@ -3133,6 +3193,7 @@ const input = new InputManager(stage, {
     } else {
       player.hideTrajectory();
       game.aimTags = null;
+      game.aimFoul = null;
     }
   },
   onAimCancel: () => {
@@ -3673,8 +3734,12 @@ function frame(now) {
       if (aim) {
         noteAimPower(aim);
         player.updateAim(aim);
-        if (aim.valid) refreshPrediction();
-        else player.hideTrajectory();
+        if (aim.valid) {
+          refreshPrediction();
+        } else {
+          player.hideTrajectory();
+          game.aimFoul = null;
+        }
       }
     } else if (
       game.state === 'playing' &&
@@ -3707,6 +3772,9 @@ function frame(now) {
       refreshPrediction();
     } else {
       player.hideTrajectory();
+      // NOTHING DRAWN, NOTHING WARNED. The refusal belongs to a line; with no
+      // line on the felt it is a red sentence about a shot nobody is taking.
+      game.aimFoul = null;
     }
 
     const snapshot = rules.snapshot();
@@ -3719,6 +3787,8 @@ function frame(now) {
         phase: game.phase,
         midStroke: game.midStroke,
         cleared: game.state === 'cleared',
+        // What the drawn line would be refused for, if anything.
+        aimFoul: game.aimFoul,
         ...snapshot
       },
       rawDt

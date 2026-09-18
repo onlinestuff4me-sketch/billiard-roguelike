@@ -78,6 +78,7 @@ export class HUD {
      */
     this.missionOrder = el('div', 'mission-order', missionBlock);
 
+
     const scoreBlock = el('div', 'hud-score', top);
     el('div', 'hud-label', scoreBlock).textContent = 'Run';
     this.scoreValue = el('div', 'score-value', scoreBlock);
@@ -423,11 +424,23 @@ export class HUD {
       else if (!s.orderBroken) order = `NEXT ${next} · IN ORDER PAYS`;
       else order = `NEXT ${next}`;
     }
-    if (order !== cache.order) {
-      cache.order = order;
+    // A REFUSAL THE PREVIEW HAS SEEN, while the thumb is still down.
+    //
+    // The felt turns the offending line red; these words say which ball to
+    // take instead, because red alone only says "bad". It arrives in the
+    // snapshot like everything else here — the game decides what is true, the
+    // HUD only draws it — and it takes the slot over, since while the drawn
+    // shot would be turned away there is nothing more useful this line can be
+    // saying. The words live here because the tag layer that carries SCRATCH
+    // only runs during a lesson.
+    const warned = !!s.aimFoul && !s.cleared;
+    if (warned) order = s.aimFoul;
+    const orderKey = `${warned ? '!' : ''}${order}|${streak}`;
+    if (orderKey !== cache.order) {
+      cache.order = orderKey;
       this.missionOrder.textContent = order;
-      this.missionOrder.classList.toggle('on', !s.strictOrder && streak > 0);
-      this.missionOrder.classList.toggle('strict', !!s.strictOrder);
+      this.missionOrder.classList.toggle('on', !warned && !s.strictOrder && streak > 0);
+      this.missionOrder.classList.toggle('strict', warned || !!s.strictOrder);
       this.missionOrder.hidden = !order;
     }
 
