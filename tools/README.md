@@ -217,6 +217,23 @@ two runs in three: a heading is EASED toward, so the line a hand settles on is a
 fraction off the one the sweep found, and a fraction is enough to sink a different ball.
 The thumb is a good way to test the input and a bad way to test a verdict.
 
+## `npm run portal`
+
+A portal is the first thing on this table whose route is not a line: a ball whose
+centre reaches one ring is translated by the vector between the two, keeping its
+heading, its speed and its offset from the ring's centre. Two pieces of code have to
+believe exactly the same thing about that — the table, which resolves it at the
+crossing inside a sub-step, and the preview, which solves the crossing on the drawn
+line — and the whole value of this game's aiming rests on them agreeing.
+
+This adds a pair to a lesson table at run time and sweeps: every heading, drawn and
+then played, compared on the two things a preview is read for. It found the bug it
+was written to find. The translation lands a ball exactly ON the far ring, which is a
+floating-point coin toss between inside and outside — and just outside, moving
+inward, is a fresh entry, so the preview went through, came straight back, and drew
+the rest of the shot from where it had started. **77.6%** of headings through a
+portal agreed before the fix and **100%** after it.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -239,6 +256,7 @@ underneath it.
 - `check-scoring.mjs` — the ladder pays for what happened (no browser needed).
 - `check-editor.mjs` — the editor's instruments agree with these ones.
 - `check-foul.mjs` — the line goes red before the stroke, not after it.
+- `check-portal.mjs` — a line through a portal is still a promise.
 - `../tool/measure.js` — the editor's side of it: the frame, and the driving.
 
 ## Beyond the tutorial

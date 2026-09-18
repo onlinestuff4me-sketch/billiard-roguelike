@@ -156,6 +156,11 @@ export class RoomManager {
       restitution: o.kind === 'bumper' ? 1.0 : undefined
     }));
     this.buildLayoutMeshes();
+    // Portals are part of the TABLE, not of what gets rolled onto it: a pair of
+    // rings is a route the author drew, the way a barrier is a wall the author
+    // drew, and a route the director could invent would be a route nobody has
+    // ever checked is worth taking.
+    for (const pair of this.layout.portals || []) this.table.addPortal(pair.a, pair.b);
 
     // --- 2. the mission, and the table it is played on ---------------
     this.mission = missionFor(level);
@@ -363,6 +368,7 @@ export class RoomManager {
     for (const object of spec.objects || []) {
       this.table.addObject(object.kind, object.x, object.z, object);
     }
+    for (const pair of spec.portals || []) this.table.addPortal(pair.a, pair.b);
 
     this.scriptedEnemies = this.spawnScripted(spec.enemies || []);
 

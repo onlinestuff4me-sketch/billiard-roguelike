@@ -115,6 +115,19 @@ function glyphTexture(kind, hex) {
     ctx.beginPath();
     ctx.arc(c, c + k * 0.46, size * 0.035, 0, Math.PI * 2);
     ctx.fill();
+  } else if (kind === 'portal') {
+    // TWO ARCS FACING EACH OTHER, with the way through between them. The one
+    // glyph on the felt that is a pair rather than a thing, because a portal
+    // on its own is not a portal.
+    ctx.beginPath();
+    ctx.arc(c, c, k * 0.86, Math.PI * 0.62, Math.PI * 1.38);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(c, c, k * 0.86, Math.PI * 1.62, Math.PI * 0.38);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(c, c, size * 0.045, 0, Math.PI * 2);
+    ctx.fill();
   } else if (kind === 'kicker') {
     ctx.beginPath();
     ctx.moveTo(c + k * 0.72, c - k); ctx.lineTo(c - k * 0.82, c); ctx.lineTo(c + k * 0.72, c + k);
@@ -151,6 +164,13 @@ export class Table {
     }));
     /** @type {Array<object>} */
     this.objects = [];
+    /**
+     * Pairs of rings. Architecture, like the pockets — authored with the table
+     * and never spent — so they live beside the objects rather than among
+     * them, and nothing that arms, consumes or rolls an object can reach one.
+     * @type {Array<{a: object, b: object}>}
+     */
+    this.portals = [];
   }
 
   clear() {
@@ -166,6 +186,139 @@ export class Table {
       });
     }
     this.objects = [];
+    this.portals = [];
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Portals
+   * ---------------------------------------------------------------- */
+
+  /**
+   * A pair of rings that are the same opening in two places.
+   *
+   * Authored as a PAIR rather than as two objects that name each other: a
+   * portal with one end is not a thing this game has, and a data shape that
+   * can express one is a data shape somebody will eventually ship.
+   *
+   * @param {{x:number,z:number}} a
+   * @param {{x:number,z:number}} b
+   */
+  addPortal(a, b, opts = {}) {
+    const radius = opts.radius ?? TABLE.portal.radius;
+    const portal = { radius };
+    portal.a = { x: a.x, z: a.z, radius, portal, end: 'a' };
+    portal.b = { x: b.x, z: b.z, radius, portal, end: 'b' };
+    portal.a.twin = portal.b;
+    portal.b.twin = portal.a;
+    portal.meshes = this._buildPortal(portal);
+    this.portals.push(portal);
+    return portal;
+  }
+
+  /** Both ends of every portal, as a flat list of rings. */
+  get portalRings() {
+    const rings = [];
+    for (const portal of this.portals) rings.push(portal.a, portal.b);
+    return rings;
+  }
+
+  /**
+   * Where this step first reaches a portal, and where it comes out.
+   *
+   * Entry is on the CENTRE, the same test a pocket uses, because a rule the
+   * preview and the table have to agree on to the millimetre cannot afford a
+   * fudge factor in one of them.
+   *
+   * A ball standing INSIDE a ring is left alone, which is the only state this
+   * needs: a portal puts a ball a skin's depth inside the far ring, so the
+   * ring it came out of cannot read as a ring it is entering, and neither side
+   * has to remember anything.
+   *
+   * @returns {{ring: object, twin: object, portal: object, t: number, x: number,
+   *            z: number, dx: number, dz: number} | null}
+   */
+  portalAlong(ax, az, bx, bz) {
+    const dx = bx - ax;
+    const dz = bz - az;
+    const len = Math.hypot(dx, dz);
+    if (len < 1e-9) return null;
+    const ux = dx / len;
+    const uz = dz / len;
+    let best = null;
+    for (const ring of this.portalRings) {
+      const mx = ax - ring.x;
+      const mz = az - ring.z;
+      const b = mx * ux + mz * uz;
+      const c = mx * mx + mz * mz - ring.radius * ring.radius;
+      // Already inside: either it came out here, or something put it there.
+      // Either way a portal moves what ARRIVES at it, never what is standing
+      // in it — see the standoff in PhysicsSystem.resolvePortals.
+      if (c <= 0) continue;
+      if (b > 0) continue;
+      const disc = b * b - c;
+      if (disc < 0) continue;
+      const t = -b - Math.sqrt(disc);
+      if (t < 0 || t > len) continue;
+      if (!best || t < best.t) best = { ring, t };
+    }
+    if (!best) return null;
+    const ring = best.ring;
+    return {
+      ring,
+      twin: ring.twin,
+      portal: ring.portal,
+      t: best.t,
+      x: ax + ux * best.t,
+      z: az + uz * best.t,
+      // The translation itself: every portal does this and nothing else.
+      dx: ring.twin.x - ring.x,
+      dz: ring.twin.z - ring.z
+    };
+  }
+
+  /**
+   * Two rings and the thread between them.
+   *
+   * The thread is the whole design of it: "where does this send me" is the one
+   * question a portal has to answer before it is used, and no arrangement of a
+   * single ring answers it. Dotted and dim, in the table's own teal, so it
+   * reads as part of the furniture rather than as a line somebody drew.
+   */
+  _buildPortal(portal) {
+    const group = new THREE.Group();
+    for (const end of [portal.a, portal.b]) {
+      const ring = this._buildMesh({
+        kind: 'portal',
+        color: PALETTE.lip,
+        x: end.x,
+        z: end.z,
+        radius: end.radius
+      });
+      end.meshes = ring;
+    }
+    const dx = portal.b.x - portal.a.x;
+    const dz = portal.b.z - portal.a.z;
+    const span = Math.hypot(dx, dz);
+    const dots = Math.max(2, Math.round(span / 1.1));
+    const mat = new THREE.MeshBasicMaterial({
+      color: PALETTE.lip,
+      transparent: true,
+      // Bright enough to follow across a table, dim enough that it never reads
+      // as a line somebody drew: measured off a screenshot at 0.22, where it
+      // was not there at all.
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    for (let i = 1; i < dots; i += 1) {
+      const f = i / dots;
+      const dot = new THREE.Mesh(new THREE.CircleGeometry(0.12, 10), mat);
+      dot.rotation.x = -Math.PI / 2;
+      dot.position.set(portal.a.x + dx * f, 0.12, portal.a.z + dz * f);
+      group.add(dot);
+    }
+    this.group.add(group);
+    return group;
   }
 
   /* ---------------------------------------------------------------- *
@@ -399,6 +552,12 @@ export class Table {
     }
     for (const object of this.objects) {
       if (Math.hypot(x - object.x, z - object.z) < object.radius + radius + 0.6) return true;
+    }
+    // A ball racked inside a portal is a ball standing in a doorway: the
+    // first thing to touch it disappears, which is not a puzzle, it is a
+    // surprise.
+    for (const ring of this.portalRings) {
+      if (Math.hypot(x - ring.x, z - ring.z) < ring.radius + radius + 0.6) return true;
     }
     return false;
   }

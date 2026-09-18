@@ -575,6 +575,36 @@ export const TABLE = {
   },
 
   /**
+   * PORTALS — a pair of rings, and the one route that is not a line.
+   *
+   * A ball whose centre reaches one ring is TRANSLATED by the vector between
+   * the two: same heading, same speed, same distance off the ring's centre.
+   * The whole path is picked up and put down somewhere else, which is the only
+   * rule here a player can hold in their head while aiming — "through this one
+   * is out of that one, parallel" — and the only one the projection can draw
+   * without a word of explanation.
+   *
+   * It is ARCHITECTURE, not a pick-up: authored with the table rather than
+   * rolled onto it, never spent, and drawn in the table's own colours because
+   * colour in this game says what a thing does to your SCORE, and a portal
+   * does nothing to your score at all.
+   *
+   * Called a PORTAL and never a gate, because a gate in this project is a room
+   * — the authored puzzle where a mechanic is introduced (see
+   * docs/PROGRESSION.md), and "the gate at gate 13 has a gate in it" is a
+   * sentence nobody should have to read twice.
+   */
+  portal: {
+    radius: 1.35,
+    /**
+     * How many times one drawn line may pass through portals. A ball can
+     * always be sent back where it came from by a cushion, so without a
+     * ceiling a preview could loop; four is more than any real shot uses.
+     */
+    maxPasses: 4
+  },
+
+  /**
    * FELT OBJECTS. One form — a dashed outline around a hollow interior — and
    * two meanings. Mint is a pick-up you want to hit; red is a hazard to route
    * around. The glyph says which one.

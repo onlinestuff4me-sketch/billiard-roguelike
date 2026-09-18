@@ -151,6 +151,9 @@ export async function useBoard(record, say = () => {}) {
   L.room.obstacles = clone(record.obstacles || []);
   L.room.enemies = clone(record.enemies || []);
   L.room.objects = clone(record.objects || []);
+  // Portals are architecture, so a board measured without the pair it carries
+  // is a board measured on a different table.
+  L.room.portals = clone(record.portals || []);
   L.room.goal = record.goal || null;
   t._buildRoom();
   await sleep(140);

@@ -19,7 +19,7 @@
  *   6. projectiles ↔ player / geometry
  */
 
-import { ARENA, PHYSICS, TIME, TRAJECTORY, PLAYER, RULES } from '../config.js';
+import { ARENA, PHYSICS, TIME, TRAJECTORY, PLAYER, RULES, TABLE } from '../config.js';
 // Shared state vocabulary. Systems may read entity constants; entities never
 // import systems, which is what keeps the dependency graph acyclic.
 import { ENEMY_STATE } from '../entities/Enemy.js';
@@ -377,11 +377,81 @@ export class PhysicsSystem {
 
     if (game.zones && game.zones.length) this.resolveZones(h, game);
 
+    // PORTALS LAST OF THE MOVERS, and for the same reason pockets are last of
+    // all: a translation moves a ball somewhere else entirely, so anything
+    // resolved after one is resolved against a table the ball is no longer on.
+    // A contact the portal jumped over is not lost — the ball is now on the far
+    // side of the ring with the rest of its speed, and meets whatever is there
+    // on the next sub-step, a fiftieth of a unit later.
+    if (game.table?.portals?.length) {
+      if (player && player.alive) this.resolvePortals(player, game.table);
+    }
+
     // Pockets and felt objects are tested last, once every body is where this
     // sub-step leaves it. A ball is taken by its CENTRE reaching a pocket, so
     // the rails can keep reflecting normally and the trajectory preview stays
     // exactly as trustworthy as it was.
     if (game.table) this.resolveTable(game);
+  }
+
+  /* ---------------------------------------------------------------- *
+   * Portals
+   * ---------------------------------------------------------------- */
+
+  /**
+   * A ball whose step reaches a ring comes out of the other one, carrying its
+   * heading, its speed and its offset from the ring's centre — the whole path
+   * picked up and put down somewhere else.
+   *
+   * Resolved at the crossing rather than at the end of the step, like every
+   * other contact in this file, because the preview solves the exact crossing
+   * and a table that teleports a fiftieth of a second late is a table that
+   * disagrees with the line the player was shown.
+   *
+   * ONLY THE CUE BALL, which is the rule every felt object already follows: a
+   * rack that can vanish mid-stroke makes routing unreadable, and the whole
+   * point of the felt is that YOUR ball's path is the thing you are choosing.
+   */
+  resolvePortals(body, table) {
+    let last = null;
+    // TWICE, for the same reason the rails resolve twice: the rest of a step
+    // spent on the far side can reach a second ring.
+    for (let pass = 0; pass < 2; pass += 1) {
+      const step = this._step(body);
+      if (!step) break;
+      const hit = table.portalAlong(step.x, step.z, body.x, body.z);
+      if (!hit) break;
+
+      const left = this._rewind(body, step, hit.t);
+      // The leg from here to where the ball comes out is the one nothing may
+      // read as travel.
+      const jump = Math.max(0, (body.stepTrailN || 1) - 1);
+      body.x += hit.dx;
+      body.z += hit.dz;
+      // Inside the far ring by a skin, so the ring it came out of cannot read
+      // as a ring it is entering. See the same standoff in the preview.
+      const sp = Math.hypot(body.vx, body.vz) || 1;
+      body.x += (body.vx / sp) * PHYSICS.skin;
+      body.z += (body.vz / sp) * PHYSICS.skin;
+      this._trailPush(body);
+      body.stepTrailJump |= 1 << jump;
+      // THE RIBBON BREAKS WHERE THE BALL DOES. The streak behind the cue ball
+      // is a list of the places it has been, so a jump would be drawn as one
+      // long bar across the table — the only thing on screen claiming the ball
+      // went through the middle of it.
+      body.trail?.clear?.();
+      const cx = body.x;
+      const cz = body.z;
+      // Whatever was left of the step, spent from the far ring on the same
+      // heading — so passing through costs the ball nothing but the distance
+      // it would have travelled anyway.
+      body.x += body.vx * left;
+      body.z += body.vz * left;
+      this._trailPush(body);
+      this._rebase(body, cx, cz, left);
+      last = hit;
+    }
+    return last;
   }
 
   /* ---------------------------------------------------------------- *
@@ -401,10 +471,14 @@ export class PhysicsSystem {
 
     // ALONG THE PATH, not at the end of it. See Table.pocketAlong.
     const walk = (body, fn) => {
-      const t = body.trail;
-      const n = body.trailN || 0;
+      const t = body.stepTrail;
+      const n = body.stepTrailN || 0;
       if (!t || n < 2) return fn(body.x, body.z, body.x, body.z);
+      const jumps = body.stepTrailJump || 0;
       for (let k = 1; k < n; k++) {
+        // A portal's leg joins two places the ball was without being anywhere in
+        // between. See `_trailStart`.
+        if (jumps & (1 << (k - 1))) continue;
         const out = fn(t[(k - 1) * 2], t[(k - 1) * 2 + 1], t[k * 2], t[k * 2 + 1]);
         if (out) return out;
       }
@@ -604,30 +678,43 @@ export class PhysicsSystem {
 
   /* THE PATH A SUBSTEP ACTUALLY TOOK, corner by corner.
    *
+   * `stepTrail`, not `trail`: the player entity already owns a `trail`, the
+   * ribbon drawn behind the ball, and these two have been sharing one property
+   * since the day this was written — it happened to work because a JS object
+   * takes numeric keys, so the coordinates were being stored on the ribbon.
+   * A portal needs both of them in the same breath (break the ribbon, skip the
+   * leg) and two things that need telling apart should have two names.
+   *
    * Pockets and pads are tested against this rather than against the point the
    * step ended on, and a step with a cushion in the middle of it is a bent
    * line, not a chord — testing the chord would drop a ball into the corner
    * pocket it banked cleanly past. Four corners is more than any one substep
    * can produce. */
   _trailStart(body) {
-    if (!body.trail) body.trail = new Float64Array(12);
-    body.trail[0] = body.x;
-    body.trail[1] = body.z;
-    body.trailN = 1;
+    if (!body.stepTrail) body.stepTrail = new Float64Array(12);
+    body.stepTrail[0] = body.x;
+    body.stepTrail[1] = body.z;
+    body.stepTrailN = 1;
+    // WHICH OF THIS STEP'S LEGS WERE NOT TRAVELLED. A portal moves a ball from
+    // one ring to the other without crossing what is between them, so the leg
+    // joining the two is a bookkeeping line, not a path: anything that reads
+    // the trail as "where this body went" — pockets, pads — has to step over
+    // it, or a portal becomes a way of potting balls halfway across the table.
+    body.stepTrailJump = 0;
   }
 
   _trailPush(body) {
-    if (!body.trail || body.trailN >= 6) return;
-    body.trail[body.trailN * 2] = body.x;
-    body.trail[body.trailN * 2 + 1] = body.z;
-    body.trailN += 1;
+    if (!body.stepTrail || body.stepTrailN >= 6) return;
+    body.stepTrail[body.stepTrailN * 2] = body.x;
+    body.stepTrail[body.stepTrailN * 2 + 1] = body.z;
+    body.stepTrailN += 1;
   }
 
   /** Move the last recorded corner to wherever the body has just been put. */
   _trailMoveLast(body) {
-    if (!body.trail || !body.trailN) return;
-    body.trail[(body.trailN - 1) * 2] = body.x;
-    body.trail[(body.trailN - 1) * 2 + 1] = body.z;
+    if (!body.stepTrail || !body.stepTrailN) return;
+    body.stepTrail[(body.stepTrailN - 1) * 2] = body.x;
+    body.stepTrail[(body.stepTrailN - 1) * 2 + 1] = body.z;
   }
 
   /** The straight line this step travelled, or null if there was none. */
@@ -1359,6 +1446,12 @@ export class PhysicsSystem {
     // dropped in — the single largest source of scratches the preview never
     // warned about. A pocket ends the line.
     const pockets = opts.pockets || [];
+    // THE ONE ROUTE THAT IS NOT A LINE. A portal translates the ball by the
+    // vector between its rings, so the drawn line is cut at one and resumes,
+    // parallel, at the other. Handed in the same way the pockets are: a caller
+    // that does not pass them gets the table without them, which is every
+    // caller that is projecting something other than the cue ball.
+    const portals = opts.portals || [];
     // A cushion charges a struck ball more than it charges the cue (0.82
     // against 0.96), so a preview that used one number for both drew object
     // legs running a third further than the ball goes.
@@ -1394,6 +1487,7 @@ export class PhysicsSystem {
 
     let remaining = budget();
     let bounces = 0;
+    let passes = 0;
 
     while (remaining > EPS && bounces <= maxBounces) {
       // --- nearest body -------------------------------------------------
@@ -1471,9 +1565,68 @@ export class PhysicsSystem {
         }
       }
 
+      // --- nearest portal ---------------------------------------------------
+      // On the CENTRE, like a pocket and like the table's own test: a rule the
+      // preview and the table have to agree on to the millimetre cannot afford
+      // a fudge factor in one of them.
+      let portalT = Infinity;
+      let portalRef = null;
+      for (let i = 0; i < portals.length; i++) {
+        const ring = portals[i];
+        // ALREADY INSIDE IS NOT ARRIVING, which is `Table.portalAlong`'s rule and
+        // has to be this one too. A swept circle started inside another one
+        // reports a contact at zero, so without this the line came out of the
+        // far ring and read that ring as a fresh entry — straight back, and
+        // again, four times over.
+        const mx = px - ring.x;
+        const mz = pz - ring.z;
+        if (mx * mx + mz * mz <= ring.radius * ring.radius) continue;
+        const t0 = sweepCircleCircle(px, pz, dx, dz, 0, ring.x, ring.z, ring.radius);
+        if (t0 < portalT) {
+          portalT = t0;
+          portalRef = ring;
+        }
+      }
+
       // --- resolve the nearest event ------------------------------------
       const bodyFirst = bodyT <= geomT;
       const t = Math.min(bodyT, geomT, remaining);
+
+      if (portalRef && portalT <= Math.min(t, remaining) && portalT <= pocketT && passes < TABLE.portal.maxPasses) {
+        // To the ring, then on from the far one. The two legs are separate
+        // segments with nothing drawn between them: the ball is never on the
+        // line joining the rings, and a preview that drew one would be
+        // promising a pot it cannot make.
+        const ex = px + dx * portalT;
+        const ez = pz + dz * portalT;
+        segments.push({ ax: px, az: pz, bx: ex, bz: ez, bounce: bounces, kind: 'portal' });
+        result.totalDistance += portalT;
+        if (speed !== null) {
+          speed = speedAfterDistance(speed, portalT, drag);
+          result.endSpeed = speed;
+          remaining = budget();
+        } else {
+          remaining -= portalT;
+        }
+        // A STANDOFF, INWARD, and it is the whole of what stops a portal sending
+        // a ball back where it came from.
+        //
+        // The translation lands the ball exactly ON the far ring, which is a
+        // floating-point coin toss between "just inside" and "just outside" —
+        // and just outside, moving inward, is a fresh entry. Measured, the
+        // preview took that second entry on a fifth of all headings through a portal and
+        // drew the line carrying on from where it had started: through the
+        // portal, back out of it, and off in the wrong direction.
+        //
+        // Both this and the table step a skin's depth inside instead, which
+        // makes "am I already in this ring" the only state either of them
+        // needs — no mute, no memory, nothing to keep in step.
+        px = ex + (portalRef.twin.x - portalRef.x) + dx * PHYSICS.skin;
+        pz = ez + (portalRef.twin.z - portalRef.z) + dz * PHYSICS.skin;
+        passes += 1;
+        result.portals = (result.portals || 0) + 1;
+        continue;
+      }
 
       if (pocketRef && pocketT <= Math.min(t, remaining)) {
         // TO THE LIP, AND THE VERDICT SEPARATELY.

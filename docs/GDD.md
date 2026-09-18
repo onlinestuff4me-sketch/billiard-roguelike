@@ -220,6 +220,23 @@ Only the cue ball triggers them. An object ball rolling over a mine would make
 routing unreadable, and half the point of the felt is that *your* ball's path is
 the thing you are choosing.
 
+### 4.2a Portals
+
+A pair of rings, authored with the table. **A ball whose centre reaches one is
+translated by the vector between them** — same heading, same speed, same offset
+from the ring's centre — so the whole path is picked up and put down parallel to
+itself. A dotted thread joins the pair, because "where does this send me" is the
+one question a portal has to answer before it is used.
+
+They are architecture, not pick-ups: part of the table like a barrier, never
+rolled onto it by the director, never spent, and drawn in the table's own teal —
+colour here says what a thing does to your **score**, and a portal does nothing
+to your score at all. Only the cue ball goes through one, which is the rule every
+felt object already follows.
+
+The preview draws the line through the pair: cut at one ring, resumed at the
+other. `npm run portal` measures that the drawn line and the played shot agree.
+
 ### 4.3 The rack
 
 Every ball is numbered, because the mission talks about them by name and the

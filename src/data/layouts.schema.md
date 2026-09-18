@@ -16,6 +16,7 @@ over the top and rebuild.
       "name": "Open Arena",            // shown in the HUD and the editor
       "tags": ["dense", "carom"],      // bias what the director rolls here
       "obstacles": [ /* see below */ ],
+      "portals":  [ /* optional — see below */ ],
       "anchors":  [ { "x": 0, "z": -8 } ],
       "spawn":    { "x": 0, "z": 11 },
       "waves":    [ /* optional — see below */ ]
@@ -35,6 +36,33 @@ World units, matching `ARENA` in `src/config.js`:
 
 The table is 18 × 32 units — the same 9:16 as the portrait viewport. One unit is
 roughly the radius of a small enemy.
+
+## `portals`
+
+A pair of rings that are the same opening in two places. A ball whose centre
+reaches one is translated by the vector between them — same heading, same speed,
+same offset from the ring's centre — so the whole path is picked up and put down
+somewhere else, parallel to itself.
+
+```jsonc
+"portals": [
+  { "a": { "x": -5.6, "z": 5.5 }, "b": { "x": 5.6, "z": -13.2 } }
+]
+```
+
+Authored as a **pair**, never as two rings that name each other: a portal with
+one end is not a thing this game has, and a data shape that can express one is a data
+shape somebody will eventually ship.
+
+Portals are architecture — part of the table, like a barrier, never rolled onto it
+by the director and never spent. They are drawn in the table's own teal because
+colour here says what a thing does to your *score*, and a portal does nothing to
+your score at all. Only the cue ball goes through one, which is the rule every
+felt object already follows.
+
+Keep a ring at least a couple of units clear of every pocket and obstacle: a rack
+will not be dealt inside one (`Table.blocked` knows about them), but a ring
+overlapping a pocket mouth is a coin toss between two rules.
 
 ## `obstacles`
 

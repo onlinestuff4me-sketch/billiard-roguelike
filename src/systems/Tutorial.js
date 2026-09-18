@@ -337,6 +337,8 @@ export const LESSONS = lessonData.lessons.map((table) => ({
     enemies: table.enemies || [],
     // Pockets are static architecture; only the felt objects are per-board.
     objects: table.objects || [],
+    // Portals are architecture too, and a board may carry a pair.
+    portals: table.portals || [],
     goal: table.goal || null
   }
 }));

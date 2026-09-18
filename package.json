@@ -17,7 +17,8 @@
     "scoring": "node tools/check-scoring.mjs",
     "aim": "node tools/check-aim.mjs",
     "editor": "node tools/check-editor.mjs",
-    "foul": "node tools/check-foul.mjs"
+    "foul": "node tools/check-foul.mjs",
+    "portal": "node tools/check-portal.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"
