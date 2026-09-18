@@ -80,7 +80,7 @@ billiard-roguelike/
     │   └── Enemy.js           archetypes: Solid · Stripe · Heavy Eight-Ball
     ├── systems/
     │   ├── PhysicsSystem.js   sweeps · rebounds · caroms · pockets · prediction
-    │   ├── Rules.js           contracts · stroke budget · multiplier ladder · score
+    │   ├── Rules.js           missions · stroke budget · multiplier ladder · score
     │   ├── Table.js           six typed pockets · gold rings · gates · cells · mines
     │   ├── Tutorial.js        the six teaching boards
     │   ├── BoonSystem.js      4-phase hook registry · build state · offer roller

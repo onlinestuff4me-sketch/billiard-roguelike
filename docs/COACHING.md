@@ -368,7 +368,7 @@ preview is redrawn every frame, so hiding it on completion lasted exactly one
 frame; it is gated on `awaitingNext` now, because a bright cue line lying
 across a dimmed table is the loudest way a finished board goes on looking live.
 
-**Two things moved to make room.** The hull readout joins the contract, score
+**Two things moved to make room.** The hull readout joins the mission, score
 and stroke readouts in hiding during a lesson — it states a number nothing
 enforces on an unfailable board, and its band is where the two far corner
 pockets live, which two of the six boards call. Skip moved out of the top-right

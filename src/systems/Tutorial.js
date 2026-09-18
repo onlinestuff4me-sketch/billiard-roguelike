@@ -423,7 +423,7 @@ export class Tutorial {
     // Skip lives in the HUD band above, not in the coaching band. The band has
     // room for one sentence and one control, and the control has to be the one
     // that moves forward; a way out sitting next to it at the same size is a
-    // way out that gets pressed by mistake. The HUD's score, contract and
+    // way out that gets pressed by mistake. The HUD's score, mission and
     // stroke readouts are all hidden during a lesson, so that corner is free.
     const skip = document.createElement('button');
     skip.id = 'coach-skip';
@@ -698,7 +698,7 @@ export class Tutorial {
     // "the far corner" is a sentence the player has to translate into a place.
     // Lighting the pocket costs no words and cannot be misread — and it uses
     // the pocket's own called state, so the tutorial is teaching the same
-    // signal a contract will use later.
+    // signal a mission will use later.
     this.game.callPocket?.(lesson.call || null);
     this.player.respawn(0, this.spawnZ());
     this.player.focus = this.player.focusMax;

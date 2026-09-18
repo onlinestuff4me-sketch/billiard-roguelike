@@ -10,11 +10,11 @@
 ## 1. High-Level Hook
 
 > **You are the cue ball.**
-> A rack, a contract, and fewer strokes than you would like.
+> A rack, a mission, and fewer strokes than you would like.
 
 Every room is a static puzzle. Nothing moves until you shoot, so you have all the
 time in the world to read the table — and a stroke budget that shrinks as the rack
-grows. The contract names what has to go down; the pockets decide what it pays.
+grows. The mission names what has to go down; the pockets decide what it pays.
 
 **One-line pitch:** *Billiards with a scorecard and a Hades boon economy, where the
 skill being scored is how few strokes it took.*
@@ -38,7 +38,7 @@ used to decide, invisibly, whether a ball survived contact.
 | **The budget is the pressure** | Strokes are finite and get scarcer. Every one is a decision with a price. | Free repositioning. There is no dash. |
 | **The table is the weapon** | Rails, rings and gates all pay. Raw power is the worst way to play. | Homing, auto-aim, "just point at the ball". |
 | **Legible physics** | The prediction lines never lie. A preview that shows a bank into a cut is what happens. | Hidden randomness in collision response. |
-| **Nothing is inferred** | The contract is a sentence. The budget is countable marks. | Numbers the player has to decode mid-shot. |
+| **Nothing is inferred** | The mission is a sentence. The budget is countable marks. | Numbers the player has to decode mid-shot. |
 | **Portrait, one thumb** | Everything reachable with a single thumb drag. | Buttons, virtual sticks, two-finger gestures. |
 
 ---
@@ -50,7 +50,7 @@ used to decide, invisibly, whether a ball survived contact.
         │                                                          │
         ▼                                                          │
    STATIC RACK ──► AIM (no clock) ──► RELEASE ──► RESOLVE          │
-   contract +      drag the cue,      one stroke   physics owns    │
+   mission +       drag the cue,      one stroke   physics owns    │
    stroke budget   4 preview layers   spent        the table       │
         │                                              │           │
         │                          ┌───────────────────┤           │
@@ -61,7 +61,7 @@ used to decide, invisibly, whether a ball survived contact.
         │                          │                   │           │
         │                          └───────────────────┤           │
         │                                              ▼           │
-        │                                    contract filled?      │
+        │                                    mission filled?       │
         │                                              │           │
         └──────── strokes left ◄───────────────────────┤           │
                                                        │           │
@@ -71,7 +71,7 @@ used to decide, invisibly, whether a ball survived contact.
 
 ### Beat-by-beat
 
-1. **The rack.** A room deals a contract — *"SINK ALL 6 · THE 8 LAST"* — and a stroke
+1. **The rack.** A room deals a mission — *"SINK ALL 6 · 8 LAST"* — and a stroke
    budget. Both are on screen from the first frame. Nothing on the table moves.
 2. **Aim.** The shot rotates about the cue ball: drag anywhere and the launch line
    runs from your finger through the ball, so pulling further out both raises power
@@ -84,13 +84,13 @@ used to decide, invisibly, whether a ball survived contact.
 4. **Resolve.** Balls carom, bank, run rings, and drop. The multiplier climbs while
    the table is still moving, and the pentatonic run climbs with it.
 5. **Settle.** The stroke banks what it paid. The budget steps down.
-6. **Fill → Scorecard → Doors.** When the contract is filled, unspent strokes pay
+6. **Fill → Scorecard → Doors.** When the mission is filled, unspent strokes pay
    out, the scorecard shows the ledger, and two doors open. You must *slingshot into*
    the door you want — the reward choice is itself a shot, and it costs no stroke.
 
 ### Failure
 
-Run out of strokes with the contract unfilled and the rack **breaks loose**: every
+Run out of strokes with the mission unfilled and the rack **breaks loose**: every
 ball still standing takes a bite out of the hull, and the exits open anyway. A bad
 room costs you the next few rooms, not the run on the spot. The run ends when the
 hull reaches zero.
@@ -121,6 +121,7 @@ Every stroke opens at ×1 and climbs while the table is still moving:
 | Each wall the cue ball bounces off | **+1** |
 | Each ball the cue ball touches | **+1** |
 | Each ball knocked in | **+1** |
+| **The ball the order wanted** | **+1, +2, +3** — the streak, capped at three |
 | The green double | **×2** on what has been built |
 
 Points are paid **at the instant a ball drops**, at the multiplier standing then. So
@@ -138,6 +139,25 @@ late rather than early. A worked example, matching the design canvas:
 
 Taking the ring *after* the bank would have doubled a ×2 into a ×4 and paid **3,500**
 for the same shape. That gap is the game.
+
+### 3.1a The order pays and never demands
+
+Every rack has a natural order — 1, 2, 3, and the 8 last, because the 8 wears the
+highest number. Sinking them in that order is **never required** and is worth real
+money: the first ball in order is +1 on the ladder, the second +2, the third and
+after +3, on top of the +1 every pot already gets. Break the order and nothing is
+taken away — the ball pays as it always would, the streak goes back to nothing, and
+the next ball in order starts a new one.
+
+A rack taken start to finish with nothing out of place also pays a **clean sweep**
+bonus of `500 × room` on its own line of the scorecard. That line is small on
+purpose: the order's real income is the ladder it built along the way, and the
+sweep bonus is there to name what happened.
+
+**"The 8 goes last" is this same order made mandatory for one ball.** Which is why
+the strict version of it — every ball, or the pot is a foul — is a mode rather than
+a rule: it is unlocked by sweeping a room in order of your own accord, because a
+player who has never found the order once cannot be asked to promise it.
 
 ### 3.2 Why strokes saved is the headline
 
@@ -169,7 +189,7 @@ near-miss the trajectory preview did not show.
 table's own materials, which is what stops them competing with the mint and red
 objects for the same glance: the eye can look for "a hole" without parsing hue.
 A pocket has exactly one extra state — **called**, a bone-white lip, when a
-contract names it — and any future state is expressed in brightness, geometry or
+mission names it — and any future state is expressed in brightness, geometry or
 motion, never in a new hue.
 
 Knocking your own ball in is a **foul**: the shot pays nothing and you re-spot.
@@ -196,7 +216,7 @@ the thing you are choosing.
 
 ### 4.3 The rack
 
-Every ball is numbered, because the contract talks about them by name and the
+Every ball is numbered, because the mission talks about them by name and the
 number *is* the ball's worth. The rack is its own colour channel — never red,
 never mint, because a ball is neither good nor bad:
 
@@ -243,7 +263,7 @@ player actually feels.
 | 9–10 | 7 | 6 | −1 | One stroke has to pot twice. |
 | 11+ | 7 | 5 | −2 | Two doubles, or a gate and a pocket in one. |
 
-From room 5 the contract adds **the 8 goes last**. Potting it early is a foul: it is
+From room 5 the mission adds **the 8 goes last**. Potting it early is a foul: it is
 re-spotted and the stroke it happened on pays nothing.
 
 ---
@@ -355,7 +375,7 @@ every other shot does.
 
 ## 11. Prototype Scope & Non-Goals
 
-**In scope (v0.5):** static rack, contracts, the stroke ramp, six typed pockets,
+**In scope (v0.5):** static rack, missions, the stroke ramp, six typed pockets,
 four felt objects, the multiplier ladder, strokes-saved scoring, the room scorecard,
 freeze as an earned power, 6 layout presets, 2-door routing, 6 tutorial boards.
 

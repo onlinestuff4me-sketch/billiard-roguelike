@@ -57,7 +57,7 @@ function geometry(key, factory) {
 /* ------------------------------------------------------------------ *
  * Ball numbers
  *
- * Every ball on the table carries a number, because the contract talks about
+ * Every ball on the table carries a number, because the mission talks about
  * them by name ("the 8 last") and because the number IS the ball's value. The
  * digit rides as a camera-facing sprite rather than being baked into the
  * silhouette, so shape still means behaviour and the number means worth —
@@ -290,7 +290,7 @@ export class Enemy {
     // The heavy is nearly four times the area of a solid, so the same emissive
     // intensity puts four times as much light through the bloom pass and the
     // whole body whites out — taking the number with it. Under the old rules
-    // that was merely bright; now the 8 is the ball the contract names, and an
+    // that was merely bright; now the 8 is the ball the mission names, and an
     // unreadable 8 makes "the 8 last" unplayable.
     // The 8 is a dark ball and stays dark: it reads by contrast against the
     // felt, not by glow. Stripes used to be held down to 0.08 because a bone
@@ -375,7 +375,7 @@ export class Enemy {
     // It existed to mitigate damage, and damage no longer decides whether a
     // ball leaves the table — a pocket does. Keeping a near-white band that
     // means nothing would be worse than cosmetic: it is the brightest thing in
-    // the scene, and it was drowning the one number the contract names.
+    // the scene, and it was drowning the one number the mission names.
     if (!RULES.staticTable && this.type === 'heavy') {
       const shieldGeo = geometry(
         'shield',

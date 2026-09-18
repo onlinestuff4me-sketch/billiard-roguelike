@@ -8,7 +8,7 @@
  *
  * WHAT IT HAS TO ANSWER, AT ALL TIMES, WITHOUT BEING ASKED:
  *
- *   1. What does winning this room mean?   the contract line, in words
+ *   1. What does winning this room mean?   the mission line, in words
  *   2. How am I doing against it?          the progress pips
  *   3. What is it costing me?              the stroke chips
  *   4. What is this shot worth?            the multiplier pill
@@ -33,7 +33,7 @@ function el(tag, className, parent) {
 
 /**
  * Pass as a banner's duration to make it wait for a tap instead of a clock.
- * Reserved for the contract, which the player has to READ before the room
+ * Reserved for the mission, which the player has to READ before the room
  * makes any sense.
  */
 export const HOLD = Symbol('hold-until-dismissed');
@@ -60,13 +60,23 @@ export class HUD {
     this.hpFill = el('div', 'hp-fill', hpBar);
     this.hpText = el('div', 'hp-text', hpBlock);
 
-    // The contract. This is the single most important thing on the screen and
+    // The mission. This is the single most important thing on the screen and
     // it is written as a sentence, not encoded.
-    const contractBlock = el('div', 'hud-contract', top);
-    this.contractLabel = el('div', 'hud-label', contractBlock);
-    this.contractLabel.textContent = 'Contract';
-    this.contractText = el('div', 'contract-text', contractBlock);
-    this.contractPips = el('div', 'contract-pips', contractBlock);
+    const missionBlock = el('div', 'hud-mission', top);
+    this.missionLabel = el('div', 'hud-label', missionBlock);
+    this.missionLabel.textContent = 'Mission';
+    this.missionText = el('div', 'mission-text', missionBlock);
+    this.missionPips = el('div', 'mission-pips', missionBlock);
+    /**
+     * WHICH BALL THE ORDER WANTS NEXT.
+     *
+     * The order pays and never demands, which means nothing on the table makes
+     * the player look for it — so this line is the only thing that teaches it
+     * exists. It names a number rather than describing a rule, because "the 3
+     * is next" is a fact you can act on and "sink them in ascending order" is a
+     * sentence you have to translate.
+     */
+    this.missionOrder = el('div', 'mission-order', missionBlock);
 
     const scoreBlock = el('div', 'hud-score', top);
     el('div', 'hud-label', scoreBlock).textContent = 'Run';
@@ -151,7 +161,8 @@ export class HUD {
     this._cache = {
       hp: -1,
       ghost: -1,
-      contract: '',
+      mission: '',
+      order: '',
       progress: '',
       strokes: '',
       freeze: -1,
@@ -181,10 +192,10 @@ export class HUD {
     if (this.layer.classList.contains('coaching')) return;
     this.bannerTitle.textContent = title;
     this.bannerSub.textContent = sub;
-    // A CONTRACT WAITS TO BE READ.
+    // A MISSION WAITS TO BE READ.
     //
     // Everything else a banner says is a report on something the player just
-    // watched happen, and a couple of seconds is plenty. The contract is the
+    // watched happen, and a couple of seconds is plenty. The mission is the
     // opposite: it is the terms of the room, arriving before anything has
     // happened, and it decides every shot that follows. It holds until it is
     // dismissed, and says so.
@@ -215,7 +226,7 @@ export class HUD {
    *          runScore:number, penalty?:{standing:number, damage:number}}} data
    */
   showScorecard(data) {
-    this.cardStatus.textContent = data.filled ? 'Contract filled' : 'Out of shots';
+    this.cardStatus.textContent = data.filled ? 'Mission complete' : 'Out of shots';
     this.cardStatus.classList.toggle('failed', !data.filled);
     this.cardTitle.textContent = `Room ${String(data.level).padStart(2, '0')}`;
 
@@ -386,20 +397,38 @@ export class HUD {
       this.hpGhost.style.width = `${this._ghost * 100}%`;
     }
 
-    // --- the contract, in words ---
-    const line = s.cleared ? 'CONTRACT FILLED' : s.contractText || '';
-    if (line !== cache.contract) {
-      cache.contract = line;
-      this.contractText.textContent = line;
-      this.contractText.classList.toggle('done', !!s.cleared);
+    // --- the mission, in words ---
+    const line = s.cleared ? 'MISSION COMPLETE' : s.missionText || '';
+    if (line !== cache.mission) {
+      cache.mission = line;
+      this.missionText.textContent = line;
+      this.missionText.classList.toggle('done', !!s.cleared);
     }
     const progress = `${s.ballsDown}/${s.rack}`;
     if (progress !== cache.progress) {
       cache.progress = progress;
-      this.contractPips.textContent = '';
+      this.missionPips.textContent = '';
       for (let i = 0; i < (s.rack || 0); i++) {
-        el('span', `pip${i < s.ballsDown ? ' on' : ''}`, this.contractPips);
+        el('span', `pip${i < s.ballsDown ? ' on' : ''}`, this.missionPips);
       }
+    }
+
+    // --- what the order wants next ---
+    const next = s.cleared ? null : s.nextInOrder;
+    const streak = s.orderStreak || 0;
+    let order = '';
+    if (next != null) {
+      if (s.strictOrder) order = `NEXT ${next} · REQUIRED`;
+      else if (streak > 0) order = `NEXT ${next} · IN ORDER ×${streak}`;
+      else if (!s.orderBroken) order = `NEXT ${next} · IN ORDER PAYS`;
+      else order = `NEXT ${next}`;
+    }
+    if (order !== cache.order) {
+      cache.order = order;
+      this.missionOrder.textContent = order;
+      this.missionOrder.classList.toggle('on', !s.strictOrder && streak > 0);
+      this.missionOrder.classList.toggle('strict', !!s.strictOrder);
+      this.missionOrder.hidden = !order;
     }
 
     // --- run score ---

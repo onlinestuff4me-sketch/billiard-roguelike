@@ -21,7 +21,7 @@
 import * as THREE from 'three';
 import { ARENA, ROOM, PALETTE, ENEMY, PROGRESSION, PHYSICS, TABLE } from '../config.js';
 import { Table } from './Table.js';
-import { contractFor, rackNumbers, archetypeForNumber } from './Rules.js';
+import { missionFor, rackNumbers, archetypeForNumber } from './Rules.js';
 import { Enemy, ENEMY_STATE } from '../entities/Enemy.js';
 import layoutData from '../data/layouts.json';
 
@@ -124,8 +124,8 @@ export class RoomManager {
     this.table = new Table(this.group);
     game.table = this.table;
 
-    /** The contract this room was generated against. */
-    this.contract = contractFor(1);
+    /** The mission this room was generated against. */
+    this.mission = missionFor(1);
     /** The numbered balls currently racked. */
     this.rack = [];
   }
@@ -157,8 +157,8 @@ export class RoomManager {
     }));
     this.buildLayoutMeshes();
 
-    // --- 2. the contract, and the table it is played on ---------------
-    this.contract = contractFor(level);
+    // --- 2. the mission, and the table it is played on ---------------
+    this.mission = missionFor(level);
     // Pockets are architecture and live in the static table — there is nothing
     // per-room to build. Only the felt objects are rolled.
     this.placeObjects(rng, level);
@@ -173,7 +173,7 @@ export class RoomManager {
 
     this.game.physics.setColliders(this.colliders);
 
-    return { layout: this.layout, contract: this.contract, rack: this.rack.length };
+    return { layout: this.layout, mission: this.mission, rack: this.rack.length };
   }
 
   /* ---------------------------------------------------------------- *
@@ -240,7 +240,7 @@ export class RoomManager {
    * choice.
    */
   rackBalls(rng, level) {
-    const numbers = rackNumbers(this.contract.rack);
+    const numbers = rackNumbers(this.mission.rack);
     const anchors = this.freeAnchors(rng, 1.2);
     const placed = [];
 
@@ -281,7 +281,7 @@ export class RoomManager {
 
   /**
    * Re-spot a ball that must not have gone down yet — the 8 potted early
-   * under an "8 last" contract. Classic billiards: it comes back, and the
+   * under an "8 last" mission. Classic billiards: it comes back, and the
    * stroke that fouled pays nothing.
    */
   respot(ball) {
@@ -296,12 +296,12 @@ export class RoomManager {
     return true;
   }
 
-  /** How many contract balls are still on the felt. */
+  /** How many mission balls are still on the felt. */
   get ballsRemaining() {
     return this.game.enemies.filter((b) => b.alive && b.number > 0).length;
   }
 
-  /** The contract is filled: put the exits up. Called by the run, not here. */
+  /** The mission is filled: put the exits up. Called by the run, not here. */
   openExits() {
     if (this.cleared) return this.doors;
     this.cleared = true;
@@ -393,7 +393,7 @@ export class RoomManager {
       enemy.homeX = slot.x;
       enemy.homeZ = slot.z;
       // Numbered like every other ball, so a lesson can talk about "the 8" and
-      // mean the same thing the contract means.
+      // mean the same thing the mission means.
       if (slot.number) enemy.setNumber(slot.number);
       this.game.enemies.push(enemy);
       return enemy;
@@ -713,11 +713,11 @@ export class RoomManager {
     if (this.scripted) return;
 
     // THE ROOM IS NOT OVER WHEN THE TABLE IS EMPTY, IT IS OVER WHEN THE
-    // CONTRACT IS FILLED.
+    // THE MISSION IS FILLED.
     //
     // Those used to be the same sentence, back when clearing meant killing
     // everything. They are not any more: a ball can leave the table without
-    // counting (an early 8 is re-spotted) and a contract can be filled with
+    // counting (an early 8 is re-spotted) and a mission can be filled with
     // balls still standing. So the run calls `openExits()` when the rules say
     // so, and this loop only ever drives the doors.
     if (!this.cleared) return;
