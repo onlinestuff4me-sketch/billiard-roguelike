@@ -4,6 +4,7 @@
 **Revises:** GDD §9, Level Generation
 **Depends on:** lessons 1–6, shipped
 **Companion artifact:** https://claude.ai/artifact/CzjZZDpgJc9mGPW8sbgFz4
+**Inventory:** [MECHANICS.md](MECHANICS.md) — every mechanic, hazard and upgrade, and what each costs the preview
 
 Six lessons teach you to aim. What comes after is a run of twelve rooms in which
 **every odd room is an authored puzzle that introduces exactly one new noun**, and
