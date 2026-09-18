@@ -314,6 +314,10 @@ above are designed but not yet implemented.)*
 
 ## 9. Level Generation
 
+> **Revised by [PROGRESSION.md](PROGRESSION.md).** The room ladder — which rooms are
+> authored, what each one introduces, and the measured window a board has to clear
+> before it ships — lives there. What follows is the generator this repo has today.
+
 **Hand-authored space, procedural contents** — the Hades model, unchanged in shape.
 
 - **Handcrafted:** a pool of table geometry presets (6 implemented), each authored for

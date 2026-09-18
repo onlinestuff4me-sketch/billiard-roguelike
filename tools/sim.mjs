@@ -39,7 +39,7 @@ export function boardIds() {
 }
 
 /** Where the headless Chromium lives in this environment, if it is pinned. */
-function browserPath() {
+export function browserPath() {
   return process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 }
 
@@ -62,21 +62,26 @@ async function waitForServer(url, timeoutMs = 20000) {
  * Boot the game and hand back a driver.
  * @param {{url?: string, serve?: boolean, port?: number}} [opts]
  */
+export async function startPreview(port = 4173) {
+  const url = `http://localhost:${port}/`;
+  if (await waitForServer(url, 800)) return { url, server: null };
+  const server = spawn('npx', ['vite', 'preview', '--port', String(port)], {
+    stdio: 'ignore',
+    detached: false
+  });
+  if (!(await waitForServer(url))) {
+    server.kill();
+    throw new Error(`preview server never came up on ${url} — run \`npm run build\` first`);
+  }
+  return { url, server };
+}
+
 export async function openGame(opts = {}) {
   const port = opts.port ?? 4173;
   const url = opts.url ?? `http://localhost:${port}/`;
 
   let server = null;
-  if (opts.serve !== false && !(await waitForServer(url, 800))) {
-    server = spawn('npx', ['vite', 'preview', '--port', String(port)], {
-      stdio: 'ignore',
-      detached: false
-    });
-    if (!(await waitForServer(url))) {
-      server.kill();
-      throw new Error(`preview server never came up on ${url} — run \`npm run build\` first`);
-    }
-  }
+  if (opts.serve !== false) ({ server } = await startPreview(port));
 
   const { chromium } = require('playwright');
   const browser = await chromium.launch({ executablePath: browserPath() });

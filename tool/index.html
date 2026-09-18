@@ -184,6 +184,69 @@
         font: 11px/1.4 ui-monospace, monospace;
         resize: vertical;
       }
+      /* ---- the game, measuring ---- */
+      .stage { position: relative; }
+      #game-host {
+        position: absolute;
+        left: 12px;
+        /* Clear of the legend and the two readout lines under the table. */
+        bottom: 66px;
+        width: 176px;
+        height: 352px;
+        z-index: 40;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        overflow: hidden;
+        background: #000;
+        transition: opacity 0.18s ease;
+      }
+      /* Faded, not removed: a frame the browser has stopped laying out also
+         stops getting animation frames, and the game keeps its own clock. */
+      #game-host.away { opacity: 0.001; pointer-events: none; }
+      #game-frame {
+        width: 390px;
+        height: 780px;
+        border: 0;
+        transform: scale(0.4513);
+        transform-origin: 0 0;
+        display: block;
+      }
+
+      /* ---- measurement ---- */
+      .dial { width: 100%; height: auto; display: block; margin: 10px 0 2px; }
+      .readout {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 2px 10px;
+        font-variant-numeric: tabular-nums;
+        font-size: 11.5px;
+      }
+      .readout .k { color: var(--dim); }
+      .readout .v { text-align: right; }
+      .readout .v.warn { color: #ff5a3d; }
+      .readout .v.ok { color: #2ef2c4; }
+      .bar {
+        height: 3px;
+        background: #12202b;
+        border-radius: 2px;
+        overflow: hidden;
+        margin: 8px 0 2px;
+      }
+      .bar i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width 0.1s linear; }
+      .reads {
+        flex: none;
+        color: var(--dim);
+        font-size: 11.5px;
+        min-height: 1.3em;
+        font-variant-numeric: tabular-nums;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .reads b { color: var(--bone); font-weight: 600; }
+      .reads .warn { color: #ff5a3d; }
+
       .too-small {
         display: none;
         padding: 40px;
@@ -270,6 +333,7 @@
           <span class="key"><i class="sw ring"></i>Anchor</span>
           <span class="key"><i class="sw dash"></i>Safe ring · no spawns</span>
         </div>
+        <div class="reads" id="reads"></div>
         <div class="status" id="status"></div>
       </section>
 
@@ -296,6 +360,58 @@
           </div>
           <p class="note" id="roll-note" style="margin-top: 8px"></p>
         </div>
+        <div class="group" data-lessons-only>
+          <h2>Measure</h2>
+          <p class="note" id="m-status">
+            Not open. Measuring runs the real game in a frame and sweeps this board through it.
+          </p>
+          <div class="row" style="margin-top: 8px">
+            <button class="btn" id="m-open">Open the game</button>
+            <button class="btn" id="m-frame">Hide frame</button>
+          </div>
+          <div class="row" style="margin-top: 8px">
+            <select id="m-step" style="flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px">
+              <option value="0.5">0.5° — what verify uses</option>
+              <option value="1">1° — a quicker look</option>
+              <option value="2">2° — rough</option>
+            </select>
+            <button class="btn primary" id="m-sweep">Measure</button>
+          </div>
+          <div class="bar"><i id="m-bar"></i></div>
+          <canvas class="dial" id="m-dial" width="544" height="544"></canvas>
+          <div class="readout" id="m-readout"></div>
+        </div>
+
+        <div class="group" data-lessons-only>
+          <h2>Play it</h2>
+          <div class="rows">
+            <label for="m-deg">Heading °</label><input id="m-deg" type="number" step="0.25" />
+            <label for="m-power">Power</label>
+            <select id="m-power">
+              <option value="0.45">0.45</option>
+              <option value="0.55">0.55</option>
+              <option value="0.65">0.65</option>
+              <option value="0.8" selected>0.80</option>
+              <option value="1">1.00</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top: 8px">
+            <button class="btn" id="m-play">Play the shot</button>
+            <button class="btn" id="m-plan">Clear the rack</button>
+          </div>
+          <p class="note" id="m-play-note" style="margin-top: 8px">
+            Plays the heading on the real table and draws where every ball went.
+          </p>
+        </div>
+
+        <div class="group" data-lessons-only>
+          <h2>Ship</h2>
+          <p class="note" id="m-ship-note">Measure the board first.</p>
+          <button class="btn" id="m-ship" style="width: 100%; margin-top: 8px" disabled>
+            Write the measured window in
+          </button>
+        </div>
+
         <div class="group">
           <h2>Keys</h2>
           <div class="keys">

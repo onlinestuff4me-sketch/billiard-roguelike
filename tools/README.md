@@ -168,6 +168,36 @@ search. Run properly it produced two results worth having:
   the physics does not hand out, so that board's budget was changed to stop
   needing one.
 
+## In the editor: `/tool`
+
+The same instruments, in the place a board is actually authored. `npm run dev`
+and open `/tool` — the editor has always placed balls; it can now say whether
+the placement is any good, and it answers by **running the real game in a frame
+beside the canvas** and driving these same probes. There is no physics in the
+editor and there never will be: an editor with its own copy of the thing the
+game is made of would be the one that looked authoritative the first time the
+two disagreed.
+
+| | answers | driven by |
+|---|---|---|
+| **Measure** | every run of heading that satisfies the board, round a dial, with the widest, where `solve` falls, and how far the resting aim has to travel to reach one | `__simSweep`, an arc at a time |
+| **Daylight** | the closest pair of balls, live, while you drag one — plus the gap to the cue ball and how many balls are hidden behind the instruction card | the radii in `config.js`, after `RULES.pieceScale` |
+| **Play it** | one heading played on the real table: what went down, how many rails, and whether the *preview* drew the same shot | `__simAim` |
+| **Clear the rack** | whether the rack comes down inside the board's shot budget, and the route that does it | `__simPlan` |
+| **Ship** | writes the measured run into the lesson as its `window`, so the coach's arrows light up on headings that work | the sweep it just ran |
+
+A sweep is real work — a few hundred headings at six powers, each played to a
+standstill — so the editor asks for 30° at a time and yields a frame between,
+which is why the progress bar moves and the canvas keeps drawing. At 0.5°, the
+step `verify` uses, a board takes about fifteen seconds and comes back with the
+number `verify` will come back with.
+
+`npm run editor` proves exactly that: it drives the editor's own buttons in a
+headless browser and fails if the run it measures is not the window stored in
+`lessons.json`, if the stored solve does not pot, or if **Ship** cannot be
+clicked — which it could not, once, because the game's own frame was laid out
+on top of it.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -188,6 +218,8 @@ underneath it.
 - `check-layout.mjs` — nothing off the edge, at six viewports.
 - `find-board.mjs` — where should the balls go, searched rather than guessed.
 - `check-scoring.mjs` — the ladder pays for what happened (no browser needed).
+- `check-editor.mjs` — the editor's instruments agree with these ones.
+- `../tool/measure.js` — the editor's side of it: the frame, and the driving.
 
 ## Beyond the tutorial
 
