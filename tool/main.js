@@ -106,6 +106,7 @@ function boardKey(record = layout()) {
     record.enemies || [],
     record.obstacles || [],
     record.objects || [],
+    record.portals || [],
     record.goal || null,
     record.rest || null
   ]);
@@ -258,6 +259,41 @@ function draw() {
       ctx.stroke();
     }
   }
+
+  // --- portals: a pair of rings, and the thread that says where it sends you ---
+  //
+  // Drawn before the objects because they are architecture: part of the table,
+  // like the pockets, rather than something rolled onto it.
+  (l.portals || []).forEach((portal, i) => {
+    const r = TABLE.portal.radius * scale;
+    ctx.strokeStyle = 'rgba(29, 111, 122, 0.55)';
+    ctx.setLineDash([3, 5]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx(portal.a.x), sy(portal.a.z));
+    ctx.lineTo(sx(portal.b.x), sy(portal.b.z));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ['a', 'b'].forEach((end, k) => {
+      const ring = portal[end];
+      const on = isSel('portal', i * 2 + k);
+      ctx.fillStyle = 'rgba(29, 111, 122, 0.12)';
+      ctx.strokeStyle = '#1d6f7a';
+      ctx.lineWidth = on ? 3 : 1.8;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(sx(ring.x), sy(ring.z), r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(29, 111, 122, 0.95)';
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`PORTAL ${i + 1}${end.toUpperCase()}`, sx(ring.x), sy(ring.z) + 3.5);
+      ctx.textAlign = 'left';
+      if (on) drawRing(ring.x, ring.z, r + 7);
+    });
+  });
 
   // --- felt objects: mint helps you, red costs you ---
   //
@@ -502,6 +538,16 @@ function pick(x, z) {
     if (Math.hypot(x - wave[i].x, z - wave[i].z) <= cfg.radius) return { group: 'enemy', index: i };
   }
 
+  const portals = l.portals || [];
+  for (let i = portals.length - 1; i >= 0; i--) {
+    for (let k = 1; k >= 0; k--) {
+      const ring = portals[i][k ? 'b' : 'a'];
+      if (Math.hypot(x - ring.x, z - ring.z) <= TABLE.portal.radius) {
+        return { group: 'portal', index: i * 2 + k };
+      }
+    }
+  }
+
   if (l.goal && Math.abs(x - l.goal.x) <= l.goal.hw && Math.abs(z - l.goal.z) <= l.goal.hh) {
     return { group: 'goal', index: 0 };
   }
@@ -545,6 +591,10 @@ function target(sel, mutate = false) {
   if (sel.group === 'anchor') return (l.anchors || [])[sel.index];
   if (sel.group === 'spawn') return l.spawn || (l.spawn = { x: 0, z: 11 });
   if (sel.group === 'goal') return l.goal;
+  if (sel.group === 'portal') {
+    const portal = (l.portals || [])[Math.floor(sel.index / 2)];
+    return portal ? portal[sel.index % 2 ? 'b' : 'a'] : null;
+  }
   if (sel.group === 'enemy') {
     if (mutate) ensureAuthored();
     return (waves()[state.wave] || [])[sel.index];
@@ -629,6 +679,13 @@ function add(kind) {
   } else if (kind === 'goal') {
     l.goal = { x: 0, z: -11.8, hw: 5.2, hh: 1.1 };
     state.sel = { group: 'goal', index: 0 };
+  } else if (kind === 'portal') {
+    // BOTH ENDS AT ONCE. A portal with one ring is not a thing the game has,
+    // so the editor cannot make one: the button adds a pair, and Delete on
+    // either ring removes the pair.
+    if (!l.portals) l.portals = [];
+    l.portals.push({ a: { x: -4, z: 4 }, b: { x: 4, z: -8 } });
+    state.sel = { group: 'portal', index: (l.portals.length - 1) * 2 };
   } else if (kind === 'anchor') {
     if (!l.anchors) l.anchors = [];
     l.anchors.push({ x: 0, z: -6 });
@@ -666,6 +723,9 @@ function removeSelected() {
   if (sel.group === 'obstacle') (l.obstacles || []).splice(sel.index, 1);
   else if (sel.group === 'anchor') (l.anchors || []).splice(sel.index, 1);
   else if (sel.group === 'goal') delete l.goal;
+  // A PAIR, ALWAYS. Deleting one ring would leave a portal with one end, which
+  // is not a thing this game has.
+  else if (sel.group === 'portal') (l.portals || []).splice(Math.floor(sel.index / 2), 1);
   else if (sel.group === 'enemy') {
     ensureAuthored();
     (isLessons() ? l.enemies : l.waves[state.wave]).splice(sel.index, 1);
@@ -817,6 +877,7 @@ function renderInspector() {
     obstacle: t.kind === 'bumper' ? 'Bumper' : t.type === 'circle' ? 'Pillar' : 'Barrier',
     anchor: 'Spawn anchor',
     spawn: 'Player spawn',
+    portal: `Portal ${Math.floor(sel.index / 2) + 1}${sel.index % 2 ? 'B' : 'A'}`,
     enemy: TYPE_LABEL[t.type] || 'Enemy'
   };
   dot.style.background = sel.group === 'enemy'

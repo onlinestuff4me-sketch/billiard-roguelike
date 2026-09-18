@@ -1971,6 +1971,7 @@ function projectCuePath(prediction) {
   // departure's own count double-charges the approach.
   let spent = prediction?.bounces ?? 0;
   let bounces = 0;
+  let portals = 0;
   let pocket = null;
   const hits = [];
 
@@ -2041,6 +2042,10 @@ function projectCuePath(prediction) {
         speed: outSpeed,
         drag: PLAYER.dragLaunched,
         pockets: rooms.table.pockets,
+        // PORTALS ARE THE CUE BALL'S ALONE, here and everywhere: the felt's
+        // rule is that only your ball triggers what is on it, and a rack that
+        // can vanish mid-stroke makes every route unreadable.
+        portals: rooms.table.portalRings,
         // The balls it has already struck are leaving; they are not in its way.
         bodies: game.enemies.filter((b) => !struck.includes(b))
       }
@@ -2048,6 +2053,7 @@ function projectCuePath(prediction) {
 
     segments.push(...run.segments);
     bounces += run.bounces;
+    portals += run.portals || 0;
     spent += run.bounces;
     if (run.pocket) {
       pocket = run.pocket;
@@ -2061,7 +2067,7 @@ function projectCuePath(prediction) {
     (t, g) => t + Math.hypot(g.bx - g.ax, g.bz - g.az),
     0
   );
-  return { segments, bounces, pocket, hits, totalDistance };
+  return { segments, bounces, portals, pocket, hits, totalDistance };
 }
 
 /**
@@ -2776,7 +2782,10 @@ if (typeof window !== 'undefined') {
         approach: +(pred?.totalDistance ?? 0).toFixed(2),
         departure: +(cuePath?.totalDistance ?? 0).toFixed(2),
         bounces: (pred?.bounces ?? 0) + (cuePath?.bounces ?? 0),
-        budget: player.maxBounces
+        budget: player.maxBounces,
+        // How many times the drawn line went through a portal. A check cannot
+        // ask "is this the shot the portal is about" from coordinates alone.
+        portals: (pred?.portals ?? 0) + (cuePath?.portals ?? 0)
       },
       legs: (objectPath ?? []).map((leg) => {
         const at = leg.pocket || leg.tailPocket || null;
@@ -2802,6 +2811,7 @@ function projectShot(dir, power) {
       speed: launchSpeed(),
       drag: PLAYER.dragLaunched,
       pockets: rooms.table.pockets,
+      portals: rooms.table.portalRings,
       bodies: game.enemies
     });
     const cuePath = projectCuePath(prediction);
@@ -3105,6 +3115,7 @@ function refreshPrediction() {
     speed: launchSpeed(),
     drag: PLAYER.dragLaunched,
     pockets: rooms.table.pockets,
+    portals: rooms.table.portalRings,
     bodies: game.enemies
   });
   // The pockets go in so the preview can warn about a scratch: a line that

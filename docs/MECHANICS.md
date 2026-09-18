@@ -5,7 +5,7 @@
 **Counted from:** the code, not the design doc
 **Companion artifact:** https://claude.ai/artifact/9rueNogQDHaPMHwiQ9dEBP
 
-44 entries — **35 shipped, 3 designed, 6 proposed**. Everything the game can put in
+45 entries — **37 shipped, 3 designed, 5 proposed**. Everything the game can put in
 front of a player, sorted by the two questions that decide where any of it can go:
 *does it change how you aim or in what order you shoot*, and *can the projection line
 still tell the truth about it*.
@@ -87,7 +87,8 @@ felt object** — an object ball rolling over a mine would make routing unreadab
 | Bumpers | A barrier that gives back more than it takes. | Shipped | payout only | free |
 | Loose balls | 8 hull each for every ball still standing when the budget runs out. | Shipped | no | free |
 | The 8, early | A foul rather than a loss: re-spotted, stroke pays nothing. | Shipped | yes — order | free |
-| **Teleporter** | A pair of rings; a ball entering one leaves the other with the same speed and heading, so a pocket with no route suddenly has exactly one. | **Proposed** | yes — aim | a new line |
+| **Portal** | A pair of rings. A ball whose centre reaches one is **translated** by the vector between them — same heading, same speed, same offset from the ring's centre — so the whole path is picked up and put down parallel to itself. Architecture: authored with the table, never rolled, never spent, and drawn in the table's own teal because it does nothing to your score. Cue ball only. | Shipped | yes — aim | a new line, built |
+| Portal thread | The dotted line between a pair. "Where does this send me" is the one question a portal has to answer before it is used, and no arrangement of a single ring answers it. | Shipped | with the portal | free |
 | **Black hole · swallower** | A seventh hole that is not yours: takes any ball, cue or object, and pays nothing. A pocket's code with a different verdict. | **Proposed** | yes — routing | free |
 | **Black hole · gravity** | A radial pull that bends a rolling ball as it passes. The most interesting thing here and the most expensive. | **Proposed** | yes — aim | integrate |
 | Out of turn | The hazard face of the order, under strict mode: the out-of-turn ball is the trap, and it is usually the easiest ball on the table to hit. Comes straight back, and the shot pays nothing. | Shipped, locked | yes — a mode | free |
@@ -155,7 +156,7 @@ cannot tell which of the two beat them.
 
 | Room | Gate | Why here |
 | --- | --- | --- |
-| 13 | **The teleporter** | One pocket with no route, one pair of rings, exactly one heading that uses them. The exit must be on screen with the entrance. |
+| 13 | **The portal** | One pocket with no route, one pair of rings, exactly one heading that uses them. Built: it lives in the table (Choke Corridor carries a pair), and `npm run portal` holds the drawn line to the played shot through it. What is left is the authored room. |
 | 15 | **The black hole** (swallower) | A hazard *and* a way to lose a target you need. Ships first because it is a pocket with a different verdict. |
 | 17 | **Phantom cue balls** | Three lines from one stroke. Introduced as a felt cell the room can take back, before it is ever a boon you keep. |
 | 19 · 21 · 23 | Combinations — no new nouns | Strict order on a table with a teleporter is a different puzzle from either alone. |
@@ -179,10 +180,18 @@ Re-keying that table is part of building the ladder, not a separate job.
   earlier pot leaves behind, so a line that sinks the 1 and then the 2 is two legal pots
   rather than one refusal. `npm run foul` sweeps every heading and holds the drawn line to
   the mission's verdict in words and in colour.
-- **The teleporter** — preserve heading, or mirror it? Preserving makes the pair a
-  wormhole and is readable; mirroring is not. Preserve. And does it move object balls,
-  or only the cue ball? Every felt object today triggers on the cue ball alone, and
-  breaking that rule here means a rack that can vanish while you watch.
+- ~~**The teleporter**~~ — **built, as the portal.** Both questions answered the way
+  the note proposed: the heading is preserved (the whole path translates, so the line
+  out of the far ring is parallel to the line into the near one), and only the cue ball
+  goes through, which is the rule every felt object already follows. Two things the
+  build added. The name: a *gate* in this project is a room, so the mechanic is a
+  portal and "the gate at gate 13 has a gate in it" is a sentence nobody has to read.
+  And the standoff: the translation lands a ball exactly ON the far ring, which is a
+  floating-point coin toss between inside and outside — and just outside, moving
+  inward, is a fresh entry. Measured, the preview took that second entry on a fifth of
+  all headings through a portal and drew the line carrying on from where it started.
+  Both sides now step a skin's depth inside instead, which makes "am I already in this
+  ring" the only state either of them needs.
 - **The black hole** — swallower or gravity. Two mechanics wearing one name, and only
   one is cheap. Ship the swallower, play it for a week, and only then decide whether
   curved paths are worth making the predictor integrate — which means every board in the
