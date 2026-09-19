@@ -81,6 +81,45 @@ console.log('\nthe ladder\n');
   check(summary.multiplier === second.multiplier, 'and the report follows the last one paid');
 }
 
+console.log('\nwhat the readout says\n');
+
+// THE PILL IS A REPORT, NOT THE LADDER. The ladder climbs after a pot because
+// the next pot might be about to happen; the figure on screen must not, or a
+// player watching it go up after their ball has dropped reads it as points
+// still being added to that ball. Reported twice from play.
+{
+  const rules = fresh();
+  rules.bank();
+  const first = rules.pot(1);
+  const atPot = rules.snapshot();
+  check(atPot.multiplier === first.multiplier, 'the readout shows what the pot paid', `×${atPot.multiplier}`);
+  rules.bank();
+  rules.bank();
+  const after = rules.snapshot();
+  check(
+    after.multiplier === atPot.multiplier && after.banks === atPot.banks,
+    'and does not move for rails taken after it',
+    `×${after.multiplier}, ${after.banks} bank(s), ladder at ×${rules.multiplier}`
+  );
+  const second = rules.pot(2);
+  const now = rules.snapshot();
+  check(now.multiplier === second.multiplier, 'until the next ball drops', `×${now.multiplier}`);
+  check(now.banks === 3, 'which counts every rail taken between the two', `${now.banks} banks`);
+}
+
+// And the beats under the score are about THIS ball: rails since the stroke
+// last paid, so the second pot does not re-announce the first pot's banks.
+{
+  const rules = fresh();
+  rules.bank();
+  rules.bank();
+  rules.pot(1);
+  const before = rules.paidBanks;
+  rules.bank();
+  rules.pot(2);
+  check(before === 2 && rules.banks - before === 1, 'a pot can tell what it earned from what came before', `${before} then ${rules.banks - before}`);
+}
+
 console.log('\nthe order\n');
 
 // The rack of room 1 is 1, 2, 3, 8 — ascending, which puts the 8 last on its

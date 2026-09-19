@@ -234,6 +234,34 @@ inward, is a fresh entry, so the preview went through, came straight back, and d
 the rest of the shot from where it had started. **77.6%** of headings through a
 portal agreed before the fix and **100%** after it.
 
+## `npm run release`
+
+The one thing a preview cannot promise on its own: that the ball leaves along
+the line it drew. It presses, drags, lets the aim settle, and then lifts the way
+a thumb really does — with the `pointerup` carrying coordinates the last
+`pointermove` never had — and fails if the shot moves by more than a quarter of
+a degree.
+
+It was written against a live report and reproduced it immediately: a five-pixel
+roll on the lift moved the shot **4.5°**, twelve pixels moved it **10.6°**, and
+the error accumulated across strokes. The tightest lesson window on this table
+is 2.5°. See docs/AIMING.md §6b.
+
+## `npm run flash`
+
+The frame a lesson ends on. The tutorial's clock runs at the top of a frame and
+the table is simulated further down it, so the frame in which the cue ball
+finally stops is one the lesson has already been through believing the shot is
+still in flight — a board that is live, a lesson not yet called, a ball at rest.
+Every condition the resting preview asks for is met, so it draws a fresh cue
+line across a finished shot, and the next frame the lesson ends and takes it
+away. That is the one-frame flash the report describes.
+
+It plays three boards' own solutions through the release handler and records
+every call that draws the line, rather than sampling for a frame too short to
+sample: on the unguarded code the gap drew on **angle, combo and bank alike**,
+and `Tutorial.resolving` — launched, and not yet judged — closes it.
+
 ## How it decides whether a stroke passed
 
 Wherever the game already decides something, the harness **asks the game**. A
@@ -257,6 +285,8 @@ underneath it.
 - `check-editor.mjs` — the editor's instruments agree with these ones.
 - `check-foul.mjs` — the line goes red before the stroke, not after it.
 - `check-portal.mjs` — a line through a portal is still a promise.
+- `check-release.mjs` — letting go does not move the shot.
+- `check-flash.mjs` — a finished lesson draws nothing.
 - `../tool/measure.js` — the editor's side of it: the frame, and the driving.
 
 ## Beyond the tutorial

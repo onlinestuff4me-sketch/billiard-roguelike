@@ -555,6 +555,20 @@ export class Tutorial {
     return this.active;
   }
 
+  /**
+   * A stroke has been fired on this board and the lesson has not called it yet.
+   *
+   * The felt must not draw a resting cue line during that window. It used to:
+   * the cue ball settles a beat before the lesson resolves, and the resting
+   * preview is redrawn every frame, so a bright line flashed across the table
+   * in the gap between the ball dropping and the card changing — reported as
+   * "the flash of the cue guide line after the ball lands in the pocket right
+   * as the lesson is ending".
+   */
+  get resolving() {
+    return this.active && this._launched;
+  }
+
   get lesson() {
     return this.active ? LESSONS[this.index] : null;
   }

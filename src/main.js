@@ -1230,9 +1230,17 @@ game.on = {
       killed: false
     });
 
+    // A CONTACT IS NOT A POT.
+    //
+    // This drew a ring that grew with every hit — 4.4 units and up, against
+    // the 5.5 a pocket gets — plus a full-size callout, so a three-ball stroke
+    // put four rings the size of the celebration on the felt before anything
+    // had gone down. What a contact needs to say is "that counted, and the
+    // shot is now worth this much", which is a small ring at the point of
+    // impact and a small number beside it.
     if (rules.multiplier > 1 && game.midStroke) {
-      fx.floatText(p.x, p.z - 2.4, `×${rules.multiplier}  ${multCallout()}`, 'crit');
-      fx.shockwave(x, z, PALETTE.good, 4.4 + game.launchHits * 0.5, 0.36);
+      fx.floatText(x, z - 1.6, `×${rules.multiplier}`, 'tick');
+      fx.shockwave(x, z, PALETTE.good, 1.7, 0.2);
     }
 
     engine.hitStop(TIME.hitStop);
@@ -1249,13 +1257,15 @@ game.on = {
     tutorial.notify('pass', { striker, target, x, z, speed });
     ladder('touch');
 
-    engine.hitStop(TIME.hitStopCrit);
-    engine.shake(speed * 2.6);
-    engine.zoomPunch();
+    // A carom is a contact, not an arrival: it gets the contact's weight. The
+    // zoom punch and the long hit-stop went with the ring — they belong to the
+    // pocket, which is the moment the shot is actually about.
+    engine.hitStop(TIME.hitStop);
+    engine.shake(speed * 1.6);
     audio.carom();
-    fx.floatText(x, z, `×${rules.multiplier}`, 'carom');
-    fx.burst(x, z, 24, PALETTE.good, speed * 0.7, 1.2);
-    fx.shockwave(x, z, PALETTE.good, 4.2, 0.45);
+    fx.floatText(x, z - 1.6, `×${rules.multiplier}`, 'tick');
+    fx.burst(x, z, 12, PALETTE.good, speed * 0.6, 1.1);
+    fx.shockwave(x, z, PALETTE.good, 1.9, 0.22);
 
     boons.onImpact({ player, enemy: target, x, z, speed, banked: true, result: null });
   },
@@ -1326,8 +1336,16 @@ game.on = {
       return;
     }
 
-    const banks = rules.banks;
-    const touched = rules.ballsTouched;
+    // WHAT THIS BALL EARNED, not what the stroke has done since it began.
+    //
+    // The ladder is cumulative and stays that way — every rail taken before a
+    // pot is in the figure it pays at. But the beats underneath the score are a
+    // sentence about THIS ball, and counting rails the previous ball already
+    // celebrated reads as the same banks being paid twice. Since the last time
+    // the stroke paid, then: on the first pot that is every rail of the stroke,
+    // and on the second it is the rails taken between the two.
+    const banks = rules.banks - rules.paidBanks;
+    const touched = rules.ballsTouched - rules.paidTouched;
     const tookGreen = game.strokeTookGreen;
     const paid = rules.pot(ball.number);
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
@@ -1356,6 +1374,14 @@ game.on = {
     const head = away(0);
     fx.floatText(head.x, head.z, `+${paid.value.toLocaleString()}`, 'crit');
 
+    // THE BREAKDOWN IS WORDS, AND ONLY WORDS.
+    //
+    // Each beat used to bring its own ring and its own zoom punch, so a pot
+    // that earned three things fired four rings and four punches over a
+    // second — the echoes that made it "hard to see the most important
+    // actions". The pot's own ring above is the event; these are the receipt,
+    // and a receipt does not need a drum roll. The note and the stagger stay:
+    // they are what makes a long run feel long.
     const steps = [];
     let note = game.chain.count + 3;
     let at = 0.26;
@@ -1367,9 +1393,7 @@ game.on = {
         at: when,
         run: () => {
           audio.chainNote(tone);
-          engine.zoomPunch(FEEL.zoomPunch * 0.5);
-          fx.shockwave(spot.x, spot.z, colour, 3.4, 0.3);
-          fx.floatText(spot.x, spot.z, text, 'crit');
+          fx.floatText(spot.x, spot.z, text, 'tally');
         }
       });
       at += 0.26;
@@ -3761,6 +3785,10 @@ function frame(now) {
       // loudest way a finished board goes on looking playable, dimmed table
       // and CTA notwithstanding.
       !tutorial?.awaitingNext &&
+      // Nor between the ball dropping and the lesson calling it: the cue
+      // settles first, and a line drawn in that gap is the flash reported at
+      // the end of every board. See Tutorial.resolving.
+      !tutorial?.resolving &&
       player.state === PLAYER_STATE.IDLE
     ) {
       // THE CUE AT REST.

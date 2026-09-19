@@ -235,6 +235,8 @@ export class Rules {
     this.banks = 0;
     /** Banks that happened before the stroke last paid — the ones that earned. */
     this.paidBanks = 0;
+    /** Likewise for balls touched, so a pot can report what IT earned. */
+    this.paidTouched = 0;
     /** The multiplier the stroke actually paid at, as opposed to reached. */
     this.paidMultiplier = 0;
     this.scratched = false;
@@ -306,6 +308,7 @@ export class Rules {
   _paid() {
     this.paidMultiplier = this.multiplier;
     this.paidBanks = this.banks;
+    this.paidTouched = this.ballsTouched;
     this.bestMultiplier = Math.max(this.bestMultiplier, this.multiplier);
     return this.multiplier;
   }
@@ -440,6 +443,39 @@ export class Rules {
   }
 
 
+  /* ---------------------------------------------------------------- *
+   * WHAT THE PILL SAYS
+   *
+   * The ladder goes on climbing after a ball drops, because the next ball
+   * might be about to drop onto it — that is the rule, and it is right. But a
+   * figure that goes UP after your ball is already in the pocket reads as
+   * points still being added to it, which was reported twice: "I'm still
+   * seeing points being added for bank hits after the ball was pocketed".
+   *
+   * So the readout stops following the ladder the moment the stroke pays. It
+   * holds the figure the last pot was PAID at until something pays again —
+   * and a second pot then jumps it to its own figure, which correctly includes
+   * every rail taken between the two. Nothing about the scoring changes; this
+   * is the difference between the ladder and the report of it.
+   * ---------------------------------------------------------------- */
+
+  /** Has this stroke put anything down yet? */
+  get hasPaid() {
+    return this.strokeEvents.length > 0;
+  }
+
+  get shownMultiplier() {
+    return this.hasPaid ? this.paidMultiplier : this.multiplier;
+  }
+
+  get shownBanks() {
+    return this.hasPaid ? this.paidBanks : this.banks;
+  }
+
+  get shownTouched() {
+    return this.hasPaid ? this.paidTouched : this.ballsTouched;
+  }
+
   /** The cue ball went down a pocket. */
   scratch() {
     this.scratched = true;
@@ -470,15 +506,15 @@ export class Rules {
       rack: this.mission.rack,
       strokesLeft: this.strokesLeft,
       strokesTotal: this.mission.strokes,
-      multiplier: this.multiplier,
+      multiplier: this.shownMultiplier,
       strokeScore: this.strokeScore,
       roomScore: this.roomScore,
       runScore: this.runScore,
       /** What the score readout should say right now. */
       displayScore: this.runScore + (this.roomClosed ? 0 : this.roomScore),
       freezeCharges: this.freezeCharges,
-      banks: this.banks,
-      ballsTouched: this.ballsTouched,
+      banks: this.shownBanks,
+      ballsTouched: this.shownTouched,
       /** The order: what it wants next, how long the run is, and whether it survived. */
       nextInOrder: this.nextInOrder,
       orderStreak: this.orderStreak,

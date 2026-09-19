@@ -477,10 +477,26 @@ export class InputManager {
   _handleUp(event) {
     if (event.pointerId !== this.pointerId) return;
     event.preventDefault();
-    this._track(event);
 
+    // THE LIFT IS NOT AN AIM.
+    //
+    // This used to track the pointerup's own coordinates and then re-derive
+    // the heading from them, which is a bug you can feel and cannot see: a
+    // finger ROLLS as it leaves the glass, so the last sample of a gesture is
+    // several pixels from the last sample the player was actually looking at
+    // — and at a hundred pixels of lever that is a couple of degrees. Reported
+    // as "I line up the shot to hit the ball into the pocket, but then when I
+    // release somehow it changes my angle and I miss", and the recording shows
+    // exactly that: a line drawn into the pocket, a ball played a whisker wide.
+    //
+    // The shot fires the aim the felt is showing. `this.aim` is refreshed every
+    // frame while the thumb is down (see `refresh`), so it is precisely the
+    // line the player last saw — nothing about the release is allowed to move
+    // it. The lift's coordinates are still tracked below, because tap and
+    // double-tap detection are about where the finger WENT, not where it aimed.
     const now = performance.now();
-    const aim = this._updateAim(now);
+    const aim = this.aim;
+    this._track(event);
     this._release(event.pointerId);
 
     // THE DASH. A second tap in the same spot, inside doubleTapMs, is the
