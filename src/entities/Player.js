@@ -326,6 +326,37 @@ class AimRenderer {
     this.beam.frustumCulled = false;
     this.group.add(this.beam);
 
+    // 0b. THE QUIETER AIM STYLES (TRAJECTORY.aimStyle).
+    //
+    // The beam does two jobs: it is the first leg of the shot, and it is the
+    // only thing that says how hard you are pulling, by swelling to nearly two
+    // ball-widths of additive light. That made it the brightest object on the
+    // table while the player is reading everything else on it. The other
+    // styles draw the first leg like every other predicted line and move the
+    // power read somewhere it does not cover the felt:
+    //   slim  — a ring around the cue ball that fills as the draw grows
+    //   pulse — a spark that runs the first leg, faster the harder you pull,
+    //           flaring the ghost ball each time it arrives
+    // Both spend the brightness the beam used to spend on the RELEASE instead:
+    // a beam that fires down the line once, as the shot is taken.
+    this.lead = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 });
+    this.gaugeTrack = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.16 }, 48);
+    this.gauge = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 }, 48);
+    this.comet = new Ribbon(this.group, { color: PALETTE.playerCore, opacity: 0.95 }, 8);
+    this.comet.mat.blending = THREE.AdditiveBlending;
+    this.cometPhase = 0;
+    this._lastShow = 0;
+
+    // The release flash lives outside the aim group, because a launch hides
+    // the aim and the flash is what plays after it.
+    this.fxGroup = new THREE.Group();
+    this.fxGroup.renderOrder = 3;
+    this.flash = new Ribbon(this.fxGroup, { color: PALETTE.aim, opacity: 1 }, 8);
+    this.flash.mat.blending = THREE.AdditiveBlending;
+    this.flashCore = new Ribbon(this.fxGroup, { color: PALETTE.playerCore, opacity: 1 }, 8);
+    this.flashCore.mat.blending = THREE.AdditiveBlending;
+    this.flashState = null;
+
     // 1. Primary path.
     this.primaryPositions = new Float32Array(6);
     this.primaryGeo = new THREE.BufferGeometry();
@@ -553,6 +584,40 @@ class AimRenderer {
   }
 
   /**
+   * THE RELEASE. In the quiet styles the brightness the beam used to spend
+   * on aiming is spent here instead: a beam that fires down the first leg in
+   * a tenth of a second and fades, as the shot is taken.
+   */
+  fire(segment, power) {
+    if ((TRAJECTORY.aimStyle || 'beam') === 'beam' || !segment) return;
+    this.flashState = { s: segment, power, t: 0 };
+  }
+
+  /** Per frame, on real time: the release flash. */
+  tick(rawDt) {
+    const f = this.flashState;
+    if (!f) return;
+    f.t += rawDt;
+    const life = TRAJECTORY.releaseFlash;
+    if (f.t >= life) {
+      this.flash.hide();
+      this.flashCore.hide();
+      this.flashState = null;
+      return;
+    }
+    const s = f.s;
+    const dx = s.bx - s.ax;
+    const dz = s.bz - s.az;
+    const reach = Math.min(1, f.t / 0.09);
+    const fade = 1 - Math.max(0, (f.t - 0.09) / (life - 0.09));
+    const seg = [{ ax: s.ax, az: s.az, bx: s.ax + dx * reach, bz: s.az + dz * reach }];
+    const width = TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * f.power;
+    // A soft body and a white-hot core: a shot of light, not a bar.
+    this.flash.set(seg, { y: 0.14, width, color: PALETTE.aim, opacity: 0.45 * fade });
+    this.flashCore.set(seg, { y: 0.15, width: width * 0.28, color: PALETTE.playerCore, opacity: fade });
+  }
+
+  /**
    * @param {object} prediction result of PhysicsSystem.predictTrajectory
    * @param {object} player
    * @param {number} power 0..1
@@ -563,8 +628,75 @@ class AimRenderer {
     const y = 0.12;
     const segments = prediction.segments;
 
+    const style = TRAJECTORY.aimStyle || 'beam';
+    const quiet = style !== 'beam';
+    const now = performance.now() / 1000;
+    const frameDt = Math.min(0.1, Math.max(0, now - (this._lastShow || now)));
+    this._lastShow = now;
+    this.markerFlare = 0;
+
+    // --- the quiet styles: a line, and the power read off the felt ---
+    if (quiet && segments.length > 0) {
+      const s = segments[0];
+      const dx = s.bx - s.ax;
+      const dz = s.bz - s.az;
+      const L = Math.hypot(dx, dz) || 1;
+      const ux = dx / L;
+      const uz = dz / L;
+      this.lead.set([s], { y, width: TRAJECTORY.leadWidth, color: PALETTE.aim, opacity: 0.6 + 0.35 * power });
+
+      if (style === 'slim') {
+        // The ring: centred on the shot's direction, opening both ways as the
+        // draw grows, and closing completely at full power.
+        const r = player.radius + TRAJECTORY.gaugeGap;
+        const base = Math.atan2(uz, ux);
+        const arc = (from, to, n) => {
+          const segs = [];
+          for (let i = 0; i < n; i += 1) {
+            const a0 = from + ((to - from) * i) / n;
+            const a1 = from + ((to - from) * (i + 1)) / n;
+            segs.push({
+              ax: player.x + Math.cos(a0) * r,
+              az: player.z + Math.sin(a0) * r,
+              bx: player.x + Math.cos(a1) * r,
+              bz: player.z + Math.sin(a1) * r
+            });
+          }
+          return segs;
+        };
+        this.gaugeTrack.set(arc(0, Math.PI * 2, 40), { y, width: TRAJECTORY.gaugeWidth * 0.7, opacity: 0.16 });
+        const half = Math.max(0.04, power) * Math.PI;
+        const full = power >= 0.985;
+        this.gauge.set(arc(base - half, base + half, Math.max(2, Math.round(40 * power))), {
+          y,
+          width: TRAJECTORY.gaugeWidth * (full ? 1.6 : 1),
+          color: full ? PALETTE.playerCore : PALETTE.aim,
+          opacity: 0.95
+        });
+        this.comet.hide();
+      } else {
+        // The spark: one short packet of light running the first leg. How
+        // fast it runs IS the power, and it flares the ghost ball on arrival.
+        this.gaugeTrack.hide();
+        this.gauge.hide();
+        this.cometPhase = (this.cometPhase + frameDt * (0.45 + 1.6 * power)) % 1;
+        const head = this.cometPhase;
+        const tail = Math.max(0, head - 0.16);
+        this.comet.set(
+          [{ ax: s.ax + ux * L * tail, az: s.az + uz * L * tail, bx: s.ax + ux * L * head, bz: s.az + uz * L * head }],
+          { y: y + 0.01, width: TRAJECTORY.leadWidth * (2.2 + 1.6 * power), opacity: 0.95 }
+        );
+        this.markerFlare = head > 0.82 ? (head - 0.82) / 0.18 : 0;
+      }
+    } else {
+      this.lead.hide();
+      this.gaugeTrack.hide();
+      this.gauge.hide();
+      this.comet.hide();
+    }
+
     // --- the beam ---
-    if (segments.length > 0) {
+    if (!quiet && segments.length > 0) {
       const s = segments[0];
       const dx = s.bx - s.ax;
       const dz = s.bz - s.az;
@@ -623,7 +755,7 @@ class AimRenderer {
     }
 
     // --- primary path (hairline core over the beam) ---
-    if (segments.length > 0) {
+    if (!quiet && segments.length > 0) {
       const s = segments[0];
       this.primaryPositions.set([s.ax, y, s.az, s.bx, y, s.bz]);
       this.primaryGeo.attributes.position.needsUpdate = true;
@@ -721,6 +853,10 @@ class AimRenderer {
       // is exactly the point the swept-circle predictor solved for.
       this.marker.visible = true;
       this.marker.position.set(h.x, y, h.z);
+      // In the pulse style the ghost ball is where the light lands.
+      const flare = this.markerFlare || 0;
+      this.markerMat.opacity = 0.5 + 0.5 * flare;
+      this.marker.scale.setScalar(1 + 0.35 * flare);
 
       // THE TANGENT LINE TELLS THE TRUTH ABOUT ITS OWN CONFIDENCE.
       //
@@ -934,6 +1070,7 @@ export class Player {
     this.scene.add(this.group);
     this.scene.add(this.trail.mesh);
     this.scene.add(this.aimRenderer.group);
+    this.scene.add(this.aimRenderer.fxGroup);
   }
 
   /* ---------------------------------------------------------------- *
@@ -1018,6 +1155,7 @@ export class Player {
     this.iFrameTimer = PLAYER.iFrameGrace;
     this.pyreTimer = 0;
     this.aimPower = 0;
+    this.aimRenderer.fire(this.prediction?.segments?.[0] ?? null, power);
     this.prediction = null;
     this.aimRenderer.hide();
 
@@ -1131,6 +1269,7 @@ export class Player {
    * @param {boolean} aimingActive whether bullet-time is actually engaged
    */
   update(dt, rawDt, game, aimingActive) {
+    this.aimRenderer.tick(rawDt);
     // --- Focus economy runs on REAL time: slow-mo must feel expensive. ---
     if (RULES.staticTable) {
       this.focus = this.focusMax;

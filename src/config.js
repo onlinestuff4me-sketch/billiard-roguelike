@@ -277,6 +277,21 @@ export const TRAJECTORY = {
   beamSlices: 48,
   beamWidth: 0.45,
   beamWidthMax: 1.25,
+  /**
+   * HOW THE FIRST LEG OF THE AIM IS DRAWN, and where power is shown.
+   *   'slim'  — a line like the others; power is a ring around the cue ball
+   *   'pulse' — a line, with a spark running it as fast as the draw is hard
+   *   'beam'  — the original: a ribbon of light that swells with power
+   * The player picks in Settings; this is the default.
+   */
+  aimStyle: 'slim',
+  /** The first leg in the quiet styles: a touch heavier than the other lines. */
+  leadWidth: 0.17,
+  /** The power ring: its stroke, and its clearance from the cue ball's edge. */
+  gaugeWidth: 0.16,
+  gaugeGap: 0.95,
+  /** The beam that fires down the line on release, in the quiet styles (seconds). */
+  releaseFlash: 0.32,
   dashLength: 0.42,
   dashGap: 0.3
 };

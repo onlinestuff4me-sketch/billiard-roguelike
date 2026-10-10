@@ -3605,6 +3605,39 @@ $('set-mute').addEventListener('click', () => {
   audio.unlock();
   applyMute();
 });
+/**
+ * THE AIM LINE'S STYLE, the player's choice. Slim and Pulse draw the first leg
+ * as a line and show power off the felt; Beam is the original swelling ribbon.
+ * See TRAJECTORY.aimStyle.
+ */
+const AIM_STYLES = [
+  { id: 'slim', label: 'Slim' },
+  { id: 'pulse', label: 'Pulse' },
+  { id: 'beam', label: 'Beam' }
+];
+try {
+  const saved = localStorage.getItem('lightline-aim-style');
+  if (AIM_STYLES.some((st) => st.id === saved)) TRAJECTORY.aimStyle = saved;
+} catch {
+  /* private mode */
+}
+function applyAimStyle() {
+  const style = AIM_STYLES.find((st) => st.id === TRAJECTORY.aimStyle) || AIM_STYLES[0];
+  $('set-aim').textContent = `Aim line: ${style.label}`;
+  try {
+    localStorage.setItem('lightline-aim-style', style.id);
+  } catch {
+    /* no-op */
+  }
+}
+$('set-aim').addEventListener('click', () => {
+  const at = AIM_STYLES.findIndex((st) => st.id === TRAJECTORY.aimStyle);
+  TRAJECTORY.aimStyle = AIM_STYLES[(at + 1) % AIM_STYLES.length].id;
+  applyAimStyle();
+});
+applyAimStyle();
+if (typeof window !== 'undefined') window.__setAimStyle = (id) => { TRAJECTORY.aimStyle = id; applyAimStyle(); };
+
 $('set-tutorial').addEventListener('click', () => {
   Tutorial.reset();
   showTutorialState();
