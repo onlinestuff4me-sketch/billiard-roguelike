@@ -3749,6 +3749,9 @@ function frame(now) {
   feed.update(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
+  // The boxes cover the bottom of the felt, where the preview draws where a
+  // ball finishes: they only show while a stroke is playing out.
+  feed.setTucked(!game.midStroke || aiming);
 
   if (game.running) {
     // Pockets shimmer and doors pulse whether or not the table is moving —

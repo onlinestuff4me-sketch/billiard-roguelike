@@ -127,6 +127,17 @@ export class ScoreFeed {
     this._state('Not locked yet', '');
   }
 
+  /**
+   * TUCKED AWAY WHILE YOU AIM.
+   *
+   * The boxes sit over the bottom of the felt, which is exactly where the aim
+   * preview draws where a ball will finish. The preview is the one thing the
+   * boxes must never cover, so they show only while a stroke is playing out.
+   */
+  setTucked(on) {
+    this.root.classList.toggle('tucked', !!on);
+  }
+
   /** Is anything still presenting, or waiting to? The stroke must not end while it is. */
   get busy() {
     return !!(this.cur || this.queue.length || this.finale);
@@ -487,7 +498,7 @@ export class ScoreFeed {
         }
       });
       steps.push({
-        hold: 0.6,
+        hold: 1.0,
         run: () => {
           this.product.textContent = `+${result.paid.toLocaleString()}`;
           this.root.classList.add('paid');
@@ -495,7 +506,7 @@ export class ScoreFeed {
       });
     } else {
       steps.push({
-        hold: 0.7,
+        hold: 1.0,
         run: () => this._state('No ball dropped · 0', 'hazard')
       });
     }

@@ -958,6 +958,8 @@
         z-index: 6;
       }
       .score-feed[hidden] { display: none; }
+      .score-feed { transition: opacity 0.18s ease; }
+      .score-feed.tucked { opacity: 0; }
       .sf-state {
         min-height: 13px;
         font-size: 10px;
