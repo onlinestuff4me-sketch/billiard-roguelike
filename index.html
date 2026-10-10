@@ -16,9 +16,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
-      content="Billiard Roguelike — real-time kinetic billiards meets boon-stacking action roguelike."
+      content="Lightline: Billiard Roguelike — trick-shot billiards on a grid of light, with a boon-stacking roguelike on top."
     />
-    <title>Billiard Roguelike</title>
+    <title>Lightline: Billiard Roguelike</title>
     <style>
       /* ---------------------------------------------------------------
          Dark Velvet Cyber-Billiards — shell styling.
@@ -940,6 +940,94 @@
       }
 
       /* World-space floating combat text, projected from the scene each frame. */
+      /* ---------------- THE SCORE FEED (src/ui/ScoreFeed.js) ----------------
+         Lightline: white plates add POINTS, orange plates add MULT, gold plates
+         multiply it, pink-red plates are taken back. Corners are cut, not
+         rounded. Every number is presented beside its cause, then flown here. */
+      #ui-layer.feed-on .hud-combo { display: none !important; }
+      .score-feed {
+        --ll-pts: #e9f8ff; --ll-mult: #ff8a1e; --ll-hot: #ffc266; --ll-void: #ff2e7e; --ll-you: #22e8ff;
+        position: absolute;
+        left: 50%;
+        bottom: calc(var(--hud-pad) + 82px);
+        transform: translateX(-50%);
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+        pointer-events: none;
+        z-index: 6;
+      }
+      .score-feed[hidden] { display: none; }
+      .sf-state {
+        min-height: 13px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-shadow: 0 1px 3px rgba(2, 5, 11, 0.9);
+      }
+      .sf-state.lock { color: var(--ll-you); }
+      .sf-state.hazard { color: var(--ll-void); }
+      .sf-boxes { position: relative; display: flex; align-items: center; gap: 8px; transition: gap 0.18s cubic-bezier(0.7, 0, 0.84, 0); }
+      .sf-box {
+        min-width: 78px;
+        padding: 5px 12px 6px;
+        text-align: center;
+        font-family: var(--font);
+        font-weight: 700;
+        font-size: 26px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        color: #02050b;
+        transition: opacity 0.2s ease;
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+      }
+      .sf-box small { display: block; font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; margin-bottom: 1px; }
+      .sf-box.pts { background: var(--ll-pts); }
+      .sf-box.mult { background: var(--ll-mult); }
+      .sf-times { font-weight: 700; font-size: 22px; color: var(--muted); }
+      .score-feed.pending .sf-box { opacity: 0.5; }
+      .score-feed.void .sf-box { background: var(--ll-void); opacity: 1; }
+      .score-feed.slam .sf-boxes { gap: 0; }
+      .score-feed.slam .sf-times { color: var(--ll-hot); text-shadow: 0 0 14px var(--ll-mult); }
+      .sf-product { display: none; font-weight: 700; font-size: 34px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult); font-variant-numeric: tabular-nums; }
+      .score-feed.paid .sf-box, .score-feed.paid .sf-times { display: none; }
+      .score-feed.paid .sf-product { display: block; }
+      .score-feed.locking .sf-boxes::after {
+        content: '';
+        position: absolute;
+        inset: -6px -10px;
+        border: 2px solid var(--ll-you);
+        box-shadow: 0 0 16px var(--ll-you);
+        animation: sf-lock 0.5s ease-out forwards;
+        pointer-events: none;
+      }
+      @keyframes sf-lock { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.45, 1.8); } }
+      .sf-plates { position: absolute; inset: 0; pointer-events: none; z-index: 7; overflow: hidden; }
+      .sf-plate {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: grid;
+        justify-items: center;
+        padding: 4px 11px 5px;
+        color: #02050b;
+        white-space: nowrap;
+        font-family: var(--font);
+        will-change: transform;
+        clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+      }
+      .sf-plate b { font-size: 26px; font-weight: 700; line-height: 1; }
+      .sf-plate small { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; margin-top: 2px; text-transform: uppercase; }
+      .sf-plate.pts { background: #e9f8ff; filter: drop-shadow(0 0 10px rgba(233, 248, 255, 0.7)); }
+      .sf-plate.mult { background: #ff8a1e; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.85)); }
+      .sf-plate.xmult { background: #ffc266; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.85)); }
+      .sf-plate.void { background: #ff2e7e; filter: drop-shadow(0 0 10px rgba(255, 46, 126, 0.8)); }
+      .sf-plate.void b { text-decoration: line-through; }
+      .sf-streak { position: absolute; left: 0; top: 0; height: 3px; margin-top: -1.5px; transform-origin: 0 50%; border-radius: 2px; pointer-events: none; }
+      @media (prefers-reduced-motion: reduce) { .sf-boxes { transition: none; } .score-feed.locking .sf-boxes::after { animation: none; opacity: 0; } }
+
       .float-text {
         position: absolute;
         left: 0;
@@ -1775,10 +1863,10 @@
         <div id="ui-layer"></div>
         <div id="boot-veil">
           <div class="menu-inner" id="menu-main">
-            <h1 class="menu-title" aria-label="Billiard Roguelike">
-              <span class="ln">Billiard</span><span class="ln">Roguelike</span>
+            <h1 class="menu-title" aria-label="Lightline: Billiard Roguelike">
+              <span class="ln">Lightline</span>
             </h1>
-            <p class="menu-eyebrow">Dark Velvet Cyber-Billiards</p>
+            <p class="menu-eyebrow">Billiard Roguelike</p>
             <button id="btn-play" class="menu-btn primary" type="button">Play</button>
             <div class="menu-row">
               <button id="btn-modes" class="menu-btn" type="button">Modes</button>

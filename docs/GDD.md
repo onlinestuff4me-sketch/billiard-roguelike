@@ -99,6 +99,12 @@ hull reaches zero.
 
 ## 3. Scoring
 
+> **Replaced by Points × Mult** (see [`specs/product.md`](../specs/product.md)). A shot
+> builds two numbers and pays their product; nothing counts until a ball drops, and
+> whatever follows the last pot is taken back. Each number is presented live, one at
+> a time, beside its cause (`src/ui/ScoreFeed.js`). The single-ladder model below is
+> kept as history.
+
 Score comes from four places, and only four.
 
 | Source | Rate |

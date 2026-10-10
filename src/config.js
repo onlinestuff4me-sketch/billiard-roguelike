@@ -478,7 +478,7 @@ export const RULES = {
      * saved stroke, deliberately — it should be worth routing for and never
      * worth more than playing well.
      */
-    cleanSweep: 500,
+    cleanSweep: 50,
     /**
      * STRICT: out of order is a foul, the way an early 8 is. Never on by
      * default and never rolled — it is a mode the player turns on, and it is
@@ -490,24 +490,35 @@ export const RULES = {
     storageKey: 'billiard-strict-order-v1'
   },
 
+  /**
+   * POINTS × MULT.
+   *
+   * A shot builds two numbers as it happens and pays their product. Nothing
+   * counts until a ball drops: a pot locks in everything up to it, and
+   * whatever the shot does after its last pot is taken back. See Rules.js
+   * and specs/product.md.
+   */
   score: {
-    /**
-     * A ball pays its number times this, at the multiplier standing when it
-     * drops. Every pocket pays the same — the variable rates went with the
-     * pocket types, onto the felt where colour is allowed to mean something.
-     */
-    perPip: 100,
+    /** A ball dropping adds its number times this to POINTS. */
+    perPip: 10,
+    /** The cue ball's first contact with each ball adds this to POINTS. */
+    perHit: 5,
     /** Every shot left in the budget at room end pays this times the room. */
-    savedStroke: 500
+    savedStroke: 50
   },
 
   multiplier: {
     /** Every stroke opens here. */
     base: 1,
+    /** The cue ball off a wall. */
     perBank: 1,
-    perBallTouched: 1,
-    perBallDown: 1,
-    /** A gold ring or gold pocket doubles whatever has been built. */
+    /** One object ball driving another (once per struck ball, per shot). */
+    perKiss: 1,
+    /** An object ball that took a wall on its way in. */
+    bankPot: 2,
+    /** Every pot after the first in one shot. */
+    extraPot: 2,
+    /** The bonus zone doubles whatever has been built. */
     goldFactor: 2,
     max: 99
   },
@@ -761,6 +772,35 @@ export const FEEL = {
 };
 
 /* ------------------------------------------------------------------ *
+ * SCORE_FEED — how each scoring number is presented (src/ui/ScoreFeed.js)
+ *
+ * Mirrors the Lightline design system's duration and timescale tokens.
+ * Seconds of real time, at 1x presentation speed.
+ * ------------------------------------------------------------------ */
+export const SCORE_FEED = {
+  /** The table freezes outright when a number arrives (Lightline event-hitstop). */
+  hitStop: 0.09,
+  /** A plate popping in beside its cause, and a box jumping as one lands (event-pop). */
+  pop: 0.42,
+  /** How long the first plate of a shot holds beside its cause (event-hold)... */
+  hold: 0.8,
+  /** ...each later one this much shorter... */
+  holdStep: 0.9,
+  /** ...and never shorter than this (event-hold-min). */
+  holdMin: 0.4,
+  /** A plate flying from its cause into its box (event-flight). */
+  flight: 0.34,
+  /** World speed while a number presents (timescale-slow). Balls crawl, never stop. */
+  slow: 0.12,
+  /** A tap runs everything still to come this much faster (timescale-fast). */
+  fastSpeed: 2.5,
+  /** One plate flying back out of its box on a take-back (takeback-step). */
+  takeBack: 0.3,
+  /** The pause before POINTS and MULT slam together (slam-breath). */
+  breath: 0.4
+};
+
+/* ------------------------------------------------------------------ *
  * AUDIO — procedural Web Audio palette
  * ------------------------------------------------------------------ */
 export const AUDIO = {
@@ -880,6 +920,12 @@ export const PALETTE = {
 
   /* -- BAD: every hazard --------------------------------------------- */
   bad: 0xff5a3d,
+
+  /* -- SCORE: what each scoring number feeds (Lightline pts / mult) ---- */
+  scorePoints: 0xe9f8ff,
+  scoreMult: 0xff8a1e,
+  scoreMultHot: 0xffc266,
+  scoreVoid: 0xff2e7e,
 
   /* -- neutral ------------------------------------------------------- */
   spark: 0xfff6d8,
@@ -1147,6 +1193,7 @@ export default {
   AUDIO,
   PALETTE,
   CSS_PALETTE,
+  SCORE_FEED,
   RULES,
   TABLE,
   RACK,

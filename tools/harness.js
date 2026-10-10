@@ -9,6 +9,9 @@
  * eventually be confidently wrong about a board that changed underneath it.
  */
 (() => {
+  // MEASUREMENT RUNS HEADLESS: the score presenter stays off, so a sweep of a
+  // thousand strokes never queues a thousand plates or slows the table.
+  if (window.__game) window.__game.headless = true;
   const g = () => window.__game;
 
   /* ---------------------------------------------------------------- *

@@ -302,6 +302,49 @@ export class AudioManager {
     });
   }
 
+  /* ---------------------------------------------------------------- *
+   * The score presenter's voices (see src/ui/ScoreFeed.js)
+   * ---------------------------------------------------------------- */
+
+  /**
+   * One number landing in its box: the next degree up the pentatonic scale.
+   * POINTS is a bright triangle; MULT sits a fifth above on a filtered saw, so
+   * the two boxes are told apart by ear. `falling` bends it down an octave,
+   * for a number being taken back.
+   */
+  scoreNote(index = 0, bucket = 'points', falling = false) {
+    const scale = AUDIO.scale;
+    index = Number.isFinite(index) ? Math.min(Math.max(0, Math.floor(index)), 24) : 0;
+    const semis = scale[index % scale.length] + 12 * Math.floor(index / scale.length);
+    const freq = AUDIO.rootHz * Math.pow(2, semis / 12) * (bucket === 'mult' ? 1.5 : 1);
+    if (bucket === 'mult') {
+      this._tone({ type: 'sawtooth', freq, freqEnd: falling ? freq * 0.5 : undefined, duration: 0.3, gain: AUDIO.chainNoteGain * 0.42, attack: 0.006 });
+      this._tone({ type: 'triangle', freq: freq * 0.5, duration: 0.3, gain: AUDIO.chainNoteGain * 0.5, attack: 0.006 });
+    } else {
+      this._tone({ type: 'triangle', freq, freqEnd: falling ? freq * 0.5 : undefined, duration: 0.34, gain: AUDIO.chainNoteGain, attack: 0.006 });
+      this._tone({ type: 'sine', freq: freq * 2, duration: 0.18, gain: AUDIO.chainNoteGain * 0.4, attack: 0.004 });
+    }
+  }
+
+  /** The table freezing as a number arrives: short, soft, felt more than heard. */
+  scoreThud() {
+    this._tone({ type: 'sine', freq: 180, freqEnd: 80, duration: 0.14, gain: 0.2 });
+  }
+
+  /** The first pot locking the boxes in. */
+  scoreLock() {
+    const root = AUDIO.rootHz * 2;
+    this._tone({ type: 'sine', freq: 150, freqEnd: 70, duration: 0.18, gain: 0.24 });
+    this._tone({ type: 'triangle', freq: root, duration: 0.32, gain: 0.12, delay: 0.02 });
+    this._tone({ type: 'triangle', freq: root * 1.5, duration: 0.4, gain: 0.11, delay: 0.08 });
+  }
+
+  /** POINTS and MULT colliding: the sub drop, under a crack. */
+  scoreSlam() {
+    this._tone({ type: 'sine', freq: 120, freqEnd: 38, duration: 0.5, gain: AUDIO.subGain });
+    this._noise({ duration: 0.16, gain: 0.26, filterType: 'bandpass', freq: 2400, freqEnd: 500, q: 0.8 });
+  }
+
   /** Weight of a cue strike; brightness scales with momentum. */
   impact(intensity = 0.5) {
     // Collapse simultaneous impacts so a six-body break does not clip.

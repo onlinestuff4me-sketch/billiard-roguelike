@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * check-scoring — the ladder pays for what happened, in the order it happened.
+ * check-scoring — Points × Mult pays for what happened, in the order it happened,
+ * and only once a ball has dropped.
  *
  *   npm run scoring
  *
@@ -37,87 +38,100 @@ const fresh = (opts = {}) => {
   return rules;
 };
 
-console.log('\nthe ladder\n');
+console.log('\npoints × mult\n');
 
-// A bank before a pot is worth money, and that is deliberate.
-{
-  const plain = fresh();
-  const potted = plain.pot(4);
-  const banked = fresh();
-  banked.bank();
-  const after = banked.pot(4);
-  check(after.value > potted.value, 'a bank before a pot pays more', `${potted.value} → ${after.value}`);
-}
-
-// A bank after the last pot pays nothing, and is not reported as if it had.
+// The worked example from the spec and the proposal demo: wall, zone, two
+// contacts, the 5 down, the 3 banked down. 90 × 8 = 720.
 {
   const rules = fresh();
+  rules.bank();
+  rules.gold();
+  rules.hit(3);
+  rules.hit(5);
+  rules.pot(5);
+  rules.pot(3, { banked: true });
+  const out = rules.strokeResult();
+  check(out.points === 90 && out.mult === 8, 'the worked example builds 90 points and ×8', `${out.points} × ${out.mult}`);
+  check(out.paid === 720, 'and pays their product', `${out.paid}`);
+  check(
+    rules.events.map((e) => e.label).join(',') === 'WALL,ZONE,HIT · 3,HIT · 5,5 SUNK,3 SUNK,BANK,TWO IN ONE',
+    'and records every event in the order it happened',
+    rules.events.map((e) => e.label).join(', ')
+  );
+}
+
+// Order matters because the zone multiplies: a wall before it is doubled.
+{
+  const early = fresh();
+  early.bank();
+  early.gold();
+  early.pot(3);
+  const late = fresh();
+  late.gold();
+  late.bank();
+  late.pot(3);
+  check(early.strokeScore > late.strokeScore, 'a wall before the zone pays more than a wall after it', `${late.strokeScore} → ${early.strokeScore}`);
+}
+
+// Touching the same ball twice is one contact, so two balls cannot be rattled
+// together for points.
+{
+  const rules = fresh();
+  rules.hit(3);
+  const again = rules.hit(3);
+  check(again === null && rules.points === 5, 'a second contact with the same ball pays nothing', `${rules.points} points`);
+}
+
+console.log('\nnothing counts until a ball drops\n');
+
+// A stroke that sinks nothing pays nothing, however much it built.
+{
+  const rules = fresh();
+  rules.bank();
+  rules.gold();
+  rules.hit(2);
+  const out = rules.strokeResult();
+  check(out.paid === 0 && !out.locked, 'a stroke with no pot pays 0', `${out.paid}`);
+  check(out.takenBack.length === 3, 'and every event it built is taken back', `${out.takenBack.length} events`);
+  const summary = rules.endStroke();
+  check(summary.paid === 0 && rules.roomScore === 0, 'and the room banks nothing');
+}
+
+// A pot locks in everything up to it; whatever comes after is taken back.
+{
+  const rules = fresh();
+  rules.bank();
+  rules.hit(4);
   const paid = rules.pot(4);
   for (let i = 0; i < 5; i += 1) rules.bank();
+  const out = rules.strokeResult();
+  check(out.points === paid.points && out.mult === 2, 'walls after the last pot do not count', `${out.points} × ${out.mult}`);
+  check(out.takenBack.length === 5 && out.takenBack.every((e) => e.kind === 'bank'), 'and are the events taken back', `${out.takenBack.length}`);
   const summary = rules.endStroke();
-  check(summary.paid === paid.value, 'a bank after the last pot pays nothing', `${summary.paid}`);
-  check(
-    summary.multiplier === paid.multiplier,
-    'and the stroke reports the multiplier it paid at',
-    `paid ×${paid.multiplier}, reported ×${summary.multiplier}`
-  );
-  check(summary.banks === 0, 'and counts no banks it never earned on', `${summary.banks}`);
-  check(
-    rules.bestMultiplier === paid.multiplier,
-    'and the run remembers only what it was paid at',
-    `×${rules.bestMultiplier}`
-  );
+  check(summary.paid === 45 * 2, 'and the stroke pays what the pot locked', `${summary.paid}`);
+  check(summary.banks === 1, 'counting only the walls it locked in', `${summary.banks}`);
+  check(rules.bestMultiplier === 2, 'and the run remembers only what was locked', `×${rules.bestMultiplier}`);
 }
 
-// Banks BETWEEN two pots are earned by the second one.
+// Walls BETWEEN two pots are locked in by the second one.
 {
   const rules = fresh();
   rules.pot(2);
   rules.bank();
   rules.bank();
-  const second = rules.pot(2);
-  const summary = rules.endStroke();
-  check(summary.banks === 2, 'banks between two pots are earned by the second', `${summary.banks}`);
-  check(summary.multiplier === second.multiplier, 'and the report follows the last one paid');
-}
-
-console.log('\nwhat the readout says\n');
-
-// THE PILL IS A REPORT, NOT THE LADDER. The ladder climbs after a pot because
-// the next pot might be about to happen; the figure on screen must not, or a
-// player watching it go up after their ball has dropped reads it as points
-// still being added to that ball. Reported twice from play.
-{
-  const rules = fresh();
-  rules.bank();
-  const first = rules.pot(1);
-  const atPot = rules.snapshot();
-  check(atPot.multiplier === first.multiplier, 'the readout shows what the pot paid', `×${atPot.multiplier}`);
-  rules.bank();
-  rules.bank();
-  const after = rules.snapshot();
-  check(
-    after.multiplier === atPot.multiplier && after.banks === atPot.banks,
-    'and does not move for rails taken after it',
-    `×${after.multiplier}, ${after.banks} bank(s), ladder at ×${rules.multiplier}`
-  );
-  const second = rules.pot(2);
-  const now = rules.snapshot();
-  check(now.multiplier === second.multiplier, 'until the next ball drops', `×${now.multiplier}`);
-  check(now.banks === 3, 'which counts every rail taken between the two', `${now.banks} banks`);
-}
-
-// And the beats under the score are about THIS ball: rails since the stroke
-// last paid, so the second pot does not re-announce the first pot's banks.
-{
-  const rules = fresh();
-  rules.bank();
-  rules.bank();
-  rules.pot(1);
-  const before = rules.paidBanks;
-  rules.bank();
   rules.pot(2);
-  check(before === 2 && rules.banks - before === 1, 'a pot can tell what it earned from what came before', `${before} then ${rules.banks - before}`);
+  const summary = rules.endStroke();
+  check(summary.banks === 2, 'walls between two pots are locked by the second', `${summary.banks}`);
+  check(summary.multiplier === 1 + 2 + 2, 'and the second pot adds the two-in-one bonus', `×${summary.multiplier}`);
+}
+
+// A scratch voids the stroke.
+{
+  const rules = fresh();
+  rules.pot(3);
+  rules.scratch();
+  const summary = rules.endStroke();
+  check(summary.paid === 0 && summary.voided, 'a scratch voids what was locked', `${summary.paid}`);
 }
 
 console.log('\nthe order\n');
@@ -208,4 +222,4 @@ if (fails.length) {
   console.log(`${fails.length} check${fails.length === 1 ? '' : 's'} failed\n`);
   process.exit(1);
 }
-console.log('the ladder pays for what happened\n');
+console.log('points × mult pays for what happened, and only once a ball drops\n');

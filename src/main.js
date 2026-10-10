@@ -52,6 +52,7 @@ import { RoomManager } from './systems/RoomManager.js';
 import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
+import { ScoreFeed } from './ui/ScoreFeed.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -816,6 +817,24 @@ const audio = new AudioManager();
 const player = new Player(scene);
 const fx = createFX();
 const hud = new HUD(uiLayer, { camera, stage });
+/**
+ * THE SCORE PRESENTER. Every number a stroke earns is shown one at a time,
+ * beside its cause, and flown into the POINTS or MULT box. See ScoreFeed.js.
+ */
+const feed = new ScoreFeed({
+  layer: uiLayer,
+  camera,
+  engine,
+  audio,
+  fx,
+  colors: {
+    points: PALETTE.scorePoints,
+    mult: PALETTE.scoreMult,
+    multHot: PALETTE.scoreMultHot,
+    void: PALETTE.scoreVoid
+  },
+  reducedMotion
+});
 const modal = new BoonModal(uiLayer);
 
 /** The shared context every system reads from. */
@@ -902,24 +921,41 @@ const ENEMY_COLOR = {
   heavy: PALETTE.bone
 };
 
-/** Step the cascade multiplier and play its pentatonic note. */
 /**
- * One step of the multiplier ladder, with the note that goes with it.
+ * ONE SCORING EVENT, from Rules, into the presenter.
  *
- * Every rung — a bank, a ball touched, a ball down — routes through here, so
- * the escalating pentatonic run and the number on screen can never disagree
- * about how deep the stroke is.
+ * Only a live stroke scores: the menu's attract shots and a door shot run the
+ * same physics and must not. With the presenter off (a lesson, a headless
+ * measurement) the old pentatonic run still plays, so a lesson still sounds
+ * like it is building.
  */
-function ladder(kind) {
-  if (!game.midStroke) return rules.multiplier;
-  let value;
-  if (kind === 'bank') value = rules.bank();
-  else if (kind === 'gold') value = rules.gold();
-  else value = rules.touch();
+function scored(make) {
+  if (!game.midStroke) return null;
+  const event = make();
+  if (!event) return null;
   game.chain.count += 1;
   game.chain.best = Math.max(game.chain.best, game.chain.count);
-  audio.chainNote(game.chain.count - 1);
-  return value;
+  if (feed.enabled) feed.push(event);
+  else audio.chainNote(game.chain.count - 1);
+  return event;
+}
+
+/**
+ * Which way a rail faces, from where on it a ball touched it. Object-ball
+ * rebounds do not carry a normal, and the presenter needs one to light the
+ * cushion along its length and put the plate inboard of it.
+ */
+function railNormal(x, z) {
+  const dx = ARENA.halfW - Math.abs(x);
+  const dz = ARENA.halfH - Math.abs(z);
+  return dx < dz ? { nx: -Math.sign(x) || 1, nz: 0 } : { nx: 0, nz: -Math.sign(z) || 1 };
+}
+
+/** An object ball meeting a rail: remembered, because a pot after it is a bank pot. */
+function noteObjectRail(ball, x, z, kind) {
+  if (!game.midStroke || !ball || kind !== 'rail') return;
+  ball.railsThisStroke = (ball.railsThisStroke || 0) + 1;
+  ball.lastRail = { x, z, kind: 'wall', ...railNormal(x, z) };
 }
 
 /**
@@ -1090,6 +1126,12 @@ function beginStroke() {
   game.strokeTookGreen = false;
   rules.beginStroke();
   rooms.table.rearmForStroke();
+  for (const ball of game.enemies) {
+    ball.railsThisStroke = 0;
+    ball.lastRail = null;
+  }
+  game.feedSettling = false;
+  feed.beginStroke();
 }
 
 /** Resume a frozen stroke. Same stroke, same ladder — no reset, no cost. */
@@ -1119,10 +1161,12 @@ function finishStroke() {
   }
 
   const summary = rules.endStroke();
-  if (summary.voided) {
-    fx.floatText(player.x, player.z - 2.4, `VOID −${summary.lost.toLocaleString()}`, 'splat');
-  } else if (summary.paid > 0) {
-    fx.floatText(player.x, player.z - 2.4, `+${summary.paid.toLocaleString()}`, 'crit');
+  if (!feed.enabled) {
+    if (summary.voided) {
+      fx.floatText(player.x, player.z - 2.4, `VOID −${summary.lost.toLocaleString()}`, 'splat');
+    } else if (summary.paid > 0) {
+      fx.floatText(player.x, player.z - 2.4, `+${summary.paid.toLocaleString()}`, 'crit');
+    }
   }
 
   if (rules.filled) {
@@ -1219,7 +1263,7 @@ game.on = {
       if (!game.tutorialGuard && speed > 8) p.takeDamage(RULES.damage.kickback, game, enemy);
       enemy.hostile = false;
     } else {
-      ladder('touch');
+      scored(() => rules.hit(enemy.number, { x: enemy.x, z: enemy.z, kind: 'ball', ref: enemy }));
     }
 
     tutorial.notify('hit', {
@@ -1230,20 +1274,10 @@ game.on = {
       killed: false
     });
 
-    // A CONTACT IS NOT A POT.
-    //
-    // This drew a ring that grew with every hit — 4.4 units and up, against
-    // the 5.5 a pocket gets — plus a full-size callout, so a three-ball stroke
-    // put four rings the size of the celebration on the felt before anything
-    // had gone down. What a contact needs to say is "that counted, and the
-    // shot is now worth this much", which is a small ring at the point of
-    // impact and a small number beside it.
-    if (rules.multiplier > 1 && game.midStroke) {
-      fx.floatText(x, z - 1.6, `×${rules.multiplier}`, 'tick');
-      fx.shockwave(x, z, PALETTE.good, 1.7, 0.2);
-    }
-
-    engine.hitStop(TIME.hitStop);
+    // A CONTACT IS NOT A POT. Its number (+5 HIT) is shown by the presenter,
+    // beside the ball, one at a time; the presenter also does the freeze, so
+    // the contact only takes its own hit-stop when the presenter is off.
+    if (!feed.enabled) engine.hitStop(TIME.hitStop);
     engine.shake(speed * enemy.mass * 0.9);
     audio.impact(clamp(speed / PLAYER.launchSpeed, 0, 1));
     fx.burst(x, z, 10, ENEMY_COLOR[enemy.type], speed * 0.45);
@@ -1255,17 +1289,15 @@ game.on = {
   /* --- ball into ball ------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
     tutorial.notify('pass', { striker, target, x, z, speed });
-    ladder('touch');
+    scored(() => rules.kiss(target.number, { x: target.x, z: target.z, kind: 'ball', ref: target }));
 
     // A carom is a contact, not an arrival: it gets the contact's weight. The
     // zoom punch and the long hit-stop went with the ring — they belong to the
     // pocket, which is the moment the shot is actually about.
-    engine.hitStop(TIME.hitStop);
+    if (!feed.enabled) engine.hitStop(TIME.hitStop);
     engine.shake(speed * 1.6);
     audio.carom();
-    fx.floatText(x, z - 1.6, `×${rules.multiplier}`, 'tick');
-    fx.burst(x, z, 12, PALETTE.good, speed * 0.6, 1.1);
-    fx.shockwave(x, z, PALETTE.good, 1.9, 0.22);
+    fx.burst(x, z, 12, PALETTE.spark, speed * 0.6, 1.1);
 
     boons.onImpact({ player, enemy: target, x, z, speed, banked: true, result: null });
   },
@@ -1276,7 +1308,8 @@ game.on = {
    * destroy anything — so what is left is the sound and the shove, which is
    * exactly what a ball slamming a cushion should be.
    */
-  wallSplat({ enemy, x, z, speed }) {
+  wallSplat({ enemy, x, z, speed, kind }) {
+    noteObjectRail(enemy, x, z, kind);
     audio.wallSplat();
     engine.hitStop(TIME.hitStop);
     engine.shake(speed * 1.4);
@@ -1290,7 +1323,8 @@ game.on = {
     engine.shake(1.6);
   },
 
-  enemyRebound({ enemy, x, z, speed }) {
+  enemyRebound({ enemy, x, z, speed, kind }) {
+    noteObjectRail(enemy, x, z, kind);
     if (speed < 6) return;
     fx.burst(x, z, 3, ENEMY_COLOR[enemy.type], speed * 0.25, 0.6);
   },
@@ -1336,79 +1370,34 @@ game.on = {
       return;
     }
 
-    // WHAT THIS BALL EARNED, not what the stroke has done since it began.
-    //
-    // The ladder is cumulative and stays that way — every rail taken before a
-    // pot is in the figure it pays at. But the beats underneath the score are a
-    // sentence about THIS ball, and counting rails the previous ball already
-    // celebrated reads as the same banks being paid twice. Since the last time
-    // the stroke paid, then: on the first pot that is every rail of the stroke,
-    // and on the second it is the rails taken between the two.
-    const banks = rules.banks - rules.paidBanks;
-    const touched = rules.ballsTouched - rules.paidTouched;
-    const tookGreen = game.strokeTookGreen;
-    const paid = rules.pot(ball.number);
+    // THE POT. It adds its own events — the ball's value, a bank pot if it
+    // took a rail on the way, a second-pot bonus, the order bonus — and locks
+    // in everything the stroke has done up to now. The presenter shows each
+    // one beside its cause: the value at the pocket, the bank at the rail.
+    const banked = (ball.railsThisStroke || 0) > 0;
+    const paid = game.midStroke
+      ? rules.pot(ball.number, {
+          banked,
+          at: { x: pocket.x, z: pocket.z, kind: 'pocket', ref: pocket },
+          bankAt: banked ? ball.lastRail : null
+        })
+      : rules.pot(ball.number);
+    if (game.midStroke) {
+      for (const event of paid.events) scored(() => event);
+    }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
 
-    // THE TEXT GOES WHERE THE BALL IS NOT.
-    //
-    // Every pocket is in a corner or against a rail, so a label centred on one
-    // sits directly over the ball dropping into it — the score covered the very
-    // event it was reporting. Each beat is thrown back toward the middle of the
-    // table, along the line from the pocket to the centre, and stacked further
-    // in as the run climbs.
-    const inward = (() => {
-      const len = Math.hypot(pocket.x, pocket.z) || 1;
-      return { x: -pocket.x / len, z: -pocket.z / len };
-    })();
-    const away = (n) => ({
-      x: pocket.x + inward.x * (2.6 + n * 1.5),
-      z: pocket.z + inward.z * (2.6 + n * 1.5)
-    });
-
-    audio.chainNote(game.chain.count + 2);
-    engine.hitStop(TIME.hitStopCrit);
     engine.zoomPunch();
     engine.shake(10);
-    fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
-    const head = away(0);
-    fx.floatText(head.x, head.z, `+${paid.value.toLocaleString()}`, 'crit');
-
-    // THE BREAKDOWN IS WORDS, AND ONLY WORDS.
-    //
-    // Each beat used to bring its own ring and its own zoom punch, so a pot
-    // that earned three things fired four rings and four punches over a
-    // second — the echoes that made it "hard to see the most important
-    // actions". The pot's own ring above is the event; these are the receipt,
-    // and a receipt does not need a drum roll. The note and the stagger stay:
-    // they are what makes a long run feel long.
-    const steps = [];
-    let note = game.chain.count + 3;
-    let at = 0.26;
-    const beat = (text, colour) => {
-      const when = at;
-      const tone = note;
-      const spot = away(steps.length + 1);
-      steps.push({
-        at: when,
-        run: () => {
-          audio.chainNote(tone);
-          fx.floatText(spot.x, spot.z, text, 'tally');
-        }
-      });
-      at += 0.26;
-      note += 1;
-    };
-    if (banks > 0) beat(`${banks} BANK${banks > 1 ? 'S' : ''} ×${1 + banks}`, PALETTE.player);
-    if (tookGreen) beat('GREEN ×2', PALETTE.good);
-    if (touched > 1) beat(`${touched} BALLS ×${touched}`, PALETTE.solid);
-    // THE ORDER PAYS, SO THE ORDER IS SAID OUT LOUD. A bonus nobody can see
-    // land is a bonus that teaches nothing, and this one has to teach: it is
-    // the only thing telling a player the rack has an order at all.
-    if (paid.inOrder && paid.rungs > 0) {
-      beat(paid.streak > 1 ? `IN ORDER ×${paid.streak} +${paid.rungs}` : `IN ORDER +${paid.rungs}`, PALETTE.lip);
+    if (!feed.enabled) {
+      // Lessons and headless runs keep the short version: one figure, thrown
+      // clear of the pocket toward the middle of the table.
+      const len = Math.hypot(pocket.x, pocket.z) || 1;
+      audio.chainNote(game.chain.count + 2);
+      engine.hitStop(TIME.hitStopCrit);
+      fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
+      fx.floatText(pocket.x - (pocket.x / len) * 2.6, pocket.z - (pocket.z / len) * 2.6, `+${paid.value.toLocaleString()}`, 'crit');
     }
-    if (steps.length) celebrate(steps);
 
     removeBall(ball, pocket);
   },
@@ -1449,10 +1438,10 @@ game.on = {
 
     switch (object.kind) {
       case 'double': {
-        const value = ladder('gold');
+        const event = scored(() => rules.gold({ x: object.x, z: object.z, kind: 'zone', ref: object }));
         game.strokeTookGreen = true;
         audio.pyre?.();
-        fx.floatText(object.x, object.z, `×${value}`, 'crit');
+        if (!feed.enabled) fx.floatText(object.x, object.z, `×${event ? event.mult : rules.multiplier}`, 'crit');
         return;
       }
       case 'freeze': {
@@ -1507,7 +1496,9 @@ game.on = {
     // does not count — but the bar sits just under the creep threshold, since
     // below that a ball is already being dragged to a stop and cannot ladder
     // its way up on cushions for free.
-    if (speed > RULES.creepSpeed - 1) ladder('bank');
+    if (speed > RULES.creepSpeed - 1) {
+      scored(() => rules.bank({ x, z, nx: event.nx, nz: event.nz, kind: 'wall' }));
+    }
 
     if (kind === 'bumper') {
       const current = Math.hypot(p.vx, p.vz) || 1;
@@ -3287,6 +3278,12 @@ stage.addEventListener(
     if (!game.running || menuOpen || game.state === 'modal') return;
     if (game.phase !== 'resolve') return;
     event.preventDefault();
+    // A tap with a freeze in hand still freezes, while the balls are moving.
+    // Otherwise it hurries the numbers along.
+    if (feed.busy && (game.feedSettling || rules.freezeCharges <= 0)) {
+      feed.speedUp();
+      return;
+    }
     tryFreeze();
   },
   { passive: false }
@@ -3703,13 +3700,31 @@ function simulate(dt, rawDt, aiming) {
     game.strokeTimer += dt;
     if (tableSettled()) {
       game.settleTimer += dt;
-      if (game.settleTimer >= RULES.settleGrace) finishStroke();
+      if (game.settleTimer >= RULES.settleGrace) endStroke();
     } else {
       game.settleTimer = 0;
     }
     // A ball trapped in a bumper loop must not be able to hang the room.
-    if (game.midStroke && game.strokeTimer > RULES.strokeTimeout) finishStroke();
+    if (game.midStroke && game.strokeTimer > RULES.strokeTimeout) endStroke();
   }
+}
+
+/**
+ * THE TABLE HAS STOPPED. With the presenter on, the stroke is not over until
+ * every number has landed and the take-back and slam have played — only then
+ * does the budget step and the next aim open.
+ */
+function endStroke() {
+  if (!feed.enabled) {
+    finishStroke();
+    return;
+  }
+  if (game.feedSettling) return;
+  game.feedSettling = true;
+  feed.settle(rules.strokeResult(), () => {
+    game.feedSettling = false;
+    if (game.midStroke) finishStroke();
+  });
 }
 
 let last = performance.now();
@@ -3730,6 +3745,8 @@ function frame(now) {
   pulseCalledPocket(rawDt);
   pumpCelebrations(rawDt);
   pumpSinking(rawDt);
+  feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.headless && game.state !== 'dead');
+  feed.update(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
 
@@ -3789,6 +3806,10 @@ function frame(now) {
       // settles first, and a line drawn in that gap is the flash reported at
       // the end of every board. See Tutorial.resolving.
       !tutorial?.resolving &&
+      // Nor while the stroke's numbers are still being presented: the cue
+      // ball can be at rest long before the shot is over, and a line drawn
+      // across the count invites a shot the table will not take yet.
+      !game.midStroke &&
       player.state === PLAYER_STATE.IDLE
     ) {
       // THE CUE AT REST.

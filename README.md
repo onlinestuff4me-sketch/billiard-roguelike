@@ -1,6 +1,7 @@
-# Billiard Roguelike
+# Lightline: Billiard Roguelike
 
-**Strategic billiards with a scorecard and a boon-stacking roguelike on top.**
+**Trick-shot billiards on a grid of light, with a boon-stacking roguelike on top.**
+What the game is meant to do lives in [`specs/`](specs/); the design history is in [`docs/`](docs/).
 A portrait (9:16) mobile web prototype built with Vite + Three.js.
 
 > You are the cue ball. Every room is a static rack: nothing moves until you shoot,
