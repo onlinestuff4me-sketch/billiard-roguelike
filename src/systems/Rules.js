@@ -130,6 +130,8 @@ export class Rules {
     this.resetStroke();
 
     this.freezeCharges = 0;
+    /** Money, earned from points and unspent shots; spent on charges. */
+    this.credits = 0;
     /** Set when the strokes run out with the mission unfilled. */
     this.failed = false;
   }
@@ -208,6 +210,10 @@ export class Rules {
       });
     }
     this.runScore += this.roomScore;
+    // CREDITS: the table's points and unspent shots, paid as money.
+    const credits =
+      Math.floor(this.roomScore / RULES.credits.perPoints) + saved * RULES.credits.perSavedShot;
+    this.credits += credits;
     // Once the room is banked, `roomScore` is already inside `runScore`. The
     // HUD adds the two together while a room is live, so it has to be told to
     // stop — otherwise the running total doubles the instant a room ends.
@@ -219,7 +225,9 @@ export class Rules {
       swept,
       sweepBonus: swept ? sweepRate : 0,
       roomScore: this.roomScore,
-      runScore: this.runScore
+      runScore: this.runScore,
+      credits,
+      creditsTotal: this.credits
     };
   }
 
@@ -527,7 +535,8 @@ export class Rules {
       multiplier: this.lockedMult,
       banks: this.paidBanks,
       takenBack: result.takenBack,
-      scratched: this.scratched
+      scratched: this.scratched,
+      pots: this.potsThisStroke
     };
     if (this.strokesLeft <= 0 && !this.filled) this.failed = true;
     this.resetStroke();
@@ -565,10 +574,46 @@ export class Rules {
     return this.freezeCharges;
   }
 
+  /** A charge is spent whole: half a charge is progress toward one, not a freeze. */
   spendFreeze() {
-    if (this.freezeCharges <= 0) return false;
+    if (this.freezeCharges < 1) return false;
     this.freezeCharges -= 1;
     return true;
+  }
+
+  /** Whether a charge can be bought right now. */
+  get canBuyCharge() {
+    return this.credits >= RULES.credits.chargePrice && this.freezeCharges <= RULES.freeze.maxCharges - 1;
+  }
+
+  /** Spend credits on one charge. */
+  buyCharge() {
+    if (!this.canBuyCharge) return false;
+    this.credits -= RULES.credits.chargePrice;
+    this.grantFreeze(1);
+    return true;
+  }
+
+  /**
+   * What a stroke that paid earns in charges: combinations, extra pots and a
+   * big mult. Granted here; the caller shows each one landing.
+   * @param {{paid:number, voided:boolean, pots:number, multiplier:number}} summary
+   * @param {number} combinations balls knocked in by another ball this stroke
+   * @returns {{amount:number, label:string}[]} what was actually granted
+   */
+  earnCharges(summary, combinations = 0) {
+    const out = [];
+    if (!summary || summary.paid <= 0 || summary.voided) return out;
+    const E = RULES.freeze.earn;
+    const add = (amount, label) => {
+      const before = this.freezeCharges;
+      this.grantFreeze(amount);
+      if (this.freezeCharges > before) out.push({ amount: this.freezeCharges - before, label });
+    };
+    for (let i = 0; i < combinations; i++) add(E.combination, 'Combination');
+    for (let i = 1; i < (summary.pots || 0); i++) add(E.extraPot, 'Two in one');
+    if (summary.multiplier >= E.bigShotMult) add(E.bigShot, `Big shot · ×${summary.multiplier}`);
+    return out;
   }
 
   /** Everything the HUD needs, in one object. */
@@ -591,6 +636,7 @@ export class Rules {
       /** What the score readout should say right now. */
       displayScore: this.runScore + (this.roomClosed ? 0 : this.roomScore),
       freezeCharges: this.freezeCharges,
+      credits: this.credits,
       banks: this.shownBanks,
       ballsTouched: this.shownTouched,
       /** The order: what it wants next, how long the run is, and whether it survived. */

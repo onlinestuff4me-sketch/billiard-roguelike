@@ -468,12 +468,17 @@
         width: clamp(8px, 2.2vmin, 11px);
         height: clamp(8px, 2.2vmin, 11px);
         transform: rotate(45deg);
-        border: 1.5px solid rgba(53, 242, 255, 0.32);
+        border: 1.5px solid rgba(191, 244, 255, 0.35);
       }
+      /* Ice: Freeze frame's own colour. A half charge fills half the diamond. */
       .freeze-row .frz.on {
-        background: var(--cyan);
-        border-color: var(--cyan);
-        box-shadow: 0 0 10px rgba(53, 242, 255, 0.8);
+        background: #bff4ff;
+        border-color: #bff4ff;
+        box-shadow: 0 0 10px rgba(111, 227, 255, 0.85);
+      }
+      .freeze-row .frz.half {
+        background: linear-gradient(225deg, transparent 50%, #bff4ff 50%);
+        border-color: rgba(191, 244, 255, 0.8);
       }
 
       /* THE SCORECARD. The moment the economy becomes legible: what the pots
@@ -1091,6 +1096,15 @@
       .mo-fly { position: absolute; inset: auto; z-index: 30; font-weight: 700; color: var(--ll-pts); text-shadow: 0 0 18px var(--ll-you); white-space: nowrap; font-variant-numeric: tabular-nums; will-change: transform; }
       .mo-ring { position: absolute; inset: auto; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--ll-you); box-shadow: 0 0 18px var(--ll-you), inset 0 0 12px var(--ll-you); pointer-events: none; }
       .mo-landed { inset: auto; z-index: 31; }
+      .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
+      .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
+      .mo-credits { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 8px 0; color: #a98bff; }
+      .mo-credits .k { font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; }
+      .mo-credits .v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(169, 139, 255, 0.6); }
+      .mo-buy { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; max-width: 330px; padding: 11px 14px; border: 0; font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto; color: #e9f8ff; background: color-mix(in srgb, #a98bff 18%, rgba(2, 5, 11, 0.92)); box-shadow: inset 0 0 0 1.5px #a98bff, 0 0 14px rgba(169, 139, 255, 0.35); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+      .mo-buy-name { font-size: 15px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #bff4ff; }
+      .mo-buy-detail { font-size: 12px; font-weight: 600; color: #c9b8ff; }
+      .mo-buy[disabled] { cursor: default; opacity: 0.45; }
       .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
 
       /* CLEAR */

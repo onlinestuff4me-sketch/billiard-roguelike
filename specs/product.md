@@ -54,7 +54,7 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 - **Next table** (picked: Boot): strips close; the room number rolls over and holds, with the exit's reward under it; the rails trace in; the strips open.
 - **Cue options** (on trial, Settings → Stick, Full power, Strike): stick *rod / classic / hardlight*; full power *flash / ignite / lock*; strike *snap / impact / pierce*.
 
-**Freeze frame charges** (proposed, not built): halves, up to 3, earned only on shots that pay. You get +½ for a combination, +½ for each extra ball in one shot, and +½ for ×5 mult or more. Charges can also be bought in the shop with credits that banked points earn, so the score itself is never spent.
+**Freeze frame charges** (built; decided in review: credits for cash-in, cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more, plus +2 from the Freeze frame exit. Credits (1 per 100 points banked, 1 per unspent shot) buy +1 charge for 15 on the table-clear screen. The score itself is never spent.
 
 ## Puzzle ramp (strategy agreed for review, not built)
 

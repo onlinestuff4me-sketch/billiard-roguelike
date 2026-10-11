@@ -17,6 +17,7 @@
  * was wrong. Which is the same bug as being paid wrongly, from where they sit.
  */
 import { Rules, missionFor, missionText } from '../src/systems/Rules.js';
+import { RULES } from '../src/config.js';
 
 const fails = [];
 const check = (ok, what, detail = '') => {
@@ -215,6 +216,42 @@ console.log('\nthe order, made strict\n');
   check(missionFor(5).eightLast === true, 'the 8 goes last from room 5');
   check(eight.foulReason(8) === 'eight', 'and potting it early is still a foul');
   check(eight.foulReason(2) === null, 'while everything else stays legal');
+}
+
+console.log('\nfreeze frame charges\n');
+
+// Earned in halves, only by shots that paid, capped at three.
+{
+  const r = fresh();
+  const paid = { paid: 300, voided: false, pots: 2, multiplier: 5 };
+  const got = r.earnCharges(paid, 1);
+  check(got.length === 3 && r.freezeCharges === 1.5, 'a combination, a second pot and ×5 each earn half a charge', `${r.freezeCharges}`);
+  check(r.earnCharges({ paid: 0, voided: false, pots: 0, multiplier: 9 }, 2).length === 0, 'a shot that paid nothing earns nothing');
+  check(r.earnCharges({ paid: 300, voided: true, pots: 2, multiplier: 9 }, 2).length === 0, 'nor does a voided one');
+  check(!r.spendFreeze() || r.freezeCharges >= 0, 'a charge is spent whole');
+  const half = fresh();
+  half.grantFreeze(0.5);
+  check(!half.spendFreeze(), 'half a charge does not freeze', `${half.freezeCharges}`);
+  const cap = fresh();
+  cap.grantFreeze(10);
+  check(cap.freezeCharges === RULES.freeze.maxCharges && RULES.freeze.maxCharges === 3, 'charges stop at three', `${cap.freezeCharges}`);
+  check(cap.earnCharges(paid, 1).length === 0, 'and a full meter earns nothing more');
+}
+
+// Credits: points and unspent shots, spent on a charge without touching the score.
+{
+  const r = fresh();
+  r.roomScore = 1250;
+  r.strokesLeft = 2;
+  const res = r.endRoom();
+  check(res.credits === Math.floor(res.roomScore / RULES.credits.perPoints) + 2 * RULES.credits.perSavedShot, 'a table pays a credit per 100 points banked (bonuses included) and per unspent shot', `${res.credits} for ${res.roomScore}`);
+  r.credits = RULES.credits.chargePrice;
+  const run = r.runScore;
+  check(r.buyCharge() && r.freezeCharges === 1 && r.credits === 0, 'credits buy one charge');
+  check(r.runScore === run, 'and the score is never spent');
+  r.credits = 99;
+  r.freezeCharges = 3;
+  check(!r.buyCharge(), 'no buying past three');
 }
 
 console.log('');

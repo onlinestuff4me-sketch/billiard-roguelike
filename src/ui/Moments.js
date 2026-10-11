@@ -274,7 +274,87 @@ export class Moments {
       const from = 'translateY(18px)';
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
+    // CASH IN: a Freeze frame charge for credits, under the exits.
+    if (d.shop) this._shopButton(next, d.shop);
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+  }
+
+  _shopButton(parent, shop) {
+    const b = el('button', 'mo-buy', parent);
+    b.type = 'button';
+    const name = el('span', 'mo-buy-name', b);
+    const detail = el('span', 'mo-buy-detail', b);
+    const render = () => {
+      const can = shop.canBuy();
+      const full = shop.charges() > shop.max - 1;
+      b.disabled = !can;
+      name.textContent = `+1 Freeze frame · ${shop.price} credits`;
+      detail.textContent = full ? 'Charges full' : `You have ${shop.credits()}`;
+    };
+    render();
+    absorb(b);
+    b.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!shop.buy()) return;
+      render();
+      this.anim(b, [{ transform: 'scale(1.06)', filter: 'brightness(1.6)' }, { transform: 'none', filter: 'none' }], { duration: 300, easing: OUT });
+      this._pulseFreeze();
+    });
+    this.anim(b, [{ transform: 'translateY(18px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, easing: BACK });
+  }
+
+  /** The Freeze frame meter in the HUD, in layer pixels. */
+  _freezeMeter() {
+    const node = this.hud.freezeRow;
+    const r = node.getBoundingClientRect();
+    const L = this.layer.getBoundingClientRect();
+    return { node, x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 };
+  }
+
+  _pulseFreeze() {
+    const m = this._freezeMeter();
+    m.node.animate([{ transform: 'scale(1.8)', filter: 'drop-shadow(0 0 10px #bff4ff)' }, { transform: 'scale(1)', filter: 'none' }], { duration: 480, easing: OUT });
+    const ring = el('div', 'mo-ring ice', this.root);
+    ring.style.left = `${m.x}px`;
+    ring.style.top = `${m.y}px`;
+    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2.2)', opacity: 0 }], { duration: 460, easing: OUT }).then(() => ring.remove());
+  }
+
+  /**
+   * FREEZE FRAME CHARGES EARNED: each one is an ice plate that pops above the
+   * score boxes, says what earned it, and flies into the meter. One at a time.
+   * @param {{amount:number, label:string}[]} awards
+   */
+  charges(awards) {
+    this._chargeQ = (this._chargeQ || Promise.resolve()).then(async () => {
+      for (const a of awards) {
+        const plate = el('div', 'sf-plate mo-charge', this.root);
+        el('b', '', plate).textContent = a.amount === 0.5 ? '+½' : `+${a.amount}`;
+        el('small', '', plate).textContent = `Freeze frame · ${a.label}`;
+        const x0 = this.W / 2;
+        const y0 = this.H - 200;
+        plate.style.left = `${x0}px`;
+        plate.style.top = `${y0}px`;
+        this.audio.scoreNote?.(10, 'points');
+        await this.anim(plate, [
+          { transform: 'translate(-50%,-50%) scale(0.2) rotate(-10deg)', opacity: 0 },
+          { transform: 'translate(-50%,-50%) scale(1.25) rotate(4deg)', opacity: 1, offset: 0.6 },
+          { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1 }
+        ], { duration: 320, easing: OUT });
+        await this.wait(520);
+        const m = this._freezeMeter();
+        await this.anim(plate, [
+          { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+          { transform: `translate(calc(-50% + ${m.x - x0}px), calc(-50% + ${m.y - y0}px)) scale(0.35)`, opacity: 0.9 }
+        ], { duration: 340, easing: IN });
+        plate.remove();
+        this.audio.shatter?.();
+        this._pulseFreeze();
+        await this.wait(160);
+      }
+    });
+    return this._chargeQ;
   }
 
   closeClear() {
@@ -367,6 +447,16 @@ export class Moments {
     totalV.style.visibility = '';
     totalV.textContent = fmt(d.roomScore);
     total.classList.add('banked');
+    // CREDITS: what the table paid as money, in money's colour.
+    if (d.credits > 0) {
+      const c = el('div', 'mo-credits', panel);
+      el('span', 'k', c).textContent = 'Credits';
+      const cv = el('span', 'v', c);
+      cv.textContent = '+0';
+      this.anim(c, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: OUT });
+      this.audio.scoreNote?.(9, 'mult');
+      await this.count(cv, 0, d.credits, 360, { prefix: '+' });
+    }
     await this.wait(200);
   }
 

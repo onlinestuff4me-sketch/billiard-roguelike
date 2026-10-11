@@ -467,11 +467,14 @@ export class HUD {
     if (s.freezeCharges !== cache.freeze) {
       cache.freeze = s.freezeCharges;
       this.freezeRow.textContent = '';
-      const shown = Math.max(3, s.freezeCharges);
+      // Halves: a charge is earned half at a time and spent whole.
+      const shown = Math.max(3, Math.ceil(s.freezeCharges));
       for (let i = 0; i < shown; i++) {
-        el('span', `frz${i < s.freezeCharges ? ' on' : ''}`, this.freezeRow);
+        const full = s.freezeCharges >= i + 1;
+        const half = !full && s.freezeCharges >= i + 0.5;
+        el('span', `frz${full ? ' on' : half ? ' half' : ''}`, this.freezeRow);
       }
-      this.root.classList.toggle('has-freeze', s.freezeCharges > 0);
+      this.root.classList.toggle('has-freeze', s.freezeCharges >= 1);
     }
 
     // --- the multiplier, while a stroke is running ---

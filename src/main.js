@@ -1277,7 +1277,9 @@ function beginStroke() {
   for (const ball of game.enemies) {
     ball.railsThisStroke = 0;
     ball.lastRail = null;
+    ball.knockedByBall = false;
   }
+  game.strokeCombos = 0;
   game.feedSettling = false;
   feed.beginStroke();
 }
@@ -1309,6 +1311,14 @@ function finishStroke() {
   }
 
   const summary = rules.endStroke();
+  // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
+  // ice plate flying into the meter.
+  const awards = rules.earnCharges(summary, game.strokeCombos || 0);
+  game.strokeCombos = 0;
+  if (awards.length) {
+    if (momentsOn()) moments.charges(awards);
+    else fx.floatText(player.x, player.z - 3.2, `+${awards.reduce((n, a) => n + a.amount, 0)} FREEZE FRAME`, 'combo');
+  }
   if (!feed.enabled) {
     if (summary.voided) {
       fx.floatText(player.x, player.z - 2.4, `VOID −${summary.lost.toLocaleString()}`, 'splat');
@@ -1445,6 +1455,8 @@ game.on = {
   /* --- ball into ball ------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
     tutorial.notify('pass', { striker, target, x, z, speed });
+    // A ball driven by another ball: if it drops, that is a combination.
+    if (target) target.knockedByBall = true;
     scored(() => rules.kiss(target.number, { x: target.x, z: target.z, kind: 'ball', ref: target }));
 
     // A carom is a contact, not an arrival: it gets the contact's weight. The
@@ -1531,6 +1543,7 @@ game.on = {
     // in everything the stroke has done up to now. The presenter shows each
     // one beside its cause: the value at the pocket, the bank at the rail.
     const banked = (ball.railsThisStroke || 0) > 0;
+    if (game.midStroke && ball.knockedByBall) game.strokeCombos = (game.strokeCombos || 0) + 1;
     const paid = game.midStroke
       ? rules.pot(ball.number, {
           banked,
@@ -1805,6 +1818,7 @@ function completeRoom() {
     ledger: rules.ledger,
     roomScore: result.roomScore,
     runScore: result.runScore,
+    credits: result.credits,
     choices: exitChoices()
   }, shownRun);
 }
@@ -1820,7 +1834,24 @@ function showRoomResult(data, shownRun) {
   }
   hud.hideBanner();
   game.scoreHold = shownRun;
-  moments.clear({ ...data, shownRun, onRunLanded: () => (game.scoreHold = null) });
+  moments.clear({
+    ...data,
+    shownRun,
+    onRunLanded: () => (game.scoreHold = null),
+    // CASH IN: credits buy a Freeze frame charge, offered beside the exits.
+    shop: {
+      credits: () => rules.credits,
+      charges: () => rules.freezeCharges,
+      max: RULES.freeze.maxCharges,
+      price: RULES.credits.chargePrice,
+      canBuy: () => rules.canBuyCharge,
+      buy: () => {
+        const ok = rules.buyCharge();
+        if (ok) audio.boonPick?.();
+        return ok;
+      }
+    }
+  });
 }
 
 /**
@@ -1853,6 +1884,7 @@ function failRoom() {
     roomScore: result.roomScore,
     runScore: result.runScore,
     penalty: { standing, damage },
+    credits: result.credits,
     choices: exitChoices()
   }, shownRun);
 }
@@ -3997,6 +4029,11 @@ if (typeof window !== 'undefined') {
       player.launch({ dirX, dirZ, power }, game);
       resumeStroke();
       moments.unfreeze();
+    },
+    /** Earn charges as a big shot would: a combination, two in one, ×6. */
+    earn() {
+      const awards = rules.earnCharges({ paid: 360, voided: false, pots: 2, multiplier: 6 }, 1);
+      return moments.charges(awards);
     },
     /** Pick the first exit on the open scorecard. */
     next() {

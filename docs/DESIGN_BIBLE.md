@@ -218,17 +218,25 @@ headed. FREEZE FRAME is set in ice type. On release the ice shatters outward
 from the cue ball and colour floods back. No viewfinder brackets: they
 collided with the corner pockets.
 
-**Earning charges** (proposed, waiting on two answers). Charges come in
-halves, up to 3, and are earned only when the shot pays:
+**Earning charges** (built). Charges come in halves, capped at 3, and are
+earned only by shots that pay (`RULES.freeze`):
 
-- +½ for a combination (a ball knocks another in);
-- +½ for each extra ball in one shot;
-- +½ for a shot paying ×5 mult or more;
-- +2 from the Freeze frame exit;
-- +1 bought with credits in the shop. Credits come from banked points, so
-  the score is never spent.
+| Earned by | Charge |
+| --- | --- |
+| A combination: a ball you hit knocks another one in | +½ |
+| Each extra ball down in the same shot | +½ |
+| A shot paying ×5 mult or more | +½ |
+| The Freeze frame exit after a table | +2 |
+| Bought on the table-clear screen for 15 credits | +1 |
 
-Each lands as an ice plate flying into the meter.
+Each earned charge lands as an ice plate above the score boxes ("+½ Freeze
+frame · Combination") that flies into the meter, which pulses. In the meter
+a half charge fills half a diamond, and only a whole charge freezes.
+
+**Credits** are money, in `credit` violet: 1 per 100 points a table banks
+(bonuses included) plus 1 per unspent shot (`RULES.credits`). They count in
+on the ledger under the total, and the cash-in button sits under the exits.
+The score is never spent.
 
 ### 8.4 Table clear (and out of shots)
 

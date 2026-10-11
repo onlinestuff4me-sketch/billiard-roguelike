@@ -590,11 +590,37 @@ export const RULES = {
     max: 99
   },
 
-  /** Freeze: stop the table mid-stroke and re-aim from where the cue ball got to. */
+  /**
+   * FREEZE FRAME: stop the table mid-stroke and re-aim from where the cue
+   * ball got to. Charges come in halves and are capped at three (picked in
+   * review). They are earned by shots that pay, never by shots that do not.
+   */
   freeze: {
     /** Charges granted by shooting the cue ball into a freeze cell. */
     cellCharges: 3,
-    maxCharges: 6
+    maxCharges: 3,
+    earn: {
+      /** A ball you hit knocks another one in. */
+      combination: 0.5,
+      /** Each ball after the first, down in the same shot. */
+      extraPot: 0.5,
+      /** A shot that pays at this mult or more. */
+      bigShotMult: 5,
+      bigShot: 0.5
+    }
+  },
+
+  /**
+   * CREDITS: the money a table pays besides its score, so a charge can be
+   * bought without spending the score that measures the run.
+   */
+  credits: {
+    /** One credit per this many points banked on a table. */
+    perPoints: 100,
+    /** And this many for every shot left unspent. */
+    perSavedShot: 1,
+    /** One Freeze frame charge, bought at the end of a table. */
+    chargePrice: 15
   },
 
   /** Hull damage. Nothing hurts you between strokes — only during resolution. */
