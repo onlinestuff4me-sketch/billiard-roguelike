@@ -100,7 +100,9 @@ export class Moments {
   }
 
   anim(node, frames, opts) {
-    const a = node.animate(frames, { fill: 'forwards', ...opts });
+    // 'both': a delayed animation holds its first frame while it waits, so
+    // nothing shows, vanishes and then animates in.
+    const a = node.animate(frames, { fill: 'both', ...opts });
     if (this.skip) a.playbackRate = 6;
     return a.finished.catch(() => {});
   }
@@ -171,6 +173,20 @@ export class Moments {
     );
     fly.remove();
     this.audio.scoreLock?.();
+    this.engine.shake?.(5);
+    // what just landed, pinned under the run total for a moment
+    const plate = el('div', 'sf-plate pts mo-landed', this.root);
+    el('b', '', plate).textContent = `+${fmt(value)}`;
+    el('small', '', plate).textContent = 'Banked';
+    plate.style.left = `${Math.min(to.x, this.W - 60)}px`;
+    plate.style.top = `${to.y + 42}px`;
+    this.anim(plate, [
+      { transform: 'translate(-50%, -50%) scale(0.2)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(1.25)', opacity: 1, offset: 0.25 },
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.4 },
+      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.85 },
+      { transform: 'translate(-50%, -80%) scale(0.95)', opacity: 0 }
+    ], { duration: 1400, easing: OUT }).then(() => plate.remove());
     if (runFrom != null && runTo != null && runTo !== runFrom) {
       this.count(to.node, runFrom, runTo, 420).then(() => land?.());
     } else {
@@ -178,7 +194,7 @@ export class Moments {
     }
     to.node.animate(
       [
-        { transform: 'scale(1.6)', textShadow: '0 0 18px #22e8ff, 0 0 40px #22e8ff' },
+        { transform: 'scale(1.9)', textShadow: '0 0 18px #22e8ff, 0 0 40px #22e8ff' },
         { transform: 'scale(1)', textShadow: '0 0 0 transparent' }
       ],
       { duration: 520, easing: OUT }
@@ -230,8 +246,7 @@ export class Moments {
       rows.push({ label: 'Balls left', detail: `${d.penalty.standing} still up`, amount: -d.penalty.damage, kind: 'bad', unit: 'hull' });
     }
 
-    if (style === 'tally') await this._clearTally(root, d, rows, live);
-    else await this._clearLedger(root, d, rows, live);
+    await this._clearLedger(root, d, rows, live);
     if (!live()) return;
 
     // NEXT TABLE. The choices arrive last, so nothing can be tapped before the
@@ -256,7 +271,7 @@ export class Moments {
         button.classList.add('picked');
         choice.pick();
       });
-      const from = style === 'tally' ? 'translateY(40px) rotateX(70deg)' : 'translateY(18px)';
+      const from = 'translateY(18px)';
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
@@ -273,8 +288,19 @@ export class Moments {
     this.setFilter('clear', null, 260);
   }
 
-  /** A: THE LEDGER. A receipt: every line slams in and counts, then the total. */
+  /**
+   * THE LEDGER. A scanline wipes up the table, then a receipt: every line
+   * slams in and counts, then the total slams and flies into RUN.
+   */
   async _clearLedger(root, d, rows, live) {
+    // THE WIPE: a scanline sweeps up the table and dims it behind itself.
+    const shade = el('div', 'mo-shade', root);
+    const scan = el('div', 'mo-scan', root);
+    this.audio.doorOpen?.();
+    this.anim(shade, [{ height: '0%' }, { height: '100%' }], { duration: 520, easing: 'ease-in-out' });
+    await this.anim(scan, [{ top: '100%', opacity: 1 }, { top: '0%', opacity: 1 }, { top: '0%', opacity: 0 }], { duration: 600, easing: 'ease-in-out' });
+    scan.remove();
+
     const panel = el('div', 'mo-ledger', root);
     const head = el('div', 'mo-head', panel);
     const kicker = el('div', 'mo-kicker', head);
@@ -287,9 +313,11 @@ export class Moments {
     const totalV = el('span', 'v', total);
     totalV.textContent = '0';
 
+    // panel and title arrive together, once each
+    this.anim(kicker, [{ letterSpacing: '0.7em', opacity: 0, filter: 'blur(4px)' }, { letterSpacing: '0.16em', opacity: 1, filter: 'blur(0)' }], { duration: 420, delay: 120, easing: OUT });
     await this.anim(panel, [{ transform: 'translate(-50%, -40px) scale(1.08)', opacity: 0 }, { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }], { duration: 300, easing: BACK });
-    this.anim(kicker, [{ letterSpacing: '0.9em', opacity: 0, filter: 'blur(4px)' }, { letterSpacing: '0.28em', opacity: 1, filter: 'blur(0)' }], { duration: 420, easing: OUT });
-    await this.wait(260);
+    this.audio.scoreThud?.();
+    await this.wait(300);
 
     let i = 0;
     for (const row of rows) {
@@ -340,98 +368,6 @@ export class Moments {
     totalV.textContent = fmt(d.roomScore);
     total.classList.add('banked');
     await this.wait(200);
-  }
-
-  /** B: THE TALLY. Plates pop on the felt and fly into one big number. */
-  async _clearTally(root, d, rows, live) {
-    const shade = el('div', 'mo-shade', root);
-    const scan = el('div', 'mo-scan', root);
-    this.audio.doorOpen?.();
-    this.anim(shade, [{ height: '0%' }, { height: '100%' }], { duration: 560, easing: 'ease-in-out' });
-    await this.anim(scan, [{ top: '100%', opacity: 1 }, { top: '0%', opacity: 1 }, { top: '0%', opacity: 0 }], { duration: 640, easing: 'ease-in-out' });
-    scan.remove();
-
-    const kicker = el('div', 'mo-tally-kicker', root);
-    kicker.textContent = d.filled ? 'Table clear' : 'Out of shots';
-    const room = el('div', 'mo-tally-room', root);
-    room.textContent = `Room ${String(d.level).padStart(2, '0')}`;
-    const totalWrap = el('div', 'mo-tally-total', root);
-    const totalV = el('div', 'v', totalWrap);
-    totalV.textContent = '0';
-    el('div', 'k', totalWrap).textContent = 'Table total';
-    this.anim(kicker, [{ transform: 'translate(-50%, 0) scale(2.6)', opacity: 0 }, { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }], { duration: 260, easing: IN }).then(() => {
-      this.engine.shake?.(5);
-      this.audio.scoreThud?.();
-    });
-    this.anim(room, [{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 200 });
-    await this.anim(totalWrap, [{ transform: 'translate(-50%, -50%) scale(0.6)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 300, easing: BACK });
-
-    const T = { x: this.W / 2, y: this.H * 0.44 };
-    let sum = 0;
-    let i = 0;
-    for (const row of rows) {
-      if (!live()) return;
-      const left = i % 2 === 0;
-      const px = left ? this.W * 0.27 : this.W * 0.73;
-      const py = this.H * (0.6 + 0.07 * Math.floor(i / 2));
-      const plate = el('div', `sf-plate mo-plate ${row.kind === 'shot' ? 'pts' : row.kind === 'bad' ? 'void' : 'xmult'}`, root);
-      const b = el('b', '', plate);
-      b.textContent = row.kind === 'bad' ? `−${Math.abs(row.amount)}` : `+${fmt(row.amount)}`;
-      el('small', '', plate).textContent = `${row.label}${row.detail ? ' · ' + row.detail : ''}`;
-      // kept clear of the screen edge, however long its label is
-      const half = plate.offsetWidth / 2 + 10;
-      const cx = Math.min(Math.max(px, half), this.W - half);
-      plate.style.left = `${cx}px`;
-      plate.style.top = `${py}px`;
-      const tilt = left ? -4 : 4;
-      this.audio.scoreNote?.(i, row.kind === 'shot' ? 'points' : 'mult', row.kind === 'bad');
-      await this.anim(
-        plate,
-        [
-          { transform: `translate(-50%,-50%) scale(0) rotate(${tilt * 3}deg)` },
-          { transform: `translate(-50%,-50%) scale(1.25) rotate(${-tilt}deg)`, offset: 0.6 },
-          { transform: `translate(-50%,-50%) scale(1) rotate(${tilt * 0.5}deg)` }
-        ],
-        { duration: 260, easing: OUT }
-      );
-      await this.wait(Math.max(110, 260 - i * 30));
-      if (!live()) return;
-      await this.anim(
-        plate,
-        [
-          { transform: `translate(-50%,-50%) scale(1) rotate(${tilt * 0.5}deg)`, opacity: 1 },
-          { transform: `translate(calc(-50% + ${T.x - cx}px), calc(-50% + ${T.y - py}px)) scale(0.45)`, opacity: 0.8 }
-        ],
-        { duration: 240, easing: IN }
-      );
-      plate.remove();
-      if (row.kind === 'bad') {
-        this.engine.shake?.(6);
-        this.anim(totalWrap, [{ transform: 'translate(-50%,-50%) translateX(-8px)' }, { transform: 'translate(-50%,-50%) translateX(8px)' }, { transform: 'translate(-50%,-50%)' }], { duration: 220 });
-      } else {
-        const from = sum;
-        sum += row.amount;
-        this.anim(totalV, [{ transform: 'scale(1.22)' }, { transform: 'scale(1)' }], { duration: 260, easing: OUT });
-        await this.count(totalV, from, sum, 200);
-      }
-      i += 1;
-    }
-    if (!live()) return;
-    totalV.textContent = fmt(d.roomScore);
-    this.audio.scoreSlam?.();
-    this.engine.shake?.(8);
-    totalWrap.classList.add('slam');
-    const ring = el('div', 'mo-ring big', root);
-    ring.style.left = `${T.x}px`;
-    ring.style.top = `${T.y}px`;
-    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.2)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(3)', opacity: 0 }], { duration: 620, easing: OUT }).then(() => ring.remove());
-    this.anim(totalV, [{ transform: 'scale(1.5)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 380, easing: OUT });
-    await this.wait(700);
-    if (!live()) return;
-    await this.flyToRun(totalV, d.roomScore, d.onRunLanded, d.shownRun, d.runScore);
-    totalV.style.visibility = '';
-    totalWrap.classList.add('banked');
-    await this.wait(160);
   }
 
   /* -------------------------------------------------------------- *

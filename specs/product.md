@@ -48,7 +48,7 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 
 The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` in `src/config.js`).
 
-- **Table clear / out of shots** (two on trial, Settings → Table clear): every shot's pay counts in, bonuses land, the table total slams and flies into RUN, then the next-table choices arrive. *Ledger* (a receipt panel) or *Tally* (plates on the felt flying into one huge number).
+- **Table clear / out of shots** (picked: Ledger): a scanline wipe, then a receipt where every shot's pay counts in and bonuses land; the total slams and flies into RUN in the top corner; then the next-table choices arrive.
 - **Scratch** (picked: Glitch): red alert, the screen tears, SCRATCH jitters in; a beam drops onto the spot, the ball rezzes in, and the cue takes form under it, pointing straight up.
 - **Freeze frame** (picked; the mechanic's name everywhere): mid-roll, time stops so the cue ball can be re-aimed; costs a charge, not a shot. A white flash, an ice wave, frost rings with direction arrows, and a shatter on release.
 - **Next table** (picked: Boot): strips close; the room number rolls over and holds, with the exit's reward under it; the rails trace in; the strips open.

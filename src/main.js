@@ -3904,9 +3904,8 @@ if (typeof window !== 'undefined') {
 }
 
 /* THE MOMENT TREATMENTS, picked here while two of each are on trial. */
-const MOMENT_NAMES = {
-  clear: 'Table clear'
-};
+/* Every moment has been picked; new trials add their names here. */
+const MOMENT_NAMES = {};
 try {
   const saved = JSON.parse(localStorage.getItem('lightline-moments-v1') || '{}');
   for (const kind of Object.keys(MOMENT_NAMES)) {

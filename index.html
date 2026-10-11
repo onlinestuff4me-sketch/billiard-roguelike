@@ -1085,39 +1085,41 @@
          cyan is you, white is points, orange is mult, pink is void. */
       .moments { position: absolute; inset: 0; pointer-events: none; z-index: 12; --ll-pts: #e9f8ff; --ll-mult: #ff8a1e; --ll-hot: #ffc266; --ll-void: #ff2e7e; --ll-you: #22e8ff; --ll-ice: #bff4ff; --ll-ink: #02050b; }
       .moments > * { position: absolute; inset: 0; }
-      .mo-shade, .mo-scan, .mo-tally-kicker, .mo-tally-room, .mo-tally-total, .mo-beam, .mo-rez, .mo-glitch, .mo-glitch-sub,
+      .mo-shade, .mo-scan, .mo-beam, .mo-rez, .mo-glitch, .mo-glitch-sub,
+      .mo-freeze-label, .mo-stasis, .mo-arrow, .mo-strip, .mo-roomnum { position: absolute; }
+      .mo-alarm, .mo-tear, .mo-flash, .mo-boot, .mo-shards, .mo-form { position: absolute; inset: 0; }
       .mo-fly { position: absolute; inset: auto; z-index: 30; font-weight: 700; color: var(--ll-pts); text-shadow: 0 0 18px var(--ll-you); white-space: nowrap; font-variant-numeric: tabular-nums; will-change: transform; }
       .mo-ring { position: absolute; inset: auto; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--ll-you); box-shadow: 0 0 18px var(--ll-you), inset 0 0 12px var(--ll-you); pointer-events: none; }
+      .mo-landed { z-index: 31; }
       .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
 
       /* CLEAR */
       .mo-clear { pointer-events: auto; }
       .mo-ledger {
-        position: absolute; left: 50%; top: 17%; width: min(82%, 330px);
-        padding: 16px 18px 14px; isolation: isolate;
+        position: absolute; left: 50%; top: 14%; width: min(90%, 360px);
+        padding: 20px 20px 18px; isolation: isolate;
         filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.35));
       }
       .mo-ledger::before {
         content: ''; position: absolute; inset: 0; z-index: -1;
         background: linear-gradient(180deg, rgba(6, 18, 28, 0.97), rgba(2, 5, 11, 0.97));
-        border: 1px solid rgba(34, 232, 255, 0.6);
-        clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+        border: 2px solid rgba(34, 232, 255, 0.75);
+        clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
       }
       .mo-head { text-align: center; margin-bottom: 12px; }
-      .mo-kicker { font-size: 22px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 14px var(--ll-you); }
-      .mo-clear.failed .mo-kicker, .mo-clear.failed .mo-tally-kicker { color: var(--ll-void); text-shadow: 0 0 14px var(--ll-void); }
-      .mo-title { margin-top: 2px; font-size: 11px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
+      .mo-kicker { font-size: 30px; font-weight: 800; letter-spacing: 0.16em; line-height: 1; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 14px var(--ll-you); }
+      .mo-title { margin-top: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
       .mo-rows { display: grid; gap: 4px; }
-      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 5px 8px; font-variant-numeric: tabular-nums; }
-      .mo-row .k { white-space: nowrap; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
-      .mo-row .d { font-size: 12px; font-weight: 600; color: rgba(233, 248, 255, 0.42); }
-      .mo-row .v { font-size: 18px; font-weight: 700; color: var(--ll-pts); min-width: 4ch; text-align: right; }
+      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 6px 8px; font-variant-numeric: tabular-nums; }
+      .mo-row .k { white-space: nowrap; font-size: 16px; font-weight: 800; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
+      .mo-row .d { font-size: 13px; font-weight: 600; color: rgba(233, 248, 255, 0.42); }
+      .mo-row .v { font-size: 24px; font-weight: 800; color: var(--ll-pts); min-width: 4ch; text-align: right; }
       .mo-row.bonus .k, .mo-row.bonus .v { color: var(--ll-hot); text-shadow: 0 0 10px rgba(255, 138, 30, 0.6); }
       .mo-row.bad .k, .mo-row.bad .v { color: var(--ll-void); }
       .mo-rule { height: 2px; margin: 10px 0 8px; background: linear-gradient(90deg, transparent, var(--ll-you), transparent); transform-origin: 50% 50%; }
       .mo-total { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; opacity: 0; }
-      .mo-total .k { font-size: 12px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
-      .mo-total .v { font-size: 40px; font-weight: 700; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
+      .mo-total .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+      .mo-total .v { font-size: 56px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
       .mo-total.banked .v { color: rgba(233, 248, 255, 0.35); text-shadow: none; }
 
@@ -1141,22 +1143,9 @@
       .mo-choice-go { font-size: 16px; color: var(--c, #22e8ff); }
       .mo-choice.picked { background: var(--c, #22e8ff); }
       .mo-choice.picked * { color: var(--ll-ink); }
-      .mo-clear.tally .mo-choices { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); max-width: 360px; perspective: 600px; }
-      .mo-clear.tally .mo-choice { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 14px 8px 12px; gap: 4px; }
-      .mo-clear.tally .mo-choice-detail { text-align: center; font-size: 11px; }
-      .mo-clear.tally .mo-choice-go { display: none; }
 
       .mo-shade { inset: auto 0 0 0; height: 0; background: rgba(2, 5, 11, 0.55); }
       .mo-scan { inset: auto 0 auto 0; height: 3px; margin-top: -1.5px; background: var(--ll-you); box-shadow: 0 0 16px 3px var(--ll-you), 0 0 60px 8px rgba(34, 232, 255, 0.4); }
-      .mo-tally-kicker { inset: auto; left: 50%; top: 22%; font-size: 30px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 18px var(--ll-you); white-space: nowrap; }
-      .mo-tally-room { inset: auto; left: 0; right: 0; top: calc(22% + 40px); text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.4em; text-transform: uppercase; color: var(--muted); }
-      .mo-tally-total { inset: auto; left: 50%; top: 44%; display: grid; justify-items: center; }
-      .mo-tally-total .v { font-size: 72px; font-weight: 700; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; text-shadow: 0 0 22px rgba(34, 232, 255, 0.6); }
-      .mo-tally-total .k { margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.36em; text-transform: uppercase; color: var(--muted); }
-      .mo-tally-total.slam .v { text-shadow: 0 0 30px var(--ll-you), 0 0 70px rgba(34, 232, 255, 0.6); }
-      .mo-tally-total.banked .v { color: rgba(233, 248, 255, 0.3); text-shadow: none; }
-      .mo-plate { inset: auto; }
-      .mo-plate b { font-size: 24px; }
 
       /* SCRATCH */
       .mo-beam { inset: auto; top: 0; width: 16px; transform-origin: 50% 0; background: linear-gradient(180deg, rgba(34, 232, 255, 0), rgba(34, 232, 255, 0.8) 70%, #fff); box-shadow: 0 0 24px 6px rgba(34, 232, 255, 0.5); border-radius: 0 0 8px 8px; }
@@ -1175,7 +1164,7 @@
 
       /* FREEZE */
       .mo-freeze-label { inset: auto; left: 50%; top: 13%; transform: translateX(-50%); display: grid; justify-items: center; white-space: nowrap; }
-      .mo-freeze-label b { font-size: 30px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ll-ice); text-shadow: 0 0 16px #6fe3ff, 0 0 40px rgba(111, 227, 255, 0.5); }
+      .mo-freeze-label b { font-size: 25px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ll-ice); text-shadow: 0 0 16px #6fe3ff, 0 0 40px rgba(111, 227, 255, 0.5); }
       .mo-freeze-label small { margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(233, 248, 255, 0.8); }
       .mo-stasis { inset: auto; border-radius: 50%; background: rgba(120, 210, 255, 0.06); backdrop-filter: sepia(0.9) hue-rotate(155deg) saturate(1.6) brightness(0.8) contrast(1.15); -webkit-backdrop-filter: sepia(0.9) hue-rotate(155deg) saturate(1.6) brightness(0.8) contrast(1.15); }
       .mo-stasis-rim { position: absolute; inset: auto; border-radius: 50%; border: 3px solid #e6fbff; box-shadow: 0 0 22px 4px #6fe3ff, inset 0 0 30px rgba(111, 227, 255, 0.5); }
@@ -2078,7 +2067,6 @@
             <button id="set-cue-stickLook" class="menu-btn" type="button">Stick: Rod</button>
             <button id="set-cue-maxStyle" class="menu-btn" type="button">Full power: Flash</button>
             <button id="set-cue-strikeStyle" class="menu-btn" type="button">Strike: Snap</button>
-            <button id="set-mo-clear" class="menu-btn" type="button">Table clear: Ledger</button>
             <button id="set-tutorial" class="menu-btn" type="button">Replay tutorial</button>
             <button id="set-back" class="menu-btn primary" type="button">Done</button>
             <p class="menu-foot" id="set-tutorial-state"></p>

@@ -235,23 +235,22 @@ Each lands as an ice plate flying into the meter.
 It must say: the table is done, here is what every shot paid, here is the
 total, it is now in your run, and here is what comes next.
 
-- **Ledger** — a receipt. The table dims, a chamfered panel drops in and TABLE
-  CLEAR tracks in from blur. Each shot slides in and counts up (P × M = pay)
-  with a rising note. Bonuses (shots saved, swept in order) land bigger, in
-  heat. A rule draws across, the TABLE total counts up and slams, then flies
-  into RUN, which counts up and pulses. Then NEXT TABLE, with the exits rising
-  in as buttons with a passing sheen.
-- **Tally** — on the felt. A scanline sweeps up the table, dimming it. TABLE
-  CLEAR stamps in, and one huge total sits mid-table at 0. Each shot pops as a
-  plate on the felt, holds, and flies into the total, which jumps and rolls up.
-  The total slams with a shockwave, flies into RUN, and the exits are dealt up
-  as cards.
+**Ledger** (picked). A scanline sweeps up the table and dims it behind itself.
+A large chamfered panel drops in with TABLE CLEAR (the panel and the title
+arrive together, once). Each shot's line slides in and counts up (P × M = pay)
+with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
+A rule draws across, the TABLE total counts up in large type and slams, then
+flies into RUN in the top corner, which counts up and pulses while a "+N
+Banked" plate pops under it. Then NEXT TABLE, with the exits rising in as
+buttons with a passing sheen.
 
 Out of shots uses the same treatment, with the title in `hazard` and a
-"Balls left" row that costs hull.
+"Balls left" row that costs hull. A tap during the count speeds it up. The
+exits arrive last, so nothing can be tapped before the count has had its
+moment.
 
-A tap during the count speeds it up. The exits arrive last, so nothing can be
-tapped before the count has had its moment.
+**Rule this taught:** a delayed animation holds its first frame (`fill:
+'both'`). Without it, an element shows, vanishes and then animates in.
 
 ### 8.5 Next table
 
@@ -325,7 +324,7 @@ The bible is the target; this table is the honest gap. Close a row, delete it.
 | Type | Orbitron, Oxanium, Rajdhani | Rajdhani only (fallback stack); Orbitron and Oxanium are not loaded |
 | Grid reaction | Shader ripple from pots and slams | Not built |
 | Boot | Grid draws on, rails trace in, balls flicker up | The Boot transition traces the rails (§8.5); the grid and ball flicker are not built |
-| Moments | One treatment each | Picked: scratch, Freeze frame, next table. On trial: table clear, and the cue options (§8.1) |
+| Moments | One treatment each | All four picked. On trial: the cue options (§8.1) |
 | Old guide | — | `docs/STYLE_GUIDE.md` is superseded and kept only for history |
 
 **The Tron pass** closes the first four rows in one change: `PALETTE` and

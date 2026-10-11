@@ -851,7 +851,7 @@ export const FEEL = {
  * one. Change them in Settings, or with window.__moment(kind, variant).
  * ------------------------------------------------------------------ */
 export const MOMENTS = {
-  /** 'ledger' a receipt that counts in line by line · 'tally' plates on the felt fly into one big number */
+  /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
   clear: 'ledger',
   /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */
   scratch: 'glitch',
@@ -860,7 +860,7 @@ export const MOMENTS = {
   /** Boot: strips close, the room number rolls over and holds, the rails trace in (picked in review) */
   transition: 'boot',
   options: {
-    clear: ['ledger', 'tally'],
+    clear: ['ledger'],
     scratch: ['glitch'],
     freeze: ['frame'],
     transition: ['boot']
