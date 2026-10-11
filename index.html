@@ -1119,9 +1119,13 @@
       .mo-ring { position: absolute; inset: auto; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--ll-you); box-shadow: 0 0 18px var(--ll-you), inset 0 0 12px var(--ll-you); pointer-events: none; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
       .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
-      .mo-credits { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 8px 0; color: #a98bff; }
-      .mo-credits .k { font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; }
-      .mo-credits .v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(169, 139, 255, 0.6); }
+      .mo-wallet { width: 100%; max-width: 330px; display: grid; gap: 2px; padding: 6px 2px 0; border-top: 1px solid rgba(169, 139, 255, 0.35); }
+      .mo-wallet-top { display: flex; align-items: baseline; gap: 10px; }
+      .mo-wallet-top .k { font-size: 11px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: #a98bff; }
+      .mo-wallet-top .v { font-family: var(--font-num); font-size: 20px; font-weight: 800; color: #c9b8ff; font-variant-numeric: tabular-nums; }
+      .mo-wallet-top .gain { margin-left: auto; font-size: 12px; font-weight: 700; color: #a98bff; }
+      .mo-wallet-why { font-size: 11px; color: rgba(201, 184, 255, 0.7); }
+      .mo-total.banked .v { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ll-you); text-shadow: none; }
       .mo-buy { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; max-width: 330px; padding: 9px 14px; border: 0; font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto; color: #e9f8ff; background: color-mix(in srgb, #a98bff 18%, rgba(2, 5, 11, 0.92)); box-shadow: inset 0 0 0 1.5px #a98bff, 0 0 14px rgba(169, 139, 255, 0.35); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
       .mo-buy-name { font-size: 15px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #bff4ff; }
       .mo-buy-detail { font-size: 12px; font-weight: 600; color: #c9b8ff; }
@@ -1156,7 +1160,6 @@
       .mo-total .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
       .mo-total .v { font-size: 48px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
-      .mo-total.banked .v { color: rgba(233, 248, 255, 0.35); text-shadow: none; }
 
       .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 60px) 0; display: grid; justify-items: center; gap: 6px; padding: 0 9%; }
       .mo-next-label { font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 10px var(--ll-you); }
@@ -2061,7 +2064,6 @@
         font-family: var(--font-display);
       }
       .score-value, .sf-box, .sf-product, .sf-plate b, .mo-row .v, .mo-total .v,
-      .mo-credits .v, .mo-digits b, .mo-fly, .stroke-text, .hp-text, .card-v,
       .mo-charge b {
         font-family: var(--font-num);
         font-variant-numeric: tabular-nums;

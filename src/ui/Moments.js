@@ -274,11 +274,30 @@ export class Moments {
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
     // CASH IN: a Freeze frame charge for credits, under the exits.
-    if (d.shop) this._shopButton(next, d.shop);
+    if (d.shop) this._shopButton(next, d.shop, d.credits || 0);
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
   }
 
-  _shopButton(parent, shop) {
+  /**
+   * CREDITS AND THE CASH-IN, together, because credits exist only to be spent
+   * here. They are money, not points, and never sit in the points ledger: a
+   * line says what this table paid, the total you have, and where it came from.
+   */
+  _shopButton(parent, shop, earned) {
+    const wallet = el('div', 'mo-wallet', parent);
+    const top = el('div', 'mo-wallet-top', wallet);
+    el('span', 'k', top).textContent = 'Credits';
+    const total = el('span', 'v', top);
+    const gain = el('span', 'gain', top);
+    gain.textContent = earned > 0 ? `+${earned} this table` : '';
+    el('div', 'mo-wallet-why', wallet).textContent = '1 per 100 points · 1 per shot you did not use';
+    const from = Math.max(0, shop.credits() - earned);
+    total.textContent = fmt(from);
+    this.anim(wallet, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: OUT });
+    if (earned > 0) {
+      this.audio.scoreNote?.(9, 'mult');
+      this.count(total, from, shop.credits(), 420);
+    }
     const b = el('button', 'mo-buy', parent);
     b.type = 'button';
     const name = el('span', 'mo-buy-name', b);
@@ -302,6 +321,8 @@ export class Moments {
       event.stopPropagation();
       if (!shop.buy()) return;
       render();
+      total.textContent = fmt(shop.credits());
+      gain.textContent = `−${shop.price} spent`;
       this.anim(b, [{ transform: 'scale(1.06)', filter: 'brightness(1.6)' }, { transform: 'none', filter: 'none' }], { duration: 300, easing: OUT });
       this._pulseFreeze();
     });
@@ -448,19 +469,12 @@ export class Moments {
     await this.wait(620);
     if (!live()) return;
     await this.flyToRun(totalV, d.roomScore, d.onRunLanded, d.shownRun, d.runScore);
+    // The total now lives in RUN. Its row says so, rather than showing the
+    // number again and reading as if it were counted twice.
+    totalV.textContent = 'Added to RUN';
     totalV.style.visibility = '';
-    totalV.textContent = fmt(d.roomScore);
     total.classList.add('banked');
-    // CREDITS: what the table paid as money, in money's colour.
-    if (d.credits > 0) {
-      const c = el('div', 'mo-credits', panel);
-      el('span', 'k', c).textContent = 'Credits';
-      const cv = el('span', 'v', c);
-      cv.textContent = '+0';
-      this.anim(c, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: OUT });
-      this.audio.scoreNote?.(9, 'mult');
-      await this.count(cv, 0, d.credits, 360, { prefix: '+' });
-    }
+    this.anim(totalV, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: OUT });
     await this.wait(200);
   }
 

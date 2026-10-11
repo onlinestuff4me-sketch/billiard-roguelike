@@ -251,8 +251,9 @@ frame · Combination") that flies into the meter, which pulses. In the meter
 a half charge fills half a diamond, and only a whole charge freezes.
 
 **Credits** are money, in `credit` violet: 1 per 100 points a table banks
-(bonuses included) plus 1 per unspent shot (`RULES.credits`). They count in
-on the ledger under the total, and the cash-in button sits under the exits.
+(bonuses included) plus 1 per unspent shot (`RULES.credits`). They never sit
+in the points ledger: they count in beside the cash-in button under the exits,
+with what this table paid and a line saying where credits come from.
 The score is never spent.
 
 ### 8.4 Table clear (and out of shots)
@@ -267,7 +268,8 @@ with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
 A rule draws across, the TABLE total counts up in large type and slams, then
 lifts for a beat, flies on one arc into RUN in the top corner, shrinking to
 exactly RUN's size, and RUN punches once and counts up to the new total. The
-number is only ever in one place: no second plate repeats it. Then NEXT TABLE, with the exits rising in as
+number is only ever in one place: the TABLE row then reads "Added to RUN", and
+no second plate repeats it. Then NEXT TABLE, with the exits rising in as
 buttons with a passing sheen.
 
 Out of shots uses the same treatment, with the title in `hazard` and a
