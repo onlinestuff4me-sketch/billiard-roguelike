@@ -60,8 +60,12 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 
 `docs/PUZZLE_RAMP.md`. Fewer balls and harder questions instead of more balls; acts of three (open, target, house table that bends one rule); every authored table states its catch; the solver measures window, greed gap, decoys and solution families; one dial at a time, in a sawtooth; surprise from facts lists, moving value, solution signatures and remixes; nothing that makes the preview lie.
 
+## The look (built)
+
+The Tron pass is done: an unlit black Grid floor whose lines ripple from pots, a cleared table, a scratch and hard strikes; rails as dark bodies with lit edges; pockets dimmer than the cue ball; Lightline cyan `#22e8ff`; Orbitron, Oxanium and Rajdhani served from the repo. What is still open is listed in `docs/DESIGN_BIBLE.md` §11.
+
 ## Later (agreed direction, not started)
 
 - Short tables: 2–4 balls, 2–3 shots, a score to beat; three tables a round, the third hand-built.
 - Unused shots become money; a shop between tables (upgrades like "walls are worth double").
-- The full Tron visual pass from Lightline (void floor, reactive grid, pockets dimmer than the cue ball).
+
