@@ -168,17 +168,18 @@ export class Moments {
     const at = (x, y, sc, rot = 0) => `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${sc}) rotate(${rot}deg)`;
     // the pop, as a plate pops beside its cause
     this.audio.scoreThud?.();
+    // ONE MOVEMENT AT A TIME: the plate pops, then it flies, then RUN counts.
+    // Nothing else on screen moves or changes while each one happens.
     await this.anim(plate, [
-      { transform: at(0, 0, 0.3, -8), opacity: 0 },
-      { transform: at(0, -10, 1.25, 4), opacity: 1, offset: 0.55 },
-      { transform: at(0, -8, 1, 0), opacity: 1 }
-    ], { duration: 380, easing: OUT });
-    await this.wait(260);
+      { transform: at(0, 0, 0.6), opacity: 0 },
+      { transform: at(0, 0, 1), opacity: 1 }
+    ], { duration: 220, easing: OUT });
+    await this.wait(300);
     // the flight, with its streak
     const streak = el('div', 'sf-streak mo-bankstreak', this.root);
-    const len = Math.hypot(dx, dy + 8);
+    const len = Math.hypot(dx, dy);
     streak.style.width = `${len}px`;
-    const base = `translate(${x0}px, ${y0 - 8}px) rotate(${Math.atan2(dy + 8, dx)}rad)`;
+    const base = `translate(${x0}px, ${y0}px) rotate(${Math.atan2(dy, dx)}rad)`;
     this.anim(streak, [
       { transform: `${base} scaleX(0)`, opacity: 1 },
       { transform: `${base} scaleX(1)`, opacity: 1, offset: 0.6 },
@@ -186,24 +187,16 @@ export class Moments {
     ], { duration: 760, easing: 'linear' }).then(() => streak.remove());
     this.audio.slingshot?.(0.4);
     await this.anim(plate, [
-      { transform: at(0, -8, 1, 0) },
-      { transform: at(dx, dy, 0.55, 0) }
+      { transform: at(0, 0, 1) },
+      { transform: at(dx, dy, 0.55) }
     ], { duration: 460, easing: 'cubic-bezier(0.5, 0, 0.8, 0.4)' });
     plate.remove();
-    // the landing: RUN jumps like a score box
+    // the landing: RUN glows once and counts up, in place
     this.audio.scoreLock?.();
-    this.engine.shake?.(3);
     to.node.animate(
-      [
-        { transform: 'scale(1.32) rotate(-3deg)', textShadow: '0 0 16px #e9f8ff, 0 0 32px #22e8ff' },
-        { transform: 'scale(1) rotate(0deg)', textShadow: '0 0 0 transparent' }
-      ],
-      { duration: 420, easing: BACK }
+      [{ textShadow: '0 0 16px #e9f8ff, 0 0 32px #22e8ff' }, { textShadow: '0 0 0 transparent' }],
+      { duration: 700, easing: OUT }
     );
-    const ring = el('div', 'mo-ring', this.root);
-    ring.style.left = `${to.x}px`;
-    ring.style.top = `${to.y}px`;
-    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.4)', opacity: 0.9 }, { transform: 'translate(-50%,-50%) scale(2.2)', opacity: 0 }], { duration: 440, easing: OUT }).then(() => ring.remove());
     if (runFrom != null && runTo != null && runTo !== runFrom) {
       let n = 0;
       await this.count(to.node, runFrom, runTo, 520, { tick: () => this.audio.scoreNote?.(6 + n++, 'points') });
@@ -546,12 +539,7 @@ export class Moments {
     await this.wait(620);
     if (!live()) return;
     await this.flyToRun(totalV, d.roomScore, d.onRunLanded, d.shownRun, d.runScore);
-    // The total stays where it was; a small tag says it is now in RUN.
-    total.classList.add('banked');
-    const tag = el('span', 'mo-banked-tag', total);
-    tag.textContent = 'In RUN';
-    this.anim(tag, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: OUT });
-    await this.wait(200);
+    // The ledger is left exactly as it was: the plate was a copy.
   }
 
   /* -------------------------------------------------------------- *

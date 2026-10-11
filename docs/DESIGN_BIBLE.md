@@ -125,6 +125,13 @@ when it is taller.
 
 ## 6. Motion
 
+**One movement at a time** (from review). A moment is a sequence, not a
+pile-up: let each movement finish before the next starts, and keep everything
+else still while it happens. Don't move, restyle or reflow anything that
+doesn't have to change. A number that grows must not push its neighbours
+(fixed columns, tabular digits), and a value that has been counted keeps its
+place, size and face afterwards.
+
 **Durations:** instant 80 · fast 150 · base 250 · slow 400 · boot 700 ·
 hit-stop 90 · pop 420 · hold 800 (×0.9 per event, min 400) · flight 340 ·
 lock 500 · take-back step 300 · slam breath 400 · total roll 600 (ms).
@@ -265,13 +272,15 @@ arrive together, once). Each shot's line slides in and counts up (P × M = pay)
 with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
 A rule draws across, the TABLE total counts up in large type and slams. Then
 the total is **cloned as a plate**, in the same visual language as the score
-feed during play: a white chamfered "+1,005 · TABLE" plate pops over the
-total, a streak draws from it to RUN in the top corner, and the plate flies
-along it, accelerating and shrinking, while the ledger's own total stays where
-it was and dims to "In RUN". RUN punches once with a ring and counts up by
-exactly what the plate said. The sum is honest because RUN only ever holds
-**banked** points: during play the corner shows RUN with a live "TABLE +855"
-line under it, and the table's points join RUN only when the plate lands.
+feed during play, and the moment runs **one movement at a time**: the white
+"+1,005 · TABLE" plate pops over the total; it flies along a streak to RUN in
+the top corner; RUN glows once and counts up by exactly what the plate said.
+Nothing else moves or changes while each happens: the ledger's own total
+stays exactly as it was, and the top bar's side columns have fixed widths so a
+wider RUN never shifts the mission. The sum is honest because RUN only ever
+holds **banked** points: during play the corner shows RUN with a live
+"TABLE +855" line under it, and the table's points join RUN only when the
+plate lands.
 
 Then the ledger hands over to the shop (§8.4b).
 

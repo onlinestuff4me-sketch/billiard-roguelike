@@ -158,8 +158,10 @@
         background: linear-gradient(to bottom, rgba(5, 7, 10, 0.82) 0%, rgba(5, 7, 10, 0.55) 60%, transparent 100%);
       }
 
+      /* Fixed side columns, so the mission stays centred however wide the
+         RUN number grows. Nothing in the top bar moves when a score lands. */
       .hud-hp {
-        flex: 1 1 42%;
+        flex: 0 0 36%;
         min-width: 0;
       }
 
@@ -207,7 +209,7 @@
          sentence. It sits dead centre of the top band because that is where
          the eye lands between strokes. */
       .hud-mission {
-        flex: 1 1 44%;
+        flex: 1 1 0;
         text-align: center;
         min-width: 0;
       }
@@ -265,7 +267,7 @@
       }
 
       .hud-score {
-        flex: 0 0 auto;
+        flex: 0 0 22%;
         text-align: right;
         min-width: 0;
       }
@@ -276,6 +278,7 @@
         font-weight: 700;
         line-height: 1;
         letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
         color: var(--bone);
       }
       .score-table {
@@ -1135,8 +1138,6 @@
       .mo-bankplate { inset: auto; z-index: 31; }
       .mo-bankplate b { font-size: 34px; }
       .mo-bankstreak { inset: auto; left: 0; top: 0; z-index: 30; background: linear-gradient(90deg, transparent, #e9f8ff); box-shadow: 0 0 12px #22e8ff; }
-      .mo-banked-tag { margin-left: 10px; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ll-you); }
-      .mo-total.banked .v { opacity: 0.55; }
 
       /* THE SHOP */
       .mo-shop { position: absolute; inset: auto; left: 50%; top: 9%; width: min(92%, 370px); padding: 16px 16px 12px; isolation: isolate; filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.3)); display: grid; gap: 10px; }
@@ -1168,7 +1169,6 @@
       .mo-nexttable { position: absolute; inset: auto; left: 50%; bottom: calc(var(--hud-pad) + 74px); padding: 13px 34px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-you); box-shadow: 0 0 22px rgba(34, 232, 255, 0.6); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); white-space: nowrap; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
       .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
-      .mo-total.banked .v { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ll-you); text-shadow: none; }
       .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
 
       /* CLEAR */
