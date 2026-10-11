@@ -354,6 +354,35 @@ export class AudioManager {
     this._noise({ duration: 0.16, gain: 0.26, filterType: 'bandpass', freq: 2400, freqEnd: 500, q: 0.8 });
   }
 
+  /** Time stopping: a glassy chime falling a fifth, over a soft low hit. */
+  freezeOn() {
+    const root = AUDIO.rootHz * 4;
+    this._tone({ type: 'sine', freq: 160, freqEnd: 60, duration: 0.3, gain: 0.2 });
+    this._tone({ type: 'triangle', freq: root * 1.5, freqEnd: root, duration: 0.6, gain: 0.1, attack: 0.004 });
+    this._tone({ type: 'sine', freq: root * 3, freqEnd: root * 2, duration: 0.5, gain: 0.05, delay: 0.03 });
+    this._noise({ duration: 0.35, gain: 0.08, filterType: 'highpass', freq: 5000, freqEnd: 2000, q: 0.7 });
+  }
+
+  /** Time starting again: ice breaking. */
+  shatter() {
+    this._noise({ duration: 0.22, gain: 0.2, filterType: 'highpass', freq: 3000, freqEnd: 7000, q: 0.6 });
+    const root = AUDIO.rootHz * 4;
+    for (const [m, d] of [[2, 0], [2.5, 0.025], [3, 0.05]]) this._tone({ type: 'sine', freq: root * m, duration: 0.18, gain: 0.05, delay: d });
+  }
+
+  /** A table going out: a falling noise sweep. */
+  derez() {
+    this._noise({ duration: 0.4, gain: 0.16, filterType: 'bandpass', freq: 3000, freqEnd: 300, q: 1.2 });
+    this._tone({ type: 'sawtooth', freq: 400, freqEnd: 80, duration: 0.35, gain: 0.06 });
+  }
+
+  /** A table coming up: a rising sweep under three blips. */
+  boot() {
+    this._noise({ duration: 0.5, gain: 0.1, filterType: 'bandpass', freq: 300, freqEnd: 3200, q: 1.4 });
+    const root = AUDIO.rootHz * 2;
+    for (const [m, d] of [[1, 0.08], [1.5, 0.2], [2, 0.32]]) this._tone({ type: 'triangle', freq: root * m, duration: 0.16, gain: 0.08, delay: d });
+  }
+
   /** Weight of a cue strike; brightness scales with momentum. */
   impact(intensity = 0.5) {
     // Collapse simultaneous impacts so a six-body break does not clip.

@@ -40,7 +40,8 @@ import {
   TABLE,
   TUTORIAL,
   PROGRESSION,
-  LAYER
+  LAYER,
+  MOMENTS
 } from './config.js';
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
@@ -53,6 +54,7 @@ import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
+import { Moments } from './ui/Moments.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -836,6 +838,13 @@ const feed = new ScoreFeed({
   reducedMotion
 });
 const modal = new BoonModal(uiLayer);
+/**
+ * THE MOMENTS between shots: the table clearing, a scratch, a freeze, and the
+ * walk to the next table. See Moments.js; the treatment of each is MOMENTS.
+ */
+const moments = new Moments({ layer: uiLayer, canvas, camera, audio, engine, hud });
+/** Moments play in the real game, not in lessons or headless checks. */
+const momentsOn = () => !game.headless && !tutorial.running;
 
 /** The shared context every system reads from. */
 const game = {
@@ -1254,10 +1263,18 @@ function tryFreeze() {
   input.setHeading(0, -1);
   engine.zoomPunch();
   engine.shake(4);
-  audio.focusEnter?.();
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
-  fx.floatText(player.x, player.z - 2.2, 'FREEZE', 'crit');
-  hud.showBanner('Freeze', 'Re-aim — this does not cost a shot', 1.6);
+  if (momentsOn()) {
+    moments.freeze({
+      cue: { x: player.x, z: player.z },
+      balls: game.enemies.filter((b) => b.alive && Math.hypot(b.vx, b.vz) > 0.3).map((b) => ({ x: b.x, z: b.z, vx: b.vx, vz: b.vz })),
+      left: rules.freezeCharges
+    });
+  } else {
+    audio.focusEnter?.();
+    fx.floatText(player.x, player.z - 2.2, 'FREEZE', 'crit');
+    hud.showBanner('Freeze', 'Re-aim — this does not cost a shot', 1.6);
+  }
   return true;
 }
 game.tryFreeze = tryFreeze;
@@ -1464,12 +1481,22 @@ game.on = {
     if (p.scratchGuard > 0) return;
     p.scratchGuard = 0.6;
     rules.scratch();
-    audio.playerHurt();
     engine.shake(14);
     engine.zoomPunch();
     fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 7, 0.55);
-    fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
-    hud.showBanner('Scratch', 'Your own ball went in — this shot pays nothing', 1.9);
+    if (momentsOn()) {
+      moments.scratch({
+        pocket,
+        spawn: { x: rooms.layout.spawn.x, z: spawnZ() },
+        setCueVisible: (on) => {
+          p.group.visible = on && p.alive;
+        }
+      });
+    } else {
+      audio.playerHurt();
+      fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
+      hud.showBanner('Scratch', 'Your own ball went in — this shot pays nothing', 1.9);
+    }
     // Back to the spot, at rest. The stroke ends here.
     p.vx = 0;
     p.vz = 0;
@@ -1673,8 +1700,9 @@ const cssHex = (value) => `#${value.toString(16).padStart(6, '0')}`;
 function completeRoom() {
   if (game.state === 'cleared') return;
   game.state = 'cleared';
+  const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
-  audio.roomClear();
+  if (!momentsOn()) audio.roomClear();
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
   // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
   // promise to do something harder, and a promise you have never kept once is
@@ -1684,14 +1712,28 @@ function completeRoom() {
     hud.showBanner('Swept in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
   openExits();
-  hud.showScorecard({
+  showRoomResult({
     level: game.level,
     filled: true,
     ledger: rules.ledger,
     roomScore: result.roomScore,
     runScore: result.runScore,
     choices: exitChoices()
-  });
+  }, shownRun);
+}
+
+/**
+ * The end of a table: the moment if it can play, the plain card if not. The
+ * HUD's run total is held at what it showed until the table total lands in it.
+ */
+function showRoomResult(data, shownRun) {
+  if (!momentsOn()) {
+    hud.showScorecard(data);
+    return;
+  }
+  hud.hideBanner();
+  game.scoreHold = shownRun;
+  moments.clear({ ...data, shownRun, onRunLanded: () => (game.scoreHold = null) });
 }
 
 /**
@@ -1704,6 +1746,7 @@ function failRoom() {
   game.state = 'cleared';
   const standing = rooms.ballsRemaining;
   const damage = standing * RULES.damage.looseBall;
+  const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
 
   audio.playerDeath?.();
@@ -1716,7 +1759,7 @@ function failRoom() {
   if (damage > 0 && !game.tutorialGuard) player.takeDamage(damage, game, 'loose');
 
   openExits();
-  hud.showScorecard({
+  showRoomResult({
     level: game.level,
     filled: false,
     ledger: rules.ledger,
@@ -1724,7 +1767,7 @@ function failRoom() {
     runScore: result.runScore,
     penalty: { standing, damage },
     choices: exitChoices()
-  });
+  }, shownRun);
 }
 
 function openExits(title, sub) {
@@ -1775,6 +1818,8 @@ function handleDoorEntered(door) {
   audio.doorOpen();
   hud.setDoors([]);
   hud.hideScorecard();
+  moments.closeClear();
+  game.scoreHold = null;
   fx.shockwave(door.x, door.z, door.color, 6, 0.5);
   fx.burst(door.x, door.z, 22, door.color, 12, 1.2);
 
@@ -1899,23 +1944,35 @@ function advanceRoom() {
     return;
   }
 
-  game.level += 1;
-  game.chain.count = 0;
-  game.launchHits = 0;
-  game.pendingBoons = 0;
-  boons.clearFields();
-  fx.clearTexts();
-  hud.setDoors([]);
-  hud.hideScorecard();
+  const swap = () => {
+    game.level += 1;
+    game.chain.count = 0;
+    game.launchHits = 0;
+    game.pendingBoons = 0;
+    boons.clearFields();
+    fx.clearTexts();
+    hud.setDoors([]);
+    hud.hideScorecard();
+    moments.closeClear();
+    game.scoreHold = null;
 
-  rooms.generate(game.level);
-  callPocket(null);
-  beginMission();
-  player.placeAt(rooms.layout.spawn.x, spawnZ());
-  game.state = 'playing';
-  game.phase = 'aim';
-  game.midStroke = false;
-  input.setHeading(0, -1);
+    rooms.generate(game.level);
+    callPocket(null);
+    beginMission();
+    player.placeAt(rooms.layout.spawn.x, spawnZ());
+    game.state = 'playing';
+    game.phase = 'aim';
+    game.midStroke = false;
+    input.setHeading(0, -1);
+  };
+  // THE WALK TO THE NEXT TABLE. The new one is built while the screen is
+  // covered, and its mission is stated once it is fully in view.
+  if (momentsOn()) {
+    game.state = 'transition';
+    moments.transition({ from: game.level, to: game.level + 1, swap }).then(showRoomBanner);
+    return;
+  }
+  swap();
   showRoomBanner();
 }
 
@@ -3306,6 +3363,7 @@ const input = new InputManager(stage, {
     // Resuming keeps the ladder, the budget and every other ball's velocity.
     if (game.midStroke) resumeStroke();
     else beginStroke();
+    moments.unfreeze();
   },
   onFlick: (aim) => {
     uiLayer.classList.remove('aiming');
@@ -3321,6 +3379,7 @@ const input = new InputManager(stage, {
     player.launch({ ...aim, power: PLAYER.minPower }, game);
     if (game.midStroke) resumeStroke();
     else beginStroke();
+    moments.unfreeze();
   }
 });
 
@@ -3697,6 +3756,114 @@ $('set-aim').addEventListener('click', () => {
   applyAimStyle();
 });
 applyAimStyle();
+
+/* THE MOMENT TREATMENTS, picked here while two of each are on trial. */
+const MOMENT_NAMES = {
+  clear: 'Table clear',
+  scratch: 'Scratch',
+  freeze: 'Freeze',
+  transition: 'Next table'
+};
+try {
+  const saved = JSON.parse(localStorage.getItem('lightline-moments-v1') || '{}');
+  for (const kind of Object.keys(MOMENT_NAMES)) {
+    if (MOMENTS.options[kind].includes(saved[kind])) MOMENTS[kind] = saved[kind];
+  }
+} catch {
+  /* private mode, or nothing saved yet */
+}
+function applyMoments() {
+  const keep = {};
+  for (const kind of Object.keys(MOMENT_NAMES)) {
+    const v = MOMENTS[kind];
+    keep[kind] = v;
+    $(`set-mo-${kind}`).textContent = `${MOMENT_NAMES[kind]}: ${v[0].toUpperCase()}${v.slice(1)}`;
+  }
+  try {
+    localStorage.setItem('lightline-moments-v1', JSON.stringify(keep));
+  } catch {
+    /* private mode */
+  }
+}
+for (const kind of Object.keys(MOMENT_NAMES)) {
+  $(`set-mo-${kind}`).addEventListener('click', () => {
+    const list = MOMENTS.options[kind];
+    MOMENTS[kind] = list[(list.indexOf(MOMENTS[kind]) + 1) % list.length];
+    applyMoments();
+  });
+}
+applyMoments();
+if (typeof window !== 'undefined') {
+  window.__moment = (kind, variant) => {
+    if (MOMENTS.options[kind]?.includes(variant)) MOMENTS[kind] = variant;
+    applyMoments();
+    return MOMENTS[kind];
+  };
+  /**
+   * DEMO HOOKS, for recording the moments: each one drives the real code path
+   * (the real clear, a real scratch shot, a real freeze) from a staged state.
+   */
+  window.__demo = {
+    /** End the room as if it went well (or, with `fail`, ran out of shots). */
+    clear(fail = false) {
+      const shots = [
+        { pts: 35, mult: 3 },
+        { pts: 60, mult: 4 },
+        { pts: 85, mult: 6 }
+      ];
+      rules.ledger.length = 0;
+      rules.roomScore = 0;
+      shots.forEach((shot, i) => {
+        const amount = shot.pts * shot.mult;
+        rules.ledger.push({ id: 'stroke', label: `Shot ${i + 1}`, detail: `${shot.pts} × ${shot.mult}`, amount });
+        rules.roomScore += amount;
+      });
+      if (fail) {
+        failRoom();
+      } else {
+        rules.ballsDown = rules.mission.rack;
+        rules.strokesUsed = 3;
+        rules.strokesLeft = 2;
+        completeRoom();
+      }
+    },
+    /** Send the cue ball at the nearest pocket. */
+    scratch() {
+      const pockets = rooms.table.pockets;
+      let best = null;
+      for (const pk of pockets) {
+        const d = Math.hypot(pk.x - player.x, pk.z - player.z);
+        if (!best || d < best.d) best = { pk, d };
+      }
+      const pk = best.pk;
+      const len = Math.hypot(pk.x, pk.z) || 1;
+      player.placeAt(pk.x - (pk.x / len) * 4, pk.z - (pk.z / len) * 4);
+      const dx = pk.x - player.x;
+      const dz = pk.z - player.z;
+      const d = Math.hypot(dx, dz);
+      input.setHeading(dx / d, dz / d);
+      player.launch({ dirX: dx / d, dirZ: dz / d, power: 0.45 }, game);
+      beginStroke();
+    },
+    /** Freeze the stroke in progress (granting a charge if there is none). */
+    freeze() {
+      if (rules.freezeCharges <= 0) rules.grantFreeze(1);
+      return tryFreeze();
+    },
+    /** Let the frozen stroke go again, along the current heading. */
+    unfreeze(dirX = 0, dirZ = -1, power = 0.6) {
+      player.launch({ dirX, dirZ, power }, game);
+      resumeStroke();
+      moments.unfreeze();
+    },
+    /** Pick the first exit on the open scorecard. */
+    next() {
+      const door = rooms.doors.find((dr) => dr.reward.id !== 'boon') || rooms.doors[0];
+      if (door) handleDoorEntered(door);
+      else advanceRoom();
+    }
+  };
+}
 if (typeof window !== 'undefined') window.__setAimStyle = (id) => { TRAJECTORY.aimStyle = id; applyAimStyle(); };
 
 $('set-tutorial').addEventListener('click', () => {
@@ -3946,7 +4113,9 @@ function frame(now) {
         cleared: game.state === 'cleared',
         // What the drawn line would be refused for, if anything.
         aimFoul: game.aimFoul,
-        ...snapshot
+        ...snapshot,
+        // Held while a table total is still on its way into the run.
+        ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {})
       },
       rawDt
     );

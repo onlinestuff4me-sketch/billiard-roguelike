@@ -5,6 +5,7 @@ The source of truth for what the game is supposed to do. Kept current as scope c
 Companion pages (private links, owner only):
 - Proposal one-pager: https://claude.ai/artifact/B3LMk8apuXkprXR3sCCSzR
 - Lightline design system: https://claude.ai/artifact/DrQbXnz43EMvveKWKGsVWq
+- Design bible (in the repo): `docs/DESIGN_BIBLE.md`
 
 ## The game
 
@@ -20,7 +21,8 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 
 - **The aiming system, unchanged.** Touch anywhere and drag to aim. The preview shows where the cue ball goes, where it collides, where it travels after the collision, where the struck ball goes and where it lands, with colour warnings for scratches and fouls. The drawn line is the shot the table plays.
 - **How the first leg is drawn is a setting** (Settings → Aim line), because the original glowing beam was overwhelming. Picked in review: **Cue** is the default.
-  - **Cue** (default): a thin line. Power is the cue stick behind the ball, sliding back one-for-one with the thumb, plus a ring around the ball that fills as you pull.
+  - **Cue** (default): a thin line. Power is a full-length cue stick that runs back off the table past the rail like 8 Ball Pool: tapered, with lit edges and a shadow cast on the felt and rail. It slides back one-for-one with the thumb, and a ring around the ball fills as you pull.
+  - **The strike:** on release the table holds for a few frames while the stick snaps into the ball with a light smear. The ball leaves when it is hit, then the stick follows through and fades.
   - **Full power is a moment:** the ring flashes and swells, then breathes while held; the stick's tip lights; a ring of light bursts from the ball; a **MAX POWER** badge pops out of the ring and flies away from the aim line; a bright two-note riser plays; phones that allow it give a short buzz. All of it triggers at one threshold (`TRAJECTORY.fullDraw`).
   - **Slim:** a thin line; power is the ring alone.
   - **Pulse:** a thin line with a spark running it, faster the harder you pull, flaring the contact ring.
@@ -41,6 +43,19 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
   - the plate flies into its box and the box jumps;
   - the boxes stay faded until a ball drops, then go solid ("Locked in"). On a miss, plates fly back to their causes and shatter.
   - Tap during a shot to speed the presentation up.
+
+## Moments between shots (built, two options each on trial)
+
+Each moment has two treatments, switchable in Settings (`MOMENTS` in `src/config.js`, `src/ui/Moments.js`) until one is picked in review. The full spec is in `docs/DESIGN_BIBLE.md` §8.
+
+- **Table clear / out of shots:** every shot's pay counts in, bonuses land, the table total slams and flies into RUN, then the next-table choices arrive. *Ledger* (a receipt panel) or *Tally* (plates on the felt flying into one huge number).
+- **Scratch:** the shot is void and the cue ball comes back. *Derez* (the ball breaks into light, a stamp, a beam brings it back) or *Glitch* (red alert, the screen tears, the ball is traced back in).
+- **Freeze:** mid-roll, time stops so the cue ball can be re-aimed; costs a charge, not a shot. *Stasis* (an ice wave, frost rings, a shatter on release) or *Freeze frame* (viewfinder brackets, scanlines, motion streaks).
+- **Next table:** the new table is built while the screen is covered, and its mission is stated once it is in view. *Boot* (strips close, the rails trace in, strips open) or *Light-cycle* (a cyan cycle wipes it off, an orange one wipes the next on).
+
+## Puzzle ramp (strategy agreed for review, not built)
+
+`docs/PUZZLE_RAMP.md`. Fewer balls and harder questions instead of more balls; acts of three (open, target, house table that bends one rule); every authored table states its catch; the solver measures window, greed gap, decoys and solution families; one dial at a time, in a sawtooth; surprise from facts lists, moving value, solution signatures and remixes; nothing that makes the preview lie.
 
 ## Later (agreed direction, not started)
 

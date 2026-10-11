@@ -824,6 +824,29 @@ export const FEEL = {
  * Mirrors the Lightline design system's duration and timescale tokens.
  * Seconds of real time, at 1x presentation speed.
  * ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ * MOMENTS — the beats between shots (src/ui/Moments.js)
+ *
+ * Two treatments of each, to be compared in the real game and then cut to
+ * one. Change them in Settings, or with window.__moment(kind, variant).
+ * ------------------------------------------------------------------ */
+export const MOMENTS = {
+  /** 'ledger' a receipt that counts in line by line · 'tally' plates on the felt fly into one big number */
+  clear: 'ledger',
+  /** 'derez' the ball breaks into light, a stamp, a beam brings it back · 'glitch' red alert, the screen tears */
+  scratch: 'derez',
+  /** 'stasis' an ice wave stops the table · 'frame' a camera freeze-frame */
+  freeze: 'stasis',
+  /** 'boot' strips close, the rails trace back in · 'cycle' a light-cycle wipes one table off, the next on */
+  transition: 'boot',
+  options: {
+    clear: ['ledger', 'tally'],
+    scratch: ['derez', 'glitch'],
+    freeze: ['stasis', 'frame'],
+    transition: ['boot', 'cycle']
+  }
+};
+
 export const SCORE_FEED = {
   /** The table freezes outright when a number arrives (Lightline event-hitstop). */
   hitStop: 0.09,
