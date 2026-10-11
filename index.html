@@ -6,10 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#05070a" />
+    <meta name="theme-color" content="#02050b" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305070a'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%2335f2ff'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23d9feff'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2302050b'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%2322e8ff'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23d9feff'/%3E%3C/svg%3E"
     />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,24 +19,43 @@
       content="Lightline: Billiard Roguelike — trick-shot billiards on a grid of light, with a boon-stacking roguelike on top."
     />
     <title>Lightline: Billiard Roguelike</title>
+    <!-- Lightline's three faces are served from ./fonts (SIL OFL 1.1, see
+         public/fonts/README.md). Every use has a fallback. -->
     <style>
+      @font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 700; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 800; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 900; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Oxanium'; font-style: normal; font-weight: 600; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Oxanium'; font-style: normal; font-weight: 700; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Oxanium'; font-style: normal; font-weight: 800; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Rajdhani'; font-style: normal; font-weight: 500; font-display: swap; src: url('./fonts/rajdhani-500.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Rajdhani'; font-style: normal; font-weight: 600; font-display: swap; src: url('./fonts/rajdhani-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Rajdhani'; font-style: normal; font-weight: 700; font-display: swap; src: url('./fonts/rajdhani-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
       /* ---------------------------------------------------------------
          Dark Velvet Cyber-Billiards — shell styling.
          The game itself renders into #stage-canvas; every readable UI
          element is DOM so text stays crisp on high-DPI phones.
          --------------------------------------------------------------- */
       :root {
-        --obsidian: #05070a;
-        --felt-deep: #06231d;
-        --felt: #0b3a2e;
-        --cyan: #35f2ff;
-        --magenta: #ff3d8b;
+        /* Lightline tokens (docs/DESIGN_BIBLE.md §3). */
+        --obsidian: #02050b;
+        --felt-deep: #02050b;
+        --felt: #061222;
+        --cyan: #22e8ff;
+        --magenta: #ff2e7e;
+        --ice: #bff4ff;
+        --credit: #a98bff;
         --amber: #ffb340;
         --violet: #a05cff;
         --bone: #eaf6ff;
         --muted: rgba(234, 246, 255, 0.55);
         --hud-pad: clamp(10px, 3.2vmin, 20px);
-        --font: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        --font: 'Rajdhani', 'Bahnschrift', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        /* Display: titles, banners, moment names. Wide, so used with restraint. */
+        --font-display: 'Orbitron', 'Eurostile', 'Rajdhani', 'Arial Black', sans-serif;
+        /* Numbers: every figure, with tabular digits. */
+        --font-num: 'Oxanium', 'Bahnschrift', 'Rajdhani', ui-monospace, monospace;
       }
 
       * {
@@ -85,8 +104,8 @@
         overflow: hidden;
         border-radius: clamp(0px, 1.6vmin, 14px);
         box-shadow:
-          0 0 0 1px rgba(53, 242, 255, 0.16),
-          0 0 60px rgba(53, 242, 255, 0.07),
+          0 0 0 1px rgba(34, 232, 255, 0.16),
+          0 0 60px rgba(34, 232, 255, 0.07),
           0 24px 80px rgba(0, 0, 0, 0.85);
         background: var(--obsidian);
         touch-action: none;
@@ -150,7 +169,7 @@
         height: clamp(7px, 1.8vmin, 11px);
         border-radius: 999px;
         background: rgba(234, 246, 255, 0.1);
-        box-shadow: inset 0 0 0 1px rgba(53, 242, 255, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(34, 232, 255, 0.18);
         overflow: hidden;
       }
 
@@ -167,8 +186,8 @@
       }
 
       .hp-fill {
-        background: linear-gradient(90deg, #35f2ff 0%, #7dfbe0 100%);
-        box-shadow: 0 0 12px rgba(53, 242, 255, 0.65);
+        background: linear-gradient(90deg, #22e8ff 0%, #7dfbe0 100%);
+        box-shadow: 0 0 12px rgba(34, 232, 255, 0.65);
         transition: width 0.12s linear;
       }
 
@@ -200,7 +219,7 @@
         line-height: 1.1;
         letter-spacing: 0.1em;
         color: var(--bone);
-        text-shadow: 0 0 16px rgba(53, 242, 255, 0.45);
+        text-shadow: 0 0 16px rgba(34, 232, 255, 0.45);
       }
       .mission-text.done {
         color: #2ef2c4;
@@ -217,12 +236,12 @@
         width: clamp(9px, 2.6vmin, 14px);
         height: 3px;
         border-radius: 2px;
-        background: rgba(53, 242, 255, 0.22);
+        background: rgba(34, 232, 255, 0.22);
         transition: background 0.18s ease;
       }
       .mission-pips .pip.on {
         background: var(--cyan);
-        box-shadow: 0 0 8px rgba(53, 242, 255, 0.8);
+        box-shadow: 0 0 8px rgba(34, 232, 255, 0.8);
       }
 
       /* WHICH BALL THE ORDER WANTS NEXT.
@@ -287,8 +306,8 @@
       }
 
       .build-chip.rare {
-        border-color: rgba(53, 242, 255, 0.75);
-        box-shadow: 0 0 10px rgba(53, 242, 255, 0.25);
+        border-color: rgba(34, 232, 255, 0.75);
+        box-shadow: 0 0 10px rgba(34, 232, 255, 0.25);
       }
 
       .build-chip.epic {
@@ -324,8 +343,8 @@
         padding: 7px 12px 9px;
         border-radius: 12px;
         background: rgba(5, 7, 10, 0.62);
-        border: 1px solid rgba(53, 242, 255, 0.35);
-        box-shadow: 0 0 24px rgba(53, 242, 255, 0.18);
+        border: 1px solid rgba(34, 232, 255, 0.35);
+        box-shadow: 0 0 24px rgba(34, 232, 255, 0.18);
         opacity: 0;
         transition: opacity 0.18s ease;
       }
@@ -339,7 +358,7 @@
         font-weight: 700;
         line-height: 0.95;
         color: var(--cyan);
-        text-shadow: 0 0 20px rgba(53, 242, 255, 0.75);
+        text-shadow: 0 0 20px rgba(34, 232, 255, 0.75);
       }
 
       .combo-count {
@@ -365,7 +384,7 @@
         background: var(--cyan);
         transform-origin: right center;
         transform: scaleX(1);
-        box-shadow: 0 0 10px rgba(53, 242, 255, 0.8);
+        box-shadow: 0 0 10px rgba(34, 232, 255, 0.8);
       }
 
       .hud-combo.pop .combo-mult {
@@ -492,7 +511,7 @@
         padding: 14px 16px 15px;
         border-radius: 8px;
         background: rgba(5, 7, 10, 0.93);
-        border: 1px solid rgba(53, 242, 255, 0.34);
+        border: 1px solid rgba(34, 232, 255, 0.34);
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
         opacity: 0;
         pointer-events: none;
@@ -653,7 +672,7 @@
       }
       .pad-ring {
         border: 1.5px solid rgba(234, 246, 255, 0.22);
-        box-shadow: inset 0 0 24px rgba(53, 242, 255, 0.06);
+        box-shadow: inset 0 0 24px rgba(34, 232, 255, 0.06);
       }
       /* The power read, as a disc that grows to fill the ring. Radius, not
          colour: the palette's channels are all spoken for. */
@@ -661,11 +680,11 @@
         transform: scale(var(--pad-power, 0));
         background: radial-gradient(
           circle,
-          rgba(53, 242, 255, 0.14) 0%,
-          rgba(53, 242, 255, 0.05) 70%,
+          rgba(34, 232, 255, 0.14) 0%,
+          rgba(34, 232, 255, 0.05) 70%,
           transparent 100%
         );
-        border: 1px solid rgba(53, 242, 255, 0.3);
+        border: 1px solid rgba(34, 232, 255, 0.3);
       }
       .pad-line {
         position: absolute;
@@ -678,8 +697,8 @@
         transform: rotate(var(--line-rot, 0deg));
         background: linear-gradient(
           90deg,
-          rgba(53, 242, 255, 0.75),
-          rgba(53, 242, 255, 0.25)
+          rgba(34, 232, 255, 0.75),
+          rgba(34, 232, 255, 0.25)
         );
       }
       .pad-knob {
@@ -693,7 +712,7 @@
         transform: translate(var(--knob-x, 0px), var(--knob-y, 0px));
         border: 2px solid rgba(234, 246, 255, 0.65);
         background: rgba(5, 7, 10, 0.35);
-        box-shadow: 0 0 16px rgba(53, 242, 255, 0.35);
+        box-shadow: 0 0 16px rgba(34, 232, 255, 0.35);
       }
 
       /* Banner */
@@ -732,7 +751,7 @@
         letter-spacing: 0.2em;
         text-transform: uppercase;
         color: var(--bone);
-        text-shadow: 0 0 22px rgba(53, 242, 255, 0.7);
+        text-shadow: 0 0 22px rgba(34, 232, 255, 0.7);
       }
 
       .banner-sub {
@@ -814,7 +833,7 @@
         letter-spacing: 0.2em;
         text-transform: uppercase;
         color: var(--bone);
-        text-shadow: 0 0 18px rgba(53, 242, 255, 0.55);
+        text-shadow: 0 0 18px rgba(34, 232, 255, 0.55);
       }
 
       .boon-subtitle {
@@ -840,7 +859,7 @@
         padding: clamp(10px, 2.8vmin, 16px);
         border-radius: 12px;
         border: 1px solid rgba(234, 246, 255, 0.28);
-        background: linear-gradient(160deg, rgba(11, 58, 46, 0.7) 0%, rgba(5, 7, 10, 0.9) 70%);
+        background: linear-gradient(160deg, rgba(13, 29, 45, 0.85) 0%, rgba(2, 5, 11, 0.92) 70%);
         color: var(--bone);
         font-family: var(--font);
         cursor: pointer;
@@ -853,8 +872,8 @@
       }
 
       .boon-card.rare {
-        border-color: rgba(53, 242, 255, 0.7);
-        box-shadow: 0 0 18px rgba(53, 242, 255, 0.2);
+        border-color: rgba(34, 232, 255, 0.7);
+        box-shadow: 0 0 18px rgba(34, 232, 255, 0.2);
       }
 
       .boon-card.epic {
@@ -1098,10 +1117,10 @@
       .mo-landed { inset: auto; z-index: 31; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
       .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
-      .mo-credits { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 8px 0; color: #a98bff; }
+      .mo-credits { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 8px 0; color: #a98bff; }
       .mo-credits .k { font-size: 13px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; }
       .mo-credits .v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(169, 139, 255, 0.6); }
-      .mo-buy { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; max-width: 330px; padding: 11px 14px; border: 0; font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto; color: #e9f8ff; background: color-mix(in srgb, #a98bff 18%, rgba(2, 5, 11, 0.92)); box-shadow: inset 0 0 0 1.5px #a98bff, 0 0 14px rgba(169, 139, 255, 0.35); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+      .mo-buy { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; width: 100%; max-width: 330px; padding: 9px 14px; border: 0; font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto; color: #e9f8ff; background: color-mix(in srgb, #a98bff 18%, rgba(2, 5, 11, 0.92)); box-shadow: inset 0 0 0 1.5px #a98bff, 0 0 14px rgba(169, 139, 255, 0.35); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
       .mo-buy-name { font-size: 15px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #bff4ff; }
       .mo-buy-detail { font-size: 12px; font-weight: 600; color: #c9b8ff; }
       .mo-buy[disabled] { cursor: default; opacity: 0.45; }
@@ -1110,7 +1129,7 @@
       /* CLEAR */
       .mo-clear { pointer-events: auto; }
       .mo-ledger {
-        position: absolute; left: 50%; top: 11%; width: min(90%, 360px);
+        position: absolute; left: 50%; top: 10%; width: min(90%, 360px);
         padding: 18px 20px 16px; isolation: isolate;
         filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.35));
       }
@@ -1120,29 +1139,29 @@
         border: 2px solid rgba(34, 232, 255, 0.75);
         clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
       }
-      .mo-head { text-align: center; margin-bottom: 12px; }
+      .mo-head { text-align: center; margin-bottom: 8px; }
       .mo-kicker { white-space: nowrap; font-size: 30px; font-weight: 800; letter-spacing: 0.16em; line-height: 1; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 14px var(--ll-you); }
       .mo-title { margin-top: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
       .mo-rows { display: grid; gap: 4px; }
-      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 4px 8px; font-variant-numeric: tabular-nums; }
+      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 2px 8px; line-height: 1.15; font-variant-numeric: tabular-nums; }
       .mo-row .k { white-space: nowrap; font-size: 16px; font-weight: 800; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
       .mo-row .d { font-size: 13px; font-weight: 600; color: rgba(233, 248, 255, 0.42); }
       .mo-row .v { font-size: 24px; font-weight: 800; color: var(--ll-pts); min-width: 4ch; text-align: right; }
       .mo-row.bonus .k, .mo-row.bonus .v { color: var(--ll-hot); text-shadow: 0 0 10px rgba(255, 138, 30, 0.6); }
       .mo-row.bad .k, .mo-row.bad .v { color: var(--ll-void); }
-      .mo-rule { height: 2px; margin: 10px 0 8px; background: linear-gradient(90deg, transparent, var(--ll-you), transparent); transform-origin: 50% 50%; }
+      .mo-rule { height: 2px; margin: 8px 0 6px; background: linear-gradient(90deg, transparent, var(--ll-you), transparent); transform-origin: 50% 50%; }
       .mo-total { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; opacity: 0; }
       .mo-total .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
-      .mo-total .v { font-size: 56px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
+      .mo-total .v { font-size: 48px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
       .mo-total.banked .v { color: rgba(233, 248, 255, 0.35); text-shadow: none; }
 
-      .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 66px) 0; display: grid; justify-items: center; gap: 8px; padding: 0 9%; }
+      .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 60px) 0; display: grid; justify-items: center; gap: 6px; padding: 0 9%; }
       .mo-next-label { font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 10px var(--ll-you); }
-      .mo-choices { display: grid; gap: 8px; width: 100%; max-width: 330px; }
+      .mo-choices { display: grid; gap: 6px; width: 100%; max-width: 330px; }
       .mo-choice {
         position: relative; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
-        padding: 12px 14px; border: 0; color: var(--bone); font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto;
+        padding: 10px 14px; border: 0; color: var(--bone); font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto;
         background: color-mix(in srgb, var(--c, #22e8ff) 16%, rgba(2, 5, 11, 0.92));
         box-shadow: inset 0 0 0 1px var(--c, #22e8ff), 0 0 16px color-mix(in srgb, var(--c, #22e8ff) 35%, transparent);
         clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
@@ -1245,7 +1264,7 @@
         color: var(--cyan);
         font-size: clamp(10px, 2.7vmin, 15px);
         letter-spacing: 0.08em;
-        text-shadow: 0 0 10px rgba(53, 242, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.9);
+        text-shadow: 0 0 10px rgba(34, 232, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.9);
       }
 
       /* The pot's breakdown, stacked under the score it explains. Smaller than
@@ -1265,7 +1284,7 @@
       .float-text.combo {
         color: var(--cyan);
         font-size: clamp(14px, 4vmin, 24px);
-        text-shadow: 0 0 14px rgba(53, 242, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.9);
+        text-shadow: 0 0 14px rgba(34, 232, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.9);
       }
 
       /* Boot / tap-to-start veil. Also unlocks the Web Audio context. */
@@ -1281,7 +1300,7 @@
         text-align: center;
         padding: 8%;
         background:
-          radial-gradient(90% 60% at 50% 45%, rgba(11, 58, 46, 0.55) 0%, rgba(5, 7, 10, 0.94) 70%),
+          radial-gradient(90% 60% at 50% 45%, rgba(34, 232, 255, 0.08) 0%, rgba(2, 5, 11, 0.95) 70%),
           var(--obsidian);
         pointer-events: auto;
         transition: opacity 0.45s ease;
@@ -1300,8 +1319,8 @@
         text-transform: uppercase;
         color: var(--bone);
         text-shadow:
-          0 0 18px rgba(53, 242, 255, 0.65),
-          0 0 60px rgba(53, 242, 255, 0.25);
+          0 0 18px rgba(34, 232, 255, 0.65),
+          0 0 60px rgba(34, 232, 255, 0.25);
       }
 
       #boot-veil h2 {
@@ -1476,7 +1495,7 @@
         background-clip: text;
         color: transparent;
         animation: menu-sweep 5.5s linear infinite;
-        filter: drop-shadow(0 0 22px rgba(53, 242, 255, 0.35));
+        filter: drop-shadow(0 0 22px rgba(34, 232, 255, 0.35));
       }
       @supports (container-type: inline-size) {
         .menu-title .ln { font-size: min(13.5cqw, 68px); }
@@ -1498,8 +1517,8 @@
         width: 100%;
         padding: clamp(11px, 2.8vmin, 15px) 18px;
         border-radius: 10px;
-        border: 1px solid rgba(53, 242, 255, 0.4);
-        background: rgba(11, 58, 46, 0.5);
+        border: 1px solid rgba(34, 232, 255, 0.4);
+        background: rgba(13, 29, 45, 0.7);
         color: var(--bone);
         font-family: var(--font);
         font-size: clamp(12px, 3vmin, 15px);
@@ -1510,14 +1529,14 @@
         pointer-events: auto;
         transition: transform 0.12s ease, background 0.14s ease, border-color 0.14s ease;
       }
-      .menu-btn:hover { background: rgba(53, 242, 255, 0.14); border-color: var(--cyan); }
+      .menu-btn:hover { background: rgba(34, 232, 255, 0.14); border-color: var(--cyan); }
       .menu-btn:active { transform: scale(0.98); }
       .menu-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
       .menu-btn.primary {
         background: var(--cyan);
         border-color: var(--cyan);
         color: #04231f;
-        box-shadow: 0 0 26px rgba(53, 242, 255, 0.4);
+        box-shadow: 0 0 26px rgba(34, 232, 255, 0.4);
       }
       .menu-btn.primary:hover { background: #7ff8ff; }
       /* THREE EQUAL COLUMNS, AND NONE OF THEM CAN PUSH THE ROW WIDER.
@@ -1712,8 +1731,8 @@
       }
       .mode-card:active { background: rgba(234, 246, 255, 0.09); }
       .mode-card.is-current {
-        border-color: rgba(53, 242, 255, 0.5);
-        background: rgba(53, 242, 255, 0.08);
+        border-color: rgba(34, 232, 255, 0.5);
+        background: rgba(34, 232, 255, 0.08);
         cursor: default;
       }
       .mode-name {
@@ -2030,6 +2049,28 @@
       @media (prefers-reduced-motion: reduce) {
         .menu-title .ln { animation: none; }
       }
+
+      /* ---------------- TYPE (Lightline) ----------------
+         Display face for names, number face for figures. Kept in one block so
+         the type system can be read, and tuned, in one place. */
+      .banner-title, #boot-veil h1, .mo-kicker, .mo-freeze-label b, .mo-glitch,
+      .mo-next-label, .mo-choice-name, .mo-buy-name, .max-badge b, .lock-reticle b,
+      .card-title, .mo-roomnum small {
+        font-family: var(--font-display);
+      }
+      .score-value, .sf-box, .sf-product, .sf-plate b, .mo-row .v, .mo-total .v,
+      .mo-credits .v, .mo-digits b, .mo-fly, .stroke-text, .hp-text, .card-v,
+      .mo-landed b, .mo-charge b {
+        font-family: var(--font-num);
+        font-variant-numeric: tabular-nums;
+      }
+      /* Orbitron runs wide: titles set in it come down a size and a step of tracking. */
+      .mo-kicker { font-size: 24px; letter-spacing: 0.1em; }
+      .mo-freeze-label b { font-size: 21px; letter-spacing: 0.1em; }
+      .mo-glitch { font-size: 40px; letter-spacing: 0.06em; }
+      .banner-title { letter-spacing: 0.08em; }
+      .mo-choice-name, .mo-buy-name { font-size: 13px; letter-spacing: 0.06em; }
+      .mo-next-label { font-size: 11px; letter-spacing: 0.24em; }
     </style>
   </head>
   <body>

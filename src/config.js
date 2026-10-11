@@ -950,25 +950,40 @@ export const PALETTE = {
    * ---------------------------------------------------------------- */
 
   /* -- YOU: the cue ball, the aim line, and nothing else -------------- */
-  player: 0x35f2ff,
+  player: 0x22e8ff,
   playerCore: 0xd9feff,
   trail: 0x1fd7ff,
   aim: 0x8ffcff,
-  aimGhost: 0x4a8fa5,
+  aimGhost: 0x0b8fa6,
 
   /* -- THE TABLE: architecture. Never on anything you can collect ----- */
-  obsidian: 0x05070a,
-  feltDeep: 0x06231d,
-  felt: 0x0b3a2e,
-  feltLine: 0x14624c,
-  frame: 0x0a1a24,
-  cushion: 0x123040,
-  rail: 0x0a1a24,
-  railGlow: 0x1d6f7a,
-  /** The lit ring on a pocket mouth. The one glow that means neither good nor bad. */
-  lip: 0x1d6f7a,
+  /*
+   * THE GRID (Lightline). The bed is a black floor, not felt; its lines are
+   * hair-thin and answer impacts; rails are dark bodies with lit edges; a
+   * pocket is a void with a lit mouth, never brighter than the cue ball.
+   */
+  obsidian: 0x02050b,
+  /** The floor at its edge, and the void beyond the table. */
+  feltDeep: 0x02050b,
+  /** The floor at its centre. */
+  felt: 0x061222,
+  /** The minor grid line. */
+  feltLine: 0x10304a,
+  /** Every third grid line. */
+  gridMajor: 0x1a4a68,
+  /** A grid line as a ripple passes. */
+  gridLit: 0x4fb8dc,
+  frame: 0x08131f,
+  cushion: 0x0d1d2d,
+  rail: 0x08131f,
+  /** The lit edge of every rail. */
+  railGlow: 0x3a87a8,
+  /** Architecture's own glow: rail bodies, pocket halos. Means neither good nor bad. */
+  lip: 0x1e4f6b,
+  /** The lit mouth of a pocket. */
+  pocketRing: 0x5fb4d4,
   /** What is inside a pocket. */
-  void: 0x04060a,
+  void: 0x010204,
 
   /* -- THE RACK: which ball, and nothing more ------------------------- */
   solid: 0xffb340,
@@ -1047,13 +1062,13 @@ export const PALETTE = {
   spark: 0xfff6d8,
   bone: 0xeaf6ff,
   /** Exit doors sit outside the table and use the two ends of the run. */
-  door: 0x35f2ff,
+  door: 0x22e8ff,
   doorAlt: 0xeaf6ff
 };
 
 /* CSS-side mirror so DOM UI can share the exact same hues. */
 export const CSS_PALETTE = {
-  cyan: '#35f2ff',
+  cyan: '#22e8ff',
   good: '#2ef2c4',
   bad: '#ff5a3d',
   amber: '#ffb340',
@@ -1070,8 +1085,8 @@ export const CSS_PALETTE = {
     7: '#e085c2'
   },
   bone: '#eaf6ff',
-  obsidian: '#05070a',
-  felt: '#0b3a2e'
+  obsidian: '#02050b',
+  felt: '#061222'
 };
 
 /**

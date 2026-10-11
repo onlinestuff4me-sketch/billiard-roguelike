@@ -280,13 +280,129 @@ function pulseCalledPocket(rawDt) {
 }
 let calledPulse = 0;
 
+/**
+ * THE GRID, which answers.
+ *
+ * Hair lines at one ball and a half, every third one a shade brighter, built
+ * from short segments so a ripple can bend them. Up to eight impulses at a
+ * time (a pot, a slam, a hard strike) push the lines out from where they
+ * happened and light the wavefront as it passes: Geometry Wars' spring grid,
+ * done as a shader so it costs the phone nothing between impulses.
+ */
+const GRID = { minor: 1.5, majorEvery: 3, seg: 0.5, impulses: 8 };
+const gridUniforms = {
+  uTime: { value: 0 },
+  uImp: { value: Array.from({ length: GRID.impulses }, () => new THREE.Vector4(0, 0, -99, 0)) },
+  uMinor: { value: new THREE.Color(PALETTE.feltLine) },
+  uMajor: { value: new THREE.Color(PALETTE.gridMajor) },
+  uLit: { value: new THREE.Color(PALETTE.gridLit) }
+};
+let gridNext = 0;
+
+function buildGrid() {
+  const pos = [];
+  const major = [];
+  const line = (ax, az, bx, bz, isMajor) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    const n = Math.max(1, Math.ceil(len / GRID.seg));
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n;
+      const t1 = (i + 1) / n;
+      pos.push(ax + (bx - ax) * t0, 0.01, az + (bz - az) * t0, ax + (bx - ax) * t1, 0.01, az + (bz - az) * t1);
+      major.push(isMajor ? 1 : 0, isMajor ? 1 : 0);
+    }
+  };
+  const cols = Math.round(ARENA.width / GRID.minor);
+  const rows = Math.round(ARENA.height / GRID.minor);
+  for (let i = 1; i < cols; i++) {
+    const x = -ARENA.halfW + (ARENA.width * i) / cols;
+    line(x, -ARENA.halfH, x, ARENA.halfH, i % GRID.majorEvery === 0);
+  }
+  for (let j = 1; j < rows; j++) {
+    const z = -ARENA.halfH + (ARENA.height * j) / rows;
+    line(-ARENA.halfW, z, ARENA.halfW, z, j % GRID.majorEvery === 0);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('major', new THREE.Float32BufferAttribute(major, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: gridUniforms,
+    transparent: true,
+    depthWrite: false,
+    vertexShader: `
+      uniform float uTime;
+      uniform vec4 uImp[${GRID.impulses}];
+      attribute float major;
+      varying float vMajor;
+      varying float vLit;
+      void main() {
+        vec3 p = position;
+        float lit = 0.0;
+        for (int i = 0; i < ${GRID.impulses}; i++) {
+          vec4 im = uImp[i];
+          float age = uTime - im.z;
+          if (age < 0.0 || age > 1.6 || im.w <= 0.0) continue;
+          vec2 d = p.xz - im.xy;
+          float r = length(d) + 1e-4;
+          float front = age * 14.0;
+          float band = exp(-abs(r - front) * 0.7);
+          float fade = exp(-2.4 * age) * im.w;
+          float wave = sin((r - front) * 1.6) * band * fade;
+          p.xz += (d / r) * wave * 0.32;
+          lit += band * fade;
+        }
+        vMajor = major;
+        vLit = clamp(lit, 0.0, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uMinor;
+      uniform vec3 uMajor;
+      uniform vec3 uLit;
+      varying float vMajor;
+      varying float vLit;
+      void main() {
+        vec3 base = mix(uMinor, uMajor, vMajor);
+        gl_FragColor = vec4(mix(base, uLit * 2.2, vLit), mix(0.85, 1.0, vLit));
+        #include <colorspace_fragment>
+      }`
+  });
+  const lines = new THREE.LineSegments(geo, mat);
+  lines.frustumCulled = false;
+  return lines;
+}
+
+/** Send a ripple through the grid from (x, z). Strength 0..1. */
+function gridPulse(x, z, strength = 1) {
+  const slot = gridUniforms.uImp.value[gridNext];
+  gridNext = (gridNext + 1) % GRID.impulses;
+  slot.set(x, z, gridUniforms.uTime.value, strength);
+}
+
 function buildTable(target) {
   const table = new THREE.Group();
   table.name = 'table';
 
+  // THE FLOOR. Not cloth: a black bed, a shade lighter in the middle, lit by
+  // nothing. Light belongs to the things on it.
+  const floorTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 456;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(128, 228, 20, 128, 228, 300);
+    const hex = (v) => `#${v.toString(16).padStart(6, '0')}`;
+    grad.addColorStop(0, hex(PALETTE.felt));
+    grad.addColorStop(1, hex(PALETTE.feltDeep));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, c.width, c.height);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
   const felt = new THREE.Mesh(
     new THREE.PlaneGeometry(ARENA.width, ARENA.height),
-    new THREE.MeshStandardMaterial({ color: PALETTE.felt, roughness: 0.95, metalness: 0.0 })
+    new THREE.MeshBasicMaterial({ map: floorTex })
   );
   felt.rotation.x = -Math.PI / 2;
   felt.position.y = -0.02;
@@ -300,26 +416,7 @@ function buildTable(target) {
   vignette.position.y = -0.06;
   table.add(vignette);
 
-  const gridPoints = [];
-  const cols = 6;
-  const rows = 10;
-  for (let i = 1; i < cols; i++) {
-    const x = -ARENA.halfW + (ARENA.width * i) / cols;
-    gridPoints.push(x, 0.01, -ARENA.halfH, x, 0.01, ARENA.halfH);
-  }
-  for (let j = 1; j < rows; j++) {
-    const z = -ARENA.halfH + (ARENA.height * j) / rows;
-    gridPoints.push(-ARENA.halfW, 0.01, z, ARENA.halfW, 0.01, z);
-  }
-  const gridGeo = new THREE.BufferGeometry();
-  gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gridPoints, 3));
-  table.add(
-    new THREE.LineSegments(
-      gridGeo,
-      new THREE.LineBasicMaterial({ color: PALETTE.feltLine, transparent: true, opacity: 0.28 })
-    )
-  );
-
+  table.add(buildGrid());
   const slots = pocketSlots();
   const frameT = ARENA.railThickness * 2.1;
   const cushT = ARENA.railThickness;
@@ -330,7 +427,7 @@ function buildTable(target) {
     roughness: 0.65,
     metalness: 0.3,
     emissive: new THREE.Color(PALETTE.lip),
-    emissiveIntensity: 0.1
+    emissiveIntensity: 0.12
   });
   const frameSpecs = [
     { w: ARENA.width + frameT * 2, d: frameT, x: 0, z: -ARENA.halfH - frameT / 2 },
@@ -350,8 +447,10 @@ function buildTable(target) {
     roughness: 0.5,
     metalness: 0.25,
     emissive: new THREE.Color(PALETTE.lip),
-    emissiveIntensity: 0.62
+    emissiveIntensity: 0.45
   });
+  // RAILS ARE EDGES OF LIGHT: every cushion is outlined in lit structure.
+  const railEdgeMat = new THREE.LineBasicMaterial({ color: PALETTE.railGlow, transparent: true, opacity: 0.95 });
 
   /**
    * A cushion run as an extruded trapezoid. `quad` is four world-space
@@ -389,7 +488,13 @@ function buildTable(target) {
     [[W, -H + gapX(tr)], [W, mr.z - gapX(mr)], [W - cushT, mr.z - gapX(mr) - jawOf(mr)], [W - cushT, -H + gapX(tr) + jawOf(tr)]],
     [[W, mr.z + gapX(mr)], [W, H - gapX(br)], [W - cushT, H - gapX(br) - jawOf(br)], [W - cushT, mr.z + gapX(mr) + jawOf(mr)]]
   ];
-  for (const quad of runs) table.add(cushion(quad));
+  for (const quad of runs) {
+    const run = cushion(quad);
+    table.add(run);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(run.geometry, 30), railEdgeMat);
+    edges.position.y = 0.01;
+    table.add(edges);
+  }
 
   /* -- the pockets themselves ----------------------------------------- *
    *
@@ -408,7 +513,9 @@ function buildTable(target) {
    * read comes from the void and the arc, not from depth.
    */
   const lip = new THREE.Color(PALETTE.lip);
-  const bright = new THREE.Color(PALETTE.aim);
+  // A pocket's mouth is lit structure: it must pull the eye, and must never
+  // be brighter than the cue ball.
+  const bright = new THREE.Color(PALETTE.pocketRing);
   const GAP = Math.PI / 3;           // 60 degrees of opening
   const SWEEP = Math.PI * 2 - GAP;   // 300 degrees of rim
 
@@ -851,6 +958,7 @@ const momentsOn = () => !game.headless && !tutorial.running;
  * snap has nothing more to say than its own follow-through.
  */
 player.aimRenderer.onContact = ({ x, z, ux, uz, power, full, style }) => {
+  if (full || style === 'impact') gridPulse(x, z, 0.35 + 0.4 * power);
   if (style === 'impact') {
     fx.shockwave(x, z, PALETTE.playerCore, 1.6 + 1.6 * power, 0.2);
     fx.shockwave(x, z, PALETTE.player, 3 + 3 * power, 0.42);
@@ -1555,6 +1663,7 @@ game.on = {
       for (const event of paid.events) scored(() => event);
     }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
+    gridPulse(pocket.x, pocket.z, 1);
 
     engine.zoomPunch();
     engine.shake(10);
@@ -1579,6 +1688,7 @@ game.on = {
     rules.scratch();
     engine.shake(14);
     engine.zoomPunch();
+    gridPulse(pocket.x, pocket.z, 0.8);
     fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 7, 0.55);
     if (momentsOn()) {
       moments.scratch({
@@ -1802,6 +1912,7 @@ function completeRoom() {
   game.state = 'cleared';
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
+  gridPulse(0, 0, 1);
   if (!momentsOn()) audio.roomClear();
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
   // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
@@ -4030,6 +4141,10 @@ if (typeof window !== 'undefined') {
       resumeStroke();
       moments.unfreeze();
     },
+    /** Send a ripple through the grid, as a pot would. */
+    pulse(x = 0, z = 0, strength = 1) {
+      gridPulse(x, z, strength);
+    },
     /** Earn charges as a big shot would: a combination, two in one, ×6. */
     earn() {
       const awards = rules.earnCharges({ paid: 360, voided: false, pots: 2, multiplier: 6 }, 1);
@@ -4175,6 +4290,7 @@ function frame(now) {
   last = now;
 
   const { dt, rawDt } = engine.update(rawFrame);
+  gridUniforms.uTime.value += rawDt;
   input.update(rawDt);
   audio.setTimeDilation(engine.timeScale);
 

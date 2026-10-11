@@ -286,10 +286,15 @@ export class Moments {
     const detail = el('span', 'mo-buy-detail', b);
     const render = () => {
       const can = shop.canBuy();
-      const full = shop.charges() > shop.max - 1;
+      const charges = shop.charges();
       b.disabled = !can;
-      name.textContent = `+1 Freeze frame · ${shop.price} credits`;
-      detail.textContent = full ? 'Charges full' : `You have ${shop.credits()}`;
+      name.textContent = '+1 Freeze frame';
+      detail.textContent =
+        charges >= shop.max
+          ? 'Meter full'
+          : charges > shop.max - 1
+            ? 'No room for a whole one'
+            : `${shop.price} credits · you have ${shop.credits()}`;
     };
     render();
     absorb(b);

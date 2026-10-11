@@ -323,18 +323,27 @@ a minor pentatonic, so a long shot plays a rising melody.
 ## 11. Where the build stands
 
 The bible is the target; this table is the honest gap. Close a row, delete it.
+The Tron pass closed the felt, the colour of you, the type and the grid.
 
 | Area | Bible | Build today |
 | --- | --- | --- |
-| Felt | `floor` black with a `grid` | Green felt `#0b3a2e` with `#14624c` lines (`PALETTE.felt*`) |
-| You | `#22e8ff` | `#35f2ff` in `PALETTE.player` and `--cyan`; `#22e8ff` in the score feed and moments |
-| Hazard | `#ff2e7e` | `#ff2e7e` in the feed and moments; `#ff3d8b` and `#ff5a3d` elsewhere |
-| Type | Orbitron, Oxanium, Rajdhani | Rajdhani only (fallback stack); Orbitron and Oxanium are not loaded |
-| Grid reaction | Shader ripple from pots and slams | Not built |
-| Boot | Grid draws on, rails trace in, balls flicker up | The Boot transition traces the rails (§8.5); the grid and ball flicker are not built |
-| Moments | One treatment each | All four picked. On trial: the cue options (§8.1) |
+| Mines and hazard pads | `hazard` pink with a chevron | Still `#ff5a3d` (`PALETTE.bad`), which `npm run palette` reserves as "danger"; moving it means re-picking the ball inks against pink |
+| Boot | Grid draws on, rails trace in, balls flicker up | The Boot transition traces the rails (§8.5); the grid draw-on and ball flicker are not built |
+| Rail hit | The rail flashes, then a `mult` light runs along it | The score feed lights the rail it pays from; no run of light yet |
+| Fonts in the single-file build | The three faces | `npm run build:single` does not inline `./fonts`, so that build falls back to system faces |
 | Old guide | — | `docs/STYLE_GUIDE.md` is superseded and kept only for history |
 
-**The Tron pass** closes the first four rows in one change: `PALETTE` and
-`CSS_PALETTE` read from the Lightline tokens, the fonts load, and the felt
-becomes the Grid.
+### What the Tron pass changed
+
+- **The floor** is unlit black (`felt` `#061222` at the centre to `feltDeep`
+  `#02050b` at the edge), not lit cloth.
+- **The grid** is hair lines every 1.5 units with every third brighter
+  (`feltLine`, `gridMajor`). It is a shader that **answers**: pots, a cleared
+  table, a scratch and a full-power or impact strike push a ripple through it
+  that bends the lines and lights the wavefront (`gridPulse` in `main.js`).
+- **Rails** are dark bodies outlined in lit structure (`railGlow`).
+- **Pockets** are voids with a `pocketRing` mouth, dimmer than the cue ball.
+- **You** is `#22e8ff` everywhere (the table, the HUD, the moments).
+- **Type**: Orbitron, Oxanium and Rajdhani are served from `public/fonts`
+  (SIL OFL 1.1), so the game needs no network to look right. Titles in Orbitron
+  come down a size, because it runs wide.
