@@ -1090,14 +1090,14 @@
       .mo-alarm, .mo-tear, .mo-flash, .mo-boot, .mo-shards, .mo-form { position: absolute; inset: 0; }
       .mo-fly { position: absolute; inset: auto; z-index: 30; font-weight: 700; color: var(--ll-pts); text-shadow: 0 0 18px var(--ll-you); white-space: nowrap; font-variant-numeric: tabular-nums; will-change: transform; }
       .mo-ring { position: absolute; inset: auto; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--ll-you); box-shadow: 0 0 18px var(--ll-you), inset 0 0 12px var(--ll-you); pointer-events: none; }
-      .mo-landed { z-index: 31; }
+      .mo-landed { inset: auto; z-index: 31; }
       .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
 
       /* CLEAR */
       .mo-clear { pointer-events: auto; }
       .mo-ledger {
-        position: absolute; left: 50%; top: 14%; width: min(90%, 360px);
-        padding: 20px 20px 18px; isolation: isolate;
+        position: absolute; left: 50%; top: 11%; width: min(90%, 360px);
+        padding: 18px 20px 16px; isolation: isolate;
         filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.35));
       }
       .mo-ledger::before {
@@ -1110,7 +1110,7 @@
       .mo-kicker { white-space: nowrap; font-size: 30px; font-weight: 800; letter-spacing: 0.16em; line-height: 1; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 14px var(--ll-you); }
       .mo-title { margin-top: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
       .mo-rows { display: grid; gap: 4px; }
-      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 6px 8px; font-variant-numeric: tabular-nums; }
+      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 4px 8px; font-variant-numeric: tabular-nums; }
       .mo-row .k { white-space: nowrap; font-size: 16px; font-weight: 800; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
       .mo-row .d { font-size: 13px; font-weight: 600; color: rgba(233, 248, 255, 0.42); }
       .mo-row .v { font-size: 24px; font-weight: 800; color: var(--ll-pts); min-width: 4ch; text-align: right; }
@@ -1123,7 +1123,7 @@
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
       .mo-total.banked .v { color: rgba(233, 248, 255, 0.35); text-shadow: none; }
 
-      .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 90px) 0; display: grid; justify-items: center; gap: 8px; padding: 0 9%; }
+      .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 66px) 0; display: grid; justify-items: center; gap: 8px; padding: 0 9%; }
       .mo-next-label { font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 10px var(--ll-you); }
       .mo-choices { display: grid; gap: 8px; width: 100%; max-width: 330px; }
       .mo-choice {
