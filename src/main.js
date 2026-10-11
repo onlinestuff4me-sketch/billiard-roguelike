@@ -3298,6 +3298,10 @@ const input = new InputManager(stage, {
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.launch(aim, game);
+    // THE STICK GETS THERE FIRST. The table holds still for the few frames the
+    // cue takes to snap into the ball, so the ball leaves when it is hit, not
+    // when the thumb lets go.
+    if (TRAJECTORY.aimStyle === 'cue' && !game.headless) engine.hitStop(TRAJECTORY.stickStrike);
     // A release either opens a stroke or resumes the one a freeze interrupted.
     // Resuming keeps the ladder, the budget and every other ball's velocity.
     if (game.midStroke) resumeStroke();

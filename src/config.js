@@ -293,9 +293,22 @@ export const TRAJECTORY = {
   /** The power ring: its stroke, and its clearance from the cue ball's edge. */
   gaugeWidth: 0.16,
   gaugeGap: 0.95,
-  /** The cue style's stick: how long and how thick, in world units. */
-  stickLength: 5.5,
-  stickWidth: 0.24,
+  /**
+   * The cue style's stick, in world units. Longer than the table is wide, so it
+   * runs out past the rail the way a real cue does; drawn above the rails, at
+   * `stickHeight`, so nothing on the table cuts it off.
+   */
+  stickLength: 15,
+  stickWidth: 0.34,
+  stickHeight: 1.4,
+  stickShaft: 0x335f7c,
+  /** The shaft's lit centre streak, and the butt. */
+  stickShine: 0x9fe8ff,
+  stickButt: 0x0e2232,
+  /** The stylised shadow's offset (x, z), as if lit from the top left. */
+  stickShadow: [0.7, 1.0],
+  /** How long the stick takes to snap forward into the ball on release (s). */
+  stickStrike: 0.06,
   /**
    * How far the stick slides back over a full draw, in world units. The pad's
    * full travel is INPUT.padRadiusPx (104 CSS px), and the table is drawn at
