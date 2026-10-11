@@ -310,7 +310,7 @@ export const TRAJECTORY = {
    *                freezes on contact and the stick bounces off · 'pierce'
    *                the stick carries on through as a bolt of light
    */
-  stickLook: 'rod',
+  stickLook: 'rod', // picked in review
   maxStyle: 'lock', // picked in review
   strikeStyle: 'snap',
   cueOptions: {

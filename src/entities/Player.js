@@ -1363,7 +1363,9 @@ class AimRenderer {
     this.pullPositions.set([player.x, y, player.z, cue.x, y, cue.z]);
     this.pullGeo.attributes.position.needsUpdate = true;
     this.pull.visible = true;
-    this.anchor.visible = true;
+    // The draw-point dot predates the full cue stick, which now shows the draw
+    // itself; in review it read as a distracting pulsing ball on the shaft.
+    this.anchor.visible = false;
     this.anchor.position.set(cue.x, y, cue.z);
 
     // MAXED OUT. Power is draw distance and nothing announced when the draw ran
