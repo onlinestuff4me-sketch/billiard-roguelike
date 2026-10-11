@@ -238,7 +238,9 @@ tapped before the count has had its moment.
 
 It must say: one table is gone and the next is here, with its number. The new
 table is built while the screen is covered, and its mission is stated only once
-the table is fully in view.
+the table is fully in view. What the exit just gave you ("Freeze · +2 charges")
+is written in heat under the room number on the cover, not in a banner over the
+changing table.
 
 - **Boot** — the table derezzes into horizontal strips that slide shut from
   alternating sides, each with a cyan leading edge. The room number appears in

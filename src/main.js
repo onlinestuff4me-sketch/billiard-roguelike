@@ -1814,6 +1814,19 @@ function handleRoomClear() {
   completeRoom();
 }
 
+/**
+ * What the exit just gave you. With the moments on it is carried onto the
+ * transition's cover, under the next room's number, instead of a banner that
+ * would sit on top of the table changing.
+ */
+function announceReward(title, sub, duration) {
+  if (momentsOn()) {
+    game.rewardNote = `${title} · ${sub}`;
+    return;
+  }
+  hud.showBanner(title, sub, duration);
+}
+
 function handleDoorEntered(door) {
   audio.doorOpen();
   hud.setDoors([]);
@@ -1831,19 +1844,19 @@ function handleDoorEntered(door) {
   switch (door.reward.id) {
     case 'repair':
       player.heal(PROGRESSION.healAmount);
-      hud.showBanner('Repaired', `+${PROGRESSION.healAmount} hull`, 1.6);
+      announceReward('Repaired', `+${PROGRESSION.healAmount} hull`, 1.6);
       break;
     case 'stroke':
       game.strokeBonus += PROGRESSION.statRewards.stroke;
-      hud.showBanner('More Shots', `+${PROGRESSION.statRewards.stroke} shot every room`, 1.8);
+      announceReward('More Shots', `+${PROGRESSION.statRewards.stroke} shot every room`, 1.8);
       break;
     case 'freeze':
       rules.grantFreeze(PROGRESSION.statRewards.freeze);
-      hud.showBanner('Freeze', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
+      announceReward('Freeze', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
       break;
     case 'ricochet':
       boons.addRunBonus({ maxBounces: PROGRESSION.statRewards.bounce });
-      hud.showBanner('Bounce', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
+      announceReward('Bounce', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
       break;
     default:
       break;
@@ -1969,7 +1982,9 @@ function advanceRoom() {
   // covered, and its mission is stated once it is fully in view.
   if (momentsOn()) {
     game.state = 'transition';
-    moments.transition({ from: game.level, to: game.level + 1, swap }).then(showRoomBanner);
+    const note = game.rewardNote;
+    game.rewardNote = null;
+    moments.transition({ from: game.level, to: game.level + 1, note, swap }).then(showRoomBanner);
     return;
   }
   swap();

@@ -727,9 +727,11 @@ export class Moments {
    * @param {object} o
    * @param {number} o.from  the room being left
    * @param {number} o.to    the room arriving
+   * @param {string} [o.note]  what the exit gave you, shown on the cover
    * @param {Function} o.swap  builds the next table; called while covered
    */
-  async transition({ from, to, swap }) {
+  async transition({ from, to, note, swap }) {
+    this._note = note || '';
     const style = this.variant('transition');
     this.skip = false;
     const root = el('div', `mo-trans ${style}`, this.root);
@@ -770,6 +772,7 @@ export class Moments {
     const num = el('div', 'mo-roomnum', root);
     el('small', '', num).textContent = 'Room';
     el('b', '', num).textContent = String(to).padStart(2, '0');
+    if (this._note) el('em', '', num).textContent = this._note;
     this.anim(num, [{ opacity: 0, transform: 'translate(-50%,-50%) scale(1.4)', filter: 'blur(8px)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', filter: 'blur(0)' }], { duration: 300, easing: OUT });
 
     // THE BOOT TRACE: two light-cycles leave the bottom centre and draw the
@@ -811,6 +814,7 @@ export class Moments {
     rollNew.textContent = String(to).padStart(2, '0');
     const cap = el('div', 'mo-roll-cap', root);
     cap.textContent = 'Room';
+    if (this._note) el('em', '', cap).textContent = this._note;
     this.audio.scoreNote?.(6, 'points');
     this.anim(rollOld, [{ transform: 'translate(-50%,-50%)', opacity: 1 }, { transform: 'translate(-50%,-150%)', opacity: 0 }], { duration: 280, delay: 60, easing: IN });
     await this.anim(rollNew, [{ transform: 'translate(-50%,50%)', opacity: 0 }, { transform: 'translate(-50%,-50%)', opacity: 1 }], { duration: 320, delay: 140, easing: BACK });
