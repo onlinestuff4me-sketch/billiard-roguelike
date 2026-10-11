@@ -371,11 +371,12 @@ class CueStick {
       q(0.06, ferrule, -1, 1, 0xf3f1ea);
       q(0, 0.06, -1, 1, 0x3d7fe0);
       q('0.56L', '0.575L', -1, 1, PALETTE.player);
-      q('0.575L', L - 0.28, -1, 1, 0x1b1411);
-      q('0.575L', L - 0.28, 0.1, 0.38, 0x3a2c25);
-      for (const f of [0.66, 0.78, 0.9]) q(`${f}L`, `${f + 0.012}L`, -1, 1, 0xe9f8ff);
+      q('0.575L', L - 0.28, -1, 1, 0x3b2a20);
+      q('0.575L', L - 0.28, -1, -0.5, 0x26190f);
+      q('0.575L', L - 0.28, 0.1, 0.4, 0x6a4e3b);
+      for (const f of [0.66, 0.78, 0.9]) q(`${f}L`, `${f + 0.012}L`, -0.9, 0.9, 0xb8c8d0);
       q('0.6L', '0.64L', -0.25, 0.25, PALETTE.player);
-      q(L - 0.28, L, -1, 1, 0x050506);
+      q(L - 0.28, L, -1, 1, 0x101012);
     } else if (look === 'hardlight') {
       // Light, not wood: a faint fill, segmented edges like a light-cycle's
       // wall, a white-hot core, and an emitter at the tip.
