@@ -462,12 +462,12 @@ export class Moments {
     this.audio.boot?.();
     await this.anim(stick.outline, [{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }], { duration: 380, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' });
     await this.anim(stick.fill, [{ opacity: 0 }, { opacity: 0.85 }], { duration: 160 });
+    await this.anim(word, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-50%) scaleY(0.02) scaleX(1.4)', opacity: 0 }], { duration: 180, easing: IN });
+    await this.anim(sub, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
     // it hands over to the real stick once the table is ready to aim again
     const t0 = performance.now();
     while (!(cueShown?.() ?? true) && performance.now() - t0 < 2400) await this.wait(40);
-    this.anim(stick.svg, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 });
-    await this.anim(word, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-50%) scaleY(0.02) scaleX(1.4)', opacity: 0 }], { duration: 180, easing: IN });
-    await this.anim(sub, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
+    await this.anim(stick.svg, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 });
     root.remove();
   }
 
@@ -658,7 +658,10 @@ export class Moments {
     const newN = el('b', 'new', digits);
     newN.textContent = String(to).padStart(2, '0');
     const note = this._note ? el('em', '', num) : null;
-    if (note) note.textContent = this._note;
+    if (note) {
+      note.textContent = this._note;
+      note.style.opacity = '0';
+    }
     await this.anim(num, [{ opacity: 0, transform: 'translate(-50%,-50%) scale(1.3)', filter: 'blur(8px)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', filter: 'blur(0)' }], { duration: 260, easing: OUT });
     await this.wait(260);
     this.audio.scoreNote?.(6, 'points');
