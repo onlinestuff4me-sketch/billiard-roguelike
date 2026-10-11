@@ -3613,6 +3613,7 @@ $('set-mute').addEventListener('click', () => {
 const AIM_STYLES = [
   { id: 'slim', label: 'Slim' },
   { id: 'pulse', label: 'Pulse' },
+  { id: 'cue', label: 'Cue' },
   { id: 'beam', label: 'Beam' }
 ];
 try {

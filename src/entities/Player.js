@@ -343,6 +343,11 @@ class AimRenderer {
     this.gaugeTrack = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.16 }, 48);
     this.gauge = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 }, 48);
     this.comet = new Ribbon(this.group, { color: PALETTE.playerCore, opacity: 0.95 }, 8);
+    // cue — the stick itself, behind the ball, drawn back as far as the
+    // thumb has pulled. What 8 Ball Pool and the golf games do: power is
+    // shown behind the ball, never on the line ahead of it.
+    this.stick = new Ribbon(this.group, { color: PALETTE.bone, opacity: 0.85 }, 8);
+    this.stickTip = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 }, 8);
     this.comet.mat.blending = THREE.AdditiveBlending;
     this.cometPhase = 0;
     this._lastShow = 0;
@@ -674,7 +679,34 @@ class AimRenderer {
           opacity: 0.95
         });
         this.comet.hide();
+        this.stick.hide();
+        this.stickTip.hide();
+      } else if (style === 'cue') {
+        this.gaugeTrack.hide();
+        this.gauge.hide();
+        this.comet.hide();
+        // The butt end runs back from just behind the ball; the further the
+        // draw, the further back it sits. At full power the tip lights.
+        const gap = player.radius + 0.25 + 1.6 * power;
+        const len = TRAJECTORY.stickLength;
+        const tx = player.x - ux * gap;
+        const tz = player.z - uz * gap;
+        const full = power >= 0.985;
+        this.stick.set([{ ax: tx, az: tz, bx: tx - ux * len, bz: tz - uz * len }], {
+          y,
+          width: TRAJECTORY.stickWidth,
+          color: PALETTE.bone,
+          opacity: 0.55 + 0.3 * power
+        });
+        this.stickTip.set([{ ax: tx, az: tz, bx: tx - ux * 0.35, bz: tz - uz * 0.35 }], {
+          y: y + 0.01,
+          width: TRAJECTORY.stickWidth * (full ? 1.5 : 1.1),
+          color: full ? PALETTE.playerCore : PALETTE.aim,
+          opacity: 0.95
+        });
       } else {
+        this.stick.hide();
+        this.stickTip.hide();
         // The spark: one short packet of light running the first leg. How
         // fast it runs IS the power, and it flares the ghost ball on arrival.
         this.gaugeTrack.hide();
@@ -693,6 +725,8 @@ class AimRenderer {
       this.gaugeTrack.hide();
       this.gauge.hide();
       this.comet.hide();
+      this.stick.hide();
+      this.stickTip.hide();
     }
 
     // --- the beam ---
