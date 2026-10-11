@@ -62,7 +62,7 @@ If an action or a reward does not get a reaction the player can see, hear and
 | Multiplier | `mult` | `#ff8a1e` | MULT box, × fields, rail lights, heated trail | Hazards; resting UI |
 | Heat tip | `mult-hot` | `#ffc266` | Slam flash, bonus rows, ×N plates | A resting state |
 | Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, take-back, out of shots | Anything without a chevron or a strike |
-| Ice | `ice` | `#bff4ff` | Freeze only: the stasis wave, frost rings, freeze label | Anything else (it is a state, not a reward) |
+| Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates | Anything else (it is a state, not a reward) |
 | Money | `credit` | `#a98bff` | $ in the shop and the table-end ledger | The table |
 | Floor | `floor` / `void` | `#040b16` / `#02050b` | Table bed / beyond the table, cover panels | Text |
 | Architecture | `grid`, `structure`, `structure-lit` | `#0f2b3f`, `#1e4f6b`, `#3a87a8` | Grid, rails, lips, dividers | Text |
@@ -189,36 +189,46 @@ until one is picked; the pick is then recorded here and the other deleted.
 
 ### 8.2 Scratch (the cue ball goes down)
 
-It must say: your ball went in, this shot pays nothing, here is your ball back.
+It must say: your own ball went in, this shot pays nothing, and here is your
+ball back.
 
-- **Derez** — the cue ball breaks into squares of cyan and pink light at the
-  pocket. A pink SCRATCH stamp slams onto the table at −7° (`ease-slam`, screen
-  jolt, sub drop), then a beam of light drops onto the spot and a ring closes
-  onto it as the ball rezzes back in.
-- **Glitch** — red alert. The screen edges pulse pink, the table flashes to a
-  red hue twice, and bands of the screen tear sideways. SCRATCH resolves out of
-  a jittering cyan and red split. The ball is traced back in by a circle of
-  light drawing itself around the spot.
+**Glitch** (picked). Red alert: the screen edges pulse pink, the table flashes
+to a red hue twice, and bands of the screen tear sideways while SCRATCH
+resolves out of a jittering cyan and red split. Then a beam of light drops from
+the top of the screen onto the spot, a ring closes, and the ball rezzes in. The
+light traces the cue stick under the ball, pointing straight up at it, and
+hands over to the real stick when the table is ready to aim. The next shot's
+heading is set straight up the table.
 
-### 8.3 Freeze
+### 8.3 Freeze frame
 
 What it is: a charge you spend **mid-roll**. Tap while the balls are moving and
 time stops. Your cue ball halts where it is and you re-aim it from there. Every
 other ball keeps the speed it had and carries on when you release. It costs a
-charge, not a shot. Charges come from the Freeze exit after a table.
+charge, not a shot. "Freeze frame" is the mechanic's name everywhere the player
+reads it.
 
-It must say: time has stopped, nothing else is moving, and this did not cost
-a shot.
+It must say: the frame is taken, time has stopped, nothing else is moving, and
+this did not cost a shot.
 
-- **Stasis** — a wave of ice spreads out from the cue ball, turning the table
-  into a frozen blue monotone as it passes. Each rolling ball gets a frost
-  hexagon and a dashed arrow showing where it is headed. TIME STOPPED in ice
-  type. On release the ice shatters outward from the cue ball and colour floods
-  back.
-- **Freeze frame** — a white flash, then a camera viewfinder: four corner
-  brackets snap in, scanlines and a blinking ❚❚ PAUSED tag appear, colour drops
-  out, and each rolling ball keeps a frozen motion streak. On release the
-  brackets snap away and the scanlines collapse to a line.
+**Flash and ice** (picked). A white flash, then a wave of ice spreads from the
+cue ball, turning the table into a frozen blue monotone as it passes. Each
+rolling ball gets a frost hexagon and a dashed arrow showing where it is
+headed. FREEZE FRAME is set in ice type. On release the ice shatters outward
+from the cue ball and colour floods back. No viewfinder brackets: they
+collided with the corner pockets.
+
+**Earning charges** (proposed, waiting on two answers). Charges come in
+halves, up to 3, and are earned only when the shot pays:
+
+- +½ for a combination (a ball knocks another in);
+- +½ for each extra ball in one shot;
+- +½ for a shot paying ×5 mult or more;
+- +2 from the Freeze frame exit;
+- +1 bought with credits in the shop. Credits come from banked points, so
+  the score is never spent.
+
+Each lands as an ice plate flying into the meter.
 
 ### 8.4 Table clear (and out of shots)
 
@@ -247,17 +257,15 @@ tapped before the count has had its moment.
 
 It must say: one table is gone and the next is here, with its number. The new
 table is built while the screen is covered, and its mission is stated only once
-the table is fully in view. What the exit just gave you ("Freeze · +2 charges")
-is written in heat under the room number on the cover, not in a banner over the
-changing table.
+the table is fully in view.
 
-- **Boot** — the table derezzes into horizontal strips that slide shut from
-  alternating sides, each with a cyan leading edge. The room number appears in
-  outline. Two light-cycles leave the bottom centre and trace the rails, meeting
-  at the top. The strips then open from the middle outward on the new table.
-- **Light-cycle** — a cyan light-cycle wipes across, leaving black behind its
-  wall. The old room number rolls up and out as the new one rolls in, in heat.
-  An orange rival cycle wipes back the other way, revealing the new table.
+**Boot** (picked). The table derezzes into horizontal strips that slide shut
+from alternating sides, each with a cyan leading edge. ROOM and the number you
+finished appear big and solid; the number rolls over to the next one with a
+note and a jolt, and holds. What the exit just gave you ("Freeze frame · +2
+charges") is written in heat under it. Then two light-cycles leave the bottom
+centre and trace the rails, meeting at the top, and the strips open from the
+middle outward on the new table. About 3 s.
 
 ### 8.6 Smaller beats (today's treatment)
 
@@ -316,8 +324,8 @@ The bible is the target; this table is the honest gap. Close a row, delete it.
 | Hazard | `#ff2e7e` | `#ff2e7e` in the feed and moments; `#ff3d8b` and `#ff5a3d` elsewhere |
 | Type | Orbitron, Oxanium, Rajdhani | Rajdhani only (fallback stack); Orbitron and Oxanium are not loaded |
 | Grid reaction | Shader ripple from pots and slams | Not built |
-| Boot | Grid draws on, rails trace in, balls flicker up | Trial: the Boot and Light-cycle transitions (§8.5) |
-| Moments | One treatment each | Two on trial each (§8) |
+| Boot | Grid draws on, rails trace in, balls flicker up | The Boot transition traces the rails (§8.5); the grid and ball flicker are not built |
+| Moments | One treatment each | Picked: scratch, Freeze frame, next table. On trial: table clear, and the cue options (§8.1) |
 | Old guide | — | `docs/STYLE_GUIDE.md` is superseded and kept only for history |
 
 **The Tron pass** closes the first four rows in one change: `PALETTE` and

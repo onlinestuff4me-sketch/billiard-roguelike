@@ -101,7 +101,7 @@ export class HUD {
 
     /* ---------------- freeze charges ---------------- */
     const freezeBlock = el('div', 'hud-freeze', this.root);
-    el('div', 'hud-label', freezeBlock).textContent = 'Freeze';
+    el('div', 'hud-label', freezeBlock).textContent = 'Freeze frame';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
 
     /* ---------------- banner ---------------- */

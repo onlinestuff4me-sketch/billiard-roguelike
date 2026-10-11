@@ -692,7 +692,7 @@ export const TABLE = {
     /** Pick-ups, and the room each first appears in. */
     pickups: {
       double: { chance: 0.8, minLevel: 2, label: 'Double' },
-      freeze: { chance: 0.5, minLevel: 4, label: 'Freeze' },
+      freeze: { chance: 0.5, minLevel: 4, label: 'Freeze frame' },
       upgrade: { chance: 0.45, minLevel: 6, label: 'Upgrade' },
       shot: { chance: 0.4, minLevel: 8, label: 'Extra shot' }
     },
@@ -853,17 +853,17 @@ export const FEEL = {
 export const MOMENTS = {
   /** 'ledger' a receipt that counts in line by line · 'tally' plates on the felt fly into one big number */
   clear: 'ledger',
-  /** 'derez' the ball breaks into light, a stamp, a beam brings it back · 'glitch' red alert, the screen tears */
-  scratch: 'derez',
-  /** 'stasis' an ice wave stops the table · 'frame' a camera freeze-frame */
-  freeze: 'stasis',
-  /** 'boot' strips close, the rails trace back in · 'cycle' a light-cycle wipes one table off, the next on */
+  /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */
+  scratch: 'glitch',
+  /** Freeze frame: a flash, then an ice wave stops the table (picked in review) */
+  freeze: 'frame',
+  /** Boot: strips close, the room number rolls over and holds, the rails trace in (picked in review) */
   transition: 'boot',
   options: {
     clear: ['ledger', 'tally'],
-    scratch: ['derez', 'glitch'],
-    freeze: ['stasis', 'frame'],
-    transition: ['boot', 'cycle']
+    scratch: ['glitch'],
+    freeze: ['frame'],
+    transition: ['boot']
   }
 };
 

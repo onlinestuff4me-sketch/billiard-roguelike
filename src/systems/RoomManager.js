@@ -72,7 +72,7 @@ export const DOOR_REWARDS = [
    * now is another stroke, another freeze, or another bank on the multiplier.
    */
   { id: 'stroke', label: 'Shot', glyph: '│', color: PALETTE.good, weight: 1.6 },
-  { id: 'freeze', label: 'Freeze', glyph: '◈', color: PALETTE.good, weight: 1.2 },
+  { id: 'freeze', label: 'Freeze frame', glyph: '◈', color: PALETTE.good, weight: 1.2 },
   { id: 'ricochet', label: 'Bounce', glyph: '⤢', color: PALETTE.good, weight: 1 }
 ];
 

@@ -1335,7 +1335,7 @@ function tryFreeze() {
   if (game.phase !== 'resolve' || !game.midStroke) return false;
   if (game.state === 'modal' || !player.alive) return false;
   if (!rules.spendFreeze()) {
-    fx.floatText(player.x, player.z - 2.2, 'NO FREEZE', 'block');
+    fx.floatText(player.x, player.z - 2.2, 'NO FREEZE FRAME', 'block');
     return false;
   }
   game.phase = 'aim';
@@ -1355,8 +1355,8 @@ function tryFreeze() {
     });
   } else {
     audio.focusEnter?.();
-    fx.floatText(player.x, player.z - 2.2, 'FREEZE', 'crit');
-    hud.showBanner('Freeze', 'Re-aim — this does not cost a shot', 1.6);
+    fx.floatText(player.x, player.z - 2.2, 'FREEZE FRAME', 'crit');
+    hud.showBanner('Freeze frame', 'Re-aim — this does not cost a shot', 1.6);
   }
   return true;
 }
@@ -1573,8 +1573,12 @@ game.on = {
         spawn: { x: rooms.layout.spawn.x, z: spawnZ() },
         setCueVisible: (on) => {
           p.group.visible = on && p.alive;
-        }
+        },
+        cueShown: () => p.aimRenderer.cue.group.visible
       });
+      // The next shot starts pointing straight up the table, where the cue
+      // takes form.
+      input.setHeading(0, -1);
     } else {
       audio.playerHurt();
       fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
@@ -1615,7 +1619,7 @@ game.on = {
         audio.boonPick?.();
         engine.zoomPunch();
         fx.floatText(object.x, object.z, `FREEZE ×${charges}`, 'crit');
-        hud.showBanner('Freeze', 'Tap while the table is still moving', 2);
+        hud.showBanner('Freeze frame', 'Tap while the table is still moving', 2);
         return;
       }
       case 'upgrade': {
@@ -1867,7 +1871,7 @@ function doorName(door) {
     case 'stroke':
       return 'More shots';
     case 'freeze':
-      return 'Freeze';
+      return 'Freeze frame';
     case 'ricochet':
       return 'Bounce';
     default:
@@ -1935,7 +1939,7 @@ function handleDoorEntered(door) {
       break;
     case 'freeze':
       rules.grantFreeze(PROGRESSION.statRewards.freeze);
-      announceReward('Freeze', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
+      announceReward('Freeze frame', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
       break;
     case 'ricochet':
       boons.addRunBonus({ maxBounces: PROGRESSION.statRewards.bounce });
@@ -3901,10 +3905,7 @@ if (typeof window !== 'undefined') {
 
 /* THE MOMENT TREATMENTS, picked here while two of each are on trial. */
 const MOMENT_NAMES = {
-  clear: 'Table clear',
-  scratch: 'Scratch',
-  freeze: 'Freeze',
-  transition: 'Next table'
+  clear: 'Table clear'
 };
 try {
   const saved = JSON.parse(localStorage.getItem('lightline-moments-v1') || '{}');

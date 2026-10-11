@@ -44,14 +44,17 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
   - the boxes stay faded until a ball drops, then go solid ("Locked in"). On a miss, plates fly back to their causes and shatter.
   - Tap during a shot to speed the presentation up.
 
-## Moments between shots (built, two options each on trial)
+## Moments between shots
 
-Each moment has two treatments, switchable in Settings (`MOMENTS` in `src/config.js`, `src/ui/Moments.js`) until one is picked in review. The full spec is in `docs/DESIGN_BIBLE.md` §8.
+The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` in `src/config.js`).
 
-- **Table clear / out of shots:** every shot's pay counts in, bonuses land, the table total slams and flies into RUN, then the next-table choices arrive. *Ledger* (a receipt panel) or *Tally* (plates on the felt flying into one huge number).
-- **Scratch:** the shot is void and the cue ball comes back. *Derez* (the ball breaks into light, a stamp, a beam brings it back) or *Glitch* (red alert, the screen tears, the ball is traced back in).
-- **Freeze:** mid-roll, time stops so the cue ball can be re-aimed; costs a charge, not a shot. *Stasis* (an ice wave, frost rings, a shatter on release) or *Freeze frame* (viewfinder brackets, scanlines, motion streaks).
-- **Next table:** the new table is built while the screen is covered, and its mission is stated once it is in view. *Boot* (strips close, the rails trace in, strips open) or *Light-cycle* (a cyan cycle wipes it off, an orange one wipes the next on).
+- **Table clear / out of shots** (two on trial, Settings → Table clear): every shot's pay counts in, bonuses land, the table total slams and flies into RUN, then the next-table choices arrive. *Ledger* (a receipt panel) or *Tally* (plates on the felt flying into one huge number).
+- **Scratch** (picked: Glitch): red alert, the screen tears, SCRATCH jitters in; a beam drops onto the spot, the ball rezzes in, and the cue takes form under it, pointing straight up.
+- **Freeze frame** (picked; the mechanic's name everywhere): mid-roll, time stops so the cue ball can be re-aimed; costs a charge, not a shot. A white flash, an ice wave, frost rings with direction arrows, and a shatter on release.
+- **Next table** (picked: Boot): strips close; the room number rolls over and holds, with the exit's reward under it; the rails trace in; the strips open.
+- **Cue options** (on trial, Settings → Stick, Full power, Strike): stick *rod / classic / hardlight*; full power *flash / ignite / lock*; strike *snap / impact / pierce*.
+
+**Freeze frame charges** (proposed, not built): halves, up to 3, earned only on shots that pay. You get +½ for a combination, +½ for each extra ball in one shot, and +½ for ×5 mult or more. Charges can also be bought in the shop with credits that banked points earn, so the score itself is never spent.
 
 ## Puzzle ramp (strategy agreed for review, not built)
 

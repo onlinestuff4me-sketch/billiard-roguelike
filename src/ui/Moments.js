@@ -5,7 +5,7 @@
  *               slams, flies into the run, and the next table is offered
  *   scratch     the cue ball went down: the shot is void, and the ball
  *               comes back
- *   freeze      time stops mid-roll so the cue ball can be re-aimed
+ *   freeze      Freeze frame: time stops mid-roll so the cue ball can be re-aimed
  *   transition  one table goes, the next one arrives
  *
  * Each has two treatments, picked in MOMENTS (config.js), so they can be
@@ -17,7 +17,7 @@
  */
 
 import * as THREE from 'three';
-import { MOMENTS, ARENA } from '../config.js';
+import { MOMENTS, ARENA, TRAJECTORY } from '../config.js';
 
 const el = (tag, cls, parent) => {
   const node = document.createElement(tag);
@@ -443,73 +443,23 @@ export class Moments {
    * @param {{x:number,z:number}} o.pocket
    * @param {{x:number,z:number}} o.spawn  where the cue ball comes back
    * @param {(on:boolean)=>void} o.setCueVisible
+   * @param {()=>boolean} [o.cueShown]  whether the real cue stick is drawn again
    */
-  async scratch({ pocket, spawn, setCueVisible }) {
-    const style = this.variant('scratch');
+  async scratch({ pocket, spawn, setCueVisible, cueShown }) {
     this.skip = false;
     const P = this.toPx(pocket.x, pocket.z);
     const S = this.toPx(spawn.x, spawn.z);
     setCueVisible(false);
     this.engine.hitStop?.(0.14);
-    if (style === 'glitch') await this._scratchGlitch(P, S, setCueVisible);
-    else await this._scratchDerez(P, S, setCueVisible);
+    await this._scratchGlitch(P, S, setCueVisible, spawn, cueShown);
   }
 
-  /** A: DEREZ. The ball breaks into light at the pocket; a stamp; a rez-in. */
-  async _scratchDerez(P, S, setCueVisible) {
-    const root = el('div', 'mo-scratch derez', this.root);
-    // the ball, coming apart into squares
-    for (let i = 0; i < 22; i++) {
-      const bit = el('div', 'mo-bit', root);
-      const a = (i / 22) * Math.PI * 2 + Math.random() * 0.4;
-      const d = 30 + Math.random() * 70;
-      bit.style.left = `${P.x}px`;
-      bit.style.top = `${P.y}px`;
-      bit.style.background = i % 3 ? '#22e8ff' : '#ff2e7e';
-      this.anim(bit, [
-        { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(0.2) rotate(${Math.random() * 360}deg)`, opacity: 0 }
-      ], { duration: 520 + Math.random() * 300, easing: OUT });
-    }
-    const flare = el('div', 'mo-flare', root);
-    flare.style.left = `${P.x}px`;
-    flare.style.top = `${P.y}px`;
-    this.anim(flare, [{ transform: 'translate(-50%,-50%) scale(0.2)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2.6)', opacity: 0 }], { duration: 420, easing: OUT });
-    this.audio.playerHurt?.();
-    this.setFilter('scratch', 'saturate(0.6) brightness(0.7)', 120);
-
-    // THE STAMP
-    const stamp = el('div', 'mo-stamp', root);
-    el('b', '', stamp).textContent = 'Scratch';
-    el('small', '', stamp).textContent = 'This shot pays nothing';
-    await this.wait(90);
-    await this.anim(stamp, [{ transform: 'translate(-50%,-50%) rotate(-7deg) scale(2.8)', opacity: 0 }, { transform: 'translate(-50%,-50%) rotate(-7deg) scale(1)', opacity: 1 }], { duration: 150, easing: IN });
-    this.audio.scoreSlam?.();
-    this.engine.shake?.(12);
-    this.anim(stamp, [{ transform: 'translate(-50%,-50%) rotate(-7deg) scale(1.06)' }, { transform: 'translate(-50%,-50%) rotate(-7deg) scale(1)' }], { duration: 200, easing: OUT });
-    await this.wait(520);
-
-    // REZ-IN: a beam from above, then a ring closing onto the spot.
-    const beam = el('div', 'mo-beam', root);
-    beam.style.left = `${S.x}px`;
-    beam.style.height = `${S.y}px`;
-    this.audio.doorOpen?.();
-    await this.anim(beam, [{ transform: 'translateX(-50%) scaleY(0)', opacity: 1 }, { transform: 'translateX(-50%) scaleY(1)', opacity: 1 }], { duration: 140, easing: IN });
-    const ring = el('div', 'mo-rez', root);
-    ring.style.left = `${S.x}px`;
-    ring.style.top = `${S.y}px`;
-    await this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(3)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }], { duration: 220, easing: IN });
-    setCueVisible(true);
-    this.setFilter('scratch', null, 260);
-    this.audio.scoreLock?.();
-    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.8)', opacity: 0 }], { duration: 300, easing: OUT });
-    this.anim(beam, [{ opacity: 1 }, { opacity: 0 }], { duration: 320 });
-    await this.anim(stamp, [{ opacity: 1, transform: 'translate(-50%,-50%) rotate(-7deg) scale(1)' }, { opacity: 0, transform: 'translate(-50%,-80%) rotate(-7deg) scale(0.9)' }], { duration: 360, delay: 200, easing: IN });
-    root.remove();
-  }
-
-  /** B: GLITCH. Red alert: the screen tears, the word jitters, the ball is traced back. */
-  async _scratchGlitch(P, S, setCueVisible) {
+  /**
+   * GLITCH. Red alert: the screen tears and SCRATCH jitters out of a split.
+   * Then a beam drops onto the spot, the ball rezzes in, and the cue takes
+   * form under it, pointing straight up at it.
+   */
+  async _scratchGlitch(P, S, setCueVisible, spawn, cueShown) {
     const root = el('div', 'mo-scratch glitch', this.root);
     const alarm = el('div', 'mo-alarm', root);
     this.anim(alarm, [{ opacity: 0 }, { opacity: 1 }, { opacity: 0.25 }, { opacity: 1 }, { opacity: 0 }], { duration: 900, easing: 'ease-in-out' });
@@ -551,20 +501,54 @@ export class Moments {
     await this.wait(800);
     bands.forEach((b) => b.remove());
 
-    // REZ: the ball is traced back in, a light line drawing its outline.
-    const ring = svg('svg', { class: 'mo-trace', width: 60, height: 60, viewBox: '0 0 60 60' }, root);
-    ring.style.left = `${S.x}px`;
-    ring.style.top = `${S.y}px`;
-    const c = svg('circle', { cx: 30, cy: 30, r: 14, pathLength: 100 }, ring);
+    // THE BEAM: light drops from the top of the screen onto the spot, and the
+    // ball rezzes in where it lands.
+    const beam = el('div', 'mo-beam', root);
+    beam.style.left = `${S.x}px`;
+    beam.style.height = `${S.y}px`;
     this.audio.doorOpen?.();
-    await this.anim(c, [{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }], { duration: 300, easing: 'ease-in-out' });
+    await this.anim(beam, [{ transform: 'translateX(-50%) scaleY(0)', opacity: 1 }, { transform: 'translateX(-50%) scaleY(1)', opacity: 1 }], { duration: 160, easing: IN });
+    const rez = el('div', 'mo-rez', root);
+    rez.style.left = `${S.x}px`;
+    rez.style.top = `${S.y}px`;
+    await this.anim(rez, [{ transform: 'translate(-50%,-50%) scale(3)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }], { duration: 200, easing: IN });
     setCueVisible(true);
     this.setFilter('scratch', null, 220);
     this.audio.scoreLock?.();
-    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2)', opacity: 0 }], { duration: 320, easing: OUT });
+    this.engine.shake?.(4);
+    this.anim(rez, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.8)', opacity: 0 }], { duration: 300, easing: OUT });
+    this.anim(beam, [{ opacity: 1 }, { opacity: 0 }], { duration: 360 });
+
+    // THE CUE TAKES FORM: the light gathers into the stick, under the ball and
+    // pointing straight up at it, ready for the next shot.
+    const stick = this._formStick(root, spawn);
+    await this.wait(80);
+    this.audio.boot?.();
+    await this.anim(stick.outline, [{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }], { duration: 380, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' });
+    await this.anim(stick.fill, [{ opacity: 0 }, { opacity: 0.85 }], { duration: 160 });
+    // it hands over to the real stick once the table is ready to aim again
+    const t0 = performance.now();
+    while (!(cueShown?.() ?? true) && performance.now() - t0 < 2400) await this.wait(40);
+    this.anim(stick.svg, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 });
     await this.anim(word, [{ transform: 'translate(-50%,-50%) scale(1)', opacity: 1 }, { transform: 'translate(-50%,-50%) scaleY(0.02) scaleX(1.4)', opacity: 0 }], { duration: 180, easing: IN });
     await this.anim(sub, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 });
     root.remove();
+  }
+
+  /** A cue stick drawn in light below the spawn, pointing up at the ball. */
+  _formStick(root, spawn) {
+    const r = 0.48 + 0.2;
+    const L = TRAJECTORY.stickLength;
+    const tip = this.toPx(spawn.x, spawn.z + r);
+    const butt = this.toPx(spawn.x, spawn.z + r + L);
+    const unit = Math.abs(this.toPx(1, 0).x - this.toPx(0, 0).x);
+    const w0 = TRAJECTORY.stickWidth * 0.55 * unit;
+    const w1 = TRAJECTORY.stickWidth * 1.9 * unit;
+    const g = svg('svg', { class: 'mo-form', width: this.W, height: this.H, viewBox: `0 0 ${this.W} ${this.H}` }, root);
+    const pts = `${tip.x - w0},${tip.y} ${tip.x + w0},${tip.y} ${butt.x + w1},${butt.y} ${butt.x - w1},${butt.y}`;
+    const fill = svg('polygon', { points: pts, class: 'fill' }, g);
+    const outline = svg('polygon', { points: pts, class: 'line', pathLength: 100 }, g);
+    return { svg: g, fill, outline };
   }
 
   /* -------------------------------------------------------------- *
@@ -587,39 +571,13 @@ export class Moments {
     this.audio.freezeOn?.();
 
     const label = el('div', 'mo-freeze-label', root);
-    el('b', '', label).textContent = style === 'frame' ? 'Freeze frame' : 'Time stopped';
+    el('b', '', label).textContent = 'Freeze frame';
     el('small', '', label).textContent = `Re-aim from here · no shot spent · ${left} left`;
 
-    if (style === 'frame') {
-      const flash = el('div', 'mo-flash', root);
-      this.anim(flash, [{ opacity: 0.85 }, { opacity: 0 }], { duration: 200, easing: 'ease-out' }).then(() => flash.remove());
-      el('div', 'mo-scanlines', root);
-      const corners = ['tl', 'tr', 'bl', 'br'].map((k) => el('div', `mo-corner ${k}`, root));
-      corners.forEach((c, i) => {
-        const sx = i % 2 ? 1 : -1;
-        const sy = i < 2 ? -1 : 1;
-        this.anim(c, [{ transform: `translate(${sx * 40}px, ${sy * 40}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 220, easing: BACK });
-      });
-      const rec = el('div', 'mo-rec', root);
-      rec.textContent = `❚❚  PAUSED · ${left} LEFT`;
-      this.setFilter('freeze', 'saturate(0.45) contrast(1.15) brightness(0.92)', 80);
-      for (const b of state.balls) {
-        const len = Math.hypot(b.q.x - b.p.x, b.q.y - b.p.y);
-        if (len < 4) continue;
-        const ang = Math.atan2(b.q.y - b.p.y, b.q.x - b.p.x);
-        const streak = el('div', 'mo-streak', root);
-        streak.style.left = `${b.p.x}px`;
-        streak.style.top = `${b.p.y}px`;
-        streak.style.width = `${len * 1.4}px`;
-        streak.style.transform = `rotate(${ang + Math.PI}rad)`;
-        b.streak = streak;
-        b.ang = ang;
-        b.len = len;
-        this.anim(streak, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
-      }
-      this.anim(label, [{ opacity: 0, transform: 'translate(-50%, -8px)' }, { opacity: 1, transform: 'translate(-50%, 0)' }], { duration: 220, easing: OUT });
-      return;
-    }
+    // THE FLASH: the frame is taken.
+    const flash = el('div', 'mo-flash', root);
+    this.anim(flash, [{ opacity: 0.9 }, { opacity: 0 }], { duration: 220, easing: 'ease-out' }).then(() => flash.remove());
+    this.engine.zoomPunch?.();
 
     // STASIS: a wave of ice from the cue ball. Everything it passes stops.
     const diag = Math.hypot(this.W, this.H) * 2.1;
@@ -672,21 +630,7 @@ export class Moments {
       return;
     }
     this.audio.shatter?.();
-    if (state.style === 'frame') {
-      const flash = el('div', 'mo-flash', root);
-      this.anim(flash, [{ opacity: 0.6 }, { opacity: 0 }], { duration: 160 });
-      root.querySelectorAll('.mo-corner').forEach((c, i) => {
-        const sx = i % 2 ? 1 : -1;
-        const sy = i < 2 ? -1 : 1;
-        this.anim(c, [{ transform: 'none', opacity: 1 }, { transform: `translate(${sx * 60}px, ${sy * 60}px)`, opacity: 0 }], { duration: 200, easing: IN });
-      });
-      const lines = root.querySelector('.mo-scanlines');
-      if (lines) this.anim(lines, [{ transform: 'scaleY(1)', opacity: 1 }, { transform: 'scaleY(0.004)', opacity: 1, offset: 0.7 }, { transform: 'scaleY(0)', opacity: 0 }], { duration: 220, easing: IN });
-      for (const b of state.balls) {
-        if (!b.streak) continue;
-        this.anim(b.streak, [{ transform: `rotate(${b.ang + Math.PI}rad)`, opacity: 1 }, { transform: `rotate(${b.ang}rad) scaleX(0.6)`, opacity: 0 }], { duration: 200, easing: IN });
-      }
-    } else {
+    {
       // THE SHATTER: the ice breaks outward from the cue ball.
       const shards = el('div', 'mo-shards', root);
       for (let i = 0; i < 18; i++) {
@@ -712,8 +656,6 @@ export class Moments {
       }
       this.engine.shake?.(4);
     }
-    const rec = root.querySelector('.mo-rec');
-    if (rec) rec.remove();
     const label = root.querySelector('.mo-freeze-label');
     if (label) this.anim(label, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%, -12px)' }], { duration: 200 });
     setTimeout(() => root.remove(), 800);
@@ -732,13 +674,11 @@ export class Moments {
    */
   async transition({ from, to, note, swap }) {
     this._note = note || '';
-    const style = this.variant('transition');
     this.skip = false;
-    const root = el('div', `mo-trans ${style}`, this.root);
+    const root = el('div', 'mo-trans boot', this.root);
     absorb(root);
     try {
-      if (style === 'cycle') await this._transCycle(root, from, to, swap);
-      else await this._transBoot(root, from, to, swap);
+      await this._transBoot(root, from, to, swap);
     } finally {
       root.remove();
     }
@@ -751,7 +691,10 @@ export class Moments {
     return { x0: Math.min(a.x, b.x), y0: Math.min(a.y, b.y), x1: Math.max(a.x, b.x), y1: Math.max(a.y, b.y) };
   }
 
-  /** A: DEREZ & BOOT. Strips slide shut; the rails trace back in; strips open. */
+  /**
+   * BOOT. Strips slide shut; the room number rolls over to the next and
+   * holds; the rails trace back in; the strips open on the new table.
+   */
   async _transBoot(root, from, to, swap) {
     const N = 14;
     const strips = [];
@@ -769,11 +712,27 @@ export class Moments {
     );
     root.classList.add('covered');
     await swap();
+    // THE COUNT: the room you finished, then it rolls over to the next one
+    // and holds there, big, so the step is felt before the table arrives.
     const num = el('div', 'mo-roomnum', root);
     el('small', '', num).textContent = 'Room';
-    el('b', '', num).textContent = String(to).padStart(2, '0');
-    if (this._note) el('em', '', num).textContent = this._note;
-    this.anim(num, [{ opacity: 0, transform: 'translate(-50%,-50%) scale(1.4)', filter: 'blur(8px)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', filter: 'blur(0)' }], { duration: 300, easing: OUT });
+    const digits = el('div', 'mo-digits', num);
+    const oldN = el('b', 'old', digits);
+    oldN.textContent = String(from).padStart(2, '0');
+    const newN = el('b', 'new', digits);
+    newN.textContent = String(to).padStart(2, '0');
+    const note = this._note ? el('em', '', num) : null;
+    if (note) note.textContent = this._note;
+    await this.anim(num, [{ opacity: 0, transform: 'translate(-50%,-50%) scale(1.3)', filter: 'blur(8px)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', filter: 'blur(0)' }], { duration: 260, easing: OUT });
+    await this.wait(260);
+    this.audio.scoreNote?.(6, 'points');
+    this.anim(oldN, [{ transform: 'translateY(0)', opacity: 1 }, { transform: 'translateY(-90%)', opacity: 0 }], { duration: 260, easing: IN });
+    await this.anim(newN, [{ transform: 'translateY(90%)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }], { duration: 340, delay: 70, easing: BACK });
+    this.audio.scoreLock?.();
+    this.engine.shake?.(4);
+    this.anim(newN, [{ textShadow: '0 0 30px #22e8ff, 0 0 70px #22e8ff' }, { textShadow: '0 0 14px rgba(34,232,255,0.6)' }], { duration: 500, easing: OUT });
+    if (note) this.anim(note, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: OUT });
+    await this.wait(520);
 
     // THE BOOT TRACE: two light-cycles leave the bottom centre and draw the
     // rails, meeting at the top.
@@ -787,44 +746,12 @@ export class Moments {
     await Promise.all(paths.map((p) => this.anim(p, [{ strokeDashoffset: 100 }, { strokeDashoffset: 0 }], { duration: 560, easing: 'cubic-bezier(0.5, 0, 0.3, 1)' })));
     this.audio.scoreLock?.();
     this.anim(g, [{ opacity: 1 }, { opacity: 0 }], { duration: 380, delay: 120 });
-    this.anim(num, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%,-50%) scale(0.85)' }], { duration: 300, delay: 160 });
+    this.anim(num, [{ opacity: 1, transform: 'translate(-50%,-50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%,-50%) scale(0.85)' }], { duration: 300, delay: 160 });
     const mid = (N - 1) / 2;
     await Promise.all(
       strips.map((s, i) =>
         this.anim(s, [{ transform: 'scaleX(1)', opacity: 1 }, { transform: 'scaleX(0)', opacity: 0.6 }], { duration: 240, delay: 40 + Math.abs(i - mid) * 24, easing: IN })
       )
     );
-  }
-
-  /** B: LIGHT-CYCLE WIPE. A cyan cycle closes the table; an orange one opens the next. */
-  async _transCycle(root, from, to, swap) {
-    const cover = el('div', 'mo-cover', root);
-    const wall = el('div', 'mo-wall', root);
-    const head = el('div', 'mo-head-cycle', wall);
-    this.audio.derez?.();
-    const ms = 520;
-    const ease = 'cubic-bezier(0.65, 0, 0.35, 1)';
-    this.anim(cover, [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], { duration: ms, easing: ease });
-    await this.anim(wall, [{ left: '0%' }, { left: '100%' }], { duration: ms, easing: ease });
-    root.classList.add('covered');
-    await swap();
-    const rollOld = el('div', 'mo-roll old', root);
-    rollOld.textContent = String(from).padStart(2, '0');
-    const rollNew = el('div', 'mo-roll new', root);
-    rollNew.textContent = String(to).padStart(2, '0');
-    const cap = el('div', 'mo-roll-cap', root);
-    cap.textContent = 'Room';
-    if (this._note) el('em', '', cap).textContent = this._note;
-    this.audio.scoreNote?.(6, 'points');
-    this.anim(rollOld, [{ transform: 'translate(-50%,-50%)', opacity: 1 }, { transform: 'translate(-50%,-150%)', opacity: 0 }], { duration: 280, delay: 60, easing: IN });
-    await this.anim(rollNew, [{ transform: 'translate(-50%,50%)', opacity: 0 }, { transform: 'translate(-50%,-50%)', opacity: 1 }], { duration: 320, delay: 140, easing: BACK });
-    this.audio.scoreLock?.();
-    await this.wait(320);
-    wall.classList.add('rival');
-    this.audio.boot?.();
-    this.anim(rollNew, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
-    this.anim(cap, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 });
-    this.anim(cover, [{ clipPath: 'inset(0 0% 0 0)' }, { clipPath: 'inset(0 100% 0 0)' }], { duration: ms, easing: ease });
-    await this.anim(wall, [{ left: '100%' }, { left: '0%' }], { duration: ms, easing: ease });
   }
 }
