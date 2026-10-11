@@ -298,6 +298,26 @@ export const TRAJECTORY = {
    * runs out past the rail the way a real cue does; drawn above the rails, at
    * `stickHeight`, so nothing on the table cuts it off.
    */
+  /**
+   * THE CUE, ON TRIAL: three looks for the stick, three ways to say full
+   * power, three strikes. Settings → Cue, or window.__cue(kind, value).
+   *   stickLook    'rod' dark steel and cyan edges · 'classic' maple and
+   *                ebony, a real cue · 'hardlight' a construct of light
+   *   maxStyle     'flash' ring flash, burst, MAX POWER badge · 'ignite' the
+   *                stick heats from the butt and burns at full · 'lock' the
+   *                stick kicks and catches, a reticle closes on the ball
+   *   strikeStyle  'snap' follow through and fade · 'impact' the table
+   *                freezes on contact and the stick bounces off · 'pierce'
+   *                the stick carries on through as a bolt of light
+   */
+  stickLook: 'rod',
+  maxStyle: 'flash',
+  strikeStyle: 'snap',
+  cueOptions: {
+    stickLook: ['rod', 'classic', 'hardlight'],
+    maxStyle: ['flash', 'ignite', 'lock'],
+    strikeStyle: ['snap', 'impact', 'pierce']
+  },
   stickLength: 15,
   stickWidth: 0.34,
   stickHeight: 1.4,

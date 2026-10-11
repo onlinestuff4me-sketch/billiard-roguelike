@@ -1070,6 +1070,15 @@
       .sf-streak { position: absolute; left: 0; top: 0; height: 3px; margin-top: -1.5px; transform-origin: 0 50%; border-radius: 2px; pointer-events: none; }
       @media (prefers-reduced-motion: reduce) { .sf-boxes { transition: none; } .score-feed.locking .sf-boxes::after { animation: none; opacity: 0; } }
 
+      /* The 'lock' full-power moment: four chevrons close on the cue ball. */
+      .lock-reticle { position: absolute; width: 64px; height: 64px; pointer-events: none; z-index: 8; filter: drop-shadow(0 0 6px #22e8ff) drop-shadow(0 0 14px rgba(34, 232, 255, 0.6)); }
+      .lock-reticle i { position: absolute; width: 16px; height: 16px; border: 0 solid #e9fbff; }
+      .lock-reticle i.n { left: 50%; top: -4px; margin-left: -8px; border-right-width: 3px; border-bottom-width: 3px; transform: rotate(45deg); }
+      .lock-reticle i.s { left: 50%; bottom: -4px; margin-left: -8px; border-left-width: 3px; border-top-width: 3px; transform: rotate(45deg); }
+      .lock-reticle i.w { top: 50%; left: -4px; margin-top: -8px; border-right-width: 3px; border-top-width: 3px; transform: rotate(45deg); }
+      .lock-reticle i.e { top: 50%; right: -4px; margin-top: -8px; border-left-width: 3px; border-bottom-width: 3px; transform: rotate(45deg); }
+      .lock-reticle b { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); font: 700 12px/1 var(--font); letter-spacing: 0.3em; color: #02050b; background: #e9fbff; padding: 3px 6px 3px 9px; clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px); }
+
       /* ---------------- MOMENTS (src/ui/Moments.js) ----------------
          The four beats between shots. Same language as the score feed:
          cut-corner plates, ink on light, one colour per meaning —
@@ -2089,6 +2098,9 @@
             <h2 class="menu-sub">Settings</h2>
             <button id="set-mute" class="menu-btn" type="button">Sound: On</button>
             <button id="set-aim" class="menu-btn" type="button">Aim line: Slim</button>
+            <button id="set-cue-stickLook" class="menu-btn" type="button">Stick: Rod</button>
+            <button id="set-cue-maxStyle" class="menu-btn" type="button">Full power: Flash</button>
+            <button id="set-cue-strikeStyle" class="menu-btn" type="button">Strike: Snap</button>
             <button id="set-mo-clear" class="menu-btn" type="button">Table clear: Ledger</button>
             <button id="set-mo-scratch" class="menu-btn" type="button">Scratch: Derez</button>
             <button id="set-mo-freeze" class="menu-btn" type="button">Freeze: Stasis</button>

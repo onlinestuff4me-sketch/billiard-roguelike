@@ -298,14 +298,15 @@ class TrailRibbon {
  * bands at the butt. Under it, a flat stylised shadow falls across the felt
  * and the rail, offset as if lit from the top left — weight you can see.
  *
- * Rebuilt every frame from (tip, direction): eight quads, no allocation.
+ * Rebuilt every frame from (tip, direction), as one of three looks
+ * (TRAJECTORY.stickLook): rod, classic or hardlight.
  */
 class CueStick {
   constructor(parent) {
     this.group = new THREE.Group();
     this.group.renderOrder = 6;
     parent.add(this.group);
-    const QUADS = 9;
+    const QUADS = 28;
     this.QUADS = QUADS;
     const make = (count, vertexColors, opacity, order) => {
       const positions = new Float32Array(count * 4 * 3);
@@ -345,73 +346,176 @@ class CueStick {
     this.smear.mat.blending = THREE.AdditiveBlending;
     this.smear.mesh.visible = false;
     this.group.visible = false;
+    this._c = new THREE.Color();
+    this._hot = new THREE.Color(PALETTE.scoreMult ?? 0xff8a1e);
+    this._white = new THREE.Color(0xffffff);
+    this._look = null;
+  }
+
+  /**
+   * THE LOOKS. Each is a list of quads along the stick: [d0, d1, f0, f1, hex]
+   * runs from d0 to d1 units back from the tip, and across from f0 to f1 of
+   * the half-width at that point (-1 is one edge, 1 the other). Lengths ending
+   * in 'L' are fractions of the stick's length.
+   */
+  static quads(look, L, ferrule) {
+    const Q = [];
+    const at = (v) => (typeof v === 'string' ? parseFloat(v) * L : v);
+    const q = (d0, d1, f0, f1, hex, mul = 0) => Q.push([at(d0), at(d1), f0, f1, hex, mul]);
+    if (look === 'classic') {
+      // A real cue: maple shaft shaded round, white ferrule, blue tip, a cyan
+      // joint ring, an ebony butt with inlay bands, a black bumper.
+      q(ferrule, '0.56L', -1, 1, 0xc9a46b);
+      q(ferrule, '0.56L', -1, -0.45, 0x9c7a46);
+      q(ferrule, '0.56L', 0.15, 0.42, 0xf1dcae);
+      q(0.06, ferrule, -1, 1, 0xf3f1ea);
+      q(0, 0.06, -1, 1, 0x3d7fe0);
+      q('0.56L', '0.575L', -1, 1, PALETTE.player);
+      q('0.575L', L - 0.28, -1, 1, 0x1b1411);
+      q('0.575L', L - 0.28, 0.1, 0.38, 0x3a2c25);
+      for (const f of [0.66, 0.78, 0.9]) q(`${f}L`, `${f + 0.012}L`, -1, 1, 0xe9f8ff);
+      q('0.6L', '0.64L', -0.25, 0.25, PALETTE.player);
+      q(L - 0.28, L, -1, 1, 0x050506);
+    } else if (look === 'hardlight') {
+      // Light, not wood: a faint fill, segmented edges like a light-cycle's
+      // wall, a white-hot core, and an emitter at the tip.
+      q(0, L, -1, 1, 0x0a3a50);
+      const seg = 1.5;
+      const gap = 0.22;
+      for (let d = 0.4; d < L - 0.2; d += seg + gap) {
+        const e = Math.min(L - 0.2, d + seg);
+        q(d, e, -1, -0.66, PALETTE.player);
+        q(d, e, 0.66, 1, PALETTE.player);
+      }
+      q(0.4, '0.8L', -0.1, 0.1, 0xd9feff);
+      q(0, 0.4, -1, 1, 0xffffff);
+      q(L - 0.2, L, -1, 1, PALETTE.player);
+    } else {
+      // ROD, the first one built: dark steel, lit cyan edges, a lit streak,
+      // two bands at the butt and a dark cap.
+      q(ferrule, L, -1, 1, TRAJECTORY.stickShaft);
+      q(0, ferrule, -1, 1, PALETTE.bone);
+      q(ferrule, L, -1, -0.8, PALETTE.player, 0.75);
+      q(ferrule, L, 0.8, 1, PALETTE.player, 0.75);
+      q(L * 0.7, L * 0.7 + 0.16, -1, 1, PALETTE.player);
+      q(L * 0.7 + 0.32, L * 0.7 + 0.48, -1, 1, PALETTE.player);
+      q(L - 0.5, L, -1, 1, TRAJECTORY.stickButt);
+      q(ferrule + 0.1, '0.66L', -0.18, 0.18, TRAJECTORY.stickShine);
+    }
+    return Q;
   }
 
   /**
    * @param {number} tx,tz  the tip, on the table
    * @param {number} ux,uz  the shot direction (the stick points back along -u)
-   * @param {{len:number, tipLit:boolean, opacity:number}} o
+   * @param {{len:number, tipLit:boolean, opacity:number, heat?:number,
+   *          widthScale?:number, jitter?:number}} o
+   *   heat 0..1 crawls a glow from the butt to the tip (1 is fully lit);
+   *   widthScale thins the stick (the pierce strike); jitter shakes it sideways
    */
   set(tx, tz, ux, uz, o) {
+    const look = TRAJECTORY.stickLook || 'rod';
+    if (look !== this._look) {
+      this._look = look;
+      this.body.mat.blending = look === 'hardlight' ? THREE.AdditiveBlending : THREE.NormalBlending;
+      this.body.mat.needsUpdate = true;
+    }
     const y = TRAJECTORY.stickHeight;
     const L = o.len;
     const nx = -uz;
     const nz = ux;
-    const w0 = TRAJECTORY.stickWidth * 0.55;
-    const w1 = TRAJECTORY.stickWidth * 1.9;
-    const wAt = (d) => w0 + (w1 - w0) * (d / L);
-    // A point d units back from the tip, offset s across the stick.
-    const at = (d, s) => [tx - ux * d + nx * s, tz - uz * d + nz * s];
-    const quad = (buf, q, d0, d1, s0a, s0b, s1a, s1b, color, dx = 0, dz = 0) => {
-      const p = buf.positions;
-      const pts = [at(d0, s0a), at(d1, s1a), at(d1, s1b), at(d0, s0b)];
-      for (let i = 0; i < 4; i += 1) {
-        const o3 = (q * 4 + i) * 3;
-        p[o3] = pts[i][0] + dx;
-        p[o3 + 1] = y;
-        p[o3 + 2] = pts[i][1] + dz;
-        if (color && buf.colors) {
-          buf.colors[o3] = color.r;
-          buf.colors[o3 + 1] = color.g;
-          buf.colors[o3 + 2] = color.b;
-        }
-      }
-    };
-    const c = (hex) => new THREE.Color(hex);
-    const shaft = c(TRAJECTORY.stickShaft);
-    const edge = c(PALETTE.player).multiplyScalar(0.75);
-    const tip = c(o.tipLit ? PALETTE.playerCore : PALETTE.bone);
+    const ws = o.widthScale ?? 1;
+    const w0 = TRAJECTORY.stickWidth * 0.55 * ws;
+    const w1 = TRAJECTORY.stickWidth * 1.9 * ws;
+    const wAt = (d) => w0 + (w1 - w0) * (Math.max(0, d) / L);
+    const j = o.jitter || 0;
+    tx += nx * j;
+    tz += nz * j;
     const ferrule = 0.32;
+    const quads = CueStick.quads(look, L, ferrule);
+    const heat = o.heat || 0;
     const b = this.body;
-    // 0 body, 1 ferrule, 2/3 lit edges, 4/5 butt bands, 6 butt cap, 7 tip glow
-    quad(b, 0, ferrule, L, -wAt(ferrule), wAt(ferrule), -wAt(L), wAt(L), shaft);
-    quad(b, 1, 0, ferrule, -w0, w0, -wAt(ferrule), wAt(ferrule), tip);
-    const e = 0.07;
-    quad(b, 2, ferrule, L, -wAt(ferrule), -wAt(ferrule) + e, -wAt(L), -wAt(L) + e, edge);
-    quad(b, 3, ferrule, L, wAt(ferrule) - e, wAt(ferrule), wAt(L) - e, wAt(L), edge);
-    const band = (q, d) => quad(b, q, d, d + 0.16, -wAt(d), wAt(d), -wAt(d + 0.16), wAt(d + 0.16), edge);
-    band(4, L * 0.7);
-    band(5, L * 0.7 + 0.32);
-    quad(b, 6, L - 0.5, L, -wAt(L - 0.5), wAt(L - 0.5), -wAt(L), wAt(L), c(TRAJECTORY.stickButt));
-    // 8: the lit streak down the middle, brightest near the tip
-    const sh = c(TRAJECTORY.stickShine);
-    quad(b, 8, ferrule + 0.1, L * 0.66, -0.035, 0.035, -wAt(L * 0.66) * 0.18, wAt(L * 0.66) * 0.18, sh);
-    const g = o.tipLit ? 0.22 : 0;
-    quad(b, 7, -g, ferrule * 0.6, -w0 - g, w0 + g, -w0 - g, w0 + g, tip);
+    const p = b.positions;
+    const col = b.colors;
+    const c = this._c;
+    for (let qi = 0; qi < this.QUADS; qi += 1) {
+      const spec = quads[qi];
+      if (!spec || spec[0] === spec[1]) {
+        for (let i = 0; i < 12; i += 1) p[qi * 12 + i] = 0;
+        continue;
+      }
+      const [d0, d1, f0, f1, hex] = spec;
+      const pts = [
+        [d0, f0 * wAt(d0)],
+        [d1, f0 * wAt(d1)],
+        [d1, f1 * wAt(d1)],
+        [d0, f1 * wAt(d0)]
+      ];
+      c.setHex(hex);
+      if (spec[5]) c.multiplyScalar(spec[5]);
+      // the tip lights at full power, whatever the look
+      if (o.tipLit && d1 <= ferrule + 0.01) c.lerp(this._white, 0.6);
+      // HEAT crawls from the butt to the tip: a quad warms once the front
+      // passes its middle, and a fully heated stick burns toward white.
+      if (heat > 0) {
+        const mid = (d0 + d1) / 2 / L;
+        const h = Math.min(1, Math.max(0, (heat * 1.25 - (1 - mid)) * 3));
+        if (h > 0) c.lerp(this._hot, h * 0.6);
+        if (heat >= 1) c.lerp(this._white, 0.08);
+      }
+      for (let i = 0; i < 4; i += 1) {
+        const [d, s] = pts[i];
+        const o3 = (qi * 4 + i) * 3;
+        p[o3] = tx - ux * d + nx * s;
+        p[o3 + 1] = y;
+        p[o3 + 2] = tz - uz * d + nz * s;
+        col[o3] = c.r;
+        col[o3 + 1] = c.g;
+        col[o3 + 2] = c.b;
+      }
+    }
+    // the tip's halo at full power
+    if (o.tipLit) {
+      const qi = this.QUADS - 1;
+      const g = 0.22;
+      const pts = [[-g, -w0 - g], [ferrule * 0.6, -w0 - g], [ferrule * 0.6, w0 + g], [-g, w0 + g]];
+      c.setHex(PALETTE.playerCore);
+      pts.forEach(([d, s], i) => {
+        const o3 = (qi * 4 + i) * 3;
+        p[o3] = tx - ux * d + nx * s;
+        p[o3 + 1] = y;
+        p[o3 + 2] = tz - uz * d + nz * s;
+        col[o3] = c.r;
+        col[o3 + 1] = c.g;
+        col[o3 + 2] = c.b;
+      });
+    }
     b.geo.attributes.position.needsUpdate = true;
     b.geo.attributes.color.needsUpdate = true;
     b.mat.opacity = o.opacity;
 
-    // The shadow: the whole stick, offset down and to the right.
+    // The shadow: the whole stick, offset down and to the right. Light casts
+    // only a faint one.
     const sx = TRAJECTORY.stickShadow[0];
     const sz = TRAJECTORY.stickShadow[1];
-    quad(this.shadow, 0, 0, L, -w0, w0, -w1, w1, null, sx, sz);
-    quad(this.shadowSoft, 0, -0.1, L + 0.2, -w0 - 0.14, w0 + 0.14, -w1 - 0.2, w1 + 0.2, null, sx * 1.25, sz * 1.25);
-    this.shadow.geo.attributes.position.needsUpdate = true;
-    this.shadowSoft.geo.attributes.position.needsUpdate = true;
-    this.shadow.mat.opacity = 0.62 * o.opacity;
-    this.shadowSoft.mat.opacity = 0.3 * o.opacity;
+    const shade = look === 'hardlight' ? 0.4 : 1;
+    const flat = (buf, d0, d1, a0, a1, b0, b1, ox, oz) => {
+      const pts = [[d0, a0], [d1, b0], [d1, b1], [d0, a1]];
+      pts.forEach(([d, s], i) => {
+        buf.positions.set([tx - ux * d + nx * s + ox, y, tz - uz * d + nz * s + oz], i * 3);
+      });
+      buf.geo.attributes.position.needsUpdate = true;
+    };
+    flat(this.shadow, 0, L, -w0, w0, -w1, w1, sx, sz);
+    flat(this.shadowSoft, -0.1, L + 0.2, -w0 - 0.14, w0 + 0.14, -w1 - 0.2, w1 + 0.2, sx * 1.25, sz * 1.25);
+    this.shadow.mat.opacity = 0.62 * o.opacity * shade;
+    this.shadowSoft.mat.opacity = 0.3 * o.opacity * shade;
     this.group.visible = true;
+  }
+
+  /** A point `d` units back from the tip of the stick as last drawn. */
+  pointAt(tx, tz, ux, uz, d) {
+    return { x: tx - ux * d, z: tz - uz * d };
   }
 
   /** A streak from `from` to `to` units behind the ball along -u (0 hides it). */
@@ -512,6 +616,12 @@ class AimRenderer {
     this.cue = new CueStick(this.fxGroup);
     this.cueState = null;
     this.strike = null;
+    /** Seconds since a 'lock' max-power moment fired (null when idle). */
+    this.lockT = null;
+    this.sparkT = 0;
+    /** Hooks main.js fills: the stick reaching the ball, and a spark off a hot stick. */
+    this.onContact = null;
+    this.onSpark = null;
     this.flashState = null;
 
     // 1. Primary path.
@@ -795,33 +905,81 @@ class AimRenderer {
     this.flashState = { s: segment, power, t: 0 };
     // THE STRIKE: the stick snaps forward through where the ball was, then
     // fades. The ball is already moving; the stick is the reason it is.
-    if (this.cueState && TRAJECTORY.aimStyle === 'cue') this.strike = { ...this.cueState, t: 0 };
+    if (this.cueState && TRAJECTORY.aimStyle === 'cue') {
+      this.strike = { ...this.cueState, t: 0, power, contacted: false, style: TRAJECTORY.strikeStyle || 'snap' };
+    }
+    this.lockT = null;
+  }
+
+  /** Full power was just reached. */
+  maxed() {
+    if ((TRAJECTORY.maxStyle || 'flash') === 'lock') this.lockT = 0;
   }
 
   /** Per frame, on real time: the release flash. */
   tick(rawDt) {
+    if (this.lockT != null) {
+      this.lockT += rawDt;
+      if (this.lockT > 0.5) this.lockT = null;
+    }
+    // Sparks shed by a burning stick, while it is held at full power.
+    const cs = this.cueState;
+    if (cs && cs.full && !this.strike && (TRAJECTORY.maxStyle || 'flash') === 'ignite' && this.onSpark) {
+      this.sparkT += rawDt;
+      while (this.sparkT > 0.045) {
+        this.sparkT -= 0.045;
+        const d = cs.gap + 0.6 + Math.random() * TRAJECTORY.stickLength * 0.55;
+        this.onSpark(cs.bx - cs.ux * d, cs.bz - cs.uz * d);
+      }
+    }
     const k = this.strike;
     if (k) {
       k.t += rawDt;
-      // THE STRIKE, in three beats: the snap (accelerating, it is thrown, not
-      // slid), the follow-through past where the ball sat, then the stick
-      // easing back as it fades.
+      // THE STRIKE. Every style opens with the snap (accelerating: the stick
+      // is thrown, not slid); what happens at the ball is the style.
+      //   snap    follow through past the ball, then ease back as it fades
+      //   impact  bounce off the ball, hard, as the table freezes on contact
+      //   pierce  carry on through as a bolt of light, thinning to nothing
       const snap = TRAJECTORY.stickStrike;
-      const through = 0.09;
-      const fadeFor = 0.3;
       const contact = k.r * 0.2;
       let gap;
       let fade = 1;
+      let widthScale = 1;
       if (k.t <= snap) {
         const u = k.t / snap;
         gap = k.gap + (contact - k.gap) * u * u;
-      } else if (k.t <= snap + through) {
-        const u = (k.t - snap) / through;
-        gap = contact - 0.45 * (1 - (1 - u) * (1 - u));
       } else {
-        const u = Math.min(1, (k.t - snap - through) / fadeFor);
-        gap = contact - 0.45 + 0.35 * u * u;
-        fade = 1 - u;
+        if (!k.contacted) {
+          k.contacted = true;
+          this.onContact?.({ x: k.bx, z: k.bz, ux: k.ux, uz: k.uz, full: k.full, power: k.power, style: k.style });
+        }
+        const t = k.t - snap;
+        if (k.style === 'impact') {
+          const rec = 0.16;
+          if (t <= rec) {
+            const u = t / rec;
+            gap = contact + 1.3 * (1 - Math.pow(1 - u, 3));
+          } else {
+            const u = Math.min(1, (t - rec) / 0.26);
+            gap = contact + 1.3 + 0.25 * u;
+            fade = 1 - u;
+          }
+        } else if (k.style === 'pierce') {
+          const u = Math.min(1, t / 0.2);
+          gap = contact - 7 * Math.pow(u, 0.6);
+          widthScale = 1 - 0.85 * u;
+          fade = 1 - u * u;
+        } else {
+          const through = 0.09;
+          if (t <= through) {
+            const u = t / through;
+            gap = contact - 0.45 * (1 - (1 - u) * (1 - u));
+          } else {
+            const u = Math.min(1, (t - through) / 0.3);
+            gap = contact - 0.45 + 0.35 * u * u;
+            fade = 1 - u;
+          }
+        }
       }
       if (fade <= 0) {
         this.strike = null;
@@ -831,10 +989,13 @@ class AimRenderer {
         this.cue.set(k.bx - k.ux * gap, k.bz - k.uz * gap, k.ux, k.uz, {
           len: TRAJECTORY.stickLength,
           tipLit: k.full,
-          opacity: fade
+          opacity: fade,
+          heat: k.heat || 0,
+          widthScale
         });
         // the smear covers the snap, and is gone a beat after contact
-        const sm = Math.max(0, 1 - Math.max(0, k.t - snap) / 0.12);
+        const after = Math.max(0, k.t - snap);
+        const sm = Math.max(0, 1 - after / (k.style === 'pierce' ? 0.2 : 0.12));
         this.cue.setSmear(k.bx, k.bz, k.ux, k.uz, k.gap + 1.2, gap, sm * (k.full ? 0.55 : 0.35));
       }
     }
@@ -904,18 +1065,35 @@ class AimRenderer {
         // thumb has travelled across the pad (0 to 1), and `stickTravel` is
         // that same travel in table units, so a centimetre of thumb is a
         // centimetre of cue. At full power the tip lights.
-        const gap = player.radius + 0.2 + TRAJECTORY.stickTravel * charge;
+        let gap = player.radius + 0.2 + TRAJECTORY.stickTravel * charge;
         const full = charge >= TRAJECTORY.fullDraw;
+        const maxStyle = TRAJECTORY.maxStyle || 'flash';
+        // IGNITE: heat crawls up the stick from the butt as you pull, and at
+        // full power the whole cue burns and trembles.
+        let heat = 0;
+        let jitter = 0;
+        if (maxStyle === 'ignite') {
+          heat = full ? 1 : Math.max(0, Math.min(1, (charge - 0.4) / (TRAJECTORY.fullDraw - 0.4)));
+          if (full) jitter = Math.sin(now * 57) * 0.03 + Math.sin(now * 96) * 0.02;
+        }
+        // LOCK: at full power the stick kicks back a little further and
+        // settles, like a mechanism catching.
+        if (maxStyle === 'lock' && this.lockT != null) {
+          const u = Math.min(1, this.lockT / 0.32);
+          gap += 0.55 * Math.sin(Math.PI * Math.min(1, u * 1.6)) * (1 - u);
+        }
         this.stick.hide();
         this.stickTip.hide();
         if (!this.strike) {
           this.cue.set(player.x - ux * gap, player.z - uz * gap, ux, uz, {
             len: TRAJECTORY.stickLength,
             tipLit: full,
-            opacity: 1
+            opacity: 1,
+            heat,
+            jitter
           });
         }
-        this.cueState = { bx: player.x, bz: player.z, ux, uz, gap, full, r: player.radius };
+        this.cueState = { bx: player.x, bz: player.z, ux, uz, gap, full, heat, r: player.radius };
       } else {
         this.stick.hide();
         this.stickTip.hide();

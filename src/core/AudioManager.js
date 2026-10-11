@@ -354,6 +354,31 @@ export class AudioManager {
     this._noise({ duration: 0.16, gain: 0.26, filterType: 'bandpass', freq: 2400, freqEnd: 500, q: 0.8 });
   }
 
+  /** Full power, ignite: a rising roar under the riser, like a burner catching. */
+  ignite() {
+    this._noise({ duration: 0.45, gain: 0.16, filterType: 'lowpass', freq: 300, freqEnd: 2400, q: 0.9 });
+    this._tone({ type: 'sawtooth', freq: 90, freqEnd: 180, duration: 0.4, gain: 0.07 });
+  }
+
+  /** Full power, lock: two hard clicks and a low catch. */
+  lockOn() {
+    this._tone({ type: 'square', freq: 2400, duration: 0.025, gain: 0.07 });
+    this._tone({ type: 'square', freq: 1800, duration: 0.03, gain: 0.07, delay: 0.06 });
+    this._tone({ type: 'sine', freq: 110, freqEnd: 70, duration: 0.18, gain: 0.22, delay: 0.06 });
+  }
+
+  /** The strike, impact: a crack with a sub under it, louder the harder. */
+  strikeImpact(power = 1) {
+    this._noise({ duration: 0.09, gain: 0.18 + 0.14 * power, filterType: 'highpass', freq: 1800, q: 0.7 });
+    this._tone({ type: 'sine', freq: 140, freqEnd: 45, duration: 0.3, gain: 0.16 + 0.12 * power });
+  }
+
+  /** The strike, pierce: a bright zip that falls away down the line. */
+  strikePierce(power = 1) {
+    this._tone({ type: 'sawtooth', freq: 1600, freqEnd: 300, duration: 0.18, gain: 0.05 + 0.05 * power });
+    this._noise({ duration: 0.16, gain: 0.1, filterType: 'bandpass', freq: 4000, freqEnd: 900, q: 1.4 });
+  }
+
   /** Time stopping: a glassy chime falling a fifth, over a soft low hit. */
   freezeOn() {
     const root = AUDIO.rootHz * 4;

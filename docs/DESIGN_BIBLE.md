@@ -178,6 +178,15 @@ until one is picked; the pick is then recorded here and the other deleted.
 | Full power | The ring closes and flashes, a burst of light leaves the ball, a MAX POWER badge flies out away from the aim line, a two-note riser plays, the screen jolts and the phone buzzes (18 ms). One threshold: `TRAJECTORY.fullDraw`. | `noteAimPower`, `maxPowerBadge` |
 | Strike | The table holds (60 ms) while the stick snaps into the ball, accelerating, with a light smear over the ground it covers. It follows through past the ball, then eases back as it fades. The ball leaves when it is hit, not when the thumb lets go. | `AimRenderer.tick`, `onRelease` |
 
+**On trial (Settings → Stick, Full power, Strike; `TRAJECTORY.stickLook`,
+`maxStyle`, `strikeStyle`).** They mix freely.
+
+| | A (today) | B | C |
+| --- | --- | --- | --- |
+| Stick | **Rod**: dark steel, cyan edges, lit streak, butt bands | **Classic**: maple shaft, white ferrule, blue tip, cyan joint, ebony butt with inlays | **Hardlight**: faint fill, segmented light-cycle edges, white core, faint shadow |
+| Full power | **Flash**: ring flash, burst, MAX POWER badge | **Ignite**: heat crawls up from the butt; at full the cue burns, trembles and sparks | **Lock**: the stick kicks and catches; a reticle of four chevrons closes on the ball |
+| Strike | **Snap**: follow through, ease back, fade | **Impact**: the table freezes on contact (longer the harder), flash, shockwave, the stick bounces off | **Pierce**: the stick carries on through as a thinning bolt; a bolt runs down the shot line |
+
 ### 8.2 Scratch (the cue ball goes down)
 
 It must say: your ball went in, this shot pays nothing, here is your ball back.

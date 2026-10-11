@@ -846,6 +846,34 @@ const moments = new Moments({ layer: uiLayer, canvas, camera, audio, engine, hud
 /** Moments play in the real game, not in lessons or headless checks. */
 const momentsOn = () => !game.headless && !tutorial.running;
 
+/**
+ * THE STICK MEETS THE BALL. What happens there is the strike style; the
+ * snap has nothing more to say than its own follow-through.
+ */
+player.aimRenderer.onContact = ({ x, z, ux, uz, power, full, style }) => {
+  if (style === 'impact') {
+    fx.shockwave(x, z, PALETTE.playerCore, 1.6 + 1.6 * power, 0.2);
+    fx.shockwave(x, z, PALETTE.player, 3 + 3 * power, 0.42);
+    fx.burst(x - ux * 0.6, z - uz * 0.6, 10 + Math.round(16 * power), PALETTE.playerCore, 10 + 8 * power, 0.5);
+    engine.shake(3 + 8 * power);
+    audio.strikeImpact?.(power);
+    try {
+      navigator.vibrate?.(full ? 24 : 12);
+    } catch {
+      /* no-op */
+    }
+  } else if (style === 'pierce') {
+    const reach = 4 + 6 * power;
+    fx.zap(x, z, x + ux * reach, z + uz * reach, PALETTE.playerCore, 0.28);
+    fx.zap(x, z, x + ux * reach * 0.6, z + uz * reach * 0.6, PALETTE.player, 0.36);
+    fx.burst(x, z, 16 + Math.round(12 * power), PALETTE.player, 12, 0.6);
+    engine.shake(2 + 4 * power);
+    audio.strikePierce?.(power);
+  }
+};
+/** A spark off a burning stick (the ignite max-power style). */
+player.aimRenderer.onSpark = (x, z) => fx.burst(x, z, 2, Math.random() < 0.5 ? PALETTE.scoreMult : PALETTE.scoreMultHot, 4, 0.45);
+
 /** The shared context every system reads from. */
 const game = {
   scene,
@@ -992,16 +1020,35 @@ function noteAimPower(aim) {
   const maxed = (aim?.charge ?? 0) >= TRAJECTORY.fullDraw;
   if (maxed && !wasMaxed) {
     const p = player;
-    // A ring of light bursting out of the power ring, and sparks with it.
-    fx.shockwave(p.x, p.z, PALETTE.playerCore, 3.8, 0.38);
-    fx.shockwave(p.x, p.z, PALETTE.aim, 2.6, 0.28);
-    fx.burst(p.x, p.z, 18, PALETTE.playerCore, 12, 0.6);
-    maxPowerBadge(aim);
-    engine.shake(5);
-    audio.maxPower?.();
+    const style = TRAJECTORY.maxStyle || 'flash';
+    player.aimRenderer.maxed();
+    if (style === 'ignite') {
+      // The stick does the talking: it is already burning. The ball flares
+      // in heat and the cue roars.
+      fx.shockwave(p.x, p.z, PALETTE.scoreMult, 3.2, 0.34);
+      fx.burst(p.x, p.z, 22, PALETTE.scoreMultHot, 10, 0.7);
+      engine.shake(4);
+      audio.ignite?.();
+      audio.maxPower?.();
+    } else if (style === 'lock') {
+      // A reticle closes on the ball and the stick catches.
+      lockReticle();
+      fx.shockwave(p.x, p.z, PALETTE.playerCore, 2.2, 0.2);
+      engine.zoomPunch();
+      engine.shake(3);
+      audio.lockOn?.();
+    } else {
+      // A ring of light bursting out of the power ring, and sparks with it.
+      fx.shockwave(p.x, p.z, PALETTE.playerCore, 3.8, 0.38);
+      fx.shockwave(p.x, p.z, PALETTE.aim, 2.6, 0.28);
+      fx.burst(p.x, p.z, 18, PALETTE.playerCore, 12, 0.6);
+      maxPowerBadge(aim);
+      engine.shake(5);
+      audio.maxPower?.();
+    }
     // A short buzz on phones that allow it. Never required, never an error.
     try {
-      navigator.vibrate?.(18);
+      navigator.vibrate?.(style === 'lock' ? [10, 40, 14] : 18);
     } catch {
       /* no-op */
     }
@@ -1016,6 +1063,42 @@ function noteAimPower(aim) {
  * away from the aim line, so it celebrates the moment without ever sitting on
  * the shot being lined up. Real time, DOM, gone in under a second.
  */
+function lockReticle() {
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  const v = new THREE.Vector3(player.x, 0.7, player.z).project(camera);
+  const x = (v.x * 0.5 + 0.5) * w;
+  const y = (-v.y * 0.5 + 0.5) * h;
+  const node = document.createElement('div');
+  node.className = 'lock-reticle';
+  node.style.left = `${x}px`;
+  node.style.top = `${y}px`;
+  for (const k of ['n', 'e', 's', 'w']) {
+    const c = document.createElement('i');
+    c.className = k;
+    node.appendChild(c);
+  }
+  const tag = document.createElement('b');
+  tag.textContent = 'MAX';
+  node.appendChild(tag);
+  uiLayer.appendChild(node);
+  if (reducedMotion || !node.animate) {
+    setTimeout(() => node.remove(), 700);
+    return;
+  }
+  const a = node.animate(
+    [
+      { transform: 'translate(-50%, -50%) scale(2.4) rotate(45deg)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(0.92) rotate(0deg)', opacity: 1, offset: 0.24 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.34 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.78 },
+      { transform: 'translate(-50%, -50%) scale(1.15) rotate(0deg)', opacity: 0 }
+    ],
+    { duration: 900, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+  );
+  a.onfinish = () => node.remove();
+}
+
 function maxPowerBadge(aim) {
   const w = stage.clientWidth;
   const h = stage.clientHeight;
@@ -3373,7 +3456,12 @@ const input = new InputManager(stage, {
     // THE STICK GETS THERE FIRST. The table holds still for the few frames the
     // cue takes to snap into the ball, so the ball leaves when it is hit, not
     // when the thumb lets go.
-    if (TRAJECTORY.aimStyle === 'cue' && !game.headless) engine.hitStop(TRAJECTORY.stickStrike);
+    if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
+      // An impact strike also holds the frame of contact, longer the harder.
+      const power = aim.power ?? 1;
+      const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : 0;
+      engine.hitStop(TRAJECTORY.stickStrike + hold);
+    }
     // A release either opens a stroke or resumes the one a freeze interrupted.
     // Resuming keeps the ladder, the budget and every other ball's velocity.
     if (game.midStroke) resumeStroke();
@@ -3771,6 +3859,45 @@ $('set-aim').addEventListener('click', () => {
   applyAimStyle();
 });
 applyAimStyle();
+
+/* THE CUE OPTIONS, on trial: the stick's look, full power, the strike. */
+const CUE_NAMES = { stickLook: 'Stick', maxStyle: 'Full power', strikeStyle: 'Strike' };
+try {
+  const saved = JSON.parse(localStorage.getItem('lightline-cue-v1') || '{}');
+  for (const kind of Object.keys(CUE_NAMES)) {
+    if (TRAJECTORY.cueOptions[kind].includes(saved[kind])) TRAJECTORY[kind] = saved[kind];
+  }
+} catch {
+  /* private mode, or nothing saved yet */
+}
+function applyCueOptions() {
+  const keep = {};
+  for (const kind of Object.keys(CUE_NAMES)) {
+    const v = TRAJECTORY[kind];
+    keep[kind] = v;
+    $(`set-cue-${kind}`).textContent = `${CUE_NAMES[kind]}: ${v[0].toUpperCase()}${v.slice(1)}`;
+  }
+  try {
+    localStorage.setItem('lightline-cue-v1', JSON.stringify(keep));
+  } catch {
+    /* private mode */
+  }
+}
+for (const kind of Object.keys(CUE_NAMES)) {
+  $(`set-cue-${kind}`).addEventListener('click', () => {
+    const list = TRAJECTORY.cueOptions[kind];
+    TRAJECTORY[kind] = list[(list.indexOf(TRAJECTORY[kind]) + 1) % list.length];
+    applyCueOptions();
+  });
+}
+applyCueOptions();
+if (typeof window !== 'undefined') {
+  window.__cue = (kind, value) => {
+    if (TRAJECTORY.cueOptions[kind]?.includes(value)) TRAJECTORY[kind] = value;
+    applyCueOptions();
+    return TRAJECTORY[kind];
+  };
+}
 
 /* THE MOMENT TREATMENTS, picked here while two of each are on trial. */
 const MOMENT_NAMES = {
