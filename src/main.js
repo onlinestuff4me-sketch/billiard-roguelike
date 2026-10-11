@@ -372,6 +372,24 @@ function buildGrid() {
   return lines;
 }
 
+/**
+ * THE GRID GOES ON PAST THE TABLE, fainter: the margins the bands open up are
+ * the same floor of light, not a letterbox.
+ */
+function buildVoidGrid() {
+  const pos = [];
+  const step = GRID.minor * GRID.majorEvery;
+  const R = 40;
+  for (let x = -R; x <= R; x += step) pos.push(x, -0.1, -R, x, -0.1, R);
+  for (let z = -R; z <= R; z += step) pos.push(-R, -0.1, z, R, -0.1, z);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: PALETTE.feltLine, transparent: true, opacity: 0.45 }));
+  lines.frustumCulled = false;
+  lines.renderOrder = -1;
+  return lines;
+}
+
 /** Send a ripple through the grid from (x, z). Strength 0..1. */
 function gridPulse(x, z, strength = 1) {
   const slot = gridUniforms.uImp.value[gridNext];
@@ -417,6 +435,7 @@ function buildTable(target) {
   table.add(vignette);
 
   table.add(buildGrid());
+  table.add(buildVoidGrid());
   const slots = pocketSlots();
   const frameT = ARENA.railThickness * 2.1;
   const cushT = ARENA.railThickness;
@@ -3773,8 +3792,13 @@ function applyReserve() {
   if (!h || !w) return;
   // A cap, so a band that somehow measured huge cannot squeeze the felt into
   // a letterbox. Past this the band overlaps again, which is the lesser fault.
-  const reserve = Math.min(bandReserve, h * 0.42);
-  const perPixel = viewHeight / Math.max(1, h - reserve);
+  // THE PLAY BANDS: the HUD's top bar and bottom row get screen of their own,
+  // so nothing the player reads sits on the felt. A lesson's band reserve
+  // replaces the top band when it is taller.
+  const top = Math.max(Math.min(bandReserve, h * 0.42), playBands.top);
+  const bottom = playBands.bottom;
+  const reserve = top - bottom;
+  const perPixel = viewHeight / Math.max(1, h - top - bottom);
   camera.top = (perPixel * h) / 2;
   camera.bottom = -camera.top;
   camera.right = (perPixel * w) / 2;
@@ -3796,8 +3820,30 @@ function applyReserve() {
   layoutBand();
 }
 
+/**
+ * Measure the bands from the HUD itself, so they fit whatever the type and
+ * the phone make of them: the top bar's bottom edge, and the top of the
+ * bottom row (shots and Freeze frame; the score boxes are sized to that row).
+ */
+const playBands = { top: 0, bottom: 0 };
+function measurePlayBands() {
+  const L = uiLayer.getBoundingClientRect();
+  if (!L.height) return;
+  const topBar = hud.root.querySelector('.hud-top');
+  const rows = ['.hud-strokes', '.hud-freeze'].map((q) => hud.root.querySelector(q)).filter(Boolean);
+  const t = topBar ? topBar.getBoundingClientRect() : null;
+  playBands.top = t && t.height ? Math.round(t.bottom - L.top) - 6 : 0;
+  let rowTop = L.bottom;
+  for (const r of rows) {
+    const b = r.getBoundingClientRect();
+    if (b.height) rowTop = Math.min(rowTop, b.top);
+  }
+  playBands.bottom = Math.max(0, Math.round(L.bottom - rowTop) + 6);
+}
+
 function resize() {
   const { width, height } = layoutStage();
+  measurePlayBands();
   const pr = Math.min(window.devicePixelRatio || 1, RENDER.maxPixelRatio);
   renderer.setPixelRatio(pr);
   renderer.setSize(width, height, false);
@@ -3813,6 +3859,8 @@ buildComposer(initial.width, initial.height);
 resize();
 
 window.addEventListener('resize', resize);
+// The faces change the bands' heights once they load.
+document.fonts?.ready?.then(() => resize());
 window.addEventListener('orientationchange', () => setTimeout(resize, 120));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 

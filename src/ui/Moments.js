@@ -146,63 +146,62 @@ export class Moments {
   }
 
   /**
-   * Fly a number into the RUN box. The box counts from what it showed to the
-   * new run total as it lands, then `land` hands it back to the HUD.
+   * BANK INTO RUN. One continuous motion, then one landing:
+   *   1. the total lifts (a beat of anticipation),
+   *   2. flies on an arc, shrinking to exactly the RUN figure's size, eased in
+   *      AND out so it neither creeps nor snaps,
+   *   3. lands: the RUN figure punches once and counts up to the new total.
+   * The number exists in one place at a time: the total hides as it leaves,
+   * the flyer is gone the frame it lands, and nothing repeats it afterwards.
    */
   async flyToRun(fromNode, value, land, runFrom = null, runTo = null) {
     const L = this.layer.getBoundingClientRect();
     const r = fromNode.getBoundingClientRect();
+    const to = this.runBox();
+    const startSize = parseFloat(getComputedStyle(fromNode).fontSize) || 48;
+    const endSize = parseFloat(getComputedStyle(to.node).fontSize) || 24;
     const fly = el('div', 'mo-fly', this.root);
     fly.textContent = fmt(value);
+    fly.style.fontSize = `${startSize}px`;
     const x0 = r.left - L.left + r.width / 2;
     const y0 = r.top - L.top + r.height / 2;
-    const to = this.runBox();
     fly.style.left = `${x0}px`;
     fly.style.top = `${y0}px`;
-    fly.style.fontSize = getComputedStyle(fromNode).fontSize;
     fromNode.style.visibility = 'hidden';
+    const dx = to.x - x0;
+    const dy = to.y - y0;
+    const k = endSize / startSize;
+    const at = (x, y, sc) => `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${sc})`;
+    await this.anim(fly, [{ transform: at(0, 0, 1) }, { transform: at(0, -6, 1.12) }], { duration: 150, easing: OUT });
     this.audio.slingshot?.(0.4);
     await this.anim(
       fly,
       [
-        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${(to.x - x0) * 0.3}px), calc(-50% + ${(to.y - y0) * 0.1 - 30}px)) scale(1.1)`, opacity: 1, offset: 0.3 },
-        { transform: `translate(calc(-50% + ${to.x - x0}px), calc(-50% + ${to.y - y0}px)) scale(0.32)`, opacity: 0.9 }
+        { transform: at(0, -6, 1.12), offset: 0 },
+        { transform: at(dx * 0.4, dy * 0.55 - 34, (1.12 + k) / 2), offset: 0.5 },
+        { transform: at(dx, dy, k), offset: 1 }
       ],
-      { duration: 460, easing: IN }
+      { duration: 560, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' }
     );
     fly.remove();
     this.audio.scoreLock?.();
-    this.engine.shake?.(5);
-    // what just landed, pinned under the run total for a moment
-    const plate = el('div', 'sf-plate pts mo-landed', this.root);
-    el('b', '', plate).textContent = `+${fmt(value)}`;
-    el('small', '', plate).textContent = 'Banked';
-    plate.style.left = `${Math.min(to.x, this.W - 60)}px`;
-    plate.style.top = `${to.y + 42}px`;
-    this.anim(plate, [
-      { transform: 'translate(-50%, -50%) scale(0.2)', opacity: 0 },
-      { transform: 'translate(-50%, -50%) scale(1.25)', opacity: 1, offset: 0.25 },
-      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.4 },
-      { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.85 },
-      { transform: 'translate(-50%, -80%) scale(0.95)', opacity: 0 }
-    ], { duration: 1400, easing: OUT }).then(() => plate.remove());
-    if (runFrom != null && runTo != null && runTo !== runFrom) {
-      this.count(to.node, runFrom, runTo, 420).then(() => land?.());
-    } else {
-      land?.();
-    }
+    this.engine.shake?.(3);
     to.node.animate(
       [
-        { transform: 'scale(1.9)', textShadow: '0 0 18px #22e8ff, 0 0 40px #22e8ff' },
+        { transform: 'scale(1.4)', textShadow: '0 0 16px #22e8ff, 0 0 36px #22e8ff' },
         { transform: 'scale(1)', textShadow: '0 0 0 transparent' }
       ],
-      { duration: 520, easing: OUT }
+      { duration: 460, easing: BACK }
     );
     const ring = el('div', 'mo-ring', this.root);
     ring.style.left = `${to.x}px`;
     ring.style.top = `${to.y}px`;
-    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2.4)', opacity: 0 }], { duration: 480, easing: OUT }).then(() => ring.remove());
+    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.4)', opacity: 0.9 }, { transform: 'translate(-50%,-50%) scale(2.2)', opacity: 0 }], { duration: 440, easing: OUT }).then(() => ring.remove());
+    if (runFrom != null && runTo != null && runTo !== runFrom) {
+      let n = 0;
+      await this.count(to.node, runFrom, runTo, 520, { tick: () => this.audio.scoreNote?.(6 + n++, 'points') });
+    }
+    land?.();
   }
 
   /* -------------------------------------------------------------- *

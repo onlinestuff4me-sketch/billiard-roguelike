@@ -107,6 +107,23 @@ box-value 26 · popup 26 · tick 13 · mission 18 · body 16 · label 11.
 
 ---
 
+## 5b. The screen: table and bands
+
+The table is inset, not edge to edge, so nothing the player reads sits on the
+felt while they play (picked in review, after Ultrapool, though less inset).
+
+- **Top band:** the HUD's top bar (hull, mission, run).
+- **Bottom band:** one row, with shots on the left, the score boxes in the
+  middle and Freeze frame on the right. The score boxes show only while a
+  stroke plays.
+- **The margins** are the same Grid, fainter, so the inset reads as one floor
+  of light rather than a letterbox. The cue stick runs off the table into them.
+
+The camera does the fitting: `measurePlayBands()` reads both bands from the
+HUD itself and the table shrinks into what is left (`applyReserve`), so the
+bands fit any phone and any font. A lesson's coach band replaces the top band
+when it is taller.
+
 ## 6. Motion
 
 **Durations:** instant 80 · fast 150 · base 250 · slow 400 · boot 700 ·
@@ -248,8 +265,9 @@ A large chamfered panel drops in with TABLE CLEAR (the panel and the title
 arrive together, once). Each shot's line slides in and counts up (P × M = pay)
 with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
 A rule draws across, the TABLE total counts up in large type and slams, then
-flies into RUN in the top corner, which counts up and pulses while a "+N
-Banked" plate pops under it. Then NEXT TABLE, with the exits rising in as
+lifts for a beat, flies on one arc into RUN in the top corner, shrinking to
+exactly RUN's size, and RUN punches once and counts up to the new total. The
+number is only ever in one place: no second plate repeats it. Then NEXT TABLE, with the exits rising in as
 buttons with a passing sheen.
 
 Out of shots uses the same treatment, with the title in `hazard` and a

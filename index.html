@@ -271,6 +271,8 @@
         min-width: 0;
       }
       .score-value {
+        display: inline-block;
+        transform-origin: 100% 50%;
         font-size: clamp(17px, 5vmin, 28px);
         font-weight: 700;
         line-height: 1;
@@ -420,11 +422,12 @@
       /* THE BUDGET, AS COUNTABLE MARKS.
          A number you have to read is a number that does not get read mid-shot.
          Lit cues are strokes you still have; dark ones are strokes you spent. */
+      /* THE BOTTOM ROW: shots on the left, the score boxes in the middle,
+         Freeze frame on the right. The camera keeps the table above it. */
       .hud-strokes {
         position: absolute;
         bottom: calc(var(--hud-pad) + 2px);
-        left: 50%;
-        transform: translateX(-50%);
+        left: var(--hud-pad);
         padding: 6px 14px;
         border-radius: 10px;
         background: rgba(5, 7, 10, 0.6);
@@ -1003,7 +1006,7 @@
         --ll-pts: #e9f8ff; --ll-mult: #ff8a1e; --ll-hot: #ffc266; --ll-void: #ff2e7e; --ll-you: #22e8ff;
         position: absolute;
         left: 50%;
-        bottom: calc(var(--hud-pad) + 82px);
+        bottom: calc(var(--hud-pad) + 2px);
         transform: translateX(-50%);
         display: grid;
         justify-items: center;
@@ -1015,8 +1018,8 @@
       .score-feed { transition: opacity 0.18s ease; }
       .score-feed.tucked { opacity: 0; }
       .sf-state {
-        min-height: 13px;
-        font-size: 10px;
+        min-height: 11px;
+        font-size: 9px;
         font-weight: 700;
         letter-spacing: 0.26em;
         text-transform: uppercase;
@@ -1027,27 +1030,27 @@
       .sf-state.hazard { color: var(--ll-void); }
       .sf-boxes { position: relative; display: flex; align-items: center; gap: 8px; transition: gap 0.18s cubic-bezier(0.7, 0, 0.84, 0); }
       .sf-box {
-        min-width: 78px;
-        padding: 5px 12px 6px;
+        min-width: 60px;
+        padding: 4px 9px 5px;
         text-align: center;
         font-family: var(--font);
         font-weight: 700;
-        font-size: 26px;
+        font-size: 21px;
         line-height: 1;
         font-variant-numeric: tabular-nums;
         color: #02050b;
         transition: opacity 0.2s ease;
         clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
       }
-      .sf-box small { display: block; font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; margin-bottom: 1px; }
+      .sf-box small { display: block; font-size: 8px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; margin-bottom: 1px; }
       .sf-box.pts { background: var(--ll-pts); }
       .sf-box.mult { background: var(--ll-mult); }
-      .sf-times { font-weight: 700; font-size: 22px; color: var(--muted); }
+      .sf-times { font-weight: 700; font-size: 17px; color: var(--muted); }
       .score-feed.pending .sf-box { opacity: 0.5; }
       .score-feed.void .sf-box { background: var(--ll-void); opacity: 1; }
       .score-feed.slam .sf-boxes { gap: 0; }
       .score-feed.slam .sf-times { color: var(--ll-hot); text-shadow: 0 0 14px var(--ll-mult); }
-      .sf-product { display: none; font-weight: 700; font-size: 34px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult); font-variant-numeric: tabular-nums; }
+      .sf-product { display: none; font-weight: 700; font-size: 30px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult); font-variant-numeric: tabular-nums; }
       .score-feed.paid .sf-box, .score-feed.paid .sf-times { display: none; }
       .score-feed.paid .sf-product { display: block; }
       .score-feed.locking .sf-boxes::after {
@@ -1114,7 +1117,6 @@
       .mo-alarm, .mo-tear, .mo-flash, .mo-boot, .mo-shards, .mo-form { position: absolute; inset: 0; }
       .mo-fly { position: absolute; inset: auto; z-index: 30; font-weight: 700; color: var(--ll-pts); text-shadow: 0 0 18px var(--ll-you); white-space: nowrap; font-variant-numeric: tabular-nums; will-change: transform; }
       .mo-ring { position: absolute; inset: auto; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--ll-you); box-shadow: 0 0 18px var(--ll-you), inset 0 0 12px var(--ll-you); pointer-events: none; }
-      .mo-landed { inset: auto; z-index: 31; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
       .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
       .mo-credits { display: flex; align-items: baseline; justify-content: space-between; padding: 2px 8px 0; color: #a98bff; }
@@ -2060,7 +2062,7 @@
       }
       .score-value, .sf-box, .sf-product, .sf-plate b, .mo-row .v, .mo-total .v,
       .mo-credits .v, .mo-digits b, .mo-fly, .stroke-text, .hp-text, .card-v,
-      .mo-landed b, .mo-charge b {
+      .mo-charge b {
         font-family: var(--font-num);
         font-variant-numeric: tabular-nums;
       }
