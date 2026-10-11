@@ -55,6 +55,7 @@ import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
+import { UPGRADES, rollShelf, priceAt, applyUpgrade } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -1169,7 +1170,7 @@ function noteAimPower(aim) {
       fx.shockwave(p.x, p.z, PALETTE.playerCore, 3.8, 0.38);
       fx.shockwave(p.x, p.z, PALETTE.aim, 2.6, 0.28);
       fx.burst(p.x, p.z, 18, PALETTE.playerCore, 12, 0.6);
-      maxPowerBadge(aim);
+      maxPowerBadge();
       engine.shake(5);
       audio.maxPower?.();
     }
@@ -1226,42 +1227,36 @@ function lockReticle() {
   a.onfinish = () => node.remove();
 }
 
-function maxPowerBadge(aim) {
-  const w = stage.clientWidth;
-  const h = stage.clientHeight;
-  const v = new THREE.Vector3(player.x, 0.7, player.z).project(camera);
-  const x0 = (v.x * 0.5 + 0.5) * w;
-  const y0 = (-v.y * 0.5 + 0.5) * h;
-  // Perpendicular to the shot on screen (world z is screen y), on whichever
-  // side faces the middle of the table, with a lift so it rises as it goes.
-  let px = -(aim?.dirZ ?? 0);
-  let py = aim?.dirX ?? 1;
-  if ((w / 2 - x0) * px + (h / 2 - y0) * py < 0) {
-    px = -px;
-    py = -py;
-  }
-  const x1 = clamp(x0 + px * 82, 70, w - 70);
-  const y1 = clamp(y0 + py * 82 - 34, 90, h - 120);
+/**
+ * MAX POWER, in the bottom band: the empty middle of the bottom row, between
+ * the shots and the Freeze frame meter. It used to burst off the ball onto the
+ * felt, where it sat on top of the very preview it was announcing.
+ */
+function maxPowerBadge() {
+  const L = uiLayer.getBoundingClientRect();
+  const row = hud.root.querySelector('.hud-strokes')?.getBoundingClientRect();
+  const x = L.width / 2;
+  const y = row && row.height ? row.top - L.top + row.height / 2 : L.height - 40;
   const node = document.createElement('div');
   node.className = 'max-badge';
   node.innerHTML = '<b>MAX</b><small>POWER</small>';
   uiLayer.appendChild(node);
-  const at = (x, y, extra = '') => `translate(${x}px, ${y}px) translate(-50%, -50%)${extra}`;
-  node.style.transform = at(x1, y1);
+  const at = (extra = '') => `translate(${x}px, ${y}px) translate(-50%, -50%)${extra}`;
+  node.style.transform = at();
   if (reducedMotion || !node.animate) {
     setTimeout(() => node.remove(), 800);
     return;
   }
   const anim = node.animate(
     [
-      { transform: at(x0, y0, ' scale(0.2) rotate(-14deg)'), opacity: 0 },
-      { transform: at(x0 + (x1 - x0) * 0.45, y0 + (y1 - y0) * 0.45, ' scale(1.35) rotate(6deg)'), opacity: 1, offset: 0.22 },
-      { transform: at(x1, y1, ' scale(0.92) rotate(-3deg)'), opacity: 1, offset: 0.42 },
-      { transform: at(x1, y1, ' scale(1.04) rotate(1deg)'), opacity: 1, offset: 0.58 },
-      { transform: at(x1, y1 - 10, ' scale(1)'), opacity: 1, offset: 0.8 },
-      { transform: at(x1, y1 - 26, ' scale(0.9)'), opacity: 0 }
+      { transform: at(' translateY(14px) scale(0.3) rotate(-8deg)'), opacity: 0 },
+      { transform: at(' scale(1.3) rotate(4deg)'), opacity: 1, offset: 0.2 },
+      { transform: at(' scale(0.94) rotate(-2deg)'), opacity: 1, offset: 0.36 },
+      { transform: at(' scale(1)'), opacity: 1, offset: 0.5 },
+      { transform: at(' scale(1)'), opacity: 1, offset: 0.82 },
+      { transform: at(' translateY(-8px) scale(0.9)'), opacity: 0 }
     ],
-    { duration: 950, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+    { duration: 1000, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
   );
   anim.onfinish = () => node.remove();
 }
@@ -1948,7 +1943,6 @@ function completeRoom() {
     ledger: rules.ledger,
     roomScore: result.roomScore,
     runScore: result.runScore,
-    credits: result.credits,
     choices: exitChoices()
   }, shownRun);
 }
@@ -1966,22 +1960,79 @@ function showRoomResult(data, shownRun) {
   game.scoreHold = shownRun;
   moments.clear({
     ...data,
+    // The exits are replaced by the shop: the next table is a button in it.
+    choices: [],
     shownRun,
     onRunLanded: () => (game.scoreHold = null),
-    // CASH IN: credits buy a Freeze frame charge, offered beside the exits.
-    shop: {
-      credits: () => rules.credits,
+    shop: openShop()
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * THE SHOP — between every table, in the one currency.
+ *
+ * Points are the score and the money, so everything here comes out of the
+ * run total. The shelf is random (src/systems/Upgrades.js); a Freeze frame
+ * charge is always on it; a reroll costs a little more each time.
+ * ------------------------------------------------------------------ */
+const shopRun = { owned: new Set(), bought: [] };
+
+function openShop() {
+  const growth = RULES.shop.priceGrowth;
+  let rerolls = 0;
+  const shelf = () =>
+    rollShelf(shopRun.owned, RULES.shop.slots).map((u) => ({
+      id: u.id,
+      name: u.name,
+      text: u.text,
+      rarity: u.rarity,
+      price: priceAt(u, game.level, growth),
+      sold: false,
+      u
+    }));
+  const api = {
+    points: () => rules.runScore,
+    items: shelf(),
+    rerollPrice: () => RULES.shop.reroll + RULES.shop.rerollStep * rerolls,
+    reroll() {
+      if (!rules.spend(api.rerollPrice())) return false;
+      rerolls += 1;
+      api.items = shelf();
+      audio.doorOpen?.();
+      return true;
+    },
+    buy(item) {
+      if (item.sold || !rules.spend(item.price)) return false;
+      item.sold = true;
+      applyUpgrade(item.u, { rules, game, player, boons });
+      if (!item.u.stack) shopRun.owned.add(item.u.id);
+      shopRun.bought.push(item.name);
+      audio.boonPick?.();
+      return true;
+    },
+    charge: {
+      price: () => priceAt({ price: RULES.shop.chargePrice }, game.level, growth),
       charges: () => rules.freezeCharges,
       max: RULES.freeze.maxCharges,
-      price: RULES.credits.chargePrice,
-      canBuy: () => rules.canBuyCharge,
-      buy: () => {
-        const ok = rules.buyCharge();
-        if (ok) audio.boonPick?.();
-        return ok;
+      canBuy: () => rules.runScore >= api.charge.price() && rules.freezeCharges <= RULES.freeze.maxCharges - 1,
+      buy() {
+        if (!api.charge.canBuy() || !rules.spend(api.charge.price())) return false;
+        rules.grantFreeze(1);
+        shopRun.bought.push('Freeze frame');
+        audio.boonPick?.();
+        return true;
       }
+    },
+    owned: () => [...shopRun.owned].map((id) => UPGRADES.find((u) => u.id === id)?.name).filter(Boolean),
+    next() {
+      game.rewardNote = shopRun.bought.length ? `Bought · ${shopRun.bought.join(' · ')}` : '';
+      shopRun.bought = [];
+      moments.closeClear();
+      game.scoreHold = null;
+      advanceRoom();
     }
-  });
+  };
+  return api;
 }
 
 /**
@@ -2014,7 +2065,6 @@ function failRoom() {
     roomScore: result.roomScore,
     runScore: result.runScore,
     penalty: { standing, damage },
-    credits: result.credits,
     choices: exitChoices()
   }, shownRun);
 }
@@ -2284,6 +2334,10 @@ function resetRunState() {
   hud.hideScorecard();
   rules.runScore = 0;
   rules.freezeCharges = 0;
+  rules.perks = {};
+  rules.paidStreak = 0;
+  shopRun.owned.clear();
+  shopRun.bought = [];
 }
 
 function startRun() {

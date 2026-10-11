@@ -48,13 +48,17 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 
 The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` in `src/config.js`).
 
-- **Table clear / out of shots** (picked: Ledger): a scanline wipe, then a receipt where every shot's pay counts in and bonuses land; the total slams and flies into RUN in the top corner; then the next-table choices arrive.
+- **Table clear / out of shots** (picked: Ledger): a scanline wipe, then a receipt where every shot's pay counts in and bonuses land; the total is cloned as a plate that flies into RUN in the top corner (RUN holds banked points only, with a live TABLE line under it during play); then the shop opens.
 - **Scratch** (picked: Glitch): red alert, the screen tears, SCRATCH jitters in; a beam drops onto the spot, the ball rezzes in, and the cue takes form under it, pointing straight up.
 - **Freeze frame** (picked; the mechanic's name everywhere): mid-roll, time stops so the cue ball can be re-aimed; costs a charge, not a shot. A white flash, an ice wave, frost rings with direction arrows, and a shatter on release.
-- **Next table** (picked: Boot): strips close; the room number rolls over and holds, with the exit's reward under it; the rails trace in; the strips open.
+- **Next table** (picked: Boot): strips close; the room number rolls over and holds, with what you bought under it; the rails trace in; the strips open.
 - **Cue options** (on trial, Settings → Stick, Full power, Strike): stick *rod / classic / hardlight*; full power *flash / ignite / lock*; strike *snap / impact / pierce*.
 
-**Freeze frame charges** (built; decided in review: credits for cash-in, cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more, plus +2 from the Freeze frame exit. Credits (1 per 100 points banked, 1 per unspent shot) buy +1 charge for 15 on the table-clear screen. The score itself is never spent.
+**One currency** (decided in review). Points are the score and the money; there are no credits. Only banked points spend.
+
+**The shop** (built; replaces "pick your next table"). Between tables: four random upgrades from a pool of 21 (`src/systems/Upgrades.js`), weighted by rarity and never one you own unless it stacks; +1 Freeze frame charge always on sale; a reroll that gets dearer; prices grow with the table; then Next table. Upgrades change scoring or what a table gives (points per hit, Mult per wall, pocket, ball-number and timing bonuses, Freeze frame perks, +1 shot, +1 wall, hull), never physics or the preview.
+
+**Freeze frame charges** (built; cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more. A whole charge can be bought in the shop for points.
 
 ## Puzzle ramp (strategy agreed for review, not built)
 

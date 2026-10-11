@@ -18,6 +18,7 @@
  */
 import { Rules, missionFor, missionText } from '../src/systems/Rules.js';
 import { RULES } from '../src/config.js';
+import { UPGRADES, rollShelf, priceAt, applyUpgrade } from '../src/systems/Upgrades.js';
 
 const fails = [];
 const check = (ok, what, detail = '') => {
@@ -238,20 +239,64 @@ console.log('\nfreeze frame charges\n');
   check(cap.earnCharges(paid, 1).length === 0, 'and a full meter earns nothing more');
 }
 
-// Credits: points and unspent shots, spent on a charge without touching the score.
+// ONE CURRENCY: points are the score and the money. Only banked points spend.
 {
   const r = fresh();
   r.roomScore = 1250;
-  r.strokesLeft = 2;
+  r.strokesLeft = 0;
   const res = r.endRoom();
-  check(res.credits === Math.floor(res.roomScore / RULES.credits.perPoints) + 2 * RULES.credits.perSavedShot, 'a table pays a credit per 100 points banked (bonuses included) and per unspent shot', `${res.credits} for ${res.roomScore}`);
-  r.credits = RULES.credits.chargePrice;
-  const run = r.runScore;
-  check(r.buyCharge() && r.freezeCharges === 1 && r.credits === 0, 'credits buy one charge');
-  check(r.runScore === run, 'and the score is never spent');
-  r.credits = 99;
-  r.freezeCharges = 3;
-  check(!r.buyCharge(), 'no buying past three');
+  check(res.credits === undefined && r.credits === undefined, 'there is no second currency');
+  check(r.spend(1000) && r.runScore === 250, 'spending comes out of the run total', `${r.runScore}`);
+  check(!r.spend(251) && r.runScore === 250, 'and you cannot spend what you do not have');
+  check(!r.spend(0) && !r.spend(-5), 'nor spend nothing or less');
+  const live = fresh();
+  live.roomScore = 900;
+  check(!live.spend(500), 'a live table’s points are not spendable until banked');
+}
+
+// UPGRADES: each one changes what a shot pays, and only once bought.
+{
+  const pocket = (slot) => ({ at: { x: 0, z: 0, kind: 'pocket', ref: { slot } } });
+  const base = fresh();
+  base.bank();
+  base.hit(3);
+  base.pot(3, pocket('tl'));
+  const plain = base.strokeResult();
+
+  const r = fresh();
+  applyUpgrade(UPGRADES.find((u) => u.id === 'long-rail'), { rules: r });
+  applyUpgrade(UPGRADES.find((u) => u.id === 'soft-touch'), { rules: r });
+  applyUpgrade(UPGRADES.find((u) => u.id === 'corner-office'), { rules: r });
+  r.bank();
+  r.hit(3);
+  r.pot(3, pocket('tl'));
+  const out = r.strokeResult();
+  check(out.points === plain.points + 5, 'Soft Touch: a hit pays +5 more points', `${plain.points} → ${out.points}`);
+  check(out.mult === plain.mult + 1 + 3, 'Long Rail and Corner Office add their Mult', `${plain.mult} → ${out.mult}`);
+
+  const side = fresh();
+  applyUpgrade(UPGRADES.find((u) => u.id === 'corner-office'), { rules: side });
+  side.pot(3, pocket('ml'));
+  check(!side.events.some((e) => e.label === 'CORNER OFFICE'), 'Corner Office pays nothing in a side pocket');
+
+  const eight = fresh();
+  applyUpgrade(UPGRADES.find((u) => u.id === 'eight-ball'), { rules: eight });
+  eight.pot(8);
+  const e8 = fresh();
+  e8.pot(8);
+  check(eight.strokeResult().mult === e8.strokeResult().mult * 2, 'Eight Ball doubles the Mult of the shot that sinks the 8');
+
+  const ice = new Rules();
+  applyUpgrade(UPGRADES.find((u) => u.id === 'ice-box'), { rules: ice });
+  ice.beginRoom(1, null);
+  check(ice.freezeCharges === 0.5, 'Ice Box: every table starts with half a charge', `${ice.freezeCharges}`);
+
+  const shelf = rollShelf(new Set(), RULES.shop.slots, () => 0.5);
+  check(shelf.length === RULES.shop.slots && new Set(shelf.map((u) => u.id)).size === shelf.length, 'a shelf holds four different upgrades');
+  const owned = new Set(UPGRADES.filter((u) => !u.stack).map((u) => u.id));
+  check(rollShelf(owned, 4).every((u) => u.stack), 'and never one the run already owns, unless it stacks');
+  check(UPGRADES.length >= 20, 'the pool is large enough to be a roguelike', `${UPGRADES.length}`);
+  check(priceAt({ price: 200 }, 3, RULES.shop.priceGrowth) > 200, 'prices grow with the table');
 }
 
 console.log('');

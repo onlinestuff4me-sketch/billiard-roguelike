@@ -311,7 +311,7 @@ export const TRAJECTORY = {
    *                the stick carries on through as a bolt of light
    */
   stickLook: 'rod',
-  maxStyle: 'flash',
+  maxStyle: 'lock', // picked in review
   strikeStyle: 'snap',
   cueOptions: {
     stickLook: ['rod', 'classic', 'hardlight'],
@@ -611,16 +611,20 @@ export const RULES = {
   },
 
   /**
-   * CREDITS: the money a table pays besides its score, so a charge can be
-   * bought without spending the score that measures the run.
+   * THE SHOP, between tables. ONE CURRENCY: points are the score and the
+   * money, so what is spent comes out of the run total (Rules.spend). Prices
+   * grow with the table number so a late shop costs a late-game amount.
    */
-  credits: {
-    /** One credit per this many points banked on a table. */
-    perPoints: 100,
-    /** And this many for every shot left unspent. */
-    perSavedShot: 1,
-    /** One Freeze frame charge, bought at the end of a table. */
-    chargePrice: 15
+  shop: {
+    /** Random upgrades on offer each visit. */
+    slots: 4,
+    /** A Freeze frame charge, always on the shelf. */
+    chargePrice: 300,
+    /** Reroll the shelf; the price climbs each time within one visit. */
+    reroll: 60,
+    rerollStep: 40,
+    /** Each table past the first raises every price by this fraction. */
+    priceGrowth: 0.15
   },
 
   /** Hull damage. Nothing hurts you between strokes — only during resolution. */

@@ -82,6 +82,8 @@ export class HUD {
     const scoreBlock = el('div', 'hud-score', top);
     el('div', 'hud-label', scoreBlock).textContent = 'Run';
     this.scoreValue = el('div', 'score-value', scoreBlock);
+    // This table's points, live. They are not in RUN until the table clears.
+    this.tableValue = el('div', 'score-table', scoreBlock);
 
     /* ---------------- build strip ---------------- */
     this.buildStrip = el('div', 'hud-build', this.root);
@@ -448,6 +450,16 @@ export class HUD {
     if (s.displayScore !== cache.score) {
       cache.score = s.displayScore;
       this.scoreValue.textContent = (s.displayScore || 0).toLocaleString();
+    }
+    const table = s.tableScore || 0;
+    if (table !== cache.table) {
+      const grew = table > (cache.table || 0);
+      cache.table = table;
+      this.tableValue.innerHTML = table > 0 ? `<small>Table</small> +${table.toLocaleString()}` : '';
+      this.tableValue.classList.toggle('on', table > 0);
+      if (grew && this.tableValue.animate) {
+        this.tableValue.animate([{ transform: 'scale(1.25)', color: '#ffffff' }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
+      }
     }
 
     // --- the stroke budget ---

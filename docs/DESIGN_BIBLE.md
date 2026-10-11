@@ -58,12 +58,11 @@ If an action or a reward does not get a reaction the player can see, hear and
 | --- | --- | --- | --- | --- |
 | You | `you` | `#22e8ff` | Cue ball, aim line, cue stick edge, trail, shot pips, primary button, lock ring | Anything you collect or that scores |
 | You, ghost | `you-deep` | `#0b8fa6` | Reflected aim legs, resting trail, empty pip | |
-| Points | `pts` | `#e9f8ff` | POINTS box, + fields, hit and pot plates, table total | Large fills other than the box |
+| Points | `pts` | `#e9f8ff` | POINTS box, + fields, hit and pot plates, table total, shop prices (points are the money) | Large fills other than the box |
 | Multiplier | `mult` | `#ff8a1e` | MULT box, × fields, rail lights, heated trail | Hazards; resting UI |
 | Heat tip | `mult-hot` | `#ffc266` | Slam flash, bonus rows, ×N plates | A resting state |
 | Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, take-back, out of shots | Anything without a chevron or a strike |
 | Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates | Anything else (it is a state, not a reward) |
-| Money | `credit` | `#a98bff` | $ in the shop and the table-end ledger | The table |
 | Floor | `floor` / `void` | `#040b16` / `#02050b` | Table bed / beyond the table, cover panels | Text |
 | Architecture | `grid`, `structure`, `structure-lit` | `#0f2b3f`, `#1e4f6b`, `#3a87a8` | Grid, rails, lips, dividers | Text |
 | Text | `ink`, `muted-ink`, `on-plate` | `#e9f8ff`, `#7fa3b8`, `#02050b` | Words; `on-plate` is ink printed on a solid plate | |
@@ -243,18 +242,17 @@ earned only by shots that pay (`RULES.freeze`):
 | A combination: a ball you hit knocks another one in | +½ |
 | Each extra ball down in the same shot | +½ |
 | A shot paying ×5 mult or more | +½ |
-| The Freeze frame exit after a table | +2 |
-| Bought on the table-clear screen for 15 credits | +1 |
+| Bought in the shop between tables, for points (`RULES.shop.chargePrice`) | +1 |
+| The Ice Box upgrade, at the start of every table | +½ |
 
 Each earned charge lands as an ice plate above the score boxes ("+½ Freeze
 frame · Combination") that flies into the meter, which pulses. In the meter
 a half charge fills half a diamond, and only a whole charge freezes.
 
-**Credits** are money, in `credit` violet: 1 per 100 points a table banks
-(bonuses included) plus 1 per unspent shot (`RULES.credits`). They never sit
-in the points ledger: they count in beside the cash-in button under the exits,
-with what this table paid and a line saying where credits come from.
-The score is never spent.
+**One currency.** Points are the score and the money. There is no second
+currency: everything in the shop is bought out of the RUN total, so every
+purchase is a bet that it earns back more than it costs. Only banked points
+spend; a live table's points are not money until the table clears.
 
 ### 8.4 Table clear (and out of shots)
 
@@ -265,17 +263,45 @@ total, it is now in your run, and here is what comes next.
 A large chamfered panel drops in with TABLE CLEAR (the panel and the title
 arrive together, once). Each shot's line slides in and counts up (P × M = pay)
 with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
-A rule draws across, the TABLE total counts up in large type and slams, then
-lifts for a beat, flies on one arc into RUN in the top corner, shrinking to
-exactly RUN's size, and RUN punches once and counts up to the new total. The
-number is only ever in one place: the TABLE row then reads "Added to RUN", and
-no second plate repeats it. Then NEXT TABLE, with the exits rising in as
-buttons with a passing sheen.
+A rule draws across, the TABLE total counts up in large type and slams. Then
+the total is **cloned as a plate**, in the same visual language as the score
+feed during play: a white chamfered "+1,005 · TABLE" plate pops over the
+total, a streak draws from it to RUN in the top corner, and the plate flies
+along it, accelerating and shrinking, while the ledger's own total stays where
+it was and dims to "In RUN". RUN punches once with a ring and counts up by
+exactly what the plate said. The sum is honest because RUN only ever holds
+**banked** points: during play the corner shows RUN with a live "TABLE +855"
+line under it, and the table's points join RUN only when the plate lands.
+
+Then the ledger hands over to the shop (§8.4b).
 
 Out of shots uses the same treatment, with the title in `hazard` and a
 "Balls left" row that costs hull. A tap during the count speeds it up. The
-exits arrive last, so nothing can be tapped before the count has had its
+shop arrives last, so nothing can be tapped before the count has had its
 moment.
+
+### 8.4b The shop
+
+It must say: here is what you have to spend, here is what it buys, and this is
+a run, so the shelf is different every time.
+
+It replaces "pick your next table". The ledger slides out and one panel comes
+in: SHOP and **Points to spend** (the RUN total, which counts down as you
+buy). Four upgrade cards from a pool of 21 (`src/systems/Upgrades.js`),
+weighted by rarity (common 6, rare 3, epic 1), never one the run already owns
+unless it stacks. Each card is a name, one plain line and a price; a card you
+can't afford shows its price in `hazard`; a bought card reads "Owned". Under
+the cards, two tools that are always there: **+1 Freeze frame** (fixed price,
+"Meter full" at three) and **Reroll** (60, then 40 more each time). Prices
+grow 15% per table (`RULES.shop`). NEXT TABLE is the one big button.
+
+Every upgrade changes how a shot **scores** or what a table **gives** you:
+more points per hit, more Mult per wall, a corner-pocket bonus, odd or even
+balls, the 8, the opening shot, the last ball, a hot streak, Freeze frame
+perks, +1 shot, +1 wall, hull. None changes the physics or the preview,
+because the preview never lies (law 7). An upgrade that pays shows up in play
+as its own plate, named in caps (CORNER OFFICE, HOT STREAK), so the player
+sees what they bought working.
 
 **Rule this taught:** a delayed animation holds its first frame (`fill:
 'both'`). Without it, an element shows, vanishes and then animates in.
@@ -289,8 +315,8 @@ the table is fully in view.
 **Boot** (picked). The table derezzes into horizontal strips that slide shut
 from alternating sides, each with a cyan leading edge. ROOM and the number you
 finished appear big and solid; the number rolls over to the next one with a
-note and a jolt, and holds. What the exit just gave you ("Freeze frame · +2
-charges") is written in heat under it. Then two light-cycles leave the bottom
+note and a jolt, and holds. What you just bought ("Bought · Frostbite,
+Bounce") is written in heat under it. Then two light-cycles leave the bottom
 centre and trace the rails, meeting at the top, and the strips open from the
 middle outward on the new table. About 3 s.
 

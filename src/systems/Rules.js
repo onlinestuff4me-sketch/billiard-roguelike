@@ -130,8 +130,14 @@ export class Rules {
     this.resetStroke();
 
     this.freezeCharges = 0;
-    /** Money, earned from points and unspent shots; spent on charges. */
-    this.credits = 0;
+    /**
+     * UPGRADES bought in the shop, as numbers added to the base rules
+     * (`perHit`, `perBank`, …) and flags (`corner`, `eight`, …). See
+     * src/systems/Upgrades.js. Reset with the run.
+     */
+    this.perks = {};
+    /** Consecutive shots this table that paid (the Hot Streak upgrade). */
+    this.paidStreak = 0;
     /** Set when the strokes run out with the mission unfilled. */
     this.failed = false;
   }
@@ -152,10 +158,28 @@ export class Rules {
     this.ballsDown = 0;
     this.roomScore = 0;
     this.ledger = [];
+    this.paidStreak = 0;
+    // ICE BOX: every table starts with some Freeze frame already in hand.
+    if (this.perks.icebox) this.grantFreeze(this.perks.icebox);
     this.failed = false;
     this.roomClosed = false;
     this.bestMultiplier = 1;
     this.resetStroke();
+  }
+
+  /** A scoring value with the run's upgrades added to the base rule. */
+  val(key) {
+    const base = {
+      perHit: RULES.score.perHit,
+      perPip: RULES.score.perPip,
+      savedStroke: RULES.score.savedStroke,
+      perBank: RULES.multiplier.perBank,
+      perKiss: RULES.multiplier.perKiss,
+      bankPot: RULES.multiplier.bankPot,
+      extraPot: RULES.multiplier.extraPot,
+      goldFactor: RULES.multiplier.goldFactor
+    }[key];
+    return (base ?? 0) + (this.perks[key] || 0);
   }
 
   /** True once every ball the mission asked for is down. */
@@ -189,7 +213,7 @@ export class Rules {
    */
   endRoom() {
     const saved = Math.max(0, this.strokesLeft);
-    const rate = RULES.score.savedStroke * Math.max(1, this.level);
+    const rate = this.val('savedStroke') * Math.max(1, this.level);
     const bonus = saved * rate;
     if (bonus > 0) {
       this.roomScore += bonus;
@@ -210,10 +234,6 @@ export class Rules {
       });
     }
     this.runScore += this.roomScore;
-    // CREDITS: the table's points and unspent shots, paid as money.
-    const credits =
-      Math.floor(this.roomScore / RULES.credits.perPoints) + saved * RULES.credits.perSavedShot;
-    this.credits += credits;
     // Once the room is banked, `roomScore` is already inside `runScore`. The
     // HUD adds the two together while a room is live, so it has to be told to
     // stop — otherwise the running total doubles the instant a room ends.
@@ -225,9 +245,7 @@ export class Rules {
       swept,
       sweepBonus: swept ? sweepRate : 0,
       roomScore: this.roomScore,
-      runScore: this.runScore,
-      credits,
-      creditsTotal: this.credits
+      runScore: this.runScore
     };
   }
 
@@ -336,13 +354,13 @@ export class Rules {
     if (this._hitBalls.has(key)) return null;
     this._hitBalls.add(key);
     const label = number != null && number > 0 ? `HIT · ${number}` : 'HIT';
-    return this._add('hit', 'points', '+', RULES.score.perHit, label, at);
+    return this._add('hit', 'points', '+', this.val('perHit'), label, at);
   }
 
   /** The cue ball banked off a wall or an obstacle: +MULT. */
   bank(at = null) {
     this.banks += 1;
-    return this._add('bank', 'mult', '+', RULES.multiplier.perBank, 'WALL', at);
+    return this._add('bank', 'mult', '+', this.val('perBank'), 'WALL', at);
   }
 
   /** One object ball driving into another: +MULT, once per struck ball. */
@@ -350,12 +368,12 @@ export class Rules {
     const key = number ?? `#${this._kissedBalls.size}`;
     if (this._kissedBalls.has(key)) return null;
     this._kissedBalls.add(key);
-    return this._add('kiss', 'mult', '+', RULES.multiplier.perKiss, 'KISS', at);
+    return this._add('kiss', 'mult', '+', this.val('perKiss'), 'KISS', at);
   }
 
   /** The bonus zone: multiply whatever MULT has been built. */
   gold(at = null) {
-    return this._add('zone', 'mult', 'x', RULES.multiplier.goldFactor, 'ZONE', at);
+    return this._add('zone', 'mult', 'x', this.val('goldFactor'), 'ZONE', at);
   }
 
   /**
@@ -447,14 +465,30 @@ export class Rules {
     const inOrder = wanted !== null && number === wanted;
     const added = [];
 
-    added.push(this._add('pot', 'points', '+', number * RULES.score.perPip, `${number} SUNK`, opts.at ?? null));
+    const at = opts.at ?? null;
+    const P = this.perks;
+    added.push(this._add('pot', 'points', '+', number * this.val('perPip'), `${number} SUNK`, at));
     if (opts.banked) {
-      added.push(this._add('bankPot', 'mult', '+', RULES.multiplier.bankPot, 'BANK', opts.bankAt ?? opts.at ?? null));
+      added.push(this._add('bankPot', 'mult', '+', this.val('bankPot'), 'BANK', opts.bankAt ?? at));
     }
     if (this.potsThisStroke > 0) {
       const n = this.potsThisStroke + 1;
       const words = ['', '', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN'];
-      added.push(this._add('multiPot', 'mult', '+', RULES.multiplier.extraPot, `${words[n] || n} IN ONE`, opts.at ?? null));
+      added.push(this._add('multiPot', 'mult', '+', this.val('extraPot'), `${words[n] || n} IN ONE`, at));
+    }
+    // UPGRADES that read the pot itself: which pocket, which ball, when.
+    const slot = at?.ref?.slot || '';
+    if (P.corner && slot && slot[0] !== 'm') added.push(this._add('perk', 'mult', '+', P.corner, 'CORNER OFFICE', at));
+    if (P.side && slot[0] === 'm') added.push(this._add('perk', 'mult', '+', P.side, 'SIDE HUSTLE', at));
+    if (P.odd && number % 2 === 1) added.push(this._add('perk', 'points', '+', P.odd, 'ODD ONES', at));
+    if (P.even && number % 2 === 0) added.push(this._add('perk', 'points', '+', P.even, 'EVEN MONEY', at));
+    if (P.eight && number === 8) added.push(this._add('perk', 'mult', 'x', P.eight, 'EIGHT BALL', at));
+    if (this.potsThisStroke === 0) {
+      if (P.opener && this.strokesUsed === 0) added.push(this._add('perk', 'mult', '+', P.opener, 'OPENING BREAK', at));
+      if (P.streak && this.paidStreak > 0) added.push(this._add('perk', 'mult', '+', P.streak * this.paidStreak, 'HOT STREAK', at));
+    }
+    if (P.runout && this.standing.size === 1 && this.standing.has(number)) {
+      added.push(this._add('perk', 'mult', 'x', P.runout, 'RUN OUT', at));
     }
     this.potsThisStroke += 1;
 
@@ -477,7 +511,7 @@ export class Rules {
     // this is called — so leaving `standing` is the same event as being paid.
     this.standing.delete(number);
     return {
-      value: number * RULES.score.perPip,
+      value: number * this.val('perPip'),
       events: added,
       points: this.points,
       mult: this.mult,
@@ -524,6 +558,7 @@ export class Rules {
         amount: paid
       });
     }
+    this.paidStreak = paid > 0 ? this.paidStreak + 1 : 0;
     this.strokesLeft = Math.max(0, this.strokesLeft - 1);
     this.strokesUsed += 1;
     const voided = this.scratched && this.strokeScore > 0;
@@ -581,16 +616,13 @@ export class Rules {
     return true;
   }
 
-  /** Whether a charge can be bought right now. */
-  get canBuyCharge() {
-    return this.credits >= RULES.credits.chargePrice && this.freezeCharges <= RULES.freeze.maxCharges - 1;
-  }
-
-  /** Spend credits on one charge. */
-  buyCharge() {
-    if (!this.canBuyCharge) return false;
-    this.credits -= RULES.credits.chargePrice;
-    this.grantFreeze(1);
+  /**
+   * ONE CURRENCY: points are the score and the money. Spending comes out of
+   * the run total; a table's points only become spendable once banked.
+   */
+  spend(points) {
+    if (!(points > 0) || this.runScore < points) return false;
+    this.runScore -= points;
     return true;
   }
 
@@ -610,7 +642,7 @@ export class Rules {
       this.grantFreeze(amount);
       if (this.freezeCharges > before) out.push({ amount: this.freezeCharges - before, label });
     };
-    for (let i = 0; i < combinations; i++) add(E.combination, 'Combination');
+    for (let i = 0; i < combinations; i++) add(this.perks.frostbite ? 1 : E.combination, 'Combination');
     for (let i = 1; i < (summary.pots || 0); i++) add(E.extraPot, 'Two in one');
     if (summary.multiplier >= E.bigShotMult) add(E.bigShot, `Big shot · ×${summary.multiplier}`);
     return out;
@@ -633,10 +665,14 @@ export class Rules {
       strokeScore: this.strokeScore,
       roomScore: this.roomScore,
       runScore: this.runScore,
-      /** What the score readout should say right now. */
-      displayScore: this.runScore + (this.roomClosed ? 0 : this.roomScore),
+      /**
+       * What the RUN readout says: BANKED points only. A live table's points
+       * show under it as TABLE, and join RUN when the table is cleared, so
+       * the plate that flies in at the clear adds exactly what it says.
+       */
+      displayScore: this.runScore,
+      tableScore: this.roomClosed ? 0 : this.roomScore,
       freezeCharges: this.freezeCharges,
-      credits: this.credits,
       banks: this.shownBanks,
       ballsTouched: this.shownTouched,
       /** The order: what it wants next, how long the run is, and whether it survived. */

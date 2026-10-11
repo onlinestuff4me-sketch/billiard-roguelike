@@ -146,52 +146,59 @@ export class Moments {
   }
 
   /**
-   * BANK INTO RUN. One continuous motion, then one landing:
-   *   1. the total lifts (a beat of anticipation),
-   *   2. flies on an arc, shrinking to exactly the RUN figure's size, eased in
-   *      AND out so it neither creeps nor snaps,
-   *   3. lands: the RUN figure punches once and counts up to the new total.
-   * The number exists in one place at a time: the total hides as it leaves,
-   * the flyer is gone the frame it lands, and nothing repeats it afterwards.
+   * BANK INTO RUN, in the same language as a shot's numbers: the total stays
+   * where it is in the ledger, and a PLATE carrying it pops off it, holds a
+   * beat, then flies along a streak of light into RUN, which jumps as it
+   * lands and counts up. Exactly what a plate does flying into the score
+   * boxes during play, only bigger.
    */
   async flyToRun(fromNode, value, land, runFrom = null, runTo = null) {
     const L = this.layer.getBoundingClientRect();
     const r = fromNode.getBoundingClientRect();
     const to = this.runBox();
-    const startSize = parseFloat(getComputedStyle(fromNode).fontSize) || 48;
-    const endSize = parseFloat(getComputedStyle(to.node).fontSize) || 24;
-    const fly = el('div', 'mo-fly', this.root);
-    fly.textContent = fmt(value);
-    fly.style.fontSize = `${startSize}px`;
     const x0 = r.left - L.left + r.width / 2;
     const y0 = r.top - L.top + r.height / 2;
-    fly.style.left = `${x0}px`;
-    fly.style.top = `${y0}px`;
-    fromNode.style.visibility = 'hidden';
+    const plate = el('div', 'sf-plate pts mo-bankplate', this.root);
+    el('b', '', plate).textContent = `+${fmt(value)}`;
+    el('small', '', plate).textContent = 'Table';
+    plate.style.left = `${x0}px`;
+    plate.style.top = `${y0}px`;
     const dx = to.x - x0;
     const dy = to.y - y0;
-    const k = endSize / startSize;
-    const at = (x, y, sc) => `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${sc})`;
-    await this.anim(fly, [{ transform: at(0, 0, 1) }, { transform: at(0, -6, 1.12) }], { duration: 150, easing: OUT });
+    const at = (x, y, sc, rot = 0) => `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${sc}) rotate(${rot}deg)`;
+    // the pop, as a plate pops beside its cause
+    this.audio.scoreThud?.();
+    await this.anim(plate, [
+      { transform: at(0, 0, 0.3, -8), opacity: 0 },
+      { transform: at(0, -10, 1.25, 4), opacity: 1, offset: 0.55 },
+      { transform: at(0, -8, 1, 0), opacity: 1 }
+    ], { duration: 380, easing: OUT });
+    await this.wait(260);
+    // the flight, with its streak
+    const streak = el('div', 'sf-streak mo-bankstreak', this.root);
+    const len = Math.hypot(dx, dy + 8);
+    streak.style.width = `${len}px`;
+    const base = `translate(${x0}px, ${y0 - 8}px) rotate(${Math.atan2(dy + 8, dx)}rad)`;
+    this.anim(streak, [
+      { transform: `${base} scaleX(0)`, opacity: 1 },
+      { transform: `${base} scaleX(1)`, opacity: 1, offset: 0.6 },
+      { transform: `${base} scaleX(1)`, opacity: 0 }
+    ], { duration: 760, easing: 'linear' }).then(() => streak.remove());
     this.audio.slingshot?.(0.4);
-    await this.anim(
-      fly,
-      [
-        { transform: at(0, -6, 1.12), offset: 0 },
-        { transform: at(dx * 0.4, dy * 0.55 - 34, (1.12 + k) / 2), offset: 0.5 },
-        { transform: at(dx, dy, k), offset: 1 }
-      ],
-      { duration: 560, easing: 'cubic-bezier(0.45, 0, 0.2, 1)' }
-    );
-    fly.remove();
+    await this.anim(plate, [
+      { transform: at(0, -8, 1, 0) },
+      { transform: at(dx, dy, 0.55, 0) }
+    ], { duration: 460, easing: 'cubic-bezier(0.5, 0, 0.8, 0.4)' });
+    plate.remove();
+    // the landing: RUN jumps like a score box
     this.audio.scoreLock?.();
     this.engine.shake?.(3);
     to.node.animate(
       [
-        { transform: 'scale(1.4)', textShadow: '0 0 16px #22e8ff, 0 0 36px #22e8ff' },
-        { transform: 'scale(1)', textShadow: '0 0 0 transparent' }
+        { transform: 'scale(1.32) rotate(-3deg)', textShadow: '0 0 16px #e9f8ff, 0 0 32px #22e8ff' },
+        { transform: 'scale(1) rotate(0deg)', textShadow: '0 0 0 transparent' }
       ],
-      { duration: 460, easing: BACK }
+      { duration: 420, easing: BACK }
     );
     const ring = el('div', 'mo-ring', this.root);
     ring.style.left = `${to.x}px`;
@@ -247,6 +254,16 @@ export class Moments {
 
     await this._clearLedger(root, d, rows, live);
     if (!live()) return;
+    // THE SHOP replaces the exits: the ledger hands over to it, and the next
+    // table is a button inside it.
+    if (d.shop) {
+      this.skip = false;
+      this._clearReady = true;
+      await this.wait(500);
+      if (!live()) return;
+      await this._openShop(root, d.shop, live);
+      return;
+    }
 
     // NEXT TABLE. The choices arrive last, so nothing can be tapped before the
     // count has had its moment.
@@ -273,60 +290,120 @@ export class Moments {
       const from = 'translateY(18px)';
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
-    // CASH IN: a Freeze frame charge for credits, under the exits.
-    if (d.shop) this._shopButton(next, d.shop, d.credits || 0);
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
   }
 
   /**
-   * CREDITS AND THE CASH-IN, together, because credits exist only to be spent
-   * here. They are money, not points, and never sit in the points ledger: a
-   * line says what this table paid, the total you have, and where it came from.
+   * THE SHOP. Points are the only currency: the figure at the top is your RUN
+   * total, and everything bought comes out of it. Four random upgrades, a
+   * Freeze frame charge that is always there, a reroll, and the next table.
    */
-  _shopButton(parent, shop, earned) {
-    const wallet = el('div', 'mo-wallet', parent);
-    const top = el('div', 'mo-wallet-top', wallet);
-    el('span', 'k', top).textContent = 'Credits';
-    const total = el('span', 'v', top);
-    const gain = el('span', 'gain', top);
-    gain.textContent = earned > 0 ? `+${earned} this table` : '';
-    el('div', 'mo-wallet-why', wallet).textContent = '1 per 100 points · 1 per shot you did not use';
-    const from = Math.max(0, shop.credits() - earned);
-    total.textContent = fmt(from);
-    this.anim(wallet, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: OUT });
-    if (earned > 0) {
-      this.audio.scoreNote?.(9, 'mult');
-      this.count(total, from, shop.credits(), 420);
+  async _openShop(root, shop, live) {
+    const ledger = root.querySelector('.mo-ledger');
+    if (ledger) {
+      await this.anim(ledger, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -24px) scale(0.96)', opacity: 0 }], { duration: 260, easing: IN });
+      ledger.remove();
     }
-    const b = el('button', 'mo-buy', parent);
-    b.type = 'button';
-    const name = el('span', 'mo-buy-name', b);
-    const detail = el('span', 'mo-buy-detail', b);
-    const render = () => {
-      const can = shop.canBuy();
-      const charges = shop.charges();
-      b.disabled = !can;
-      name.textContent = '+1 Freeze frame';
-      detail.textContent =
-        charges >= shop.max
-          ? 'Meter full'
-          : charges > shop.max - 1
-            ? 'No room for a whole one'
-            : `${shop.price} credits · you have ${shop.credits()}`;
+    if (!live()) return;
+    const panel = el('div', 'mo-shop', root);
+    const head = el('div', 'mo-shop-head', panel);
+    el('div', 'mo-kicker', head).textContent = 'Shop';
+    const wallet = el('div', 'mo-shop-points', head);
+    el('span', 'k', wallet).textContent = 'Points to spend';
+    const pts = el('span', 'v', wallet);
+    pts.textContent = fmt(shop.points());
+    el('div', 'mo-shop-note', panel).textContent = 'Points are your score and your money. What you spend comes off your run total.';
+    const grid = el('div', 'mo-cards', panel);
+    const tools = el('div', 'mo-shop-tools', panel);
+    const charge = el('button', 'mo-tool charge', tools);
+    charge.type = 'button';
+    const reroll = el('button', 'mo-tool reroll', tools);
+    reroll.type = 'button';
+    const owned = el('div', 'mo-owned', panel);
+    const next = el('button', 'mo-nexttable', root);
+    next.type = 'button';
+    next.textContent = 'Next table ▸';
+
+    const spendTo = (from) => this.count(pts, from, shop.points(), 300);
+    const renderTools = () => {
+      const can = shop.charge.canBuy();
+      const full = shop.charge.charges() > shop.charge.max - 1;
+      charge.disabled = !can;
+      charge.innerHTML = '';
+      el('span', 'n', charge).textContent = '+1 Freeze frame';
+      el('span', 'p', charge).textContent = full ? 'Meter full' : `${fmt(shop.charge.price())}`;
+      reroll.disabled = shop.points() < shop.rerollPrice();
+      reroll.innerHTML = '';
+      el('span', 'n', reroll).textContent = 'Reroll';
+      el('span', 'p', reroll).textContent = fmt(shop.rerollPrice());
+      const mine = shop.owned();
+      owned.textContent = mine.length ? `Yours: ${mine.join(' · ')}` : 'No upgrades yet';
+      grid.querySelectorAll('.mo-card').forEach((c) => {
+        const it = c._item;
+        c.classList.toggle('poor', !it.sold && shop.points() < it.price);
+      });
     };
-    render();
-    absorb(b);
-    b.addEventListener('click', (event) => {
+    const renderCards = (animate) => {
+      grid.textContent = '';
+      shop.items.forEach((it, i) => {
+        const c = el('button', `mo-card ${it.rarity}`, grid);
+        c.type = 'button';
+        c._item = it;
+        el('span', 'r', c).textContent = it.rarity;
+        el('span', 'name', c).textContent = it.name;
+        el('span', 'text', c).textContent = it.text;
+        const price = el('span', 'price', c);
+        price.textContent = fmt(it.price);
+        absorb(c);
+        c.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const before = shop.points();
+          if (!shop.buy(it)) {
+            this.anim(c, [{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 });
+            return;
+          }
+          c.classList.add('sold');
+          price.textContent = 'Owned';
+          this.anim(c, [{ transform: 'scale(1.08)', filter: 'brightness(1.8)' }, { transform: 'none', filter: 'none' }], { duration: 320, easing: OUT });
+          spendTo(before);
+          renderTools();
+        });
+        if (animate) this.anim(c, [{ transform: 'rotateY(80deg) translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 70 * i, easing: BACK });
+      });
+      renderTools();
+    };
+    absorb(charge);
+    charge.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!shop.buy()) return;
-      render();
-      total.textContent = fmt(shop.credits());
-      gain.textContent = `−${shop.price} spent`;
-      this.anim(b, [{ transform: 'scale(1.06)', filter: 'brightness(1.6)' }, { transform: 'none', filter: 'none' }], { duration: 300, easing: OUT });
+      const before = shop.points();
+      if (!shop.charge.buy()) return;
       this._pulseFreeze();
+      spendTo(before);
+      renderTools();
     });
-    this.anim(b, [{ transform: 'translateY(18px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, easing: BACK });
+    absorb(reroll);
+    reroll.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const before = shop.points();
+      if (!shop.reroll()) return;
+      spendTo(before);
+      renderCards(true);
+    });
+    absorb(next);
+    next.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!live()) return;
+      next.disabled = true;
+      shop.next();
+    });
+
+    this.anim(panel, [{ transform: 'translate(-50%, 24px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, easing: BACK });
+    this.anim(next, [{ transform: 'translate(-50%, 20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, delay: 360, easing: BACK });
+    renderCards(true);
   }
 
   /** The Freeze frame meter in the HUD, in layer pixels. */
@@ -469,12 +546,11 @@ export class Moments {
     await this.wait(620);
     if (!live()) return;
     await this.flyToRun(totalV, d.roomScore, d.onRunLanded, d.shownRun, d.runScore);
-    // The total now lives in RUN. Its row says so, rather than showing the
-    // number again and reading as if it were counted twice.
-    totalV.textContent = 'Added to RUN';
-    totalV.style.visibility = '';
+    // The total stays where it was; a small tag says it is now in RUN.
     total.classList.add('banked');
-    this.anim(totalV, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: OUT });
+    const tag = el('span', 'mo-banked-tag', total);
+    tag.textContent = 'In RUN';
+    this.anim(tag, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 220, easing: OUT });
     await this.wait(200);
   }
 
