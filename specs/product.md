@@ -15,12 +15,12 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 ## Must keep
 
 - **The aiming system, unchanged.** Touch anywhere and drag to aim. The preview shows where the cue ball goes, where it collides, where it travels after the collision, where the struck ball goes and where it lands, with colour warnings for scratches and fouls. The drawn line is the shot the table plays.
-- **How the first leg is drawn is a setting** (Settings → Aim line), because the original glowing beam was overwhelming:
-  - **Slim** (default): a thin line; power is a ring around the cue ball that closes at full power.
+- **How the first leg is drawn is a setting** (Settings → Aim line), because the original glowing beam was overwhelming. Picked in review: **Cue** is the default.
+  - **Cue** (default): a thin line. Power is the cue stick behind the ball, sliding back one-for-one with the thumb, plus a ring around the ball that fills as you pull and flashes white at full power.
+  - **Slim:** a thin line; power is the ring alone.
   - **Pulse:** a thin line with a spark running it, faster the harder you pull, flaring the contact ring.
-  - **Cue:** a thin line; power is a cue stick behind the ball that draws back as you pull (what 8 Ball Pool and golf games do).
   - **Beam:** the original swelling ribbon.
-  - Slim, Pulse and Cue fire a short beam down the line on release, so the intensity lands on taking the shot.
+  - Cue, Slim and Pulse fire a short beam down the line on release, so the intensity lands on taking the shot.
   - Only the drawing changes. What the preview shows, and that it matches the shot, is the same in all three.
 
 ## Scoring (building now)

@@ -279,13 +279,15 @@ export const TRAJECTORY = {
   beamWidthMax: 1.25,
   /**
    * HOW THE FIRST LEG OF THE AIM IS DRAWN, and where power is shown.
+   *   'cue'   — the default, picked in review: a line; power is the cue stick
+   *             drawn back behind the ball one for one with the thumb, plus
+   *             the power ring around the ball, which flashes at full power
    *   'slim'  — a line like the others; power is a ring around the cue ball
    *   'pulse' — a line, with a spark running it as fast as the draw is hard
-   *   'cue'   — a line; power is the cue stick drawn back behind the ball
    *   'beam'  — the original: a ribbon of light that swells with power
    * The player picks in Settings; this is the default.
    */
-  aimStyle: 'slim',
+  aimStyle: 'cue',
   /** The first leg in the quiet styles: a touch heavier than the other lines. */
   leadWidth: 0.17,
   /** The power ring: its stroke, and its clearance from the cue ball's edge. */
@@ -294,6 +296,13 @@ export const TRAJECTORY = {
   /** The cue style's stick: how long and how thick, in world units. */
   stickLength: 5.5,
   stickWidth: 0.24,
+  /**
+   * How far the stick slides back over a full draw, in world units. The pad's
+   * full travel is INPUT.padRadiusPx (104 CSS px), and the table is drawn at
+   * about 20 px a unit on a phone, so 5.2 units keeps the stick moving one
+   * for one with the thumb.
+   */
+  stickTravel: 5.2,
   /** The beam that fires down the line on release, in the quiet styles (seconds). */
   releaseFlash: 0.32,
   dashLength: 0.42,

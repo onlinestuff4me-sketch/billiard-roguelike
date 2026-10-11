@@ -589,6 +589,44 @@ class AimRenderer {
   }
 
   /**
+   * THE POWER RING around the cue ball: centred on the shot's direction, it
+   * opens both ways as the thumb pulls back and closes completely at full
+   * power, where it FLASHES once — a quick swell of white light — and then
+   * stays white for as long as the draw is held there.
+   */
+  _ring(player, ux, uz, t, y, now) {
+    const r = player.radius + TRAJECTORY.gaugeGap;
+    const base = Math.atan2(uz, ux);
+    const full = t >= 0.985;
+    if (full && !this._ringFull) this._ringFlashAt = now;
+    this._ringFull = full;
+    const since = full ? now - (this._ringFlashAt || 0) : 1;
+    const flash = since < 0.3 ? 1 - since / 0.3 : 0;
+    const arc = (from, to, n, radius) => {
+      const segs = [];
+      for (let i = 0; i < n; i += 1) {
+        const a0 = from + ((to - from) * i) / n;
+        const a1 = from + ((to - from) * (i + 1)) / n;
+        segs.push({
+          ax: player.x + Math.cos(a0) * radius,
+          az: player.z + Math.sin(a0) * radius,
+          bx: player.x + Math.cos(a1) * radius,
+          bz: player.z + Math.sin(a1) * radius
+        });
+      }
+      return segs;
+    };
+    this.gaugeTrack.set(arc(0, Math.PI * 2, 40, r), { y, width: TRAJECTORY.gaugeWidth * 0.7, opacity: 0.16 });
+    const half = Math.max(0.04, t) * Math.PI;
+    this.gauge.set(arc(base - half, base + half, Math.max(2, Math.round(40 * t)), r * (1 + 0.18 * flash)), {
+      y,
+      width: TRAJECTORY.gaugeWidth * (full ? 1.6 + 2.2 * flash : 1),
+      color: full ? PALETTE.playerCore : PALETTE.aim,
+      opacity: 0.95
+    });
+  }
+
+  /**
    * THE RELEASE. In the quiet styles the brightness the beam used to spend
    * on aiming is spent here instead: a beam that fires down the first leg in
    * a tenth of a second and fades, as the shot is taken.
@@ -651,52 +689,27 @@ class AimRenderer {
       this.lead.set([s], { y, width: TRAJECTORY.leadWidth, color: PALETTE.aim, opacity: 0.6 + 0.35 * power });
 
       if (style === 'slim') {
-        // The ring: centred on the shot's direction, opening both ways as the
-        // draw grows, and closing completely at full power.
-        const r = player.radius + TRAJECTORY.gaugeGap;
-        const base = Math.atan2(uz, ux);
-        const arc = (from, to, n) => {
-          const segs = [];
-          for (let i = 0; i < n; i += 1) {
-            const a0 = from + ((to - from) * i) / n;
-            const a1 = from + ((to - from) * (i + 1)) / n;
-            segs.push({
-              ax: player.x + Math.cos(a0) * r,
-              az: player.z + Math.sin(a0) * r,
-              bx: player.x + Math.cos(a1) * r,
-              bz: player.z + Math.sin(a1) * r
-            });
-          }
-          return segs;
-        };
-        this.gaugeTrack.set(arc(0, Math.PI * 2, 40), { y, width: TRAJECTORY.gaugeWidth * 0.7, opacity: 0.16 });
-        const half = Math.max(0.04, power) * Math.PI;
-        const full = power >= 0.985;
-        this.gauge.set(arc(base - half, base + half, Math.max(2, Math.round(40 * power))), {
-          y,
-          width: TRAJECTORY.gaugeWidth * (full ? 1.6 : 1),
-          color: full ? PALETTE.playerCore : PALETTE.aim,
-          opacity: 0.95
-        });
+        this._ring(player, ux, uz, charge, y, now);
         this.comet.hide();
         this.stick.hide();
         this.stickTip.hide();
       } else if (style === 'cue') {
-        this.gaugeTrack.hide();
-        this.gauge.hide();
         this.comet.hide();
-        // The butt end runs back from just behind the ball; the further the
-        // draw, the further back it sits. At full power the tip lights.
-        const gap = player.radius + 0.25 + 1.6 * power;
+        this._ring(player, ux, uz, charge, y, now);
+        // THE STICK MOVES WITH THE THUMB, ONE FOR ONE. `charge` is how far the
+        // thumb has travelled across the pad (0 to 1), and `stickTravel` is
+        // that same travel in table units, so a centimetre of thumb is a
+        // centimetre of cue. At full power the tip lights.
+        const gap = player.radius + 0.2 + TRAJECTORY.stickTravel * charge;
         const len = TRAJECTORY.stickLength;
         const tx = player.x - ux * gap;
         const tz = player.z - uz * gap;
-        const full = power >= 0.985;
+        const full = charge >= 0.985;
         this.stick.set([{ ax: tx, az: tz, bx: tx - ux * len, bz: tz - uz * len }], {
           y,
           width: TRAJECTORY.stickWidth,
           color: PALETTE.bone,
-          opacity: 0.55 + 0.3 * power
+          opacity: 0.55 + 0.3 * charge
         });
         this.stickTip.set([{ ax: tx, az: tz, bx: tx - ux * 0.35, bz: tz - uz * 0.35 }], {
           y: y + 0.01,

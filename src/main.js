@@ -3611,13 +3611,13 @@ $('set-mute').addEventListener('click', () => {
  * See TRAJECTORY.aimStyle.
  */
 const AIM_STYLES = [
+  { id: 'cue', label: 'Cue' },
   { id: 'slim', label: 'Slim' },
   { id: 'pulse', label: 'Pulse' },
-  { id: 'cue', label: 'Cue' },
   { id: 'beam', label: 'Beam' }
 ];
 try {
-  const saved = localStorage.getItem('lightline-aim-style');
+  const saved = localStorage.getItem('lightline-aim-style-v2');
   if (AIM_STYLES.some((st) => st.id === saved)) TRAJECTORY.aimStyle = saved;
 } catch {
   /* private mode */
@@ -3626,7 +3626,7 @@ function applyAimStyle() {
   const style = AIM_STYLES.find((st) => st.id === TRAJECTORY.aimStyle) || AIM_STYLES[0];
   $('set-aim').textContent = `Aim line: ${style.label}`;
   try {
-    localStorage.setItem('lightline-aim-style', style.id);
+    localStorage.setItem('lightline-aim-style-v2', style.id);
   } catch {
     /* no-op */
   }
