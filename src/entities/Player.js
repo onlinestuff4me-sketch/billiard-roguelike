@@ -597,11 +597,14 @@ class AimRenderer {
   _ring(player, ux, uz, t, y, now) {
     const r = player.radius + TRAJECTORY.gaugeGap;
     const base = Math.atan2(uz, ux);
-    const full = t >= 0.985;
+    const full = t >= TRAJECTORY.fullDraw;
     if (full && !this._ringFull) this._ringFlashAt = now;
     this._ringFull = full;
     const since = full ? now - (this._ringFlashAt || 0) : 1;
-    const flash = since < 0.3 ? 1 - since / 0.3 : 0;
+    // The flash: a hard swell that eases out over a third of a second...
+    const flash = since < 0.35 ? Math.pow(1 - since / 0.35, 2) : 0;
+    // ...and then a slow breath for as long as full power is held.
+    const breath = full ? 0.5 + 0.5 * Math.sin(now * 9) : 0;
     const arc = (from, to, n, radius) => {
       const segs = [];
       for (let i = 0; i < n; i += 1) {
@@ -618,9 +621,9 @@ class AimRenderer {
     };
     this.gaugeTrack.set(arc(0, Math.PI * 2, 40, r), { y, width: TRAJECTORY.gaugeWidth * 0.7, opacity: 0.16 });
     const half = Math.max(0.04, t) * Math.PI;
-    this.gauge.set(arc(base - half, base + half, Math.max(2, Math.round(40 * t)), r * (1 + 0.18 * flash)), {
+    this.gauge.set(arc(base - half, base + half, Math.max(2, Math.round(40 * t)), r * (1 + 0.32 * flash)), {
       y,
-      width: TRAJECTORY.gaugeWidth * (full ? 1.6 + 2.2 * flash : 1),
+      width: TRAJECTORY.gaugeWidth * (full ? 1.5 + 0.35 * breath + 3.5 * flash : 1),
       color: full ? PALETTE.playerCore : PALETTE.aim,
       opacity: 0.95
     });
@@ -704,7 +707,7 @@ class AimRenderer {
         const len = TRAJECTORY.stickLength;
         const tx = player.x - ux * gap;
         const tz = player.z - uz * gap;
-        const full = charge >= 0.985;
+        const full = charge >= TRAJECTORY.fullDraw;
         this.stick.set([{ ax: tx, az: tz, bx: tx - ux * len, bz: tz - uz * len }], {
           y,
           width: TRAJECTORY.stickWidth,

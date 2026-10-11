@@ -326,6 +326,15 @@ export class AudioManager {
     }
   }
 
+  /** Full power: a bright two-note riser over a soft thump, like a cue locking in. */
+  maxPower() {
+    const root = AUDIO.rootHz * 2;
+    this._tone({ type: 'sine', freq: 140, freqEnd: 90, duration: 0.12, gain: 0.18 });
+    this._tone({ type: 'triangle', freq: root * 1.5, duration: 0.16, gain: 0.13, attack: 0.004 });
+    this._tone({ type: 'triangle', freq: root * 2, duration: 0.3, gain: 0.14, attack: 0.004, delay: 0.07 });
+    this._tone({ type: 'sine', freq: root * 4, duration: 0.22, gain: 0.05, delay: 0.07 });
+  }
+
   /** The table freezing as a number arrives: short, soft, felt more than heard. */
   scoreThud() {
     this._tone({ type: 'sine', freq: 180, freqEnd: 80, duration: 0.14, gain: 0.2 });

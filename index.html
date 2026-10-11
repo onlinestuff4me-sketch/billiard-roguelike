@@ -940,6 +940,36 @@
       }
 
       /* World-space floating combat text, projected from the scene each frame. */
+      /* THE MAX POWER BADGE. A white Lightline plate (cut corners, dark ink)
+         with a cyan halo: it is YOUR moment, so it wears your colour. */
+      .max-badge {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 8;
+        display: grid;
+        justify-items: center;
+        padding: 4px 12px 5px;
+        color: #02050b;
+        font-family: var(--font);
+        pointer-events: none;
+        white-space: nowrap;
+        isolation: isolate;
+        /* The glow sits on the element and the cut corners on its backing, so
+           the clip never cuts the glow off. */
+        filter: drop-shadow(0 0 12px rgba(34, 232, 255, 0.95)) drop-shadow(0 0 3px #22e8ff);
+      }
+      .max-badge::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: #e9f8ff;
+        clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+      }
+      .max-badge b { font-size: 22px; font-weight: 800; line-height: 1; letter-spacing: 0.08em; }
+      .max-badge small { font-size: 9px; font-weight: 700; letter-spacing: 0.32em; margin-top: 1px; }
+
       /* ---------------- THE SCORE FEED (src/ui/ScoreFeed.js) ----------------
          Lightline: white plates add POINTS, orange plates add MULT, gold plates
          multiply it, pink-red plates are taken back. Corners are cut, not
@@ -1018,14 +1048,24 @@
         white-space: nowrap;
         font-family: var(--font);
         will-change: transform;
+        isolation: isolate;
+      }
+      /* Cut corners on the backing, glow on the plate: a clip on the plate itself
+         would cut its own glow off. */
+      .sf-plate::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: var(--plate-bg, #e9f8ff);
         clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
       }
       .sf-plate b { font-size: 26px; font-weight: 700; line-height: 1; }
       .sf-plate small { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; margin-top: 2px; text-transform: uppercase; }
-      .sf-plate.pts { background: #e9f8ff; filter: drop-shadow(0 0 10px rgba(233, 248, 255, 0.7)); }
-      .sf-plate.mult { background: #ff8a1e; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.85)); }
-      .sf-plate.xmult { background: #ffc266; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.85)); }
-      .sf-plate.void { background: #ff2e7e; filter: drop-shadow(0 0 10px rgba(255, 46, 126, 0.8)); }
+      .sf-plate.pts { --plate-bg: #e9f8ff; filter: drop-shadow(0 0 10px rgba(233, 248, 255, 0.75)); }
+      .sf-plate.mult { --plate-bg: #ff8a1e; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.9)); }
+      .sf-plate.xmult { --plate-bg: #ffc266; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.9)); }
+      .sf-plate.void { --plate-bg: #ff2e7e; filter: drop-shadow(0 0 10px rgba(255, 46, 126, 0.85)); }
       .sf-plate.void b { text-decoration: line-through; }
       .sf-streak { position: absolute; left: 0; top: 0; height: 3px; margin-top: -1.5px; transform-origin: 0 50%; border-radius: 2px; pointer-events: none; }
       @media (prefers-reduced-motion: reduce) { .sf-boxes { transition: none; } .score-feed.locking .sf-boxes::after { animation: none; opacity: 0; } }

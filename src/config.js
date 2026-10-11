@@ -303,6 +303,12 @@ export const TRAJECTORY = {
    * for one with the thumb.
    */
   stickTravel: 5.2,
+  /**
+   * FULL POWER, as a fraction of the thumb's travel across the pad. One number
+   * for every way the game says it — the ring closing and flashing, the stick's
+   * tip lighting, the MAX POWER badge, the sound — so they land together.
+   */
+  fullDraw: 0.97,
   /** The beam that fires down the line on release, in the quiet styles (seconds). */
   releaseFlash: 0.32,
   dashLength: 0.42,
