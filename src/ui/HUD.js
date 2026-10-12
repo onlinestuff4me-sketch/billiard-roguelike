@@ -12,7 +12,7 @@
  *   2. How am I doing against it?          the progress pips
  *   3. What is it costing me?              the stroke chips
  *   4. What is this shot worth?            the multiplier pill
- *   5. What have I got?                    run score, hull, freeze charges
+ *   5. What have I got?                    table points vs target, lives, cash, freeze charges
  *
  * Those five used to be spread between a room counter, a wave line and a combo
  * that meant nothing on its own. Every one of them is now a sentence or a
@@ -53,12 +53,12 @@ export class HUD {
     /* ---------------- top bar ---------------- */
     const top = el('div', 'hud-top', this.root);
 
+    // LIVES and CASH: what you carry from table to table. Missing a table's
+    // target costs a life; cash is spent in the shop between tables.
     const hpBlock = el('div', 'hud-hp', top);
-    el('div', 'hud-label', hpBlock).textContent = 'Hull';
-    const hpBar = el('div', 'hp-bar', hpBlock);
-    this.hpGhost = el('div', 'hp-ghost', hpBar);
-    this.hpFill = el('div', 'hp-fill', hpBar);
-    this.hpText = el('div', 'hp-text', hpBlock);
+    el('div', 'hud-label', hpBlock).textContent = 'Lives';
+    this.livesRow = el('div', 'lives-row', hpBlock);
+    this.cashValue = el('div', 'cash-value', hpBlock);
 
     // The mission. This is the single most important thing on the screen and
     // it is written as a sentence, not encoded.
@@ -80,9 +80,9 @@ export class HUD {
 
 
     const scoreBlock = el('div', 'hud-score', top);
-    el('div', 'hud-label', scoreBlock).textContent = 'Run';
+    el('div', 'hud-label', scoreBlock).textContent = 'Table';
     this.scoreValue = el('div', 'score-value', scoreBlock);
-    // This table's points, live. They are not in RUN until the table clears.
+    // THE TARGET this table's points have to beat. Points start fresh each table.
     this.tableValue = el('div', 'score-table', scoreBlock);
 
     /* ---------------- build strip ---------------- */
@@ -162,8 +162,9 @@ export class HUD {
 
     // Cached values so we only touch the DOM when something actually changed.
     this._cache = {
-      hp: -1,
-      ghost: -1,
+      lives: '',
+      cash: null,
+      target: '',
       mission: '',
       order: '',
       progress: '',
@@ -173,7 +174,7 @@ export class HUD {
       mult: -1,
       buildKey: ''
     };
-    this._ghost = 1;
+
   }
 
   /* ---------------------------------------------------------------- *
@@ -240,11 +241,11 @@ export class HUD {
       el('span', 'card-d', row).textContent = entry.detail || '';
       el('span', 'card-v', row).textContent = `+${entry.amount.toLocaleString()}`;
     }
-    if (data.penalty && data.penalty.standing > 0) {
-      const row = el('div', 'card-line bad', this.cardLines);
-      el('span', 'card-k', row).textContent = 'Balls left';
-      el('span', 'card-d', row).textContent = `${data.penalty.standing} still up`;
-      el('span', 'card-v', row).textContent = `−${data.penalty.damage} hull`;
+    if (data.target) {
+      const row = el('div', `card-line${data.beaten ? ' hero' : ' bad'}`, this.cardLines);
+      el('span', 'card-k', row).textContent = data.beaten ? 'Target beaten' : 'Target missed';
+      el('span', 'card-d', row).textContent = data.target.toLocaleString();
+      el('span', 'card-v', row).textContent = data.beaten ? `+$${data.earned}` : '−1 life';
     }
     if (!this.cardLines.childElementCount) {
       const row = el('div', 'card-line', this.cardLines);
@@ -379,25 +380,24 @@ export class HUD {
    * @param {object} s snapshot
    * @param {number} rawDt real seconds (HUD animation is never slowed)
    */
+  /** The node of the life that is about to go, for the moment to break. */
+  lifeNode(index) {
+    return this.livesRow.children[index] || null;
+  }
+
   update(s, rawDt) {
     const cache = this._cache;
 
-    // --- health, with a lagging "damage ghost" fill ---
-    const hpRatio = Math.max(0, Math.min(1, s.hp / s.maxHp));
-    if (Math.abs(hpRatio - cache.hp) > 0.001) {
-      cache.hp = hpRatio;
-      this.hpFill.style.width = `${hpRatio * 100}%`;
-      this.hpText.textContent = `${Math.ceil(s.hp)}/${s.maxHp}`;
-      this.hpFill.classList.toggle('critical', hpRatio < 0.3);
+    // --- lives and cash ---
+    const lifeKey = `${s.lives}/${s.livesMax}`;
+    if (lifeKey !== cache.lives) {
+      cache.lives = lifeKey;
+      this.livesRow.textContent = '';
+      for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow);
     }
-    if (this._ghost > hpRatio) {
-      this._ghost = Math.max(hpRatio, this._ghost - rawDt * 0.55);
-    } else {
-      this._ghost = hpRatio;
-    }
-    if (Math.abs(this._ghost - cache.ghost) > 0.002) {
-      cache.ghost = this._ghost;
-      this.hpGhost.style.width = `${this._ghost * 100}%`;
+    if (s.cash !== cache.cash) {
+      cache.cash = s.cash;
+      this.cashValue.textContent = `$${s.cash ?? 0}`;
     }
 
     // --- the mission, in words ---
@@ -446,20 +446,18 @@ export class HUD {
       this.missionOrder.hidden = !order;
     }
 
-    // --- run score ---
+    // --- this table's points, against its target ---
     if (s.displayScore !== cache.score) {
       cache.score = s.displayScore;
       this.scoreValue.textContent = (s.displayScore || 0).toLocaleString();
     }
-    const table = s.tableScore || 0;
-    if (table !== cache.table) {
-      const grew = table > (cache.table || 0);
-      cache.table = table;
-      this.tableValue.innerHTML = table > 0 ? `<small>Table</small> +${table.toLocaleString()}` : '';
-      this.tableValue.classList.toggle('on', table > 0);
-      if (grew && this.tableValue.animate) {
-        this.tableValue.animate([{ transform: 'scale(1.25)', color: '#ffffff' }, { transform: 'none' }], { duration: 320, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' });
-      }
+    const beaten = (s.displayScore || 0) >= (s.target || Infinity);
+    const targetKey = `${s.target}/${beaten}`;
+    if (targetKey !== cache.target) {
+      cache.target = targetKey;
+      this.tableValue.innerHTML = s.target ? `<small>Target</small> ${s.target.toLocaleString()}${beaten ? ' ✓' : ''}` : '';
+      this.tableValue.classList.toggle('on', !!s.target);
+      this.tableValue.classList.toggle('beaten', beaten);
     }
 
     // --- the stroke budget ---

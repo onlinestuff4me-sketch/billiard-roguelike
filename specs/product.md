@@ -54,11 +54,11 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 - **Next table** (picked: Boot): strips close; the room number rolls over and holds, with what you bought under it; the rails trace in; the strips open.
 - **Cue options** (on trial, Settings → Stick, Full power, Strike): stick *rod / classic / hardlight*; full power *flash / ignite / lock*; strike *snap / impact / pierce*.
 
-**One currency** (decided in review). Points are the score and the money; there are no credits. Only banked points spend.
+**The economy** (decided in review, after Balatro and Gambonanza). Every table has a points **target** (500 on the first, growing 18% a table); points start fresh each table. **Cash** carries over: beating the target pays $4, plus $1 per shot left, plus $1 per 25% past the target (up to $5), plus interest of $1 per $5 held (up to $5). **Three lives** replace hull: missing a target costs one, and the last one ends the run. Hazards void the shot instead of doing damage.
 
-**The shop** (built; replaces "pick your next table"). Between tables: four random upgrades from a pool of 21 (`src/systems/Upgrades.js`), weighted by rarity and never one you own unless it stacks; +1 Freeze frame charge always on sale; a reroll that gets dearer; prices grow with the table; then Next table. Upgrades change scoring or what a table gives (points per hit, Mult per wall, pocket, ball-number and timing bonuses, Freeze frame perks, +1 shot, +1 wall, hull), never physics or the preview.
+**The shop** (built; replaces "pick your next table"). Between tables: four random upgrades ($5–10) from a pool of 21 (`src/systems/Upgrades.js`), weighted by rarity; hold one for $2 to keep it for the next shop; +1 Freeze frame charge ($4); reroll ($3, +$1 each); five upgrade slots, sell one for half; then Next table. Upgrades change scoring or what a table gives, never physics or the preview.
 
-**Freeze frame charges** (built; cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more. A whole charge can be bought in the shop for points.
+**Freeze frame charges** (built; cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more. A whole charge can be bought in the shop for $4.
 
 ## Puzzle ramp (strategy agreed for review, not built)
 

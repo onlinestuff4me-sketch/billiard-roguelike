@@ -58,9 +58,9 @@ If an action or a reward does not get a reaction the player can see, hear and
 | --- | --- | --- | --- | --- |
 | You | `you` | `#22e8ff` | Cue ball, aim line, cue stick edge, trail, shot pips, primary button, lock ring | Anything you collect or that scores |
 | You, ghost | `you-deep` | `#0b8fa6` | Reflected aim legs, resting trail, empty pip | |
-| Points | `pts` | `#e9f8ff` | POINTS box, + fields, hit and pot plates, table total, shop prices (points are the money) | Large fills other than the box |
+| Points | `pts` | `#e9f8ff` | POINTS box, + fields, hit and pot plates, table total | Large fills other than the box |
 | Multiplier | `mult` | `#ff8a1e` | MULT box, × fields, rail lights, heated trail | Hazards; resting UI |
-| Heat tip | `mult-hot` | `#ffc266` | Slam flash, bonus rows, ×N plates | A resting state |
+| Heat tip | `mult-hot` | `#ffc266` | Slam flash, bonus rows, ×N plates, cash and every $ price | A resting state (cash in the corner is the one exception) |
 | Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, take-back, out of shots | Anything without a chevron or a strike |
 | Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates | Anything else (it is a state, not a reward) |
 | Floor | `floor` / `void` | `#040b16` / `#02050b` | Table bed / beyond the table, cover panels | Text |
@@ -111,7 +111,7 @@ box-value 26 · popup 26 · tick 13 · mission 18 · body 16 · label 11.
 The table is inset, not edge to edge, so nothing the player reads sits on the
 felt while they play (picked in review, after Ultrapool, though less inset).
 
-- **Top band:** the HUD's top bar (hull, mission, run).
+- **Top band:** the HUD's top bar (lives and cash, mission, this table's points against its target).
 - **Bottom band:** one row, with shots on the left, the score boxes in the
   middle and Freeze frame on the right. The score boxes show only while a
   stroke plays.
@@ -249,45 +249,55 @@ earned only by shots that pay (`RULES.freeze`):
 | A combination: a ball you hit knocks another one in | +½ |
 | Each extra ball down in the same shot | +½ |
 | A shot paying ×5 mult or more | +½ |
-| Bought in the shop between tables, for points (`RULES.shop.chargePrice`) | +1 |
+| Bought in the shop between tables, for $4 (`RULES.shop.chargePrice`) | +1 |
 | The Ice Box upgrade, at the start of every table | +½ |
 
 Each earned charge lands as an ice plate above the score boxes ("+½ Freeze
 frame · Combination") that flies into the meter, which pulses. In the meter
 a half charge fills half a diamond, and only a whole charge freezes.
 
-**One currency.** Points are the score and the money. There is no second
-currency: everything in the shop is bought out of the RUN total, so every
-purchase is a bet that it earns back more than it costs. Only banked points
-spend; a live table's points are not money until the table clears.
+**The economy** (decided in review, after Balatro and Gambonanza). Two
+numbers, but only one carries over. **Points** are each table's test: every
+table has a **target** (`RULES.target`, 500 on the first, growing 18% a
+table), and points start fresh each table. **Cash** is what carries over and
+what the shop spends, in `mult-hot`. It is scarce on purpose, so every shop is
+a choice: buy now, hold a card, or save. **Lives** (three) replace hull:
+missing a target costs one, and losing the last ends the run. Hazards (a mine,
+a kickback, a hit) no longer chip at you; they void the shot, the way a
+scratch does.
 
 ### 8.4 Table clear (and out of shots)
 
 It must say: the table is done, here is what every shot paid, here is the
-total, it is now in your run, and here is what comes next.
+total, did it beat the target, and what that earned.
 
 **Ledger** (picked). A scanline sweeps up the table and dims it behind itself.
 A large chamfered panel drops in with TABLE CLEAR (the panel and the title
 arrive together, once). Each shot's line slides in and counts up (P × M = pay)
 with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
-A rule draws across, the TABLE total counts up in large type and slams. Then
-the total is **cloned as a plate**, in the same visual language as the score
-feed during play, and the moment runs **one movement at a time**: the white
-"+1,005 · TABLE" plate pops over the total; it flies along a streak to RUN in
-the top corner; RUN glows once and counts up by exactly what the plate said.
-Nothing else moves or changes while each happens: the ledger's own total
-stays exactly as it was, and the top bar's side columns have fixed widths so a
-wider RUN never shifts the mission. The sum is honest because RUN only ever
-holds **banked** points: during play the corner shows RUN with a live
-"TABLE +855" line under it, and the table's points join RUN only when the
-plate lands.
+A rule draws across and the TABLE total counts up in large type and slams.
+Then, **one movement at a time**, with nothing else moving while each
+happens:
 
-Then the ledger hands over to the shop (§8.4b).
+1. **The target.** A TARGET row appears under the total and a stamp lands on
+   it: BEATEN in `you`, or MISSED in `hazard`.
+2. **A life**, if missed: the last lit pip in the corner swells and goes out.
+   If it was the last life, the run ends here.
+3. **The payout**, as chips that pop in one by one: $4 for beating the
+   target, $1 per shot left, $1 per 25% past the target (up to $5), and
+   interest of $1 per $5 you held coming in (up to $5).
+4. **Into your cash.** A gold "+$11 · CASH" plate pops off the chips and flies
+   along a streak to your cash in the corner, which glows once and counts up
+   by exactly that.
 
-Out of shots uses the same treatment, with the title in `hazard` and a
-"Balls left" row that costs hull. A tap during the count speeds it up. The
-shop arrives last, so nothing can be tapped before the count has had its
-moment.
+The ledger's own numbers never move or restyle, and the corner's figures
+change only when the moment shows them change. Then the ledger hands over to
+the shop (§8.4b).
+
+Out of shots uses the same treatment, with OUT OF SHOTS as the title: the
+target decides the table, not whether every ball went down. A tap during the
+count speeds it up. The shop arrives last, so nothing can be tapped before the
+count has had its moment.
 
 ### 8.4b The shop
 
@@ -295,19 +305,23 @@ It must say: here is what you have to spend, here is what it buys, and this is
 a run, so the shelf is different every time.
 
 It replaces "pick your next table". The ledger slides out and one panel comes
-in: SHOP and **Points to spend** (the RUN total, which counts down as you
-buy). Four upgrade cards from a pool of 21 (`src/systems/Upgrades.js`),
-weighted by rarity (common 6, rare 3, epic 1), never one the run already owns
-unless it stacks. Each card is a name, one plain line and a price; a card you
-can't afford shows its price in `hazard`; a bought card reads "Owned". Under
-the cards, two tools that are always there: **+1 Freeze frame** (fixed price,
-"Meter full" at three) and **Reroll** (60, then 40 more each time). Prices
-grow 15% per table (`RULES.shop`). NEXT TABLE is the one big button.
+in: SHOP and your **Cash**, which counts down as you buy. Four upgrade cards
+from a pool of 21 (`src/systems/Upgrades.js`), weighted by rarity (common 6,
+rare 3, epic 1), never one you already own unless it stacks. Each card is a
+name, one plain line, a price ($5–10) and a **Hold $2** button: cards you pass
+on are gone for good, unless you hold one, and then it waits in the next shop
+at its normal price. Under the cards, two tools that are always there: **+1
+Freeze frame** ($4, "Meter full" at three) and **Reroll** ($3, then $1 more
+each time; a held card stays through it). Then **your five upgrade slots**,
+each with a Sell button that pays back half; a full set of slots means
+selling one before buying another. NEXT TABLE is the one big button. A table
+pays a few dollars, so most shops buy one thing; skipping one to save earns
+interest and buys two next time.
 
 Every upgrade changes how a shot **scores** or what a table **gives** you:
 more points per hit, more Mult per wall, a corner-pocket bonus, odd or even
 balls, the 8, the opening shot, the last ball, a hot streak, Freeze frame
-perks, +1 shot, +1 wall, hull. None changes the physics or the preview,
+perks, +1 shot, +1 wall, an extra life. None changes the physics or the preview,
 because the preview never lies (law 7). An upgrade that pays shows up in play
 as its own plate, named in caps (CORNER OFFICE, HOT STREAK), so the player
 sees what they bought working.

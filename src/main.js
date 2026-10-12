@@ -55,7 +55,7 @@ import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
-import { UPGRADES, rollShelf, priceAt, applyUpgrade } from './systems/Upgrades.js';
+import { UPGRADES, rollShelf, applyUpgrade, removeUpgrade, sellPrice } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -1338,6 +1338,20 @@ function removeBall(ball, pocket) {
 }
 
 /**
+ * A HAZARD VOIDS THE SHOT. With lives in place of hull, nothing chips away
+ * at you mid-table: a mine, a kickback or a hit costs this shot's points, the
+ * way a scratch does, and only a missed target costs a life.
+ */
+function voidShot(label) {
+  if (!game.midStroke || rules.scratched) return;
+  rules.scratch();
+  audio.playerHurt?.();
+  engine.shake(10);
+  hud.flashDamage();
+  fx.floatText(player.x, player.z, `${label.toUpperCase()} · SHOT VOID`, 'splat');
+}
+
+/**
  * Damage is still in the game, but it no longer decides what breaks — it only
  * decides how long the run lasts. Kept as a funnel so boons and hazards have
  * one door to come through.
@@ -1548,7 +1562,7 @@ game.on = {
     // A ball fired back out of a live pocket is the one thing on a static
     // table that can still hurt you.
     if (enemy.hostile) {
-      if (!game.tutorialGuard && speed > 8) p.takeDamage(RULES.damage.kickback, game, enemy);
+      if (!game.tutorialGuard && speed > 8) voidShot('Kickback');
       enemy.hostile = false;
     } else {
       scored(() => rules.hit(enemy.number, { x: enemy.x, z: enemy.z, kind: 'ball', ref: enemy }));
@@ -1784,8 +1798,7 @@ game.on = {
         audio.wallSplat();
         engine.shake(14);
         engine.zoomPunch();
-        if (!game.tutorialGuard) player.takeDamage(RULES.damage.mine, game, 'mine');
-        fx.floatText(object.x, object.z, 'MINE', 'splat');
+        if (!game.tutorialGuard) voidShot('Mine');
       }
     }
   },
@@ -1855,9 +1868,8 @@ game.on = {
     if (p.touchTimer > 0) return;
     if (!enemy.hostile) return;
     enemy.hostile = false;
-    if (p.takeDamage(RULES.damage.kickback, game, enemy)) {
-      p.touchTimer = PLAYER.touchInterval;
-    }
+    voidShot('Kickback');
+    p.touchTimer = PLAYER.touchInterval;
   },
 
   playerDamaged({ player: p, amount }) {
@@ -1874,7 +1886,7 @@ game.on = {
     fx.burst(player.x, player.z, 40, PALETTE.player, 16, 2);
     game.state = 'dead';
     game.deathTimer = 2.4;
-    hud.showBanner('Run Over', `Room ${game.level} · ${rules.runScore.toLocaleString()} points`, 2.4);
+    hud.showBanner('Run Over', `Out of lives on table ${game.level}`, 2.4);
   },
 
   projectileHit({ projectile, player: p }) {
@@ -1884,7 +1896,7 @@ game.on = {
       engine.shake(6);
       return;
     }
-    p.takeDamage(projectile.damage, game, projectile);
+    voidShot('Hit');
   },
 
   projectileExpired({ projectile }) {
@@ -1903,7 +1915,7 @@ function doorLabelText(door) {
     case 'boon':
       return `${door.phase} boon`;
     case 'repair':
-      return `+${PROGRESSION.healAmount} hull`;
+      return '+1 life';
     case 'stroke':
       return `+${PROGRESSION.statRewards.stroke} shot every room`;
     case 'freeze':
@@ -1937,14 +1949,32 @@ function completeRoom() {
     hud.showBanner('Swept in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
   openExits();
-  showRoomResult({
+  showRoomResult({ ...tableResult(result), filled: true }, shownRun);
+}
+
+/** What the end-of-table moment and card show: the ledger, the target, the payout. */
+function tableResult(result) {
+  return {
     level: game.level,
-    filled: true,
     ledger: rules.ledger,
     roomScore: result.roomScore,
     runScore: result.runScore,
+    target: result.target,
+    beaten: result.beaten,
+    payout: result.payout,
+    earned: result.earned,
+    cashFrom: result.cashFrom,
+    cash: result.cash,
+    livesFrom: result.livesFrom,
+    lives: result.lives,
     choices: exitChoices()
-  }, shownRun);
+  };
+}
+
+/** No lives left: the run is over once the table's moment has shown why. */
+function runOver() {
+  moments.closeClear();
+  game.on.playerDeath();
 }
 
 /**
@@ -1954,78 +1984,111 @@ function completeRoom() {
 function showRoomResult(data, shownRun) {
   if (!momentsOn()) {
     hud.showScorecard(data);
+    if (data.lives <= 0) game.on.playerDeath();
     return;
   }
   hud.hideBanner();
   game.scoreHold = shownRun;
+  // The corner's cash and lives change only when the moment shows them change.
+  game.cashHold = data.cashFrom;
+  game.livesHold = data.livesFrom;
   moments.clear({
     ...data,
     // The exits are replaced by the shop: the next table is a button in it.
     choices: [],
     shownRun,
-    onRunLanded: () => (game.scoreHold = null),
-    shop: openShop()
+    onCashLanded: () => (game.cashHold = null),
+    onLifeLost: () => (game.livesHold = null),
+    // no lives left: the moment ends on the last life breaking, not the shop
+    shop: data.lives > 0 ? openShop() : null,
+    onRunOver: data.lives > 0 ? null : runOver
   });
 }
 
 /* ------------------------------------------------------------------ *
- * THE SHOP — between every table, in the one currency.
+ * THE SHOP — between every table, in CASH.
  *
- * Points are the score and the money, so everything here comes out of the
- * run total. The shelf is random (src/systems/Upgrades.js); a Freeze frame
- * charge is always on it; a reroll costs a little more each time.
+ * Cash is the one thing that carries over (points are each table's test), and
+ * it is scarce: most shops you can afford one thing, or skip it to save and
+ * earn interest. Cards don't come back unless you HOLD one for the next shop.
+ * You own at most RULES.shop.ownedSlots upgrades; sell one back for half.
  * ------------------------------------------------------------------ */
-const shopRun = { owned: new Set(), bought: [] };
+const shopRun = { owned: [], bought: [], held: null };
 
 function openShop() {
-  const growth = RULES.shop.priceGrowth;
+  const S = RULES.shop;
   let rerolls = 0;
-  const shelf = () =>
-    rollShelf(shopRun.owned, RULES.shop.slots).map((u) => ({
-      id: u.id,
-      name: u.name,
-      text: u.text,
-      rarity: u.rarity,
-      price: priceAt(u, game.level, growth),
-      sold: false,
-      u
-    }));
+  const card = (u, held = false) => ({ id: u.id, name: u.name, text: u.text, rarity: u.rarity, price: u.price, sold: false, held, u });
+  const ownedIds = () => new Set(shopRun.owned.filter((u) => !u.stack).map((u) => u.id));
+  const shelf = (keepHeld) => {
+    const held = keepHeld && shopRun.held ? [card(shopRun.held, true)] : [];
+    const skip = ownedIds();
+    if (shopRun.held) skip.add(shopRun.held.id);
+    return held.concat(rollShelf(skip, S.slots - held.length).map((u) => card(u)));
+  };
+  const ctx = () => ({ rules, game, player, boons });
   const api = {
-    points: () => rules.runScore,
-    items: shelf(),
-    rerollPrice: () => RULES.shop.reroll + RULES.shop.rerollStep * rerolls,
+    cash: () => rules.cash,
+    items: shelf(true),
+    slotsMax: S.ownedSlots,
+    slotsFull: () => shopRun.owned.length >= S.ownedSlots,
+    rerollPrice: () => S.reroll + S.rerollStep * rerolls,
     reroll() {
       if (!rules.spend(api.rerollPrice())) return false;
       rerolls += 1;
-      api.items = shelf();
+      // a held card stays put through a reroll
+      const keep = api.items.filter((it) => it.held && !it.sold);
+      api.items = keep.concat(shelf(false).filter((it) => !keep.some((k) => k.id === it.id)).slice(0, S.slots - keep.length));
       audio.doorOpen?.();
       return true;
     },
+    canBuy: (item) => !item.sold && rules.cash >= item.price && (item.u.consumable || !api.slotsFull()),
     buy(item) {
-      if (item.sold || !rules.spend(item.price)) return false;
+      if (!api.canBuy(item) || !rules.spend(item.price)) return false;
       item.sold = true;
-      applyUpgrade(item.u, { rules, game, player, boons });
-      if (!item.u.stack) shopRun.owned.add(item.u.id);
+      if (item.held) shopRun.held = null;
+      applyUpgrade(item.u, ctx());
+      if (!item.u.consumable) shopRun.owned.push(item.u);
       shopRun.bought.push(item.name);
       audio.boonPick?.();
       return true;
     },
+    holdPrice: S.hold,
+    canHold: (item) => !item.sold && !item.held && !shopRun.held && rules.cash >= S.hold,
+    hold(item) {
+      if (!api.canHold(item) || !rules.spend(S.hold)) return false;
+      item.held = true;
+      shopRun.held = item.u;
+      audio.boonPick?.();
+      return true;
+    },
+    owned: () => shopRun.owned.map((u, i) => ({ i, name: u.name, refund: sellPrice(u) })),
+    sell(i) {
+      const u = shopRun.owned[i];
+      if (!u) return false;
+      shopRun.owned.splice(i, 1);
+      removeUpgrade(u, ctx());
+      rules.cash += sellPrice(u);
+      audio.doorOpen?.();
+      return true;
+    },
     charge: {
-      price: () => priceAt({ price: RULES.shop.chargePrice }, game.level, growth),
+      price: () => S.chargePrice,
       charges: () => rules.freezeCharges,
       max: RULES.freeze.maxCharges,
-      canBuy: () => rules.runScore >= api.charge.price() && rules.freezeCharges <= RULES.freeze.maxCharges - 1,
+      canBuy: () => rules.cash >= S.chargePrice && rules.freezeCharges <= RULES.freeze.maxCharges - 1,
       buy() {
-        if (!api.charge.canBuy() || !rules.spend(api.charge.price())) return false;
+        if (!api.charge.canBuy() || !rules.spend(S.chargePrice)) return false;
         rules.grantFreeze(1);
         shopRun.bought.push('Freeze frame');
         audio.boonPick?.();
         return true;
       }
     },
-    owned: () => [...shopRun.owned].map((id) => UPGRADES.find((u) => u.id === id)?.name).filter(Boolean),
     next() {
-      game.rewardNote = shopRun.bought.length ? `Bought · ${shopRun.bought.join(' · ')}` : '';
+      const held = shopRun.held ? `Held · ${shopRun.held.name}` : '';
+      const bought = shopRun.bought.length ? `Bought · ${shopRun.bought.join(' · ')}` : '';
+      game.rewardNote = [bought, held].filter(Boolean).join('   ');
       shopRun.bought = [];
       moments.closeClear();
       game.scoreHold = null;
@@ -2036,15 +2099,13 @@ function openShop() {
 }
 
 /**
- * Out of strokes with balls still standing. The rack breaks loose and every
- * ball left takes a bite out of the hull — then the exits open anyway. A bad
- * room costs you the next few rooms, not the run on the spot.
+ * Out of shots with balls still standing. The table ends here all the same:
+ * what decides it is the TARGET, so a strong table can still be beaten with
+ * balls left, and a weak one costs a life.
  */
 function failRoom() {
   if (game.state === 'cleared') return;
   game.state = 'cleared';
-  const standing = rooms.ballsRemaining;
-  const damage = standing * RULES.damage.looseBall;
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
 
@@ -2055,18 +2116,9 @@ function failRoom() {
     if (!ball.alive || ball.number <= 0) continue;
     fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], 4.5, 0.5);
   }
-  if (damage > 0 && !game.tutorialGuard) player.takeDamage(damage, game, 'loose');
 
   openExits();
-  showRoomResult({
-    level: game.level,
-    filled: false,
-    ledger: rules.ledger,
-    roomScore: result.roomScore,
-    runScore: result.runScore,
-    penalty: { standing, damage },
-    choices: exitChoices()
-  }, shownRun);
+  showRoomResult({ ...tableResult(result), filled: false }, shownRun);
 }
 
 function openExits(title, sub) {
@@ -2142,8 +2194,8 @@ function handleDoorEntered(door) {
 
   switch (door.reward.id) {
     case 'repair':
-      player.heal(PROGRESSION.healAmount);
-      announceReward('Repaired', `+${PROGRESSION.healAmount} hull`, 1.6);
+      rules.gainLife(1);
+      announceReward('Extra life', '+1 life', 1.6);
       break;
     case 'stroke':
       game.strokeBonus += PROGRESSION.statRewards.stroke;
@@ -2336,8 +2388,13 @@ function resetRunState() {
   rules.freezeCharges = 0;
   rules.perks = {};
   rules.paidStreak = 0;
-  shopRun.owned.clear();
+  rules.cash = RULES.cash.start;
+  rules.lives = RULES.lives.start;
+  game.cashHold = null;
+  game.livesHold = null;
+  shopRun.owned = [];
   shopRun.bought = [];
+  shopRun.held = null;
 }
 
 function startRun() {
@@ -3677,9 +3734,11 @@ const input = new InputManager(stage, {
     // cue takes to snap into the ball, so the ball leaves when it is hit, not
     // when the thumb lets go.
     if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
-      // An impact strike also holds the frame of contact, longer the harder.
+      // The table also holds the frame of contact, longer the harder: briefly
+      // on the snap (picked in review, with this freeze), longer on impact.
       const power = aim.power ?? 1;
-      const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : 0;
+      const [f0, f1] = TRAJECTORY.strikeFreeze;
+      const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : f0 + f1 * power;
       engine.hitStop(TRAJECTORY.stickStrike + hold);
     }
     // A release either opens a stroke or resumes the one a freeze interrupted.
@@ -4193,11 +4252,14 @@ if (typeof window !== 'undefined') {
   window.__demo = {
     /** End the room as if it went well (or, with `fail`, ran out of shots). */
     clear(fail = false) {
-      const shots = [
-        { pts: 35, mult: 3 },
-        { pts: 60, mult: 4 },
-        { pts: 85, mult: 6 }
-      ];
+      // A failed table is a weak one: short of its target, with no shots left.
+      const shots = fail
+        ? [{ pts: 35, mult: 2 }, { pts: 45, mult: 2 }]
+        : [
+            { pts: 35, mult: 3 },
+            { pts: 60, mult: 4 },
+            { pts: 85, mult: 6 }
+          ];
       rules.ledger.length = 0;
       rules.roomScore = 0;
       shots.forEach((shot, i) => {
@@ -4206,6 +4268,7 @@ if (typeof window !== 'undefined') {
         rules.roomScore += amount;
       });
       if (fail) {
+        rules.strokesLeft = 0;
         failRoom();
       } else {
         rules.ballsDown = rules.mission.rack;
@@ -4501,8 +4564,6 @@ function frame(now) {
     const snapshot = rules.snapshot();
     hud.update(
       {
-        hp: player.hp,
-        maxHp: player.maxHp,
         level: game.level,
         layout: rooms.layout ? rooms.layout.name : '',
         phase: game.phase,
@@ -4511,8 +4572,11 @@ function frame(now) {
         // What the drawn line would be refused for, if anything.
         aimFoul: game.aimFoul,
         ...snapshot,
-        // Held while a table total is still on its way into the run.
-        ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {})
+        // Held through the end-of-table moment, so each figure in the corner
+        // changes only when the moment shows it change.
+        ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {}),
+        ...(game.cashHold != null ? { cash: game.cashHold } : {}),
+        ...(game.livesHold != null ? { lives: game.livesHold } : {})
       },
       rawDt
     );

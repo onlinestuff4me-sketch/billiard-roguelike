@@ -16,9 +16,9 @@
  * player was shown was the number they were told they had been paid at, and it
  * was wrong. Which is the same bug as being paid wrongly, from where they sit.
  */
-import { Rules, missionFor, missionText } from '../src/systems/Rules.js';
+import { Rules, missionFor, missionText, targetFor } from '../src/systems/Rules.js';
 import { RULES } from '../src/config.js';
-import { UPGRADES, rollShelf, priceAt, applyUpgrade } from '../src/systems/Upgrades.js';
+import { UPGRADES, rollShelf, applyUpgrade, removeUpgrade, sellPrice } from '../src/systems/Upgrades.js';
 
 const fails = [];
 const check = (ok, what, detail = '') => {
@@ -239,19 +239,33 @@ console.log('\nfreeze frame charges\n');
   check(cap.earnCharges(paid, 1).length === 0, 'and a full meter earns nothing more');
 }
 
-// ONE CURRENCY: points are the score and the money. Only banked points spend.
+// THE ECONOMY: points are each table's test; cash is what carries over.
 {
   const r = fresh();
-  r.roomScore = 1250;
-  r.strokesLeft = 0;
+  check(r.target === targetFor(1) && targetFor(1) === RULES.target.base, 'the first table asks for the base target', `${r.target}`);
+  check(targetFor(8) > targetFor(1) * 2, 'and the target grows table by table', `${targetFor(1)} → ${targetFor(8)}`);
+  r.roomScore = 1005;
+  r.strokesLeft = 2;
+  r.cash = 7;
+  r.roomScore -= 2 * r.val('savedStroke'); // endRoom adds the saved shots back
   const res = r.endRoom();
-  check(res.credits === undefined && r.credits === undefined, 'there is no second currency');
-  check(r.spend(1000) && r.runScore === 250, 'spending comes out of the run total', `${r.runScore}`);
-  check(!r.spend(251) && r.runScore === 250, 'and you cannot spend what you do not have');
-  check(!r.spend(0) && !r.spend(-5), 'nor spend nothing or less');
-  const live = fresh();
-  live.roomScore = 900;
-  check(!live.spend(500), 'a live table’s points are not spendable until banked');
+  const by = (id) => (res.payout.find((p) => p.id === id) || {}).amount || 0;
+  check(res.beaten && by('beaten') === RULES.cash.beaten, 'beating the target pays its base', JSON.stringify(res.payout.map((p) => p.id)));
+  check(by('shots') === 2 * RULES.cash.perShotLeft, 'and $1 per shot left');
+  check(by('over') === Math.min(RULES.cash.overCap, Math.floor((res.roomScore / res.target - 1) / RULES.cash.overStep)), 'and more the further past the target', `${by('over')} at ${res.roomScore}/${res.target}`);
+  check(by('interest') === 1, 'interest is $1 per $5 held coming in', `${by('interest')}`);
+  check(res.cash === 7 + res.earned && res.lives === RULES.lives.start, 'cash goes up by exactly what was paid, and no life is lost');
+  check(r.spend(5) && r.cash === res.cash - 5, 'the shop spends cash');
+  check(!r.spend(1000) && !r.spend(0), 'and you cannot spend what you do not have, or nothing');
+
+  const m = fresh();
+  m.strokesLeft = 0;
+  m.cash = 30;
+  m.roomScore = 100;
+  const miss = m.endRoom();
+  check(!miss.beaten && miss.lives === RULES.lives.start - 1, 'missing the target costs a life');
+  check(miss.payout.length === 1 && miss.payout[0].id === 'interest' && miss.payout[0].amount === RULES.cash.interestCap, 'and pays only interest, capped', JSON.stringify(miss.payout));
+  check(m.gainLife() && m.lives === RULES.lives.start && !m.gainLife(), 'an extra life refills one, never past the cap');
 }
 
 // UPGRADES: each one changes what a shot pays, and only once bought.
@@ -296,7 +310,12 @@ console.log('\nfreeze frame charges\n');
   const owned = new Set(UPGRADES.filter((u) => !u.stack).map((u) => u.id));
   check(rollShelf(owned, 4).every((u) => u.stack), 'and never one the run already owns, unless it stacks');
   check(UPGRADES.length >= 20, 'the pool is large enough to be a roguelike', `${UPGRADES.length}`);
-  check(priceAt({ price: 200 }, 3, RULES.shop.priceGrowth) > 200, 'prices grow with the table');
+  check(UPGRADES.every((u) => u.price >= 5 && u.price <= 10), 'every upgrade costs $5–10', UPGRADES.map((u) => u.price).join(','));
+  const ctx = { rules: fresh(), game: {}, boons: { addRunBonus() {} } };
+  const rail = UPGRADES.find((u) => u.id === 'long-rail');
+  applyUpgrade(rail, ctx);
+  removeUpgrade(rail, ctx);
+  check(!('perBank' in ctx.rules.perks) && sellPrice(rail) === Math.floor(rail.price / 2), 'selling undoes an upgrade and pays back half');
 }
 
 console.log('');

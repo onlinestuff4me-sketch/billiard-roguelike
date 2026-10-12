@@ -138,8 +138,7 @@ export class Moments {
   }
 
   /** The RUN box in the top bar, in layer pixels. */
-  runBox() {
-    const node = this.hud.scoreValue;
+  runBox(node = this.hud.scoreValue) {
     const r = node.getBoundingClientRect();
     const L = this.layer.getBoundingClientRect();
     return { node, x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 };
@@ -152,15 +151,16 @@ export class Moments {
    * lands and counts up. Exactly what a plate does flying into the score
    * boxes during play, only bigger.
    */
-  async flyToRun(fromNode, value, land, runFrom = null, runTo = null) {
+  async flyToRun(fromNode, value, land, runFrom = null, runTo = null, opt = {}) {
     const L = this.layer.getBoundingClientRect();
     const r = fromNode.getBoundingClientRect();
-    const to = this.runBox();
+    const to = this.runBox(opt.to);
     const x0 = r.left - L.left + r.width / 2;
     const y0 = r.top - L.top + r.height / 2;
     const plate = el('div', 'sf-plate pts mo-bankplate', this.root);
-    el('b', '', plate).textContent = `+${fmt(value)}`;
-    el('small', '', plate).textContent = 'Table';
+    if (opt.cash) plate.classList.add('cash');
+    el('b', '', plate).textContent = opt.cash ? `+$${value}` : `+${fmt(value)}`;
+    el('small', '', plate).textContent = opt.label || 'Table';
     plate.style.left = `${x0}px`;
     plate.style.top = `${y0}px`;
     const dx = to.x - x0;
@@ -199,7 +199,7 @@ export class Moments {
     );
     if (runFrom != null && runTo != null && runTo !== runFrom) {
       let n = 0;
-      await this.count(to.node, runFrom, runTo, 520, { tick: () => this.audio.scoreNote?.(6 + n++, 'points') });
+      await this.count(to.node, runFrom, runTo, 520, { prefix: opt.cash ? '$' : '', tick: () => this.audio.scoreNote?.(6 + n++, 'points') });
     }
     land?.();
   }
@@ -241,12 +241,9 @@ export class Moments {
       amount: e.amount,
       kind: e.id === 'stroke' ? 'shot' : 'bonus'
     }));
-    if (d.penalty && d.penalty.standing > 0) {
-      rows.push({ label: 'Balls left', detail: `${d.penalty.standing} still up`, amount: -d.penalty.damage, kind: 'bad', unit: 'hull' });
-    }
 
     await this._clearLedger(root, d, rows, live);
-    if (!live()) return;
+    if (!live() || d.lives <= 0) return;
     // THE SHOP replaces the exits: the ledger hands over to it, and the next
     // table is a button inside it.
     if (d.shop) {
@@ -287,9 +284,9 @@ export class Moments {
   }
 
   /**
-   * THE SHOP. Points are the only currency: the figure at the top is your RUN
-   * total, and everything bought comes out of it. Four random upgrades, a
-   * Freeze frame charge that is always there, a reroll, and the next table.
+   * THE SHOP, in CASH. Four random cards (hold one for the next shop), a
+   * Freeze frame charge that is always there, a reroll that climbs, your five
+   * upgrade slots with a sell button each, and the next table.
    */
   async _openShop(root, shop, live) {
     const ledger = root.querySelector('.mo-ledger');
@@ -302,94 +299,127 @@ export class Moments {
     const head = el('div', 'mo-shop-head', panel);
     el('div', 'mo-kicker', head).textContent = 'Shop';
     const wallet = el('div', 'mo-shop-points', head);
-    el('span', 'k', wallet).textContent = 'Points to spend';
+    el('span', 'k', wallet).textContent = 'Cash';
     const pts = el('span', 'v', wallet);
-    pts.textContent = fmt(shop.points());
-    el('div', 'mo-shop-note', panel).textContent = 'Points are your score and your money. What you spend comes off your run total.';
+    const money = (n) => `$${n}`;
+    pts.textContent = money(shop.cash());
+    el('div', 'mo-shop-note', panel).textContent = 'Cash carries over; points start fresh each table. Cards you pass on are gone, unless you hold one.';
     const grid = el('div', 'mo-cards', panel);
     const tools = el('div', 'mo-shop-tools', panel);
     const charge = el('button', 'mo-tool charge', tools);
     charge.type = 'button';
     const reroll = el('button', 'mo-tool reroll', tools);
     reroll.type = 'button';
-    const owned = el('div', 'mo-owned', panel);
+    const slotsHead = el('div', 'mo-slots-k', panel);
+    const slots = el('div', 'mo-slots', panel);
     const next = el('button', 'mo-nexttable', root);
     next.type = 'button';
     next.textContent = 'Next table ▸';
 
-    const spendTo = (from) => this.count(pts, from, shop.points(), 300);
+    const spendTo = (from) => this.count(pts, from, shop.cash(), 300, { prefix: '$' });
+    const shake = (node) => this.anim(node, [{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 });
+    const tap = (node, fn) => {
+      absorb(node);
+      node.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (live()) fn(event);
+      });
+    };
     const renderTools = () => {
-      const can = shop.charge.canBuy();
       const full = shop.charge.charges() > shop.charge.max - 1;
-      charge.disabled = !can;
+      charge.disabled = !shop.charge.canBuy();
       charge.innerHTML = '';
       el('span', 'n', charge).textContent = '+1 Freeze frame';
-      el('span', 'p', charge).textContent = full ? 'Meter full' : `${fmt(shop.charge.price())}`;
-      reroll.disabled = shop.points() < shop.rerollPrice();
+      el('span', 'p', charge).textContent = full ? 'Meter full' : money(shop.charge.price());
+      reroll.disabled = shop.cash() < shop.rerollPrice();
       reroll.innerHTML = '';
       el('span', 'n', reroll).textContent = 'Reroll';
-      el('span', 'p', reroll).textContent = fmt(shop.rerollPrice());
-      const mine = shop.owned();
-      owned.textContent = mine.length ? `Yours: ${mine.join(' · ')}` : 'No upgrades yet';
+      el('span', 'p', reroll).textContent = money(shop.rerollPrice());
       grid.querySelectorAll('.mo-card').forEach((c) => {
         const it = c._item;
-        c.classList.toggle('poor', !it.sold && shop.points() < it.price);
+        c.classList.toggle('poor', !it.sold && shop.cash() < it.price);
+        c.classList.toggle('nofit', !it.sold && !it.u.consumable && shop.slotsFull());
+        c.classList.toggle('held', !!it.held && !it.sold);
+        const h = c.querySelector('.hold');
+        if (h) {
+          h.hidden = it.sold || it.held;
+          h.disabled = !shop.canHold(it);
+        }
+        const tag = c.querySelector('.r');
+        tag.textContent = it.held && !it.sold ? 'Held for you' : it.rarity;
       });
+      // the five slots you own, each one sellable for half
+      const mine = shop.owned();
+      slotsHead.textContent = `Your upgrades · ${mine.length} of ${shop.slotsMax}`;
+      slots.textContent = '';
+      for (let i = 0; i < shop.slotsMax; i++) {
+        const o = mine[i];
+        const slot = el('div', `mo-slot${o ? ' on' : ''}`, slots);
+        if (!o) continue;
+        el('span', 'name', slot).textContent = o.name;
+        const sell = el('button', 'sell', slot);
+        sell.type = 'button';
+        sell.textContent = `Sell ${money(o.refund)}`;
+        tap(sell, () => {
+          const before = shop.cash();
+          if (!shop.sell(o.i)) return;
+          spendTo(before);
+          renderTools();
+        });
+      }
     };
     const renderCards = (animate) => {
       grid.textContent = '';
       shop.items.forEach((it, i) => {
-        const c = el('button', `mo-card ${it.rarity}`, grid);
-        c.type = 'button';
+        const c = el('div', `mo-card ${it.rarity}`, grid);
+        c.setAttribute('role', 'button');
+        c.tabIndex = 0;
         c._item = it;
         el('span', 'r', c).textContent = it.rarity;
         el('span', 'name', c).textContent = it.name;
         el('span', 'text', c).textContent = it.text;
-        const price = el('span', 'price', c);
-        price.textContent = fmt(it.price);
-        absorb(c);
-        c.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const before = shop.points();
-          if (!shop.buy(it)) {
-            this.anim(c, [{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 });
-            return;
-          }
-          c.classList.add('sold');
-          price.textContent = 'Owned';
-          this.anim(c, [{ transform: 'scale(1.08)', filter: 'brightness(1.8)' }, { transform: 'none', filter: 'none' }], { duration: 320, easing: OUT });
+        const foot = el('span', 'foot', c);
+        const price = el('span', 'price', foot);
+        price.textContent = money(it.price);
+        const hold = el('button', 'hold', foot);
+        hold.type = 'button';
+        hold.textContent = `Hold ${money(shop.holdPrice)}`;
+        tap(hold, () => {
+          const before = shop.cash();
+          if (!shop.hold(it)) return shake(c);
           spendTo(before);
           renderTools();
         });
-        if (animate) this.anim(c, [{ transform: 'rotateY(80deg) translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 70 * i, easing: BACK });
+        const buy = () => {
+          const before = shop.cash();
+          if (!shop.buy(it)) return shake(c);
+          c.classList.add('sold');
+          price.textContent = 'Owned';
+          this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
+          spendTo(before);
+          renderTools();
+        };
+        tap(c, buy);
+        c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); buy(); } });
+        if (animate) this.anim(c, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 70 * i, easing: BACK });
       });
       renderTools();
     };
-    absorb(charge);
-    charge.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const before = shop.points();
+    tap(charge, () => {
+      const before = shop.cash();
       if (!shop.charge.buy()) return;
       this._pulseFreeze();
       spendTo(before);
       renderTools();
     });
-    absorb(reroll);
-    reroll.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const before = shop.points();
+    tap(reroll, () => {
+      const before = shop.cash();
       if (!shop.reroll()) return;
       spendTo(before);
       renderCards(true);
     });
-    absorb(next);
-    next.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!live()) return;
+    tap(next, () => {
       next.disabled = true;
       shop.next();
     });
@@ -538,8 +568,62 @@ export class Moments {
     this.anim(totalV, [{ transform: 'scale(1.6)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 360, easing: OUT });
     await this.wait(620);
     if (!live()) return;
-    await this.flyToRun(totalV, d.roomScore, d.onRunLanded, d.shownRun, d.runScore);
-    // The ledger is left exactly as it was: the plate was a copy.
+    if (d.target) await this._clearVerdict(panel, d, live);
+  }
+
+  /**
+   * THE TARGET, THEN THE PAYOUT. One movement at a time: the target stamps
+   * BEATEN or MISSED; a missed table breaks a life in the corner; the payout
+   * chips pop in one by one; their total flies into your cash as a plate.
+   */
+  async _clearVerdict(panel, d, live) {
+    const row = el('div', `mo-target ${d.beaten ? 'beaten' : 'missed'}`, panel);
+    el('span', 'k', row).textContent = 'Target';
+    el('span', 'd', row).textContent = d.target.toLocaleString();
+    const stamp = el('span', 'stamp', row);
+    stamp.textContent = d.beaten ? 'Beaten' : 'Missed';
+    await this.anim(row, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+    await this.wait(160);
+    if (d.beaten) this.audio.scoreLock?.();
+    else this.audio.playerHurt?.();
+    await this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
+    await this.wait(380);
+    if (!live()) return;
+
+    if (!d.beaten) {
+      const pip = this.hud.lifeNode((d.livesFrom || 1) - 1);
+      if (pip) {
+        this.engine.shake?.(8);
+        await this.anim(pip, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.8)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.4)', opacity: 0 }], { duration: 520, easing: OUT });
+      }
+      d.onLifeLost?.();
+      await this.wait(300);
+      if (!live()) return;
+      if (d.lives <= 0) {
+        await this.wait(500);
+        d.onRunOver?.();
+        return;
+      }
+    }
+
+    const pays = d.payout || [];
+    if (pays.length) {
+      const line = el('div', 'mo-pay', panel);
+      for (const p of pays) {
+        if (!live()) return;
+        const chip = el('span', 'chip', line);
+        el('b', '', chip).textContent = `$${p.amount}`;
+        el('small', '', chip).textContent = p.label;
+        this.audio.scoreNote?.(3, 'mult');
+        await this.anim(chip, [{ transform: 'scale(0.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 200, easing: BACK });
+        await this.wait(160);
+      }
+      await this.wait(260);
+      if (!live()) return;
+      await this.flyToRun(line, d.earned, d.onCashLanded, d.cashFrom, d.cash, { to: this.hud.cashValue, cash: true, label: 'Cash' });
+    } else {
+      d.onCashLanded?.();
+    }
   }
 
   /* -------------------------------------------------------------- *

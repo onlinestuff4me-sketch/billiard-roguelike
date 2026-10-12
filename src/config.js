@@ -312,7 +312,9 @@ export const TRAJECTORY = {
    */
   stickLook: 'rod', // picked in review
   maxStyle: 'lock', // picked in review
-  strikeStyle: 'snap',
+  strikeStyle: 'snap', // picked in review
+  /** Snap's freeze on contact, in seconds: base + extra × power. */
+  strikeFreeze: [0.03, 0.05],
   cueOptions: {
     stickLook: ['rod', 'classic', 'hardlight'],
     maxStyle: ['flash', 'ignite', 'lock'],
@@ -611,21 +613,54 @@ export const RULES = {
   },
 
   /**
-   * THE SHOP, between tables. ONE CURRENCY: points are the score and the
-   * money, so what is spent comes out of the run total (Rules.spend). Prices
-   * grow with the table number so a late shop costs a late-game amount.
+   * THE SHOP, between every table (decided in review, after Balatro and
+   * Gambonanza). Money is CASH, the one thing that carries from table to
+   * table; points are only this table's test (RULES.target). Cash is scarce
+   * on purpose: most shops you can afford one thing, or skip it to save.
    */
   shop: {
     /** Random upgrades on offer each visit. */
     slots: 4,
-    /** A Freeze frame charge, always on the shelf. */
-    chargePrice: 300,
-    /** Reroll the shelf; the price climbs each time within one visit. */
-    reroll: 60,
-    rerollStep: 40,
-    /** Each table past the first raises every price by this fraction. */
-    priceGrowth: 0.15
+    /** Upgrades you can own at once; sell one back for half to make room. */
+    ownedSlots: 5,
+    /** A Freeze frame charge, always on the shelf, in $. */
+    chargePrice: 4,
+    /** Reroll the shelf; the price climbs $1 each time within one visit. */
+    reroll: 3,
+    rerollStep: 1,
+    /** Hold one card for the next shop, at its normal price. */
+    hold: 2,
+    /** Prices stay flat: scarcity comes from the rising targets. */
+    priceGrowth: 0
   },
+
+  /**
+   * THE TARGET. Every table has a points target to beat; points start fresh
+   * each table. A plain clear (one ball a shot, in order) scores about 785 on
+   * the first table and 1,400 by the eighth, so the target starts easy and
+   * outgrows plain play around table 8: from there you need upgrades.
+   */
+  target: { base: 500, growth: 1.18, round: 50 },
+
+  /** What a table pays, in $, and what saving earns (RULES.shop prices it). */
+  cash: {
+    start: 0,
+    /** Beating the target. Missing it pays nothing but interest. */
+    beaten: 4,
+    /** Per shot left unspent. */
+    perShotLeft: 1,
+    /** $1 for every this-much you beat the target by (0.25 = 25%)... */
+    overStep: 0.25,
+    /** ...up to this many dollars. */
+    overCap: 5,
+    /** Interest: $1 for every `interestPer` held at the end of a table, up to the cap. */
+    interestPer: 5,
+    interestCap: 5
+  },
+
+  /** LIVES replace hull. Missing a table's target costs one; none left ends the run. */
+  lives: { start: 3, max: 3 },
+
 
   /** Hull damage. Nothing hurts you between strokes — only during resolution. */
   damage: {

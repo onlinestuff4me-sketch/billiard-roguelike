@@ -68,6 +68,12 @@ export function missionFor(level, opts = {}) {
   };
 }
 
+/** A table's points target: it starts easy and grows each table. */
+export function targetFor(level) {
+  const T = RULES.target;
+  return Math.round((T.base * Math.pow(T.growth, Math.max(0, level - 1))) / T.round) * T.round;
+}
+
 /** Plain-English mission line for the HUD. Never inferred, always on screen. */
 export function missionText(mission) {
   const n = mission.rack;
@@ -136,6 +142,12 @@ export class Rules {
      * src/systems/Upgrades.js. Reset with the run.
      */
     this.perks = {};
+    /** CASH: the one thing that carries over between tables. Spent in the shop. */
+    this.cash = RULES.cash.start;
+    /** LIVES: missing a table's target costs one; none left ends the run. */
+    this.lives = RULES.lives.start;
+    /** This table's points target (RULES.target). */
+    this.target = targetFor(1);
     /** Consecutive shots this table that paid (the Hot Streak upgrade). */
     this.paidStreak = 0;
     /** Set when the strokes run out with the mission unfilled. */
@@ -158,6 +170,7 @@ export class Rules {
     this.ballsDown = 0;
     this.roomScore = 0;
     this.ledger = [];
+    this.target = targetFor(level);
     this.paidStreak = 0;
     // ICE BOX: every table starts with some Freeze frame already in hand.
     if (this.perks.icebox) this.grantFreeze(this.perks.icebox);
@@ -234,6 +247,26 @@ export class Rules {
       });
     }
     this.runScore += this.roomScore;
+
+    // THE TARGET, then the PAYOUT. Interest is on what you held coming in, so
+    // saving is what earns it; beating the target pays, and beating it by more
+    // pays more. Missing it pays only the interest, and costs a life.
+    const C = RULES.cash;
+    const beaten = this.roomScore >= this.target;
+    const payout = [];
+    if (beaten) {
+      payout.push({ id: 'beaten', label: 'Target beaten', detail: `${this.target.toLocaleString()}`, amount: C.beaten });
+      if (saved > 0) payout.push({ id: 'shots', label: 'Shots left', detail: `${saved} × $${C.perShotLeft}`, amount: saved * C.perShotLeft });
+      const over = Math.min(C.overCap, Math.floor((this.roomScore / Math.max(1, this.target) - 1) / C.overStep + 1e-9));
+      if (over > 0) payout.push({ id: 'over', label: 'Beat it by', detail: `${Math.round((this.roomScore / this.target - 1) * 100)}%`, amount: over });
+    }
+    const interest = Math.min(C.interestCap, Math.floor(this.cash / C.interestPer));
+    if (interest > 0) payout.push({ id: 'interest', label: 'Interest', detail: `$${this.cash} held`, amount: interest });
+    const cashFrom = this.cash;
+    const earned = payout.reduce((n, p) => n + p.amount, 0);
+    this.cash += earned;
+    const livesFrom = this.lives;
+    if (!beaten) this.lives = Math.max(0, this.lives - 1);
     // Once the room is banked, `roomScore` is already inside `runScore`. The
     // HUD adds the two together while a room is live, so it has to be told to
     // stop — otherwise the running total doubles the instant a room ends.
@@ -245,7 +278,15 @@ export class Rules {
       swept,
       sweepBonus: swept ? sweepRate : 0,
       roomScore: this.roomScore,
-      runScore: this.runScore
+      runScore: this.runScore,
+      target: this.target,
+      beaten,
+      payout,
+      earned,
+      cashFrom,
+      cash: this.cash,
+      livesFrom,
+      lives: this.lives
     };
   }
 
@@ -616,13 +657,17 @@ export class Rules {
     return true;
   }
 
-  /**
-   * ONE CURRENCY: points are the score and the money. Spending comes out of
-   * the run total; a table's points only become spendable once banked.
-   */
-  spend(points) {
-    if (!(points > 0) || this.runScore < points) return false;
-    this.runScore -= points;
+  /** Spend CASH in the shop. Points are never spent: they are each table's test. */
+  spend(dollars) {
+    if (!(dollars > 0) || this.cash < dollars) return false;
+    this.cash -= dollars;
+    return true;
+  }
+
+  /** An extra life, up to the cap. Returns false when already full. */
+  gainLife(n = 1) {
+    if (this.lives >= RULES.lives.max) return false;
+    this.lives = Math.min(RULES.lives.max, this.lives + n);
     return true;
   }
 
@@ -666,12 +711,14 @@ export class Rules {
       roomScore: this.roomScore,
       runScore: this.runScore,
       /**
-       * What the RUN readout says: BANKED points only. A live table's points
-       * show under it as TABLE, and join RUN when the table is cleared, so
-       * the plate that flies in at the clear adds exactly what it says.
+       * What the corner says: THIS table's points, against its target.
+       * Points start fresh every table; cash is what carries over.
        */
-      displayScore: this.runScore,
-      tableScore: this.roomClosed ? 0 : this.roomScore,
+      displayScore: this.roomScore,
+      target: this.target,
+      cash: this.cash,
+      lives: this.lives,
+      livesMax: RULES.lives.max,
       freezeCharges: this.freezeCharges,
       banks: this.shownBanks,
       ballsTouched: this.shownTouched,
