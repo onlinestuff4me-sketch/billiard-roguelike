@@ -126,8 +126,10 @@ try {
     }, solve);
 
     // Long enough for the ball to settle, the lesson to judge it, and the card
-    // to turn — all three, with room to spare on a slow headless frame.
-    await wait(9000);
+    // to turn — all three, with room to spare on a slow headless frame. The
+    // angle lesson's cue ball rolls for about nine seconds after the pot (the
+    // score feed's slow motion stretches it), so nine was no margin at all.
+    await wait(12000);
 
     const after = await page.evaluate(() => ({
       drawn: window.__drawn,
