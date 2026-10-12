@@ -261,7 +261,6 @@ export class Moments {
     });
     this._clearReady = false;
     this._clearRoot = root;
-    this._toCollect = false;
     // THE WALLET stays lit in its corner, above the dimmed table, from the
     // result through the shop.
     this.hud.root.classList.add('wallet-lit');
@@ -325,8 +324,8 @@ export class Moments {
    *   result:  [            ] [ GO TO SHOP ] [ Next table ▸ ]
    *   shop:    [ ◂ Summary  ] [ NEXT TABLE ] [              ]
    *
-   * The first way out of the result banks the cash as coins (one per dollar,
-   * a ding each). Go to shop sends the result up and away and slides the shop
+   * The row appears once the result has played (or been skipped), coin rain
+   * included. Go to shop sends the result up and away and slides the shop
    * in; the small Next table slides to the middle and grows into the main
    * button, and ◂ Summary appears on the left. ◂ Summary plays all of that
    * backwards. Next table, from either, opens the next table.
@@ -360,17 +359,14 @@ export class Moments {
     this.anim(act, [{ transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 260, easing: BACK });
     this.anim(next, [{ transform: 'translateX(16px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 120, easing: OUT });
 
-    let banked = !this._toCollect;
     let panel = null;
     let inShop = false;
     let busy = false;
-    const bank = async (btn) => {
-      if (banked) return;
-      banked = true;
-      this._clearReady = false;
-      await this._collect(root, d, btn, live);
-      this.skip = false;
-      this._clearReady = true;
+    // every tap answers at once: the button dips and flashes
+    const press = (btn) => {
+      this.audio.scoreNote?.(6, 'points');
+      this.anim(btn, [{ transform: 'scale(0.88)', filter: 'brightness(1.9)' }, { transform: 'scale(1)', filter: 'none' }], { duration: 220, easing: OUT });
+      return this.wait(140);
     };
     const run = (fn) => async () => {
       if (busy || !live()) return;
@@ -395,7 +391,7 @@ export class Moments {
     const fadeOut = (node) => this.anim(node, [{ transform: 'none', opacity: 1 }, { transform: 'scale(0.6)', opacity: 0 }], { duration: 200, easing: IN }).then(() => (node.style.visibility = 'hidden'));
 
     const goShop = run(async () => {
-      await bank(act);
+      await press(act);
       if (!live()) return;
       act.disabled = true;
       // the result flies up and away
@@ -413,6 +409,7 @@ export class Moments {
       inShop = true;
     });
     const toSummary = run(async () => {
+      await press(back);
       fadeOut(back);
       this.anim(panel, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(70%, 0)', opacity: 0 }], { duration: 360, easing: IN }).then(() => (panel.style.visibility = 'hidden'));
       move(next, right, false);
@@ -423,9 +420,9 @@ export class Moments {
       await fadeIn(act);
     });
     const goNext = run(async () => {
-      await bank(next);
-      if (!live()) return;
       next.disabled = act.disabled = back.disabled = true;
+      await press(next);
+      if (!live()) return;
       shop.next();
     });
     this._actTap = goShop;
@@ -782,7 +779,7 @@ export class Moments {
     d.onTotal?.();
     await this.wait(620);
     if (!live()) return;
-    if (d.target) await this._clearVerdict(panel, d, live);
+    if (d.target) await this._clearVerdict(panel, d, live, root);
   }
 
   /**
@@ -790,7 +787,7 @@ export class Moments {
    * BEATEN or MISSED; a missed table breaks a life in the corner; the payout
    * chips pop in one by one; their total flies into your cash as a plate.
    */
-  async _clearVerdict(panel, d, live) {
+  async _clearVerdict(panel, d, live, root) {
     // the target, the bar and the verdict already landed with the total
     if (!live()) return;
 
@@ -832,10 +829,10 @@ export class Moments {
     }
     await this.wait(260);
     if (!live()) return;
-    // With a shop to go to, the cash waits for CASH OUT, so banking it is the
-    // player's own tap.
+    // With a shop to go to, the cash rains into the wallet as coins, as the
+    // last beat of the result (a Skip lands it all at once).
     if (d.shop && d.earned > 0) {
-      this._toCollect = true;
+      await this._collect(root, d, live);
       return;
     }
     await this.flyToRun(sumV, d.earned, d.onCashLanded, d.cashFrom, d.cash, { to: this.hud.cashValue, cash: true, label: 'Cash' });
@@ -887,20 +884,19 @@ export class Moments {
   }
 
   /**
-   * COLLECTING THE CASH (picked in review: coin rain, after Gambonanza). A
-   * burst behind the panel, then every line pays out its dollars as coins
-   * that arc into the wallet, one ding and +$1 per coin; each line dims once
-   * it has paid.
+   * COLLECTING THE CASH (picked in review: coin rain, after Gambonanza), the
+   * last beat of the result. A burst behind the panel, then every line pays
+   * out its dollars as coins that arc into the wallet, one ding and +$1 per
+   * coin. Skip lands it all at once: the totals stay in the panel and the
+   * wallet shows the new figure.
    */
-  async _collect(root, d, btn, live) {
+  async _collect(root, d, live) {
     const wallet = this.hud.cashValue;
     this.hud.lockCash(true);
     wallet.textContent = `$${d.cashFrom}`;
-    this.anim(btn, [{ transform: 'scale(0.92)' }, { transform: 'scale(1)' }], { duration: 180, easing: OUT });
-    btn.disabled = true;
-    const { box, rowEls, sumV } = this._pay || {};
+    const { box, rowEls } = this._pay || {};
     const to = () => this._at(wallet);
-    // the burst behind the panel, the moment you tap
+    // the burst behind the panel, as the payout begins
     const panel = root.querySelector('.mo-ledger');
     const P = this._at(box || panel);
     const burst = el('div', 'mo-burst', this.root);
@@ -930,14 +926,11 @@ export class Moments {
           this._bumpWallet(wallet);
         }));
       }
-      if (v) this.anim(v, [{ opacity: 1 }, { opacity: 0.25 }], { duration: Math.max(200, p.amount * 70), easing: 'linear' });
       await Promise.all(flights);
       row?.classList.remove('paying');
-      row?.classList.add('paid');
     }
     wallet.textContent = `$${d.cash}`;
     this._bumpWallet(wallet, true);
-    if (sumV) sumV.parentNode.classList.add('paid');
     d.onCashLanded?.();
     await this.wait(380);
   }

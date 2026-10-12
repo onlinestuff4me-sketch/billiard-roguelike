@@ -311,17 +311,18 @@ same place becomes a row of buttons (from review):
     shop:    [ ◂ Summary  ] [ NEXT TABLE ] [              ]
 
 **GO TO SHOP** is gold and central; the small **Next table ▸** on its right
-skips the shop and goes straight to the next table's opening. The cash earned
-waits in the panel until the first of those taps, which banks it as **coin
-rain** (picked in review, after Gambonanza): a burst behind the panel, then
-each cash line pays out its dollars as coins that arc into the wallet, a ding
-and +$1 per coin, and the line dims once it has paid. The cash lines read like
+skips the shop and goes straight to the next table's opening. The row appears
+only once the result has played out or been skipped. The cash is the
+result's last beat, as **coin rain** (picked in review, after Gambonanza): a
+burst behind the panel, then each cash line pays out its dollars as coins
+that arc into the wallet, a ding and +$1 per coin. Skip lands it all at once:
+every total stays in the panel and the wallet shows the new figure. Every
+button dips and flashes the instant it is tapped. The cash lines read like
 Gambonanza's results: a count, the reason with its rule ("Unused shots ($1
 each)"), the dollars. Going to the shop sends the result up and away and
 slides the shop in from the side, while Next table slides to the middle and
 grows into the main button and a small **◂ Summary** appears on the left.
-◂ Summary plays all of that backwards (the cash stays banked; the shop keeps
-every choice). Never on a timer. Every ledger row is in place from
+◂ Summary plays all of that backwards (the shop keeps every choice). Never on a timer. Every ledger row is in place from
 the drop-in, so the panel never grows and the button never moves. A tap
 anywhere else also skips.
 
