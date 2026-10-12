@@ -517,6 +517,15 @@ export class Moments {
     el('span', 'k', total).textContent = 'Table';
     const totalV = el('span', 'v', total);
     totalV.textContent = '0';
+    // The target and payout rows are part of the panel from the start, so the
+    // panel never grows while the moment plays.
+    if (d.target) {
+      this._verdictRow = el('div', `mo-target ${d.beaten ? 'beaten' : 'missed'}`, panel);
+      el('span', 'k', this._verdictRow).textContent = 'Target';
+      el('span', 'd', this._verdictRow).textContent = d.target.toLocaleString();
+      el('span', 'stamp', this._verdictRow).textContent = d.beaten ? 'Beaten' : 'Missed';
+      this._payRow = el('div', 'mo-pay', panel);
+    }
 
     // panel and title arrive together, once each
     this.anim(kicker, [{ letterSpacing: '0.7em', opacity: 0, filter: 'blur(4px)' }, { letterSpacing: '0.16em', opacity: 1, filter: 'blur(0)' }], { duration: 420, delay: 120, easing: OUT });
@@ -566,6 +575,8 @@ export class Moments {
     this.engine.shake?.(7);
     total.classList.add('slam');
     this.anim(totalV, [{ transform: 'scale(1.6)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 360, easing: OUT });
+    // the corner's table figure lands with the total
+    d.onTotal?.();
     await this.wait(620);
     if (!live()) return;
     if (d.target) await this._clearVerdict(panel, d, live);
@@ -577,11 +588,8 @@ export class Moments {
    * chips pop in one by one; their total flies into your cash as a plate.
    */
   async _clearVerdict(panel, d, live) {
-    const row = el('div', `mo-target ${d.beaten ? 'beaten' : 'missed'}`, panel);
-    el('span', 'k', row).textContent = 'Target';
-    el('span', 'd', row).textContent = d.target.toLocaleString();
-    const stamp = el('span', 'stamp', row);
-    stamp.textContent = d.beaten ? 'Beaten' : 'Missed';
+    const row = this._verdictRow;
+    const stamp = row.querySelector('.stamp');
     await this.anim(row, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
     await this.wait(160);
     if (d.beaten) this.audio.scoreLock?.();
@@ -608,7 +616,7 @@ export class Moments {
 
     const pays = d.payout || [];
     if (pays.length) {
-      const line = el('div', 'mo-pay', panel);
+      const line = this._payRow;
       for (const p of pays) {
         if (!live()) return;
         const chip = el('span', 'chip', line);

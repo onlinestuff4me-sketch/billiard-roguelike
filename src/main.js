@@ -1997,6 +1997,7 @@ function showRoomResult(data, shownRun) {
     // The exits are replaced by the shop: the next table is a button in it.
     choices: [],
     shownRun,
+    onTotal: () => (game.scoreHold = null),
     onCashLanded: () => (game.cashHold = null),
     onLifeLost: () => (game.livesHold = null),
     // no lives left: the moment ends on the last life breaking, not the shop

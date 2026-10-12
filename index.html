@@ -1213,10 +1213,11 @@
       .mo-target .stamp { margin-left: auto; padding: 4px 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; opacity: 0; }
       .mo-target.beaten .stamp { background: var(--ll-you); }
       .mo-target.missed .stamp { background: var(--ll-void); }
-      .mo-pay { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 8px 0; }
+      .mo-pay { display: flex; flex-wrap: nowrap; gap: 5px; padding: 8px 8px 0; min-height: 44px; }
+      .mo-pay .chip { flex: 1 1 0; min-width: 0; }
       .mo-pay .chip { display: grid; justify-items: center; padding: 4px 8px; background: rgba(255, 194, 102, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 194, 102, 0.55); }
       .mo-pay .chip b { font-family: var(--font-num); font-size: 15px; color: #ffc266; line-height: 1.1; }
-      .mo-pay .chip small { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.7); }
+      .mo-pay .chip small { font-size: 8px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; text-transform: uppercase; color: rgba(233, 248, 255, 0.7); }
       .sf-plate.cash { --plate-bg: #ffc266; }
       .mo-nexttable { position: absolute; inset: auto; left: 50%; bottom: calc(var(--hud-pad) + 74px); padding: 13px 34px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-you); box-shadow: 0 0 22px rgba(34, 232, 255, 0.6); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); white-space: nowrap; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
