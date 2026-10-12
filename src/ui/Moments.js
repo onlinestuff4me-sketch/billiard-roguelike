@@ -534,7 +534,7 @@ export class Moments {
     const P = (r) => ({ x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 });
     const big = walletV.getBoundingClientRect().height / Math.max(1, corner.getBoundingClientRect().height);
     this.audio.slingshot?.(0.2);
-    await this._arc(ghost, P(a), P(b), { ms: 620, lift: into ? -30 : 30, s0: into ? 1 : big, s1: into ? big : 1 });
+    await this._arc(ghost, P(a), P(b), { ms: 620, lift: 36, s0: into ? 1 : big, s1: into ? big : 1 });
     ghost.remove();
     if (into) {
       wallet.style.visibility = '';
