@@ -338,11 +338,7 @@ export class Moments {
     const panel = el('div', 'mo-shop', root);
     const head = el('div', 'mo-shop-head', panel);
     el('div', 'mo-kicker', head).textContent = 'Shop';
-    const wallet = el('div', 'mo-shop-points', head);
-    el('span', 'k', wallet).textContent = 'Cash';
-    const pts = el('span', 'v', wallet);
     const money = (n) => `$${n}`;
-    pts.textContent = money(shop.cash());
     el('div', 'mo-shop-note', panel).textContent = 'Buy a card, or hold one for the next shop. Tap again to undo. Cards you leave are gone.';
     const grid = el('div', 'mo-cards', panel);
     const tools = el('div', 'mo-shop-tools', panel);
@@ -352,7 +348,21 @@ export class Moments {
     next.type = 'button';
     next.textContent = 'Next table ▸';
 
-    const spendTo = (from) => this.count(pts, from, shop.cash(), 300, { prefix: '$' });
+    // ONE WALLET: your cash lives in the corner, never repeated in the shop.
+    // Every buy, hold or undo pops it, with the change floating beside it.
+    const spendTo = (from) => {
+      const delta = shop.cash() - from;
+      if (!delta) return;
+      const node = this.hud.cashValue;
+      const r = node.getBoundingClientRect();
+      const L = this.layer.getBoundingClientRect();
+      const tag = el('div', `mo-cashdelta${delta > 0 ? ' up' : ''}`, this.root);
+      tag.textContent = `${delta > 0 ? '+' : '−'}$${Math.abs(delta)}`;
+      tag.style.left = `${r.right - L.left + 8}px`;
+      tag.style.top = `${r.top - L.top + r.height / 2}px`;
+      this.anim(tag, [{ transform: 'translate(0, -50%)', opacity: 1 }, { transform: 'translate(0, -50%)', opacity: 1, offset: 0.6 }, { transform: 'translate(0, -50%) translateY(10px)', opacity: 0 }], { duration: 900, easing: OUT }).then(() => tag.remove());
+      node.animate([{ transform: 'scale(1.35)', textShadow: '0 0 14px #ffc266' }, { transform: 'scale(1)', textShadow: 'none' }], { duration: 320, easing: OUT });
+    };
     const shake = (node) => this.anim(node, [{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 });
     const tap = (node, fn) => {
       absorb(node);

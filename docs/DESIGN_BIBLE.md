@@ -321,7 +321,9 @@ It must say: here is what you have to spend, here is what it buys, and this is
 a run, so the shelf is different every time.
 
 It replaces "pick your next table". The ledger slides out and one panel comes
-in: SHOP and your **Cash**, which counts down as you buy. **Three actions**
+in: SHOP. **One wallet** (from review): the shop never repeats your cash; it lives
+in the corner all run, and every buy, hold, undo or reroll pops it with the
+change floating beside it (−$5 in `hazard`, +$5 in gold). **Three actions**
 (decided in review), and nothing else: **buy** a card, **hold** a card ($2: it
 waits in the next shop at its normal price; cards you don't hold are gone), or
 **reroll** ($3, then $1 more each time; a held card stays). A reroll answers
