@@ -611,16 +611,23 @@ export class Moments {
     sumV.textContent = '+$0';
     const dest = el('div', 'mo-cash-dest', box);
     dest.innerHTML = `Into your cash <b>$${d.cashFrom}</b> → <b>$${d.cash}</b>`;
-    await this.anim(box, [{ transform: 'translate(-50%, -10px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 220, easing: OUT });
-    let total = 0;
-    for (const p of pays) {
-      if (!live()) return;
+    // every line is in place before the panel shows, so it never grows
+    const rowEls = pays.map((p) => {
       const r = el('div', 'mo-cash-row', lines);
       el('span', 'k', r).textContent = p.label;
       el('span', 'd', r).textContent = p.detail || '';
       el('span', 'v', r).textContent = `+$${p.amount}`;
+      r.style.opacity = '0';
+      return r;
+    });
+    await this.anim(box, [{ transform: 'translate(-50%, -10px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 220, easing: OUT });
+    let total = 0;
+    for (const [i, p] of pays.entries()) {
+      if (!live()) return;
+      const r = rowEls[i];
       this.audio.scoreNote?.(3, 'mult');
       await this.anim(r, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      r.style.opacity = '1';
       total += p.amount;
       sumV.textContent = `+$${total}`;
       await this.wait(200);
