@@ -245,8 +245,20 @@ export class Moments {
     absorb(root, () => {
       if (!this._clearReady) this.skipNow();
     });
-    const hint = el('div', 'mo-skiphint', root);
-    hint.textContent = 'Tap to skip';
+    const act = el('button', 'mo-nexttable mo-act skip', root);
+    act.type = 'button';
+    act.innerHTML = 'Skip <span aria-hidden="true">▸▸</span>';
+    act.hidden = true;
+    act.style.bottom = 'auto';
+    this._actBtn = act;
+    let onShop = null;
+    absorb(act);
+    act.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (onShop) onShop();
+      else if (!this._clearReady) this.skipNow();
+    });
     this._clearReady = false;
     this._clearRoot = root;
     this.setFilter('clear', 'brightness(0.42) saturate(0.7)', 380);
@@ -260,36 +272,23 @@ export class Moments {
     }));
 
     await this._clearLedger(root, d, rows, live);
-    hint.remove();
-    if (!live() || d.lives <= 0) return;
+    if (!live() || d.lives <= 0) {
+      act.hidden = true;
+      return;
+    }
     // THE SHOP replaces the exits: the ledger hands over to it, and the next
     // table is a button inside it.
     if (d.shop) {
       this.skip = false;
       this._clearReady = true;
-      // The shop opens when you say so, not on a timer.
-      const go = el('button', 'mo-nexttable mo-toshop', root);
-      go.type = 'button';
-      go.textContent = 'Shop ▸';
-      // just under the panel, never on top of it
-      const ledger = root.querySelector('.mo-ledger');
-      if (ledger) {
-        const P = ledger.getBoundingClientRect();
-        const L = this.layer.getBoundingClientRect();
-        go.style.top = `${Math.min(P.bottom - L.top + 12, L.height - 64)}px`;
-        go.style.bottom = 'auto';
-      }
-      this.anim(go, [{ transform: 'translate(-50%, 16px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 260, easing: BACK });
-      await new Promise((resolve) => {
-        absorb(go);
-        go.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          resolve();
-        }, { once: true });
-      });
+      // The same button, now SHOP ▸: the shop opens when you say so.
+      act.classList.remove('skip');
+      act.textContent = 'Shop ▸';
+      this.anim(act, [{ transform: 'translate(-50%, 0) scale(1.12)' }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 260, easing: BACK });
+      await new Promise((resolve) => (onShop = resolve));
       if (!live()) return;
-      go.remove();
+      act.remove();
+      this._actBtn = null;
       await this._openShop(root, d.shop, live);
       return;
     }
@@ -298,6 +297,8 @@ export class Moments {
     // count has had its moment.
     this.skip = false;
     this._clearReady = true;
+    act.remove();
+    this._actBtn = null;
     const next = el('div', 'mo-next', root);
     el('div', 'mo-next-label', next).textContent = d.choices?.length > 1 ? 'Pick your next table' : 'Next table';
     const list = el('div', 'mo-choices', next);
@@ -582,20 +583,44 @@ export class Moments {
       this._pay = { box, rowEls, sumV };
     }
 
+    // Every ledger row is in place (invisible) before the panel drops in, so
+    // the panel never grows and the button under it never moves.
+    const rowEls = rows.map((row) => {
+      const r = el('div', `mo-row ${row.kind}`, list);
+      el('span', 'k', r).textContent = row.label;
+      el('span', 'd', r).textContent = row.detail;
+      el('span', 'v', r).textContent = row.amount < 0 ? '0' : '+0';
+      r.style.opacity = '0';
+      return r;
+    });
+    if (!rows.length) {
+      const r = el('div', 'mo-row shot', list);
+      el('span', 'k', r).textContent = 'Nothing scored';
+      el('span', 'd', r);
+      el('span', 'v', r).textContent = '0';
+    }
+
     // panel and title arrive together, once each
     this.anim(kicker, [{ letterSpacing: '0.7em', opacity: 0, filter: 'blur(4px)' }, { letterSpacing: '0.16em', opacity: 1, filter: 'blur(0)' }], { duration: 420, delay: 120, easing: OUT });
     await this.anim(panel, [{ transform: 'translate(-50%, -40px) scale(1.08)', opacity: 0 }, { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }], { duration: 300, easing: BACK });
+    // SKIP ▸▸, in the spot where SHOP ▸ will be: one button, fixed in place,
+    // that skips while the result plays and opens the shop once it is done.
+    if (this._actBtn) {
+      const P = panel.getBoundingClientRect();
+      const L = this.layer.getBoundingClientRect();
+      this._actBtn.style.top = `${Math.min(P.bottom - L.top + 12, L.height - 64)}px`;
+      this._actBtn.hidden = false;
+      this.anim(this._actBtn, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+    }
     this.audio.scoreThud?.();
     await this.wait(300);
 
     let i = 0;
     for (const row of rows) {
       if (!live()) return;
-      const r = el('div', `mo-row ${row.kind}`, list);
-      el('span', 'k', r).textContent = row.label;
-      el('span', 'd', r).textContent = row.detail;
-      const v = el('span', 'v', r);
-      v.textContent = row.amount < 0 ? '0' : '+0';
+      const r = rowEls[i];
+      const v = r.querySelector('.v');
+      r.style.opacity = '';
       const big = row.kind !== 'shot';
       this.anim(r, [{ transform: big ? 'scale(1.35)' : 'translateX(-46px)', opacity: 0, background: 'rgba(233,248,255,0.5)' }, { transform: 'none', opacity: 1, background: 'rgba(233,248,255,0)' }], { duration: 240, easing: BACK });
       this.audio.scoreNote?.(i, row.kind === 'shot' ? 'points' : 'mult', row.kind === 'bad');
@@ -610,12 +635,6 @@ export class Moments {
         await this.wait(Math.max(120, 300 - i * 40));
       }
       i += 1;
-    }
-    if (!rows.length) {
-      const r = el('div', 'mo-row shot', list);
-      el('span', 'k', r).textContent = 'Nothing scored';
-      el('span', 'd', r);
-      el('span', 'v', r).textContent = '0';
     }
 
     if (!live()) return;

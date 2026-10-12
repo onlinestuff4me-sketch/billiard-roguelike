@@ -301,11 +301,14 @@ happens:
 The ledger's own numbers never move or restyle, and the corner's figures
 change only when the moment shows them change.
 
-**Skip** (from review). "Tap to skip" shows under the panel while it plays; a
-tap anywhere jumps the whole moment to its last frame (every row, the verdict,
-the cash already in the corner). Either way the moment ends on a **Shop ▸**
-button just under the panel: the shop opens when the player says so, never on
-a timer.
+**Skip** (from review, the common pattern). One button sits under the panel
+from the moment it drops in: **SKIP ▸▸** (outlined) while the result plays,
+which jumps the whole moment to its last frame (every row, the verdict, the
+cash already in the corner). When the moment ends, watched or skipped, the
+same button in the same place becomes **SHOP ▸** (filled), and the shop opens
+when the player taps it, never on a timer. Every ledger row is in place from
+the drop-in, so the panel never grows and the button never moves. A tap
+anywhere else also skips.
 
 Out of shots uses the same treatment, with OUT OF SHOTS as the title: the
 target decides the table, not whether every ball went down. A tap during the
