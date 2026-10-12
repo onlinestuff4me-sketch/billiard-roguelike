@@ -305,7 +305,7 @@ export class Moments {
     const pts = el('span', 'v', wallet);
     const money = (n) => `$${n}`;
     pts.textContent = money(shop.cash());
-    el('div', 'mo-shop-note', panel).textContent = 'Tap a card to buy it. Hold one to keep it for the next shop; the rest are gone.';
+    el('div', 'mo-shop-note', panel).textContent = 'Buy a card, or hold one for the next shop. Tap again to undo. Cards you leave are gone.';
     const grid = el('div', 'mo-cards', panel);
     const tools = el('div', 'mo-shop-tools', panel);
     const reroll = el('button', 'mo-tool reroll', tools);
@@ -325,59 +325,65 @@ export class Moments {
       });
     };
     const RANK = { common: 1, rare: 2, epic: 3 };
+    // Each card's two buttons say what they did, and tap again to undo:
+    // BUY $6 → BOUGHT ✓ (undo gives the $6 back), HOLD $2 → HELD ✓.
+    const paintCard = (c) => {
+      const it = c._item;
+      const buy = c.querySelector('.buy');
+      const hold = c.querySelector('.hold');
+      c.classList.toggle('bought', !!it.sold);
+      c.classList.toggle('held', !!it.held && !it.sold);
+      c.classList.toggle('poor', !it.sold && shop.cash() < it.price);
+      buy.setAttribute('aria-pressed', String(!!it.sold));
+      buy.innerHTML = it.sold ? '<b>Bought ✓</b><small>tap to undo</small>' : `<b>Buy</b><span class="p">${money(it.price)}</span>`;
+      buy.disabled = it.sold ? !it.boughtHere : !shop.canBuy(it);
+      hold.hidden = !!it.sold;
+      hold.setAttribute('aria-pressed', String(!!it.held));
+      hold.innerHTML = it.held ? (it.heldHere ? '<b>Held ✓</b><small>tap to undo</small>' : '<b>Held</b><small>from last shop</small>') : `<b>Hold</b><span class="p">${money(shop.holdPrice)}</span>`;
+      hold.disabled = it.held ? !it.heldHere : !shop.canHold(it);
+      const why = c.querySelector('.why');
+      why.textContent = !it.sold && !shop.usable(it) ? (it.id === 'freeze-charge' ? 'Meter full' : 'Lives full') : '';
+      c.querySelector('.r').textContent = `${'★'.repeat(RANK[it.rarity] || 1)} ${it.rarity}`;
+    };
     const renderTools = () => {
       reroll.disabled = shop.cash() < shop.rerollPrice();
       reroll.innerHTML = '';
       el('span', 'n', reroll).textContent = 'Reroll';
       el('span', 'p', reroll).textContent = money(shop.rerollPrice());
-      grid.querySelectorAll('.mo-card').forEach((c) => {
-        const it = c._item;
-        c.classList.toggle('poor', !it.sold && shop.cash() < it.price);
-        c.classList.toggle('nofit', !it.sold && !shop.usable(it));
-        c.classList.toggle('held', !!it.held && !it.sold);
-        const h = c.querySelector('.hold');
-        if (h) {
-          h.hidden = it.sold || it.held;
-          h.disabled = !shop.canHold(it);
-        }
-        const tag = c.querySelector('.r');
-        tag.textContent = it.held && !it.sold ? 'Held for you' : `${'◆'.repeat(RANK[it.rarity] || 1)} ${it.rarity}`;
-      });
+      grid.querySelectorAll('.mo-card').forEach(paintCard);
     };
     const renderCards = (animate) => {
       grid.textContent = '';
       shop.items.forEach((it, i) => {
         const c = el('div', `mo-card ${it.rarity}`, grid);
-        c.setAttribute('role', 'button');
-        c.tabIndex = 0;
         c._item = it;
-        el('span', 'r', c).textContent = it.rarity;
+        el('span', 'r', c);
         el('span', 'name', c).textContent = it.name;
         el('span', 'text', c).textContent = it.text;
+        el('span', 'why', c);
         const foot = el('span', 'foot', c);
-        const price = el('span', 'price', foot);
-        price.textContent = money(it.price);
-        const hold = el('button', 'hold', foot);
+        const buy = el('button', 'act buy', foot);
+        buy.type = 'button';
+        const hold = el('button', 'act hold', foot);
         hold.type = 'button';
-        hold.textContent = `Hold ${money(shop.holdPrice)}`;
-        tap(hold, () => {
+        tap(buy, () => {
           const before = shop.cash();
-          if (!shop.hold(it)) return shake(c);
+          const ok = it.sold ? shop.unbuy(it) : shop.buy(it);
+          if (!ok) return shake(c);
+          if (it.sold) {
+            this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
+            if (it.id === 'freeze-charge') this._pulseFreeze();
+          }
           spendTo(before);
           renderTools();
         });
-        const buy = () => {
+        tap(hold, () => {
           const before = shop.cash();
-          if (!shop.buy(it)) return shake(c);
-          c.classList.add('sold');
-          price.textContent = it.u.consumable ? 'Used' : 'Owned';
-          if (it.id === 'freeze-charge') this._pulseFreeze();
-          this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
+          const ok = it.held ? shop.unhold(it) : shop.hold(it);
+          if (!ok) return shake(c);
           spendTo(before);
           renderTools();
-        };
-        tap(c, buy);
-        c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); buy(); } });
+        });
         if (animate) this.anim(c, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 70 * i, easing: BACK });
       });
       renderTools();
@@ -488,6 +494,7 @@ export class Moments {
     totalV.textContent = '0';
     // The target and payout rows are part of the panel from the start, so the
     // panel never grows while the moment plays.
+    this._verdict = null;
     // Your score against the target, on one bar: the tick is the target, the
     // fill is what you scored, so how much you beat or missed it by is visible.
     if (d.target) {
@@ -542,8 +549,15 @@ export class Moments {
     if (!live()) return;
     await this.anim(rule, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 220, easing: OUT });
     this.anim(total, [{ opacity: 0 }, { opacity: 1 }], { duration: 120 });
+    // The target is on screen as the total counts, and the bar fills with the
+    // count, past the tick or short of it; the verdict slams with the total.
+    const countMs = Math.min(1300, 500 + rows.length * 140);
+    if (this._verdict) {
+      this._verdict.row.style.opacity = '1';
+      this.anim(this._verdict.fill, [{ width: '0%' }, { width: `${this._verdict.to}%` }], { duration: countMs, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' });
+    }
     let n = 0;
-    await this.count(totalV, 0, d.roomScore, Math.min(1300, 500 + rows.length * 140), {
+    await this.count(totalV, 0, d.roomScore, countMs, {
       tick: () => this.audio.scoreNote?.(4 + n++, 'points')
     });
     if (!live()) return;
@@ -551,6 +565,12 @@ export class Moments {
     this.engine.shake?.(7);
     total.classList.add('slam');
     this.anim(totalV, [{ transform: 'scale(1.6)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 360, easing: OUT });
+    if (this._verdict) {
+      const stamp = this._verdict.row.querySelector('.stamp');
+      if (d.beaten) this.audio.scoreLock?.();
+      else this.audio.playerHurt?.();
+      this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
+    }
     // the corner's table figure lands with the total
     d.onTotal?.();
     await this.wait(620);
@@ -564,16 +584,7 @@ export class Moments {
    * chips pop in one by one; their total flies into your cash as a plate.
    */
   async _clearVerdict(panel, d, live) {
-    const { row, fill, to } = this._verdict;
-    const stamp = row.querySelector('.stamp');
-    await this.anim(row, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
-    // the bar fills to your score, past the tick or short of it
-    await this.anim(fill, [{ width: '0%' }, { width: `${to}%` }], { duration: 520, easing: OUT });
-    await this.wait(120);
-    if (d.beaten) this.audio.scoreLock?.();
-    else this.audio.playerHurt?.();
-    await this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
-    await this.wait(380);
+    // the target, the bar and the verdict already landed with the total
     if (!live()) return;
 
     if (!d.beaten) {

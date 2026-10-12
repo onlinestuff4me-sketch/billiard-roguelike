@@ -111,7 +111,7 @@ box-value 26 · popup 26 · tick 13 · mission 18 · body 16 · label 11.
 The table is inset, not edge to edge, so nothing the player reads sits on the
 felt while they play (picked in review, after Ultrapool, though less inset).
 
-- **Top band:** the HUD's top bar (lives and cash; the mission; YOUR SCORE with a bar filling toward the table's TARGET, so how far you have to go is visible all table long).
+- **Top band:** the HUD's top bar: lives and cash on the left; **YOUR SCORE in the centre**, with a bar filling toward the table's TARGET, so how far you have to go is visible all table long; the mission on the right. The order hint ("NEXT 1 · IN ORDER PAYS") shows only when it is a rule: a refused line, or Strict Order mode.
 - **Bottom band:** one row, with shots on the left, the score boxes in the
   middle and Freeze frame on the right. The score boxes show only while a
   stroke plays.
@@ -279,10 +279,11 @@ A rule draws across and the TABLE total counts up in large type and slams.
 Then, **one movement at a time**, with nothing else moving while each
 happens:
 
-1. **Your score against the target.** Under YOUR SCORE, a TARGET row and one
-   bar: the tick is the target, the fill runs to your score, so how much you
-   beat or missed it by is something you can see. Then a stamp lands: BEATEN
-   in `you`, or MISSED in `hazard`.
+1. **Your score against the target.** The TARGET row and its bar are on
+   screen as YOUR SCORE counts up, and the bar fills with the count: past the
+   tick (the target) or short of it, so how much you beat or missed it by is
+   something you watch happen. BEATEN (in `you`) or MISSED (in `hazard`)
+   slams on with the total.
 2. **A life**, if missed: the last lit pip in the corner swells and goes out.
    If it was the last life, the run ends here.
 3. **Cash earned**, in its own gold-edged panel under the ledger: one line per
@@ -308,16 +309,20 @@ a run, so the shelf is different every time.
 
 It replaces "pick your next table". The ledger slides out and one panel comes
 in: SHOP and your **Cash**, which counts down as you buy. **Three actions**
-(decided in review), and nothing else: **buy** a card (tap it), **hold** a card
-($2: it waits in the next shop at its normal price; cards you don't hold are
-gone), or **reroll** ($3, then $1 more each time; a held card stays). Four
+(decided in review), and nothing else: **buy** a card, **hold** a card ($2: it
+waits in the next shop at its normal price; cards you don't hold are gone), or
+**reroll** ($3, then $1 more each time; a held card stays). Each card has two
+buttons, BUY $6 and HOLD $2, and **every tap changes the button as well as the
+card**: BUY becomes BOUGHT ✓ (filled, `you`) and HOLD becomes HELD ✓ (filled,
+`ink`), each saying "tap to undo"; tapping again gives the money back. Four
 cards from a pool of 22 (`src/systems/Upgrades.js`), weighted by rarity
 (common 6, rare 3, epic 1), never one you already own unless it stacks. A
 Freeze frame charge is one of those cards, not a fourth action. **Rarity is
-marked by diamonds** (◆, ◆◆, ◆◆◆) in the card's tag, never by colour: every
-card shares one edge. **Gold means money and nothing else**: cash, prices and
-the payout. A card you can't afford shows its price in `hazard`. NEXT TABLE is
-the one big button.
+marked by stars** (★, ★★, ★★★) in the card's tag, never by colour, and never
+by a shape the HUD already uses (diamonds are the Freeze frame meter, pips are
+lives). **Gold means money and nothing else**. A card you can't afford shows
+its price in `hazard`; a card that would do nothing says why ("Meter full").
+NEXT TABLE is the one big button.
 
 Every upgrade changes how a shot **scores** or what a table **gives** you:
 more points per hit, more Mult per wall, a corner-pocket bonus, odd or even

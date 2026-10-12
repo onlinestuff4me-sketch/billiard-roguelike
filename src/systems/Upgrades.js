@@ -19,7 +19,8 @@ import { RULES } from '../config.js';
  *   consumable   used up when bought
  *   available    optional: false when buying it would do nothing (a full meter)
  *   apply(ctx)   does it: ctx = { rules, game, player, boons }
- *   unapply(ctx) undoes it when sold (perk numbers are undone for you)
+ *   unapply(ctx) undoes it when a purchase is taken back in the shop (perk
+ *                numbers are undone for you)
  */
 
 export const UPGRADES = [
@@ -63,12 +64,14 @@ export const UPGRADES = [
   {
     id: 'extra-life', name: 'Extra Life', text: '+1 life (you can hold three).', rarity: 'rare', price: 8, stack: true, consumable: true,
     available: ({ rules }) => rules.lives < RULES.lives.max,
-    apply: ({ rules }) => rules.gainLife(1)
+    apply: ({ rules }) => rules.gainLife(1),
+    unapply: ({ rules }) => { rules.lives = Math.max(1, rules.lives - 1); }
   },
   {
     id: 'freeze-charge', name: 'Freeze Frame', text: '+1 Freeze frame charge, now.', rarity: 'common', price: 4, stack: true, consumable: true,
     available: ({ rules }) => rules.freezeCharges <= RULES.freeze.maxCharges - 1,
-    apply: ({ rules }) => rules.grantFreeze(1)
+    apply: ({ rules }) => rules.grantFreeze(1),
+    unapply: ({ rules }) => { rules.freezeCharges = Math.max(0, rules.freezeCharges - 1); }
   }
 ];
 
@@ -114,7 +117,7 @@ export function applyUpgrade(upgrade, ctx) {
   upgrade.apply?.(ctx);
 }
 
-/** Undo an upgrade the player sold. */
+/** Undo an upgrade: a purchase taken back before leaving the shop. */
 export function removeUpgrade(upgrade, ctx) {
   if (upgrade.perk) {
     for (const [k, v] of Object.entries(upgrade.perk)) {

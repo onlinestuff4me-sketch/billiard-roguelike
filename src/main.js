@@ -55,7 +55,7 @@ import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
-import { rollShelf, applyUpgrade } from './systems/Upgrades.js';
+import { rollShelf, applyUpgrade, removeUpgrade } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -2047,20 +2047,48 @@ function openShop() {
     buy(item) {
       if (!api.canBuy(item) || !rules.spend(item.price)) return false;
       item.sold = true;
-      if (item.held) shopRun.held = null;
+      item.boughtHere = true;
+      // buying the card you held this visit gives the hold fee back
+      if (item.held) {
+        if (item.heldHere) rules.cash += S.hold;
+        item.held = item.heldHere = false;
+        shopRun.held = null;
+      }
       applyUpgrade(item.u, ctx());
       if (!item.u.consumable) shopRun.owned.push(item.u);
       shopRun.bought.push(item.name);
       audio.boonPick?.();
       return true;
     },
+    /** Take a purchase back, before leaving the shop: the money comes back. */
+    unbuy(item) {
+      if (!item.sold || !item.boughtHere) return false;
+      item.sold = item.boughtHere = false;
+      removeUpgrade(item.u, ctx());
+      const at = shopRun.owned.lastIndexOf(item.u);
+      if (at >= 0) shopRun.owned.splice(at, 1);
+      const b = shopRun.bought.lastIndexOf(item.name);
+      if (b >= 0) shopRun.bought.splice(b, 1);
+      rules.cash += item.price;
+      audio.doorOpen?.();
+      return true;
+    },
     holdPrice: S.hold,
     canHold: (item) => !item.sold && !item.held && !shopRun.held && rules.cash >= S.hold,
     hold(item) {
       if (!api.canHold(item) || !rules.spend(S.hold)) return false;
-      item.held = true;
+      item.held = item.heldHere = true;
       shopRun.held = item.u;
       audio.boonPick?.();
+      return true;
+    },
+    /** Let go of a hold made this visit: the fee comes back. */
+    unhold(item) {
+      if (!item.held || !item.heldHere) return false;
+      item.held = item.heldHere = false;
+      shopRun.held = null;
+      rules.cash += S.hold;
+      audio.doorOpen?.();
       return true;
     },
     next() {
