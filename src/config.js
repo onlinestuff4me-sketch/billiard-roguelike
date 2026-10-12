@@ -621,10 +621,6 @@ export const RULES = {
   shop: {
     /** Random upgrades on offer each visit. */
     slots: 4,
-    /** Upgrades you can own at once; sell one back for half to make room. */
-    ownedSlots: 5,
-    /** A Freeze frame charge, always on the shelf, in $. */
-    chargePrice: 4,
     /** Reroll the shelf; the price climbs $1 each time within one visit. */
     reroll: 3,
     rerollStep: 1,

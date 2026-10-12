@@ -284,11 +284,13 @@ export class Moments {
   }
 
   /**
-   * THE SHOP, in CASH. Four random cards (hold one for the next shop), a
-   * Freeze frame charge that is always there, a reroll that climbs, your five
-   * upgrade slots with a sell button each, and the next table.
+   * THE SHOP, in CASH, with three actions (decided in review): buy a card,
+   * hold a card for the next shop, or reroll. Gold is money and nothing else;
+   * rarity is the 1–3 diamonds on each card, not a colour.
    */
   async _openShop(root, shop, live) {
+    const cashBox = root.querySelector('.mo-cashpanel');
+    if (cashBox) this.anim(cashBox, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).then(() => cashBox.remove());
     const ledger = root.querySelector('.mo-ledger');
     if (ledger) {
       await this.anim(ledger, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -24px) scale(0.96)', opacity: 0 }], { duration: 260, easing: IN });
@@ -303,15 +305,11 @@ export class Moments {
     const pts = el('span', 'v', wallet);
     const money = (n) => `$${n}`;
     pts.textContent = money(shop.cash());
-    el('div', 'mo-shop-note', panel).textContent = 'Cash carries over; points start fresh each table. Cards you pass on are gone, unless you hold one.';
+    el('div', 'mo-shop-note', panel).textContent = 'Tap a card to buy it. Hold one to keep it for the next shop; the rest are gone.';
     const grid = el('div', 'mo-cards', panel);
     const tools = el('div', 'mo-shop-tools', panel);
-    const charge = el('button', 'mo-tool charge', tools);
-    charge.type = 'button';
     const reroll = el('button', 'mo-tool reroll', tools);
     reroll.type = 'button';
-    const slotsHead = el('div', 'mo-slots-k', panel);
-    const slots = el('div', 'mo-slots', panel);
     const next = el('button', 'mo-nexttable', root);
     next.type = 'button';
     next.textContent = 'Next table ▸';
@@ -326,12 +324,8 @@ export class Moments {
         if (live()) fn(event);
       });
     };
+    const RANK = { common: 1, rare: 2, epic: 3 };
     const renderTools = () => {
-      const full = shop.charge.charges() > shop.charge.max - 1;
-      charge.disabled = !shop.charge.canBuy();
-      charge.innerHTML = '';
-      el('span', 'n', charge).textContent = '+1 Freeze frame';
-      el('span', 'p', charge).textContent = full ? 'Meter full' : money(shop.charge.price());
       reroll.disabled = shop.cash() < shop.rerollPrice();
       reroll.innerHTML = '';
       el('span', 'n', reroll).textContent = 'Reroll';
@@ -339,7 +333,7 @@ export class Moments {
       grid.querySelectorAll('.mo-card').forEach((c) => {
         const it = c._item;
         c.classList.toggle('poor', !it.sold && shop.cash() < it.price);
-        c.classList.toggle('nofit', !it.sold && !it.u.consumable && shop.slotsFull());
+        c.classList.toggle('nofit', !it.sold && !shop.usable(it));
         c.classList.toggle('held', !!it.held && !it.sold);
         const h = c.querySelector('.hold');
         if (h) {
@@ -347,27 +341,8 @@ export class Moments {
           h.disabled = !shop.canHold(it);
         }
         const tag = c.querySelector('.r');
-        tag.textContent = it.held && !it.sold ? 'Held for you' : it.rarity;
+        tag.textContent = it.held && !it.sold ? 'Held for you' : `${'◆'.repeat(RANK[it.rarity] || 1)} ${it.rarity}`;
       });
-      // the five slots you own, each one sellable for half
-      const mine = shop.owned();
-      slotsHead.textContent = `Your upgrades · ${mine.length} of ${shop.slotsMax}`;
-      slots.textContent = '';
-      for (let i = 0; i < shop.slotsMax; i++) {
-        const o = mine[i];
-        const slot = el('div', `mo-slot${o ? ' on' : ''}`, slots);
-        if (!o) continue;
-        el('span', 'name', slot).textContent = o.name;
-        const sell = el('button', 'sell', slot);
-        sell.type = 'button';
-        sell.textContent = `Sell ${money(o.refund)}`;
-        tap(sell, () => {
-          const before = shop.cash();
-          if (!shop.sell(o.i)) return;
-          spendTo(before);
-          renderTools();
-        });
-      }
     };
     const renderCards = (animate) => {
       grid.textContent = '';
@@ -395,7 +370,8 @@ export class Moments {
           const before = shop.cash();
           if (!shop.buy(it)) return shake(c);
           c.classList.add('sold');
-          price.textContent = 'Owned';
+          price.textContent = it.u.consumable ? 'Used' : 'Owned';
+          if (it.id === 'freeze-charge') this._pulseFreeze();
           this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
           spendTo(before);
           renderTools();
@@ -406,13 +382,6 @@ export class Moments {
       });
       renderTools();
     };
-    tap(charge, () => {
-      const before = shop.cash();
-      if (!shop.charge.buy()) return;
-      this._pulseFreeze();
-      spendTo(before);
-      renderTools();
-    });
     tap(reroll, () => {
       const before = shop.cash();
       if (!shop.reroll()) return;
@@ -514,17 +483,24 @@ export class Moments {
     const list = el('div', 'mo-rows', panel);
     const rule = el('div', 'mo-rule', panel);
     const total = el('div', 'mo-total', panel);
-    el('span', 'k', total).textContent = 'Table';
+    el('span', 'k', total).textContent = 'Your score';
     const totalV = el('span', 'v', total);
     totalV.textContent = '0';
     // The target and payout rows are part of the panel from the start, so the
     // panel never grows while the moment plays.
+    // Your score against the target, on one bar: the tick is the target, the
+    // fill is what you scored, so how much you beat or missed it by is visible.
     if (d.target) {
-      this._verdictRow = el('div', `mo-target ${d.beaten ? 'beaten' : 'missed'}`, panel);
-      el('span', 'k', this._verdictRow).textContent = 'Target';
-      el('span', 'd', this._verdictRow).textContent = d.target.toLocaleString();
-      el('span', 'stamp', this._verdictRow).textContent = d.beaten ? 'Beaten' : 'Missed';
-      this._payRow = el('div', 'mo-pay', panel);
+      const row = el('div', `mo-target ${d.beaten ? 'beaten' : 'missed'}`, panel);
+      el('span', 'k', row).textContent = 'Target';
+      el('span', 'd', row).textContent = d.target.toLocaleString();
+      el('span', 'stamp', row).textContent = d.beaten ? 'Beaten' : 'Missed';
+      const scale = Math.max(d.target, d.roomScore, 1);
+      const bar = el('div', 'mo-vs', row);
+      const fill = el('span', 'fill', bar);
+      const tick = el('span', 'tick', bar);
+      tick.style.left = `${(d.target / scale) * 100}%`;
+      this._verdict = { row, fill, to: (d.roomScore / scale) * 100 };
     }
 
     // panel and title arrive together, once each
@@ -588,10 +564,12 @@ export class Moments {
    * chips pop in one by one; their total flies into your cash as a plate.
    */
   async _clearVerdict(panel, d, live) {
-    const row = this._verdictRow;
+    const { row, fill, to } = this._verdict;
     const stamp = row.querySelector('.stamp');
     await this.anim(row, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
-    await this.wait(160);
+    // the bar fills to your score, past the tick or short of it
+    await this.anim(fill, [{ width: '0%' }, { width: `${to}%` }], { duration: 520, easing: OUT });
+    await this.wait(120);
     if (d.beaten) this.audio.scoreLock?.();
     else this.audio.playerHurt?.();
     await this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
@@ -615,23 +593,41 @@ export class Moments {
     }
 
     const pays = d.payout || [];
-    if (pays.length) {
-      const line = this._payRow;
-      for (const p of pays) {
-        if (!live()) return;
-        const chip = el('span', 'chip', line);
-        el('b', '', chip).textContent = `$${p.amount}`;
-        el('small', '', chip).textContent = p.label;
-        this.audio.scoreNote?.(3, 'mult');
-        await this.anim(chip, [{ transform: 'scale(0.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 200, easing: BACK });
-        await this.wait(160);
-      }
-      await this.wait(260);
-      if (!live()) return;
-      await this.flyToRun(line, d.earned, d.onCashLanded, d.cashFrom, d.cash, { to: this.hud.cashValue, cash: true, label: 'Cash' });
-    } else {
+    if (!pays.length) {
       d.onCashLanded?.();
+      return;
     }
+    // CASH EARNED: its own panel under the ledger, each line with its reason,
+    // a total, and where it goes. Then the total flies there.
+    const P = panel.getBoundingClientRect();
+    const L = this.layer.getBoundingClientRect();
+    const box = el('div', 'mo-cashpanel', this._clearRoot);
+    box.style.top = `${P.bottom - L.top + 10}px`;
+    el('div', 'mo-cash-k', box).textContent = 'Cash earned';
+    const lines = el('div', 'mo-cash-rows', box);
+    const sum = el('div', 'mo-cash-total', box);
+    el('span', 'k', sum).textContent = 'Total';
+    const sumV = el('span', 'v', sum);
+    sumV.textContent = '+$0';
+    const dest = el('div', 'mo-cash-dest', box);
+    dest.innerHTML = `Into your cash <b>$${d.cashFrom}</b> → <b>$${d.cash}</b>`;
+    await this.anim(box, [{ transform: 'translate(-50%, -10px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 220, easing: OUT });
+    let total = 0;
+    for (const p of pays) {
+      if (!live()) return;
+      const r = el('div', 'mo-cash-row', lines);
+      el('span', 'k', r).textContent = p.label;
+      el('span', 'd', r).textContent = p.detail || '';
+      el('span', 'v', r).textContent = `+$${p.amount}`;
+      this.audio.scoreNote?.(3, 'mult');
+      await this.anim(r, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      total += p.amount;
+      sumV.textContent = `+$${total}`;
+      await this.wait(200);
+    }
+    await this.wait(260);
+    if (!live()) return;
+    await this.flyToRun(sumV, d.earned, d.onCashLanded, d.cashFrom, d.cash, { to: this.hud.cashValue, cash: true, label: 'Cash' });
   }
 
   /* -------------------------------------------------------------- *

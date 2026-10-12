@@ -310,7 +310,7 @@ console.log('\nfreeze frame charges\n');
   const owned = new Set(UPGRADES.filter((u) => !u.stack).map((u) => u.id));
   check(rollShelf(owned, 4).every((u) => u.stack), 'and never one the run already owns, unless it stacks');
   check(UPGRADES.length >= 20, 'the pool is large enough to be a roguelike', `${UPGRADES.length}`);
-  check(UPGRADES.every((u) => u.price >= 5 && u.price <= 10), 'every upgrade costs $5–10', UPGRADES.map((u) => u.price).join(','));
+  check(UPGRADES.every((u) => u.price >= 4 && u.price <= 10), 'every upgrade costs $4–10', UPGRADES.map((u) => u.price).join(','));
   const ctx = { rules: fresh(), game: {}, boons: { addRunBonus() {} } };
   const rail = UPGRADES.find((u) => u.id === 'long-rail');
   applyUpgrade(rail, ctx);

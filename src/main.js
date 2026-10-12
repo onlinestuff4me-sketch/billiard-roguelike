@@ -55,7 +55,7 @@ import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
-import { UPGRADES, rollShelf, applyUpgrade, removeUpgrade, sellPrice } from './systems/Upgrades.js';
+import { rollShelf, applyUpgrade } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -2011,8 +2011,8 @@ function showRoomResult(data, shownRun) {
  *
  * Cash is the one thing that carries over (points are each table's test), and
  * it is scarce: most shops you can afford one thing, or skip it to save and
- * earn interest. Cards don't come back unless you HOLD one for the next shop.
- * You own at most RULES.shop.ownedSlots upgrades; sell one back for half.
+ * earn interest. Three actions, decided in review: BUY a card, HOLD a card
+ * (it waits in the next shop; cards you don't hold are gone), or REROLL.
  * ------------------------------------------------------------------ */
 const shopRun = { owned: [], bought: [], held: null };
 
@@ -2031,8 +2031,6 @@ function openShop() {
   const api = {
     cash: () => rules.cash,
     items: shelf(true),
-    slotsMax: S.ownedSlots,
-    slotsFull: () => shopRun.owned.length >= S.ownedSlots,
     rerollPrice: () => S.reroll + S.rerollStep * rerolls,
     reroll() {
       if (!rules.spend(api.rerollPrice())) return false;
@@ -2043,7 +2041,9 @@ function openShop() {
       audio.doorOpen?.();
       return true;
     },
-    canBuy: (item) => !item.sold && rules.cash >= item.price && (item.u.consumable || !api.slotsFull()),
+    // a card that would do nothing right now (a full meter, full lives) can't be bought
+    usable: (item) => !item.u.available || item.u.available(ctx()),
+    canBuy: (item) => !item.sold && rules.cash >= item.price && api.usable(item),
     buy(item) {
       if (!api.canBuy(item) || !rules.spend(item.price)) return false;
       item.sold = true;
@@ -2062,29 +2062,6 @@ function openShop() {
       shopRun.held = item.u;
       audio.boonPick?.();
       return true;
-    },
-    owned: () => shopRun.owned.map((u, i) => ({ i, name: u.name, refund: sellPrice(u) })),
-    sell(i) {
-      const u = shopRun.owned[i];
-      if (!u) return false;
-      shopRun.owned.splice(i, 1);
-      removeUpgrade(u, ctx());
-      rules.cash += sellPrice(u);
-      audio.doorOpen?.();
-      return true;
-    },
-    charge: {
-      price: () => S.chargePrice,
-      charges: () => rules.freezeCharges,
-      max: RULES.freeze.maxCharges,
-      canBuy: () => rules.cash >= S.chargePrice && rules.freezeCharges <= RULES.freeze.maxCharges - 1,
-      buy() {
-        if (!api.charge.canBuy() || !rules.spend(S.chargePrice)) return false;
-        rules.grantFreeze(1);
-        shopRun.bought.push('Freeze frame');
-        audio.boonPick?.();
-        return true;
-      }
     },
     next() {
       const held = shopRun.held ? `Held · ${shopRun.held.name}` : '';

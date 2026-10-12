@@ -56,7 +56,7 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 
 **The economy** (decided in review, after Balatro and Gambonanza). Every table has a points **target** (500 on the first, growing 18% a table); points start fresh each table. **Cash** carries over: beating the target pays $4, plus $1 per shot left, plus $1 per 25% past the target (up to $5), plus interest of $1 per $5 held (up to $5). **Three lives** replace hull: missing a target costs one, and the last one ends the run. Hazards void the shot instead of doing damage.
 
-**The shop** (built; replaces "pick your next table"). Between tables: four random upgrades ($5–10) from a pool of 21 (`src/systems/Upgrades.js`), weighted by rarity; hold one for $2 to keep it for the next shop; +1 Freeze frame charge ($4); reroll ($3, +$1 each); five upgrade slots, sell one for half; then Next table. Upgrades change scoring or what a table gives, never physics or the preview.
+**The shop** (built; replaces "pick your next table"). Three actions only: buy a card, hold a card ($2, it waits in the next shop), or reroll ($3, +$1 each). Four random cards ($4–10) from a pool of 22, rarity shown as diamonds, never colour; a Freeze frame charge is one of the cards. Gold means money. Upgrades change scoring or what a table gives, never physics or the preview.
 
 **Freeze frame charges** (built; cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more. A whole charge can be bought in the shop for $4.
 

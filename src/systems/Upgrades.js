@@ -1,9 +1,9 @@
+import { RULES } from '../config.js';
 /**
  * Upgrades.js — what the shop sells between tables.
  *
- * CASH buys them (Rules.spend): $5–10 each, against a table that pays a few
- * dollars, so most shops you can afford one thing. You own at most
- * RULES.shop.ownedSlots at once and can sell one back for half.
+ * CASH buys them (Rules.spend): $4–10 each, against a table that pays a few
+ * dollars, so most shops you can afford one thing.
  *
  * Every upgrade changes how a shot SCORES or what a table gives you. Nothing
  * here changes the physics or the aim preview, because the preview never lies
@@ -16,7 +16,8 @@
  *   rarity       'common' | 'rare' | 'epic', which sets its weight on the shelf
  *   price        price in $
  *   stack        true if it can be bought again
- *   consumable   used up when bought: takes no slot and cannot be sold
+ *   consumable   used up when bought
+ *   available    optional: false when buying it would do nothing (a full meter)
  *   apply(ctx)   does it: ctx = { rules, game, player, boons }
  *   unapply(ctx) undoes it when sold (perk numbers are undone for you)
  */
@@ -61,7 +62,13 @@ export const UPGRADES = [
   },
   {
     id: 'extra-life', name: 'Extra Life', text: '+1 life (you can hold three).', rarity: 'rare', price: 8, stack: true, consumable: true,
+    available: ({ rules }) => rules.lives < RULES.lives.max,
     apply: ({ rules }) => rules.gainLife(1)
+  },
+  {
+    id: 'freeze-charge', name: 'Freeze Frame', text: '+1 Freeze frame charge, now.', rarity: 'common', price: 4, stack: true, consumable: true,
+    available: ({ rules }) => rules.freezeCharges <= RULES.freeze.maxCharges - 1,
+    apply: ({ rules }) => rules.grantFreeze(1)
   }
 ];
 

@@ -111,7 +111,7 @@ box-value 26 · popup 26 · tick 13 · mission 18 · body 16 · label 11.
 The table is inset, not edge to edge, so nothing the player reads sits on the
 felt while they play (picked in review, after Ultrapool, though less inset).
 
-- **Top band:** the HUD's top bar (lives and cash, mission, this table's points against its target).
+- **Top band:** the HUD's top bar (lives and cash; the mission; YOUR SCORE with a bar filling toward the table's TARGET, so how far you have to go is visible all table long).
 - **Bottom band:** one row, with shots on the left, the score boxes in the
   middle and Freeze frame on the right. The score boxes show only while a
   stroke plays.
@@ -279,16 +279,18 @@ A rule draws across and the TABLE total counts up in large type and slams.
 Then, **one movement at a time**, with nothing else moving while each
 happens:
 
-1. **The target.** A TARGET row appears under the total and a stamp lands on
-   it: BEATEN in `you`, or MISSED in `hazard`.
+1. **Your score against the target.** Under YOUR SCORE, a TARGET row and one
+   bar: the tick is the target, the fill runs to your score, so how much you
+   beat or missed it by is something you can see. Then a stamp lands: BEATEN
+   in `you`, or MISSED in `hazard`.
 2. **A life**, if missed: the last lit pip in the corner swells and goes out.
    If it was the last life, the run ends here.
-3. **The payout**, as chips that pop in one by one: $4 for beating the
-   target, $1 per shot left, $1 per 25% past the target (up to $5), and
-   interest of $1 per $5 you held coming in (up to $5).
-4. **Into your cash.** A gold "+$11 · CASH" plate pops off the chips and flies
-   along a streak to your cash in the corner, which glows once and counts up
-   by exactly that.
+3. **Cash earned**, in its own gold-edged panel under the ledger: one line per
+   reason, each with its working ("Over the target · 101% · $1 per 25%",
+   "Interest · on $7 · $1 per $5"), a total, and where it goes ("Into your
+   cash $7 → $18").
+4. **Into your cash.** The total flies off as a gold plate to your cash in the
+   corner, which glows once and counts up by exactly that.
 
 The ledger's own numbers never move or restyle, and the corner's figures
 change only when the moment shows them change. Then the ledger hands over to
@@ -305,18 +307,17 @@ It must say: here is what you have to spend, here is what it buys, and this is
 a run, so the shelf is different every time.
 
 It replaces "pick your next table". The ledger slides out and one panel comes
-in: SHOP and your **Cash**, which counts down as you buy. Four upgrade cards
-from a pool of 21 (`src/systems/Upgrades.js`), weighted by rarity (common 6,
-rare 3, epic 1), never one you already own unless it stacks. Each card is a
-name, one plain line, a price ($5–10) and a **Hold $2** button: cards you pass
-on are gone for good, unless you hold one, and then it waits in the next shop
-at its normal price. Under the cards, two tools that are always there: **+1
-Freeze frame** ($4, "Meter full" at three) and **Reroll** ($3, then $1 more
-each time; a held card stays through it). Then **your five upgrade slots**,
-each with a Sell button that pays back half; a full set of slots means
-selling one before buying another. NEXT TABLE is the one big button. A table
-pays a few dollars, so most shops buy one thing; skipping one to save earns
-interest and buys two next time.
+in: SHOP and your **Cash**, which counts down as you buy. **Three actions**
+(decided in review), and nothing else: **buy** a card (tap it), **hold** a card
+($2: it waits in the next shop at its normal price; cards you don't hold are
+gone), or **reroll** ($3, then $1 more each time; a held card stays). Four
+cards from a pool of 22 (`src/systems/Upgrades.js`), weighted by rarity
+(common 6, rare 3, epic 1), never one you already own unless it stacks. A
+Freeze frame charge is one of those cards, not a fourth action. **Rarity is
+marked by diamonds** (◆, ◆◆, ◆◆◆) in the card's tag, never by colour: every
+card shares one edge. **Gold means money and nothing else**: cash, prices and
+the payout. A card you can't afford shows its price in `hazard`. NEXT TABLE is
+the one big button.
 
 Every upgrade changes how a shot **scores** or what a table **gives** you:
 more points per hit, more Mult per wall, a corner-pocket bonus, odd or even

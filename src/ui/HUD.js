@@ -80,9 +80,12 @@ export class HUD {
 
 
     const scoreBlock = el('div', 'hud-score', top);
-    el('div', 'hud-label', scoreBlock).textContent = 'Table';
+    el('div', 'hud-label', scoreBlock).textContent = 'Your score';
     this.scoreValue = el('div', 'score-value', scoreBlock);
-    // THE TARGET this table's points have to beat. Points start fresh each table.
+    // THE TARGET this table's points have to beat, as a bar that fills as you
+    // score, so how far you have to go is visible at a glance all table long.
+    const bar = el('div', 'score-bar', scoreBlock);
+    this.targetFill = el('div', 'fill', bar);
     this.tableValue = el('div', 'score-table', scoreBlock);
 
     /* ---------------- build strip ---------------- */
@@ -458,6 +461,12 @@ export class HUD {
       this.tableValue.innerHTML = s.target ? `<small>Target</small> ${s.target.toLocaleString()}${beaten ? ' ✓' : ''}` : '';
       this.tableValue.classList.toggle('on', !!s.target);
       this.tableValue.classList.toggle('beaten', beaten);
+      this.targetFill.parentNode.classList.toggle('beaten', beaten);
+    }
+    const ratio = s.target ? Math.min(1, (s.displayScore || 0) / s.target) : 0;
+    if (Math.abs(ratio - (cache.ratio ?? -1)) > 0.001) {
+      cache.ratio = ratio;
+      this.targetFill.style.width = `${ratio * 100}%`;
     }
 
     // --- the stroke budget ---
