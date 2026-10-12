@@ -920,7 +920,15 @@ export const MOMENTS = {
   freeze: 'frame',
   /** Boot: strips close, the room number rolls over and holds, the rails trace in (picked in review) */
   transition: 'boot',
+  /**
+   * Where your cash sits while the shop is open (on trial in review):
+   *   move   it flies from the corner into the shop header, large, and back
+   *   dock   it sits large in the shop's bottom bar, beside Reroll
+   *   spot   it stays in the corner, grown and lit, with the rest of the bar dimmed
+   */
+  wallet: 'move',
   options: {
+    wallet: ['move', 'dock', 'spot'],
     clear: ['ledger'],
     scratch: ['glitch'],
     freeze: ['frame'],

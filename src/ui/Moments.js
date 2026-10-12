@@ -342,26 +342,42 @@ export class Moments {
     el('div', 'mo-shop-note', panel).textContent = 'Buy a card, or hold one for the next shop. Tap again to undo. Cards you leave are gone.';
     const grid = el('div', 'mo-cards', panel);
     const tools = el('div', 'mo-shop-tools', panel);
+    // THE WALLET while shopping (MOMENTS.wallet). Only ever one on screen.
+    const wstyle = this.variant('wallet') || 'move';
+    let walletV = this.hud.cashValue;
+    if (wstyle === 'move' || wstyle === 'dock') {
+      const w = el('div', `mo-wallet ${wstyle}`, wstyle === 'move' ? head : tools);
+      el('span', 'k', w).textContent = 'Your cash';
+      walletV = el('span', 'v', w);
+      walletV.textContent = money(shop.cash());
+      this.hud.root.classList.add('wallet-away');
+    } else {
+      this.hud.root.classList.add('wallet-spot');
+    }
+    tools.classList.toggle('docked', wstyle === 'dock');
     const reroll = el('button', 'mo-tool reroll', tools);
     reroll.type = 'button';
     const next = el('button', 'mo-nexttable', root);
     next.type = 'button';
     next.textContent = 'Next table ▸';
 
-    // ONE WALLET: your cash lives in the corner, never repeated in the shop.
-    // Every buy, hold or undo pops it, with the change floating beside it.
+    // Every buy, hold, undo or reroll counts the wallet to its new figure,
+    // with the change floating beside it.
     const spendTo = (from) => {
-      const delta = shop.cash() - from;
+      const to = shop.cash();
+      const delta = to - from;
       if (!delta) return;
-      const node = this.hud.cashValue;
-      const r = node.getBoundingClientRect();
+      if (walletV !== this.hud.cashValue) this.count(walletV, from, to, 300, { prefix: '$' });
+      const r = walletV.getBoundingClientRect();
       const L = this.layer.getBoundingClientRect();
       const tag = el('div', `mo-cashdelta${delta > 0 ? ' up' : ''}`, this.root);
       tag.textContent = `${delta > 0 ? '+' : '−'}$${Math.abs(delta)}`;
-      tag.style.left = `${r.right - L.left + 8}px`;
+      const right = wstyle === 'move';
+      tag.style.left = right ? `${r.left - L.left - 6}px` : `${r.right - L.left + 8}px`;
       tag.style.top = `${r.top - L.top + r.height / 2}px`;
-      this.anim(tag, [{ transform: 'translate(0, -50%)', opacity: 1 }, { transform: 'translate(0, -50%)', opacity: 1, offset: 0.6 }, { transform: 'translate(0, -50%) translateY(10px)', opacity: 0 }], { duration: 900, easing: OUT }).then(() => tag.remove());
-      node.animate([{ transform: 'scale(1.35)', textShadow: '0 0 14px #ffc266' }, { transform: 'scale(1)', textShadow: 'none' }], { duration: 320, easing: OUT });
+      const tx = right ? 'translate(-100%, -50%)' : 'translate(0, -50%)';
+      this.anim(tag, [{ transform: tx, opacity: 1 }, { transform: tx, opacity: 1, offset: 0.6 }, { transform: `${tx} translateY(10px)`, opacity: 0 }], { duration: 900, easing: OUT }).then(() => tag.remove());
+      walletV.animate([{ transform: 'scale(1.25)', textShadow: '0 0 16px #ffc266' }, { transform: 'scale(1)', textShadow: '0 0 10px rgba(255, 138, 30, 0.5)' }], { duration: 320, easing: OUT });
     };
     const shake = (node) => this.anim(node, [{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 });
     const tap = (node, fn) => {
@@ -461,9 +477,31 @@ export class Moments {
       shop.next();
     });
 
+    if (wstyle === 'move') this._flyWallet(this.hud.cashValue, walletV, shop.cash());
     this.anim(panel, [{ transform: 'translate(-50%, 24px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, easing: BACK });
     this.anim(next, [{ transform: 'translate(-50%, 20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, delay: 360, easing: BACK });
     renderCards(true);
+  }
+
+  /** MOVE: a copy of your cash flies from the corner into the shop header. */
+  _flyWallet(from, to, value) {
+    const L = this.layer.getBoundingClientRect();
+    const a = from.getBoundingClientRect();
+    const fly = el('div', 'mo-walletfly', this.root);
+    fly.textContent = `$${value}`;
+    fly.style.left = `${a.left - L.left}px`;
+    fly.style.top = `${a.top - L.top}px`;
+    to.style.opacity = '0';
+    requestAnimationFrame(() => {
+      const b = to.getBoundingClientRect();
+      const dx = b.left - a.left;
+      const dy = b.top - a.top;
+      const sc = b.height / Math.max(1, a.height);
+      this.anim(fly, [{ transform: 'translate(0, 0) scale(1)' }, { transform: `translate(${dx}px, ${dy}px) scale(${sc})` }], { duration: 420, delay: 120, easing: 'cubic-bezier(0.5, 0, 0.2, 1)' }).then(() => {
+        to.style.opacity = '';
+        fly.remove();
+      });
+    });
   }
 
   /** The Freeze frame meter in the HUD, in layer pixels. */
@@ -521,6 +559,8 @@ export class Moments {
 
   closeClear() {
     this._clear = null;
+    // the wallet goes home to the corner
+    this.hud.root.classList.remove('wallet-away', 'wallet-spot');
     if (this._clearRoot) {
       const root = this._clearRoot;
       this._clearRoot = null;
