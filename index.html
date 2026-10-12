@@ -1243,24 +1243,26 @@
       .hud.wallet-away .cash-value { opacity: 0; }
       .hud.wallet-lit .hud-top { z-index: 47; background: none; }
       .hud.wallet-lit .hud-mission, .hud.wallet-lit .hud-score, .hud.wallet-lit .hud-hp .hud-label { opacity: 0.3; }
-      /* glide: the same box, larger, in the shop's header */
-      .mo-wallet { display: grid; justify-items: end; line-height: 1; }
-      .mo-wallet .k { font-size: 10px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
-      .mo-wallet .v, .mo-walletglide { display: inline-block; font-family: var(--font-num); font-weight: 800; line-height: 1; color: #ffc266; text-shadow: 0 0 10px rgba(255, 138, 30, 0.5); font-variant-numeric: tabular-nums; padding: 4px 9px 3px; border: 1.5px solid rgba(255, 194, 102, 0.75); border-radius: 3px; background: rgba(20, 13, 3, 0.88); box-shadow: 0 0 12px rgba(255, 138, 30, 0.28); }
-      .mo-wallet .v { margin-top: 4px; font-size: 32px; padding: 5px 12px 4px; }
-      .mo-walletglide { position: absolute; inset: auto; z-index: 48; font-size: clamp(16px, 4.6vmin, 22px); pointer-events: none; }
-      /* CASH OUT: the button turns gold — it is money now */
+      /* ONE ROW OF BUTTONS under the panel, where Skip was (from review):
+         result [ · | GO TO SHOP | Next table ▸ ], shop [ ◂ Summary | NEXT TABLE | · ].
+         The middle slot holds both main buttons in one cell, so they swap in place. */
+      .mo-actrow { position: absolute; inset: auto; left: 50%; transform: translateX(-50%); width: min(96%, 390px); z-index: 40; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; pointer-events: none; }
+      .mo-actrow .slot { display: grid; align-items: center; }
+      .mo-actrow .slot.l { justify-items: start; }
+      .mo-actrow .slot.r { justify-items: end; }
+      .mo-actrow .slot.m { justify-items: center; }
+      .mo-actrow .slot.m > * { grid-area: 1 / 1; }
+      .mo-act.in-row { position: relative; left: auto; top: auto; bottom: auto; transform: none; pointer-events: auto; padding: 13px 20px; }
+      .mo-act.in-row { font-size: 15px; }
+      .mo-act.in-row.small { display: grid; justify-items: center; gap: 3px; min-width: 72px; font-size: 9px; letter-spacing: 0.1em; line-height: 1; padding: 7px 8px 8px; color: var(--ll-you); background: rgba(2, 5, 11, 0.85); box-shadow: inset 0 0 0 1.5px var(--ll-you); }
+      .mo-act.in-row.small i { font-style: normal; font-size: 15px; line-height: 1; }
+      /* GO TO SHOP is gold: the shop is where the money goes */
       .mo-act.collect { color: #1a0f00; background: #ffc266; box-shadow: 0 0 24px rgba(255, 170, 60, 0.75); }
-      .mo-act.collect b { font-weight: 800; }
       .mo-act.collect:disabled { filter: brightness(0.75); }
       /* coins: one per dollar, and the burst behind the results */
       .mo-coin { position: absolute; inset: auto; z-index: 49; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-num); font-size: 11px; font-weight: 900; color: #3a2200; background: radial-gradient(circle at 35% 30%, #fff1c9 0%, #ffc266 45%, #d98a1e 100%); box-shadow: 0 0 10px rgba(255, 170, 60, 0.9); pointer-events: none; }
       .mo-burst { position: absolute; inset: auto; z-index: 13; width: 440px; height: 440px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 210, 120, 0.85) 0%, rgba(255, 170, 60, 0.35) 22%, rgba(2, 5, 11, 0) 50%, rgba(2, 5, 11, 1) 70%), repeating-conic-gradient(from 0deg, rgba(255, 194, 102, 0.45) 0deg 6deg, transparent 6deg 22deg); mix-blend-mode: screen; }
       .mo-ring.gold { border-color: #ffc266; box-shadow: 0 0 18px #ffaa3c, inset 0 0 12px #ffaa3c; }
-      /* spending: the price travels between the wallet and the card */
-      .mo-paychip { position: absolute; inset: auto; z-index: 49; padding: 3px 8px; font-family: var(--font-num); font-size: 16px; font-weight: 800; color: #ffc266; background: rgba(20, 13, 3, 0.92); border: 1.5px solid #ff2e7e; border-radius: 3px; box-shadow: 0 0 12px rgba(255, 46, 126, 0.5); pointer-events: none; white-space: nowrap; }
-      .mo-paychip.up { border-color: #ffc266; box-shadow: 0 0 12px rgba(255, 170, 60, 0.6); }
-      .mo-arcplate { z-index: 49; }
       /* coins: the results read like Gambonanza's — a count, the reason with its rule, the dollars */
       .mo-cash-row .n { font-family: var(--font-num); font-size: 18px; font-weight: 800; color: #ffc266; min-width: 1.1em; text-align: center; }
       .mo-cash-row.counted { grid-template-columns: auto auto 1fr auto; }

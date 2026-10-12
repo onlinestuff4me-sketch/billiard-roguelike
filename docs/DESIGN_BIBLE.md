@@ -305,17 +305,23 @@ change only when the moment shows them change.
 from the moment it drops in: **SKIP ▸▸** (outlined) while the result plays,
 which jumps the whole moment to its last frame (every row, the verdict, the
 cash already in the corner). When the moment ends, watched or skipped, the
-same button in the same place becomes **CASH OUT +$11** (gold: it is money
-now), after Balatro's "Cash out" and Gambonanza's "Get my $5!!". The cash
-earned waits in the panel until that tap; the tap banks it into the wallet
-and the shop follows on its own, never on a timer. With nothing to collect
-the button reads **SHOP ▸**. How the cash travels is on trial
-(`MOMENTS.wallet`): **cashout**, the Cash total arcs into the wallet as one
-plate and the wallet counts up a ding per dollar; **coins**, a burst behind
-the panel and then every line pays its dollars as coins, one ding each, with
-the lines laid out like Gambonanza's results (count, reason with its rule,
-dollars); **glide**, as cashout, then the wallet box itself glides into the
-shop's header and home again when you leave. Every ledger row is in place from
+same place becomes a row of buttons (from review):
+
+    result:  [            ] [ GO TO SHOP ] [ Next table ▸ ]
+    shop:    [ ◂ Summary  ] [ NEXT TABLE ] [              ]
+
+**GO TO SHOP** is gold and central; the small **Next table ▸** on its right
+skips the shop and goes straight to the next table's opening. The cash earned
+waits in the panel until the first of those taps, which banks it as **coin
+rain** (picked in review, after Gambonanza): a burst behind the panel, then
+each cash line pays out its dollars as coins that arc into the wallet, a ding
+and +$1 per coin, and the line dims once it has paid. The cash lines read like
+Gambonanza's results: a count, the reason with its rule ("Unused shots ($1
+each)"), the dollars. Going to the shop sends the result up and away and
+slides the shop in from the side, while Next table slides to the middle and
+grows into the main button and a small **◂ Summary** appears on the left.
+◂ Summary plays all of that backwards (the cash stays banked; the shop keeps
+every choice). Never on a timer. Every ledger row is in place from
 the drop-in, so the panel never grows and the button never moves. A tap
 anywhere else also skips.
 
@@ -334,8 +340,8 @@ in: SHOP. **One wallet** (from review): a gold box in the top-left corner, all
 run, never repeated. From the table's result through the shop it is lifted
 above the dimmed table so it stays in focus. **Money always travels** between
 the wallet and what it pays for: spending sends the price out of the wallet
-to the card (a −$6 chip edged in `hazard`, or coins), a refund sends it back,
-and the wallet counts to its new figure a ding per dollar. **Three actions**
+to the card as coins, one per dollar, and the wallet ticks down coin by coin;
+a refund sends them back. **Three actions**
 (decided in review), and nothing else: **buy** a card, **hold** a card ($2: it
 waits in the next shop at its normal price; cards you don't hold are gone), or
 **reroll** ($3, then $1 more each time; a held card stays). A reroll answers

@@ -920,20 +920,10 @@ export const MOMENTS = {
   freeze: 'frame',
   /** Boot: strips close, the room number rolls over and holds, the rails trace in (picked in review) */
   transition: 'boot',
-  /**
-   * Collecting your cash and carrying it into the shop (on trial in review,
-   * after Balatro and Gambonanza). The wallet is one gold box in the corner,
-   * always; the table's result ends on a CASH OUT button.
-   *   cashout  the Cash total arcs into the wallet as one plate, which counts
-   *            up; the shop rises; prices travel as chips (Balatro)
-   *   coins    a burst, then every line pays its dollars as coins, one ding
-   *            each; the shop slides in; spending sends coins (Gambonanza)
-   *   glide    as cashout, then the wallet box itself glides into the shop's
-   *            header, large, and home again when you leave
-   */
-  wallet: 'cashout',
+  /** Coin rain: every cash line pays out as coins into the wallet, one ding each (picked in review, after Gambonanza) */
+  wallet: 'coins',
   options: {
-    wallet: ['cashout', 'coins', 'glide'],
+    wallet: ['coins'],
     clear: ['ledger'],
     scratch: ['glitch'],
     freeze: ['frame'],
