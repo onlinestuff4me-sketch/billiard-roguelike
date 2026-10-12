@@ -1233,6 +1233,7 @@
       .mo-cash-total .v { display: inline-block; font-family: var(--font-num); font-size: 24px; font-weight: 800; color: #ffc266; font-variant-numeric: tabular-nums; }
       .sf-plate.cash { --plate-bg: #ffc266; }
       .mo-nexttable { position: absolute; inset: auto; left: 50%; bottom: calc(var(--hud-pad) + 74px); padding: 13px 34px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-you); box-shadow: 0 0 22px rgba(34, 232, 255, 0.6); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); white-space: nowrap; }
+      .mo-skiphint { position: absolute; inset: auto; left: 50%; bottom: calc(var(--hud-pad) + 96px); transform: translateX(-50%); font-size: 11px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(233, 248, 255, 0.55); pointer-events: none; white-space: nowrap; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
       .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
       .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
@@ -1240,8 +1241,8 @@
       /* CLEAR */
       .mo-clear { pointer-events: auto; }
       .mo-ledger {
-        position: absolute; left: 50%; top: 10%; width: min(90%, 360px);
-        padding: 18px 20px 16px; isolation: isolate;
+        position: absolute; left: 50%; top: 9%; width: min(90%, 360px);
+        padding: 14px 18px 12px; isolation: isolate;
         filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.35));
       }
       .mo-ledger::before {
@@ -1255,16 +1256,16 @@
       .mo-title { margin-top: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
       .mo-rows { display: grid; gap: 4px; }
       .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 2px 8px; line-height: 1.15; font-variant-numeric: tabular-nums; }
-      .mo-row .k { white-space: nowrap; font-size: 16px; font-weight: 800; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
+      .mo-row .k { white-space: nowrap; font-size: 14px; font-weight: 800; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
       .mo-row .d { font-size: 13px; font-weight: 600; color: rgba(233, 248, 255, 0.42); }
-      .mo-row .v { font-size: 24px; font-weight: 800; color: var(--ll-pts); min-width: 4ch; text-align: right; }
+      .mo-row .v { font-size: 21px; font-weight: 800; color: var(--ll-pts); min-width: 4ch; text-align: right; }
       /* Bonus rows are POINTS, so they are points white; gold is money only. */
       .mo-row.bonus .k, .mo-row.bonus .v { color: var(--ll-pts); text-shadow: 0 0 10px rgba(233, 248, 255, 0.45); }
       .mo-row.bad .k, .mo-row.bad .v { color: var(--ll-void); }
       .mo-rule { height: 2px; margin: 8px 0 6px; background: linear-gradient(90deg, transparent, var(--ll-you), transparent); transform-origin: 50% 50%; }
       .mo-total { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; opacity: 0; }
       .mo-total .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
-      .mo-total .v { font-size: 48px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
+      .mo-total .v { font-size: 40px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
 
       .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 60px) 0; display: grid; justify-items: center; gap: 6px; padding: 0 9%; }

@@ -96,15 +96,30 @@ export class Moments {
   }
 
   wait(ms) {
-    return new Promise((resolve) => setTimeout(resolve, this.skip ? Math.min(ms, 24) : ms));
+    return new Promise((resolve) => setTimeout(resolve, this.skip ? 0 : ms));
   }
 
   anim(node, frames, opts) {
     // 'both': a delayed animation holds its first frame while it waits, so
     // nothing shows, vanishes and then animates in.
     const a = node.animate(frames, { fill: 'both', ...opts });
-    if (this.skip) a.playbackRate = 6;
+    this._running = this._running || new Set();
+    if (this.skip) {
+      try { a.finish(); } catch { /* infinite or detached */ }
+    } else {
+      this._running.add(a);
+      a.finished.finally(() => this._running.delete(a)).catch(() => {});
+    }
     return a.finished.catch(() => {});
+  }
+
+  /** SKIP: everything still playing jumps to its last frame, now. */
+  skipNow() {
+    this.skip = true;
+    for (const a of this._running || []) {
+      try { a.finish(); } catch { /* infinite or detached */ }
+    }
+    this._running?.clear();
   }
 
   /** Count a node's number from `from` to `to`, ticking a note as it goes. */
@@ -113,8 +128,7 @@ export class Moments {
       const t0 = performance.now();
       let lastTick = -1;
       const step = () => {
-        const dur = this.skip ? Math.min(ms, 60) : ms;
-        const u = Math.min(1, (performance.now() - t0) / Math.max(1, dur));
+        const u = this.skip ? 1 : Math.min(1, (performance.now() - t0) / Math.max(1, ms));
         const e = 1 - Math.pow(1 - u, 3);
         node.textContent = prefix + fmt(from + (to - from) * e);
         const k = Math.floor(u * 8);
@@ -227,9 +241,12 @@ export class Moments {
     const live = () => this._clear === id;
     const style = this.variant('clear');
     const root = el('div', `mo-clear ${style}${d.filled ? '' : ' failed'}`, this.root);
+    // A TAP SKIPS: the whole moment jumps to its end, and the Shop button waits.
     absorb(root, () => {
-      if (!this._clearReady) this.skip = true;
+      if (!this._clearReady) this.skipNow();
     });
+    const hint = el('div', 'mo-skiphint', root);
+    hint.textContent = 'Tap to skip';
     this._clearReady = false;
     this._clearRoot = root;
     this.setFilter('clear', 'brightness(0.42) saturate(0.7)', 380);
@@ -243,14 +260,36 @@ export class Moments {
     }));
 
     await this._clearLedger(root, d, rows, live);
+    hint.remove();
     if (!live() || d.lives <= 0) return;
     // THE SHOP replaces the exits: the ledger hands over to it, and the next
     // table is a button inside it.
     if (d.shop) {
       this.skip = false;
       this._clearReady = true;
-      await this.wait(500);
+      // The shop opens when you say so, not on a timer.
+      const go = el('button', 'mo-nexttable mo-toshop', root);
+      go.type = 'button';
+      go.textContent = 'Shop ▸';
+      // just under the panel, never on top of it
+      const ledger = root.querySelector('.mo-ledger');
+      if (ledger) {
+        const P = ledger.getBoundingClientRect();
+        const L = this.layer.getBoundingClientRect();
+        go.style.top = `${Math.min(P.bottom - L.top + 12, L.height - 64)}px`;
+        go.style.bottom = 'auto';
+      }
+      this.anim(go, [{ transform: 'translate(-50%, 16px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 260, easing: BACK });
+      await new Promise((resolve) => {
+        absorb(go);
+        go.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          resolve();
+        }, { once: true });
+      });
       if (!live()) return;
+      go.remove();
       await this._openShop(root, d.shop, live);
       return;
     }

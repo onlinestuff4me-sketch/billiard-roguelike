@@ -299,8 +299,13 @@ happens:
    "where it goes"; no line of text repeats it.
 
 The ledger's own numbers never move or restyle, and the corner's figures
-change only when the moment shows them change. Then the ledger hands over to
-the shop (§8.4b).
+change only when the moment shows them change.
+
+**Skip** (from review). "Tap to skip" shows under the panel while it plays; a
+tap anywhere jumps the whole moment to its last frame (every row, the verdict,
+the cash already in the corner). Either way the moment ends on a **Shop ▸**
+button just under the panel: the shop opens when the player says so, never on
+a timer.
 
 Out of shots uses the same treatment, with OUT OF SHOTS as the title: the
 target decides the table, not whether every ball went down. A tap during the
