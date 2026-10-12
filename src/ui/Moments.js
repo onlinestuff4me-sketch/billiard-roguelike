@@ -261,6 +261,10 @@ export class Moments {
     });
     this._clearReady = false;
     this._clearRoot = root;
+    this._toCollect = false;
+    // THE WALLET stays lit in its corner, above the dimmed table, from the
+    // result through the shop.
+    this.hud.root.classList.add('wallet-lit');
     this.setFilter('clear', 'brightness(0.42) saturate(0.7)', 380);
     this.audio.roomClear?.();
 
@@ -281,12 +285,29 @@ export class Moments {
     if (d.shop) {
       this.skip = false;
       this._clearReady = true;
-      // The same button, now SHOP ▸: the shop opens when you say so.
+      // The same button, now the way into the shop. With cash to collect it
+      // is a CASH OUT button (Balatro, Gambonanza): one tap banks the cash
+      // into the wallet, and the shop follows on its own.
       act.classList.remove('skip');
-      act.textContent = 'Shop ▸';
+      const collect = this._toCollect;
+      if (collect) {
+        act.classList.add('collect');
+        act.innerHTML = this.variant('wallet') === 'coins' ? `Get my $${d.earned}!` : `Cash out <b>+$${d.earned}</b>`;
+      } else {
+        act.textContent = 'Shop ▸';
+      }
       this.anim(act, [{ transform: 'translate(-50%, 0) scale(1.12)' }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 260, easing: BACK });
       await new Promise((resolve) => (onShop = resolve));
       if (!live()) return;
+      onShop = null;
+      if (collect) {
+        // a tap during the collect skips it to the end
+        this._clearReady = false;
+        await this._collect(root, d, act, live);
+        if (!live()) return;
+        this.skip = false;
+        this._clearReady = true;
+      }
       act.remove();
       this._actBtn = null;
       await this._openShop(root, d.shop, live);
@@ -329,9 +350,14 @@ export class Moments {
    * rarity is the 1–3 diamonds on each card, not a colour.
    */
   async _openShop(root, shop, live) {
+    const wstyle = this.variant('wallet') || 'cashout';
     const ledger = root.querySelector('.mo-ledger');
     if (ledger) {
-      await this.anim(ledger, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -24px) scale(0.96)', opacity: 0 }], { duration: 260, easing: IN });
+      // coins: the results fly up and away (Gambonanza); otherwise they sink and fade
+      const out = wstyle === 'coins'
+        ? [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -115%)', opacity: 1 }]
+        : [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, 30px) scale(0.97)', opacity: 0 }];
+      await this.anim(ledger, out, { duration: wstyle === 'coins' ? 360 : 280, easing: IN });
       ledger.remove();
     }
     if (!live()) return;
@@ -342,42 +368,37 @@ export class Moments {
     el('div', 'mo-shop-note', panel).textContent = 'Buy a card, or hold one for the next shop. Tap again to undo. Cards you leave are gone.';
     const grid = el('div', 'mo-cards', panel);
     const tools = el('div', 'mo-shop-tools', panel);
-    // THE WALLET while shopping (MOMENTS.wallet). Only ever one on screen.
-    const wstyle = this.variant('wallet') || 'move';
+    // THE WALLET while shopping (MOMENTS.wallet). Only ever one on screen:
+    // the corner box, lit (cash out, coins), or the same box glided into the
+    // shop's header (glide).
     let walletV = this.hud.cashValue;
-    if (wstyle === 'move' || wstyle === 'dock') {
-      const w = el('div', `mo-wallet ${wstyle}`, wstyle === 'move' ? head : tools);
-      el('span', 'k', w).textContent = 'Your cash';
-      walletV = el('span', 'v', w);
+    let wallet = null;
+    this.hud.lockCash(true);
+    walletV.textContent = money(shop.cash());
+    if (wstyle === 'glide') {
+      wallet = el('div', 'mo-wallet move', head);
+      el('span', 'k', wallet).textContent = 'Your cash';
+      walletV = el('span', 'v', wallet);
       walletV.textContent = money(shop.cash());
-      this.hud.root.classList.add('wallet-away');
-    } else {
-      this.hud.root.classList.add('wallet-spot');
     }
-    tools.classList.toggle('docked', wstyle === 'dock');
     const reroll = el('button', 'mo-tool reroll', tools);
     reroll.type = 'button';
     const next = el('button', 'mo-nexttable', root);
     next.type = 'button';
     next.textContent = 'Next table ▸';
 
-    // Every buy, hold, undo or reroll counts the wallet to its new figure,
-    // with the change floating beside it.
-    const spendTo = (from) => {
+    // Every buy, hold, undo or reroll moves money between the wallet and what
+    // it pays for, and the wallet counts to its new figure as it goes.
+    let payId = 0;
+    const spendTo = (before, target) => {
       const to = shop.cash();
-      const delta = to - from;
+      const delta = to - before;
       if (!delta) return;
-      if (walletV !== this.hud.cashValue) this.count(walletV, from, to, 300, { prefix: '$' });
-      const r = walletV.getBoundingClientRect();
-      const L = this.layer.getBoundingClientRect();
-      const tag = el('div', `mo-cashdelta${delta > 0 ? ' up' : ''}`, this.root);
-      tag.textContent = `${delta > 0 ? '+' : '−'}$${Math.abs(delta)}`;
-      const right = wstyle === 'move';
-      tag.style.left = right ? `${r.left - L.left - 6}px` : `${r.right - L.left + 8}px`;
-      tag.style.top = `${r.top - L.top + r.height / 2}px`;
-      const tx = right ? 'translate(-100%, -50%)' : 'translate(0, -50%)';
-      this.anim(tag, [{ transform: tx, opacity: 1 }, { transform: tx, opacity: 1, offset: 0.6 }, { transform: `${tx} translateY(10px)`, opacity: 0 }], { duration: 900, easing: OUT }).then(() => tag.remove());
-      walletV.animate([{ transform: 'scale(1.25)', textShadow: '0 0 16px #ffc266' }, { transform: 'scale(1)', textShadow: '0 0 10px rgba(255, 138, 30, 0.5)' }], { duration: 320, easing: OUT });
+      const shown = Number(String(walletV.textContent).replace(/[^0-9]/g, '')) || 0;
+      const my = ++payId;
+      this._payFx(walletV, target, delta, shown, to).then(() => {
+        if (my === payId) walletV.textContent = money(shop.cash());
+      });
     };
     const shake = (node) => this.anim(node, [{ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' }, { transform: 'none' }], { duration: 200 });
     const tap = (node, fn) => {
@@ -438,14 +459,14 @@ export class Moments {
             this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
             if (it.id === 'freeze-charge') this._pulseFreeze();
           }
-          spendTo(before);
+          spendTo(before, buy);
           renderTools();
         });
         tap(hold, () => {
           const before = shop.cash();
           const ok = it.held ? shop.unhold(it) : shop.hold(it);
           if (!ok) return shake(c);
-          spendTo(before);
+          spendTo(before, hold);
           renderTools();
         });
         // a held card stays put through a reroll; the rest deal in
@@ -463,7 +484,7 @@ export class Moments {
       if (!shop.reroll()) return shake(reroll);
       rolling = true;
       this.anim(reroll, [{ filter: 'brightness(2.2)', transform: 'scale(0.96)' }, { filter: 'none', transform: 'none' }], { duration: 260, easing: OUT });
-      spendTo(before);
+      spendTo(before, reroll);
       const leaving = [...grid.querySelectorAll('.mo-card')].filter((c) => !keep.has(c._item.id));
       await Promise.all(leaving.map((c, i) => this.anim(c, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-10px) scale(0.94)', opacity: 0 }], { duration: 160, delay: 40 * i, easing: IN })));
       if (!live()) return;
@@ -472,36 +493,57 @@ export class Moments {
       if (p) this.anim(p, [{ transform: 'scale(1.6)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 300, easing: OUT });
       rolling = false;
     });
-    tap(next, () => {
+    tap(next, async () => {
       next.disabled = true;
+      // glide: the wallet goes home to its corner before the table loads
+      if (wallet) await this._glideWallet(false, wallet, walletV);
       shop.next();
     });
 
-    if (wstyle === 'move') this._flyWallet(this.hud.cashValue, walletV, shop.cash());
-    this.anim(panel, [{ transform: 'translate(-50%, 24px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, easing: BACK });
-    this.anim(next, [{ transform: 'translate(-50%, 20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, delay: 360, easing: BACK });
+    if (wstyle === 'coins') {
+      // Gambonanza: the shop slides in from the side, NEXT pops in last
+      this.anim(panel, [{ transform: 'translate(60%, 0)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 420, easing: OUT });
+      this.anim(next, [{ transform: 'translate(-50%, 0) scale(0.2)', opacity: 0 }, { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }], { duration: 300, delay: 620, easing: BACK });
+    } else {
+      this.anim(panel, [{ transform: 'translate(-50%, 24px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 320, easing: OUT });
+      this.anim(next, [{ transform: 'translate(-50%, 20px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 300, delay: 420, easing: BACK });
+    }
     renderCards(true);
+    if (wallet) {
+      wallet.style.visibility = 'hidden';
+      await this.wait(200);
+      await this._glideWallet(true, wallet, walletV);
+    }
   }
 
-  /** MOVE: a copy of your cash flies from the corner into the shop header. */
-  _flyWallet(from, to, value) {
+  /**
+   * GLIDE: the wallet box itself lifts out of the corner and travels into
+   * the shop's header on a soft curve, growing as it goes (and back again on
+   * the way out). Its spot in the corner stays empty while you shop.
+   */
+  async _glideWallet(into, wallet, walletV) {
+    const corner = this.hud.cashValue;
+    const [fromBox, toBox] = into ? [corner, walletV] : [walletV, corner];
+    const a = fromBox.getBoundingClientRect();
+    const b = toBox.getBoundingClientRect();
     const L = this.layer.getBoundingClientRect();
-    const a = from.getBoundingClientRect();
-    const fly = el('div', 'mo-walletfly', this.root);
-    fly.textContent = `$${value}`;
-    fly.style.left = `${a.left - L.left}px`;
-    fly.style.top = `${a.top - L.top}px`;
-    to.style.opacity = '0';
-    requestAnimationFrame(() => {
-      const b = to.getBoundingClientRect();
-      const dx = b.left - a.left;
-      const dy = b.top - a.top;
-      const sc = b.height / Math.max(1, a.height);
-      this.anim(fly, [{ transform: 'translate(0, 0) scale(1)' }, { transform: `translate(${dx}px, ${dy}px) scale(${sc})` }], { duration: 420, delay: 120, easing: 'cubic-bezier(0.5, 0, 0.2, 1)' }).then(() => {
-        to.style.opacity = '';
-        fly.remove();
-      });
-    });
+    const ghost = el('div', 'mo-walletglide', this.root);
+    ghost.textContent = walletV.textContent;
+    wallet.style.visibility = 'hidden';
+    this.hud.root.classList.add('wallet-away');
+    const P = (r) => ({ x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 });
+    const big = walletV.getBoundingClientRect().height / Math.max(1, corner.getBoundingClientRect().height);
+    this.audio.slingshot?.(0.2);
+    await this._arc(ghost, P(a), P(b), { ms: 620, lift: into ? -30 : 30, s0: into ? 1 : big, s1: into ? big : 1 });
+    ghost.remove();
+    if (into) {
+      wallet.style.visibility = '';
+      this._bumpWallet(walletV);
+    } else {
+      corner.textContent = walletV.textContent;
+      this.hud.root.classList.remove('wallet-away');
+      this._bumpWallet(corner);
+    }
   }
 
   /** The Freeze frame meter in the HUD, in layer pixels. */
@@ -559,8 +601,9 @@ export class Moments {
 
   closeClear() {
     this._clear = null;
-    // the wallet goes home to the corner
-    this.hud.root.classList.remove('wallet-away', 'wallet-spot');
+    // the wallet goes home to the corner, and the HUD paints it again
+    this.hud.root.classList.remove('wallet-away', 'wallet-lit');
+    this.hud.lockCash(false);
     if (this._clearRoot) {
       const root = this._clearRoot;
       this._clearRoot = null;
@@ -618,10 +661,14 @@ export class Moments {
     if (d.target && (d.payout || []).length) {
       const box = el('div', 'mo-pay2', panel);
       el('div', 'mo-pay-k', box).textContent = 'Cash earned';
+      // coins reads like Gambonanza's results: a count, the reason with its
+      // rule, the dollars
+      const counted = this.variant('wallet') === 'coins';
       const rowEls = d.payout.map((p) => {
-        const r = el('div', 'mo-cash-row', box);
+        const r = el('div', `mo-cash-row${counted ? ' counted' : ''}`, box);
+        if (counted) el('span', 'n', r).textContent = p.count ?? '';
         el('span', 'k', r).textContent = p.label;
-        el('span', 'd', r).textContent = p.detail || '';
+        el('span', 'd', r).textContent = counted ? (p.rule ? `(${p.rule})` : '') : p.detail || '';
         el('span', 'v', r).textContent = `+$${p.amount}`;
         r.style.opacity = '0';
         return r;
@@ -766,7 +813,209 @@ export class Moments {
     }
     await this.wait(260);
     if (!live()) return;
+    // With a shop to go to, the cash waits for CASH OUT, so banking it is the
+    // player's own tap.
+    if (d.shop && d.earned > 0) {
+      this._toCollect = true;
+      return;
+    }
     await this.flyToRun(sumV, d.earned, d.onCashLanded, d.cashFrom, d.cash, { to: this.hud.cashValue, cash: true, label: 'Cash' });
+  }
+
+  /* -------------------------------------------------------------- *
+   * THE WALLET — collecting cash and spending it (MOMENTS.wallet)
+   * -------------------------------------------------------------- */
+
+  /** A node's centre, in layer pixels. */
+  _at(node) {
+    const r = node.getBoundingClientRect();
+    const L = this.layer.getBoundingClientRect();
+    return { x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 };
+  }
+
+  /**
+   * A smooth arc from a to b: it rises (or dips) by `lift` px at the middle,
+   * eases in and out, and scales from s0 to s1 on the way.
+   */
+  _arc(node, a, b, { ms = 600, lift = 80, s0 = 1, s1 = 1, delay = 0, spin = 0 } = {}) {
+    node.style.left = '0px';
+    node.style.top = '0px';
+    const frames = [];
+    const N = 16;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const x = a.x + (b.x - a.x) * e;
+      const y = a.y + (b.y - a.y) * e - lift * 4 * e * (1 - e);
+      const sc = s0 + (s1 - s0) * e;
+      frames.push({ transform: `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${sc}) rotate(${spin * e}deg)` });
+    }
+    return this.anim(node, frames, { duration: ms, delay, easing: 'linear' });
+  }
+
+  /** The wallet takes a hit of money: a pop, a gold glow, a ring. */
+  _bumpWallet(box, big = false) {
+    box.animate(
+      [{ transform: `scale(${big ? 1.3 : 1.14})`, filter: 'brightness(1.6)' }, { transform: 'scale(1)', filter: 'none' }],
+      { duration: big ? 420 : 200, easing: OUT }
+    );
+    if (!big) return;
+    const p = this._at(box);
+    const ring = el('div', 'mo-ring gold', this.root);
+    ring.style.left = `${p.x}px`;
+    ring.style.top = `${p.y}px`;
+    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.4)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2.4)', opacity: 0 }], { duration: 520, easing: OUT }).then(() => ring.remove());
+  }
+
+  /** Roll a wallet figure to `to`, one coin tick per dollar. */
+  _rollWallet(node, from, to, ms) {
+    const my = (this._rollId = (this._rollId || 0) + 1);
+    return new Promise((resolve) => {
+      const t0 = performance.now();
+      let last = from;
+      const step = () => {
+        if (my !== this._rollId) return resolve();
+        const u = this.skip ? 1 : Math.min(1, (performance.now() - t0) / Math.max(1, ms));
+        const e = 1 - Math.pow(1 - u, 2);
+        const v = Math.round(from + (to - from) * e);
+        if (v !== last) {
+          last = v;
+          this.audio.coin?.(Math.abs(v - from), to < from);
+        }
+        node.textContent = `$${v}`;
+        if (u < 1) requestAnimationFrame(step);
+        else resolve();
+      };
+      step();
+    });
+  }
+
+  /**
+   * CASH OUT. Cash out / Glide: the Cash total lifts off as one plate and
+   * arcs into the wallet, which counts up. Coins (Gambonanza): a burst, then
+   * every line pays out its dollars as coins, one ding per coin.
+   */
+  async _collect(root, d, act, live) {
+    const style = this.variant('wallet');
+    const wallet = this.hud.cashValue;
+    this.hud.lockCash(true);
+    wallet.textContent = `$${d.cashFrom}`;
+    this.anim(act, [{ transform: 'translate(-50%, 0) scale(0.92)' }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 180, easing: OUT });
+    act.disabled = true;
+    const { box, rowEls, sumV } = this._pay || {};
+    const to = () => this._at(wallet);
+    if (style === 'coins') {
+      // the burst behind the panel, the moment you tap
+      const panel = root.querySelector('.mo-ledger');
+      const P = this._at(box || panel);
+      const burst = el('div', 'mo-burst', this.root);
+      burst.style.left = `${P.x}px`;
+      burst.style.top = `${P.y}px`;
+      this.audio.scoreLock?.();
+      this.anim(burst, [{ transform: 'translate(-50%,-50%) scale(0.3) rotate(0deg)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1) rotate(20deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(-50%,-50%) scale(1.25) rotate(40deg)', opacity: 0 }], { duration: 900, easing: OUT }).then(() => burst.remove());
+      await this.wait(260);
+      let cur = d.cashFrom;
+      let n = 0;
+      for (const [i, p] of (d.payout || []).entries()) {
+        if (!live()) return;
+        const row = rowEls?.[i];
+        const v = row?.querySelector('.v');
+        const from = v ? this._at(v) : P;
+        row?.classList.add('paying');
+        const flights = [];
+        for (let k = 0; k < p.amount; k++) {
+          const coin = el('div', 'mo-coin', this.root);
+          coin.textContent = '$';
+          const lift = 50 + ((k * 37) % 50);
+          flights.push(this._arc(coin, from, to(), { ms: 520, lift, s0: 1.2, s1: 0.7, delay: k * 70 }).then(() => {
+            coin.remove();
+            cur += 1;
+            wallet.textContent = `$${cur}`;
+            this.audio.coin?.(n++);
+            this._bumpWallet(wallet);
+          }));
+        }
+        if (v) this.anim(v, [{ opacity: 1 }, { opacity: 0.25 }], { duration: Math.max(200, p.amount * 70), easing: 'linear' });
+        await Promise.all(flights);
+        row?.classList.remove('paying');
+        row?.classList.add('paid');
+      }
+      wallet.textContent = `$${d.cash}`;
+      this._bumpWallet(wallet, true);
+      if (sumV) sumV.parentNode.classList.add('paid');
+      d.onCashLanded?.();
+      await this.wait(380);
+      return;
+    }
+    // CASH OUT / GLIDE: one plate, one smooth arc, the wallet counts up
+    const a = sumV ? this._at(sumV) : this._at(act);
+    const plate = el('div', 'sf-plate pts mo-bankplate cash mo-arcplate', this.root);
+    el('b', '', plate).textContent = `+$${d.earned}`;
+    el('small', '', plate).textContent = 'Cash';
+    this.audio.scoreThud?.();
+    if (sumV) this.anim(sumV.parentNode, [{ opacity: 1 }, { opacity: 0.3 }], { duration: 300 });
+    await this._arc(plate, a, a, { ms: 200, lift: 0, s0: 0.6, s1: 1.1 });
+    this.audio.slingshot?.(0.3);
+    await this._arc(plate, a, to(), { ms: 640, lift: 90, s0: 1.1, s1: 0.45 });
+    plate.remove();
+    this._bumpWallet(wallet, true);
+    await this._rollWallet(wallet, d.cashFrom, d.cash, Math.min(900, 160 + d.earned * 70));
+    d.onCashLanded?.();
+    await this.wait(300);
+  }
+
+  /**
+   * SPENDING. Money always travels between the wallet and the thing it pays
+   * for: spending leaves the wallet for the card, a refund comes back.
+   * Coins: one coin per dollar (up to 8). Otherwise: a price chip.
+   */
+  async _payFx(wallet, target, delta, from, to) {
+    if (!delta) return;
+    const style = this.variant('wallet');
+    const spend = delta < 0;
+    const amt = Math.abs(delta);
+    const W = this._at(wallet);
+    const T = this._at(target);
+    const [a, b] = spend ? [W, T] : [T, W];
+    if (style === 'coins') {
+      const n = Math.min(amt, 8);
+      let cur = from;
+      const per = (to - from) / n;
+      const flights = [];
+      for (let k = 0; k < n; k++) {
+        const coin = el('div', 'mo-coin', this.root);
+        coin.textContent = '$';
+        const step = () => {
+          const next = Math.round(from + per * (k + 1));
+          cur = k === n - 1 ? to : next;
+          wallet.textContent = `$${cur}`;
+          this.audio.coin?.(k, spend);
+          this._bumpWallet(wallet);
+        };
+        // spending: the wallet ticks down as each coin leaves; a refund ticks up as each lands
+        if (spend) setTimeout(step, this.skip ? 0 : k * 60);
+        flights.push(this._arc(coin, a, b, { ms: 420, lift: 40 + ((k * 23) % 30), s0: spend ? 0.7 : 1, s1: spend ? 1 : 0.7, delay: k * 60 }).then(() => {
+          coin.remove();
+          if (!spend) step();
+        }));
+      }
+      await Promise.all(flights);
+      return;
+    }
+    const chip = el('div', `mo-paychip${spend ? '' : ' up'}`, this.root);
+    chip.textContent = `${spend ? '−' : '+'}$${amt}`;
+    if (spend) {
+      this._bumpWallet(wallet);
+      this._rollWallet(wallet, from, to, Math.min(500, 120 + amt * 50));
+    }
+    await this._arc(chip, a, b, { ms: 460, lift: 50, s0: spend ? 0.8 : 1.1, s1: spend ? 1.1 : 0.7 });
+    chip.remove();
+    if (!spend) {
+      this._bumpWallet(wallet);
+      await this._rollWallet(wallet, from, to, Math.min(500, 120 + amt * 50));
+    } else {
+      target.animate([{ filter: 'brightness(2)' }, { filter: 'none' }], { duration: 300, easing: OUT });
+    }
   }
 
   /* -------------------------------------------------------------- *

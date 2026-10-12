@@ -1171,7 +1171,7 @@
       .mo-bankstreak { inset: auto; left: 0; top: 0; z-index: 30; background: linear-gradient(90deg, transparent, #e9f8ff); box-shadow: 0 0 12px #22e8ff; }
 
       /* THE SHOP */
-      .mo-shop { position: absolute; inset: auto; left: 50%; top: 9%; width: min(92%, 370px); padding: 16px 16px 12px; isolation: isolate; filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.3)); display: grid; gap: 10px; }
+      .mo-shop { position: absolute; inset: auto; left: 50%; top: calc(9% + 16px); width: min(92%, 370px); padding: 16px 16px 12px; isolation: isolate; filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.3)); display: grid; gap: 10px; }
       .mo-shop::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(6, 18, 28, 0.97), rgba(2, 5, 11, 0.97)); border: 2px solid rgba(34, 232, 255, 0.75); clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px); }
       .mo-shop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
       .mo-shop .mo-kicker { font-size: 24px; }
@@ -1235,22 +1235,37 @@
       .mo-nexttable { position: absolute; inset: auto; left: 50%; bottom: calc(var(--hud-pad) + 74px); padding: 13px 34px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-you); box-shadow: 0 0 22px rgba(34, 232, 255, 0.6); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); white-space: nowrap; }
       /* One button under the ledger: SKIP ▸▸ (outlined) while the result plays,
          then SHOP ▸ (filled), in the same place. */
-      /* THE WALLET IN THE SHOP: move (header), dock (bottom bar), spot (corner, lit). */
+      /* THE WALLET: one gold box in the top-left corner, always. From the
+         table's result through the shop it is lifted above the dimmed table
+         (wallet-lit), so it stays in focus while you collect and spend. */
+      .cash-value { display: inline-block; transform-origin: 0 50%; padding: 4px 9px 3px; border: 1.5px solid rgba(255, 194, 102, 0.75); border-radius: 3px; background: rgba(20, 13, 3, 0.88); box-shadow: 0 0 12px rgba(255, 138, 30, 0.28), inset 0 0 8px rgba(255, 138, 30, 0.12); font-size: clamp(16px, 4.6vmin, 22px); }
+      .hud .cash-value { transition: opacity 0.2s ease; }
+      .hud.wallet-away .cash-value { opacity: 0; }
+      .hud.wallet-lit .hud-top { z-index: 47; background: none; }
+      .hud.wallet-lit .hud-mission, .hud.wallet-lit .hud-score, .hud.wallet-lit .hud-hp .hud-label { opacity: 0.3; }
+      /* glide: the same box, larger, in the shop's header */
       .mo-wallet { display: grid; justify-items: end; line-height: 1; }
       .mo-wallet .k { font-size: 10px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
-      .mo-wallet .v { display: inline-block; transform-origin: 100% 50%; margin-top: 3px; font-family: var(--font-num); font-size: 34px; font-weight: 800; color: #ffc266; text-shadow: 0 0 10px rgba(255, 138, 30, 0.5); font-variant-numeric: tabular-nums; }
-      .mo-wallet.dock { justify-items: start; align-content: center; padding: 6px 12px; box-shadow: inset 0 0 0 1.5px rgba(255, 194, 102, 0.6); background: rgba(20, 14, 4, 0.85); }
-      .mo-wallet.dock .v { transform-origin: 0 50%; font-size: 30px; }
-      .mo-shop-tools.docked { grid-template-columns: 1fr 1fr; align-items: stretch; }
-      .mo-walletfly { position: absolute; inset: auto; z-index: 46; transform-origin: 0 0; font-family: var(--font-num); font-size: clamp(14px, 4vmin, 20px); font-weight: 700; line-height: 1; color: #ffc266; text-shadow: 0 0 10px rgba(255, 138, 30, 0.5); pointer-events: none; }
-      .hud .cash-value { transition: opacity 0.2s ease, transform 0.3s ease, text-shadow 0.3s ease; }
-      .hud.wallet-away .cash-value { opacity: 0; }
-      .hud.wallet-spot .hud-top { position: relative; z-index: 47; }
-      .hud.wallet-spot .hud-mission, .hud.wallet-spot .hud-score, .hud.wallet-spot .lives-row, .hud.wallet-spot .hud-hp .hud-label { opacity: 0.25; }
-      .hud.wallet-spot .cash-value { transform: scale(1.9); text-shadow: 0 0 14px #ffc266, 0 0 28px rgba(255, 138, 30, 0.6); }
-      .mo-cashdelta { position: absolute; inset: auto; z-index: 45; font-family: var(--font-num); font-size: 15px; font-weight: 800; color: var(--ll-void); text-shadow: 0 0 8px rgba(2, 5, 11, 0.9); pointer-events: none; white-space: nowrap; }
-      .mo-cashdelta.up { color: #ffc266; }
-      .cash-value { transform-origin: 0 50%; }
+      .mo-wallet .v, .mo-walletglide { display: inline-block; font-family: var(--font-num); font-weight: 800; line-height: 1; color: #ffc266; text-shadow: 0 0 10px rgba(255, 138, 30, 0.5); font-variant-numeric: tabular-nums; padding: 4px 9px 3px; border: 1.5px solid rgba(255, 194, 102, 0.75); border-radius: 3px; background: rgba(20, 13, 3, 0.88); box-shadow: 0 0 12px rgba(255, 138, 30, 0.28); }
+      .mo-wallet .v { margin-top: 4px; font-size: 32px; padding: 5px 12px 4px; }
+      .mo-walletglide { position: absolute; inset: auto; z-index: 48; font-size: clamp(16px, 4.6vmin, 22px); pointer-events: none; }
+      /* CASH OUT: the button turns gold — it is money now */
+      .mo-act.collect { color: #1a0f00; background: #ffc266; box-shadow: 0 0 24px rgba(255, 170, 60, 0.75); }
+      .mo-act.collect b { font-weight: 800; }
+      .mo-act.collect:disabled { filter: brightness(0.75); }
+      /* coins: one per dollar, and the burst behind the results */
+      .mo-coin { position: absolute; inset: auto; z-index: 49; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-num); font-size: 11px; font-weight: 900; color: #3a2200; background: radial-gradient(circle at 35% 30%, #fff1c9 0%, #ffc266 45%, #d98a1e 100%); box-shadow: 0 0 10px rgba(255, 170, 60, 0.9); pointer-events: none; }
+      .mo-burst { position: absolute; inset: auto; z-index: 13; width: 520px; height: 520px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 210, 120, 0.85) 0%, rgba(255, 170, 60, 0.35) 22%, transparent 55%), repeating-conic-gradient(from 0deg, rgba(255, 194, 102, 0.45) 0deg 6deg, transparent 6deg 22deg); -webkit-mask: radial-gradient(circle, #000 25%, transparent 68%); mask: radial-gradient(circle, #000 25%, transparent 68%); }
+      .mo-ring.gold { border-color: #ffc266; box-shadow: 0 0 18px #ffaa3c, inset 0 0 12px #ffaa3c; }
+      /* spending: the price travels between the wallet and the card */
+      .mo-paychip { position: absolute; inset: auto; z-index: 49; padding: 3px 8px; font-family: var(--font-num); font-size: 16px; font-weight: 800; color: #ffc266; background: rgba(20, 13, 3, 0.92); border: 1.5px solid #ff2e7e; border-radius: 3px; box-shadow: 0 0 12px rgba(255, 46, 126, 0.5); pointer-events: none; white-space: nowrap; }
+      .mo-paychip.up { border-color: #ffc266; box-shadow: 0 0 12px rgba(255, 170, 60, 0.6); }
+      .mo-arcplate { z-index: 49; }
+      /* coins: the results read like Gambonanza's — a count, the reason with its rule, the dollars */
+      .mo-cash-row .n { font-family: var(--font-num); font-size: 18px; font-weight: 800; color: #ffc266; min-width: 1.1em; text-align: center; }
+      .mo-cash-row.counted { grid-template-columns: auto auto 1fr auto; }
+      .mo-cash-row.paying { background: rgba(255, 194, 102, 0.14); }
+      .mo-cash-row.paid, .mo-cash-total.paid { opacity: 0.45; }
       .mo-act { z-index: 40; }
       .mo-act.skip { color: var(--ll-you); background: rgba(2, 5, 11, 0.85); box-shadow: inset 0 0 0 2px var(--ll-you); font-size: 14px; padding: 10px 26px; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
@@ -1260,7 +1275,7 @@
       /* CLEAR */
       .mo-clear { pointer-events: auto; }
       .mo-ledger {
-        position: absolute; left: 50%; top: 9%; width: min(90%, 360px);
+        position: absolute; left: 50%; top: calc(9% + 16px); width: min(90%, 360px);
         padding: 14px 18px 12px; isolation: isolate;
         filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.35));
       }

@@ -255,13 +255,13 @@ export class Rules {
     const beaten = this.roomScore >= this.target;
     const payout = [];
     if (beaten) {
-      payout.push({ id: 'beaten', label: 'Beat the target', detail: '', amount: C.beaten });
-      if (saved > 0) payout.push({ id: 'shots', label: 'Unused shots', detail: `${saved} × $${C.perShotLeft}`, amount: saved * C.perShotLeft });
+      payout.push({ id: 'beaten', label: 'Beat the target', detail: '', rule: '', count: 1, amount: C.beaten });
+      if (saved > 0) payout.push({ id: 'shots', label: 'Unused shots', detail: `${saved} × $${C.perShotLeft}`, rule: `$${C.perShotLeft} each`, count: saved, amount: saved * C.perShotLeft });
       const over = Math.min(C.overCap, Math.floor((this.roomScore / Math.max(1, this.target) - 1) / C.overStep + 1e-9));
-      if (over > 0) payout.push({ id: 'over', label: 'Over the target', detail: `${Math.round((this.roomScore / this.target - 1) * 100)}% · $1 per ${Math.round(C.overStep * 100)}%`, amount: over });
+      if (over > 0) payout.push({ id: 'over', label: 'Over the target', detail: `${Math.round((this.roomScore / this.target - 1) * 100)}% · $1 per ${Math.round(C.overStep * 100)}%`, rule: `$1 per ${Math.round(C.overStep * 100)}%, max $${C.overCap}`, count: over, amount: over });
     }
     const interest = Math.min(C.interestCap, Math.floor(this.cash / C.interestPer));
-    if (interest > 0) payout.push({ id: 'interest', label: 'Interest', detail: `on $${this.cash} · $1 per $${C.interestPer}`, amount: interest });
+    if (interest > 0) payout.push({ id: 'interest', label: 'Interest', detail: `on $${this.cash} · $1 per $${C.interestPer}`, rule: `$1 per $${C.interestPer}, max $${C.interestCap}`, count: interest, amount: interest });
     const cashFrom = this.cash;
     const earned = payout.reduce((n, p) => n + p.amount, 0);
     this.cash += earned;

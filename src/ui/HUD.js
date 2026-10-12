@@ -58,6 +58,8 @@ export class HUD {
     const hpBlock = el('div', 'hud-hp', top);
     el('div', 'hud-label', hpBlock).textContent = 'Lives';
     this.livesRow = el('div', 'lives-row', hpBlock);
+    // THE WALLET: one boxed figure, always in this corner, during play, the
+    // table's result and the shop alike.
     this.cashValue = el('div', 'cash-value', hpBlock);
 
     // The mission. This is the single most important thing on the screen and
@@ -388,6 +390,12 @@ export class HUD {
     return this.livesRow.children[index] || null;
   }
 
+  /** Hold the wallet's figure while a moment animates it; release repaints. */
+  lockCash(on) {
+    this.cashLocked = !!on;
+    if (!on) this._cache.cash = undefined;
+  }
+
   update(s, rawDt) {
     const cache = this._cache;
 
@@ -398,7 +406,9 @@ export class HUD {
       this.livesRow.textContent = '';
       for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow);
     }
-    if (s.cash !== cache.cash) {
+    // While a moment counts the wallet itself (collecting, spending), the
+    // HUD leaves its figure alone; unlocking repaints it with the real one.
+    if (!this.cashLocked && s.cash !== cache.cash) {
       cache.cash = s.cash;
       this.cashValue.textContent = `$${s.cash ?? 0}`;
     }

@@ -921,14 +921,19 @@ export const MOMENTS = {
   /** Boot: strips close, the room number rolls over and holds, the rails trace in (picked in review) */
   transition: 'boot',
   /**
-   * Where your cash sits while the shop is open (on trial in review):
-   *   move   it flies from the corner into the shop header, large, and back
-   *   dock   it sits large in the shop's bottom bar, beside Reroll
-   *   spot   it stays in the corner, grown and lit, with the rest of the bar dimmed
+   * Collecting your cash and carrying it into the shop (on trial in review,
+   * after Balatro and Gambonanza). The wallet is one gold box in the corner,
+   * always; the table's result ends on a CASH OUT button.
+   *   cashout  the Cash total arcs into the wallet as one plate, which counts
+   *            up; the shop rises; prices travel as chips (Balatro)
+   *   coins    a burst, then every line pays its dollars as coins, one ding
+   *            each; the shop slides in; spending sends coins (Gambonanza)
+   *   glide    as cashout, then the wallet box itself glides into the shop's
+   *            header, large, and home again when you leave
    */
-  wallet: 'move',
+  wallet: 'cashout',
   options: {
-    wallet: ['move', 'dock', 'spot'],
+    wallet: ['cashout', 'coins', 'glide'],
     clear: ['ledger'],
     scratch: ['glitch'],
     freeze: ['frame'],

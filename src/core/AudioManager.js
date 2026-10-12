@@ -326,6 +326,14 @@ export class AudioManager {
     }
   }
 
+  /** A coin: a bright two-tone ding that climbs with each coin (or falls as you spend). */
+  coin(index = 0, falling = false) {
+    const step = Math.min(Math.max(0, index), 16);
+    const freq = AUDIO.rootHz * 4 * Math.pow(2, (falling ? -step : step) / 24);
+    this._tone({ type: 'square', freq, duration: 0.05, gain: 0.035, attack: 0.002 });
+    this._tone({ type: 'sine', freq: freq * 1.5, duration: 0.16, gain: 0.07, attack: 0.002, delay: 0.035 });
+  }
+
   /** Full power: a bright two-note riser over a soft thump, like a cue locking in. */
   maxPower() {
     const root = AUDIO.rootHz * 2;
