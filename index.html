@@ -1264,11 +1264,11 @@
       /* coins: one per dollar, and the burst behind the results */
       .mo-coin { position: absolute; inset: auto; z-index: 49; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-num); font-size: 11px; font-weight: 900; color: #3a2200; background: radial-gradient(circle at 35% 30%, #fff1c9 0%, #ffc266 45%, #d98a1e 100%); box-shadow: 0 0 10px rgba(255, 170, 60, 0.9); pointer-events: none; }
       .mo-burst { position: absolute; inset: auto; z-index: 13; width: 440px; height: 440px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 210, 120, 0.85) 0%, rgba(255, 170, 60, 0.35) 22%, rgba(2, 5, 11, 0) 50%, rgba(2, 5, 11, 1) 70%), repeating-conic-gradient(from 0deg, rgba(255, 194, 102, 0.45) 0deg 6deg, transparent 6deg 22deg); mix-blend-mode: screen; }
+      .mo-coinplate { position: absolute; inset: auto; z-index: 49; padding: 4px 10px; font-family: var(--font-num); font-size: 22px; font-weight: 800; color: #1a0f00; background: #ffc266; border-radius: 3px; box-shadow: 0 0 18px rgba(255, 170, 60, 0.9); pointer-events: none; white-space: nowrap; }
       .mo-ring.gold { border-color: #ffc266; box-shadow: 0 0 18px #ffaa3c, inset 0 0 12px #ffaa3c; }
       /* coins: the results read like Gambonanza's — a count, the reason with its rule, the dollars */
       .mo-cash-row .n { font-family: var(--font-num); font-size: 18px; font-weight: 800; color: #ffc266; min-width: 1.1em; text-align: center; }
       .mo-cash-row.counted { grid-template-columns: auto auto 1fr auto; }
-      .mo-cash-row.paying { background: rgba(255, 194, 102, 0.14); }
       .mo-act { z-index: 40; }
       .mo-act.skip { color: var(--ll-you); background: rgba(2, 5, 11, 0.85); box-shadow: inset 0 0 0 2px var(--ll-you); font-size: 14px; padding: 10px 26px; }
       .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }

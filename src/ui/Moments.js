@@ -406,8 +406,9 @@ export class Moments {
       this.anim(panel, [{ transform: 'translate(70%, 0)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 420, easing: OUT });
       if (first) panel._deal();
       fadeOut(act);
-      await move(next, mid, true);
+      // Summary arrives while Next table slides into the middle
       fadeIn(back);
+      await move(next, mid, true);
       inShop = true;
     });
     const toSummary = run(async () => {
@@ -886,55 +887,46 @@ export class Moments {
   }
 
   /**
-   * COLLECTING THE CASH (picked in review: coin rain, after Gambonanza), the
-   * last beat of the result. A burst behind the panel, then every line pays
-   * out its dollars as coins that arc into the wallet, one ding and +$1 per
-   * coin. Skip lands it all at once: the totals stay in the panel and the
-   * wallet shows the new figure.
+   * COLLECTING THE CASH (picked in review: coin rain, made snappier in the
+   * next review), the last beat of the result. The Cash total flashes with a
+   * burst behind it, then flies into the wallet as one gold plate with a
+   * short trail of coins; the wallet counts up, a ding per tick. Skip lands
+   * it all at once: the totals stay in the panel and the wallet shows the
+   * new figure.
    */
   async _collect(root, d, live) {
     const wallet = this.hud.cashValue;
     this.hud.lockCash(true);
     wallet.textContent = `$${d.cashFrom}`;
-    const { box, rowEls } = this._pay || {};
-    const to = () => this._at(wallet);
-    // the burst behind the panel, as the payout begins
-    const panel = root.querySelector('.mo-ledger');
-    const P = this._at(box || panel);
+    const { box, sumV } = this._pay || {};
+    const from = this._at(sumV || box || root.querySelector('.mo-ledger'));
+    // the flash: a burst behind the total, and the total pops
     const burst = el('div', 'mo-burst', this.root);
-    burst.style.left = `${P.x}px`;
-    burst.style.top = `${P.y}px`;
+    burst.style.left = `${from.x}px`;
+    burst.style.top = `${from.y}px`;
     this.audio.scoreLock?.();
-    this.anim(burst, [{ transform: 'translate(-50%,-50%) scale(0.3) rotate(0deg)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(1) rotate(20deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(-50%,-50%) scale(1.25) rotate(40deg)', opacity: 0 }], { duration: 900, easing: OUT }).then(() => burst.remove());
-    await this.wait(260);
-    let cur = d.cashFrom;
-    let n = 0;
-    for (const [i, p] of (d.payout || []).entries()) {
-      if (!live()) return;
-      const row = rowEls?.[i];
-      const v = row?.querySelector('.v');
-      const from = v ? this._at(v) : P;
-      row?.classList.add('paying');
-      const flights = [];
-      for (let k = 0; k < p.amount; k++) {
-        const coin = el('div', 'mo-coin', this.root);
-        coin.textContent = '$';
-        const lift = 50 + ((k * 37) % 50);
-        flights.push(this._arc(coin, from, to(), { ms: 520, lift, s0: 1.2, s1: 0.7, delay: k * 70 }).then(() => {
-          coin.remove();
-          cur += 1;
-          wallet.textContent = `$${cur}`;
-          this.audio.coin?.(n++);
-          this._bumpWallet(wallet);
-        }));
-      }
-      await Promise.all(flights);
-      row?.classList.remove('paying');
+    this.anim(burst, [{ transform: 'translate(-50%,-50%) scale(0.2) rotate(0deg)', opacity: 0 }, { transform: 'translate(-50%,-50%) scale(0.6) rotate(20deg)', opacity: 1, offset: 0.3 }, { transform: 'translate(-50%,-50%) scale(0.75) rotate(40deg)', opacity: 0 }], { duration: 700, easing: OUT }).then(() => burst.remove());
+    if (sumV) this.anim(sumV, [{ transform: 'scale(1.45)', filter: 'brightness(1.8)' }, { transform: 'scale(1)', filter: 'none' }], { duration: 320, easing: OUT });
+    await this.wait(300);
+    if (!live()) return;
+    // the flight: one plate, with a few coins trailing it
+    const to = this._at(wallet);
+    const plate = el('div', 'mo-coinplate', this.root);
+    plate.textContent = `+$${d.earned}`;
+    this.audio.slingshot?.(0.3);
+    for (let k = 0; k < 5; k++) {
+      const coin = el('div', 'mo-coin', this.root);
+      coin.textContent = '$';
+      this._arc(coin, from, to, { ms: 460, lift: 60 + k * 8, s0: 0.9, s1: 0.6, delay: 50 + k * 45 }).then(() => coin.remove());
     }
-    wallet.textContent = `$${d.cash}`;
+    await this._arc(plate, from, to, { ms: 460, lift: 60, s0: 1.1, s1: 0.55 });
+    plate.remove();
+    // the landing: the wallet rings and counts up
     this._bumpWallet(wallet, true);
+    let n = 0;
+    await this.count(wallet, d.cashFrom, d.cash, Math.min(520, 120 + d.earned * 40), { prefix: '$', tick: () => this.audio.coin?.(n++) });
     d.onCashLanded?.();
-    await this.wait(380);
+    await this.wait(260);
   }
 
   /**
