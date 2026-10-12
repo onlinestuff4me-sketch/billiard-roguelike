@@ -362,11 +362,13 @@ export class Moments {
     let panel = null;
     let inShop = false;
     let busy = false;
-    // every tap answers at once: the button dips and flashes
+    // every tap answers at once: the button lights up, dips and springs back,
+    // and stays lit while the screen changes
     const press = (btn) => {
       this.audio.scoreNote?.(6, 'points');
-      this.anim(btn, [{ transform: 'scale(0.88)', filter: 'brightness(1.9)' }, { transform: 'scale(1)', filter: 'none' }], { duration: 220, easing: OUT });
-      return this.wait(140);
+      btn.classList.add('pressed');
+      this.anim(btn, [{ transform: 'scale(1)' }, { transform: 'scale(0.86)', filter: 'brightness(1.8)', offset: 0.35 }, { transform: 'scale(1)', filter: 'none' }], { duration: 340, easing: 'ease-out' });
+      return this.wait(240).then(() => setTimeout(() => btn.classList.remove('pressed'), 400));
     };
     const run = (fn) => async () => {
       if (busy || !live()) return;
