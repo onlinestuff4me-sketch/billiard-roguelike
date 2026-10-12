@@ -274,7 +274,9 @@ total, did it beat the target, and what that earned.
 **Ledger** (picked). A scanline sweeps up the table and dims it behind itself.
 A large chamfered panel drops in with TABLE CLEAR (the panel and the title
 arrive together, once). Each shot's line slides in and counts up (P × M = pay)
-with a rising note. Bonuses (shots saved, swept in order) land bigger, in heat.
+with a rising note. Bonuses (**Unused shots**: points for every shot you didn't
+need; **All in order**: points for sinking every ball in number order) land
+bigger, in points white: they are points, and gold is money only.
 A rule draws across and the TABLE total counts up in large type and slams.
 Then, **one movement at a time**, with nothing else moving while each
 happens:
@@ -286,12 +288,15 @@ happens:
    slams on with the total.
 2. **A life**, if missed: the last lit pip in the corner swells and goes out.
    If it was the last life, the run ends here.
-3. **Cash earned**, in its own gold-edged panel under the ledger: one line per
-   reason, each with its working ("Over the target · 101% · $1 per 25%",
-   "Interest · on $7 · $1 per $5"), a total, and where it goes ("Into your
-   cash $7 → $18").
+3. **Cash earned**, in the same panel, right under the verdict, so the reward
+   reads as the result of the score: "Beat the target +$4" first, then each
+   other line with its working ("Unused shots · 2 × $1", "Over the target ·
+   101% · $1 per 25%", "Interest · on $7 · $1 per $5"), each adding to the
+   CASH total as it appears. Every line is in place from the start, so the
+   panel never grows.
 4. **Into your cash.** The total flies off as a gold plate to your cash in the
-   corner, which glows once and counts up by exactly that.
+   corner, which glows once and counts up by exactly that. The flight is the
+   "where it goes"; no line of text repeats it.
 
 The ledger's own numbers never move or restyle, and the corner's figures
 change only when the moment shows them change. Then the ledger hands over to
@@ -311,7 +316,9 @@ It replaces "pick your next table". The ledger slides out and one panel comes
 in: SHOP and your **Cash**, which counts down as you buy. **Three actions**
 (decided in review), and nothing else: **buy** a card, **hold** a card ($2: it
 waits in the next shop at its normal price; cards you don't hold are gone), or
-**reroll** ($3, then $1 more each time; a held card stays). Each card has two
+**reroll** ($3, then $1 more each time; a held card stays). A reroll answers
+the tap: the button flashes, the cards it replaces lift away, the new ones deal
+in, and the new price pops. Each card has two
 buttons, BUY $6 and HOLD $2, and **every tap changes the button as well as the
 card**: BUY becomes BOUGHT ✓ (filled, `you`) and HOLD becomes HELD ✓ (filled,
 `ink`), each saying "tap to undo"; tapping again gives the money back. Four

@@ -230,7 +230,7 @@ export class Rules {
     const bonus = saved * rate;
     if (bonus > 0) {
       this.roomScore += bonus;
-      this.ledger.push({ id: 'saved', label: 'Shots saved', detail: `${saved} × ${rate.toLocaleString()}`, amount: bonus });
+      this.ledger.push({ id: 'saved', label: 'Unused shots', detail: `${saved} left · ${rate.toLocaleString()} each`, amount: bonus });
     }
     // THE CLEAN SWEEP. Its own line, because a bonus folded into the stroke
     // totals is a bonus the player never learns they earned — and this one is
@@ -241,8 +241,8 @@ export class Rules {
       this.roomScore += sweepRate;
       this.ledger.push({
         id: 'sweep',
-        label: 'Swept in order',
-        detail: `all ${this.mission.rack} · ${RULES.order.cleanSweep.toLocaleString()} × ${this.level}`,
+        label: 'All in order',
+        detail: `${this.mission.rack} balls by number`,
         amount: sweepRate
       });
     }
@@ -256,7 +256,7 @@ export class Rules {
     const payout = [];
     if (beaten) {
       payout.push({ id: 'beaten', label: 'Beat the target', detail: '', amount: C.beaten });
-      if (saved > 0) payout.push({ id: 'shots', label: 'Shots left', detail: `${saved} × $${C.perShotLeft}`, amount: saved * C.perShotLeft });
+      if (saved > 0) payout.push({ id: 'shots', label: 'Unused shots', detail: `${saved} × $${C.perShotLeft}`, amount: saved * C.perShotLeft });
       const over = Math.min(C.overCap, Math.floor((this.roomScore / Math.max(1, this.target) - 1) / C.overStep + 1e-9));
       if (over > 0) payout.push({ id: 'over', label: 'Over the target', detail: `${Math.round((this.roomScore / this.target - 1) * 100)}% · $1 per ${Math.round(C.overStep * 100)}%`, amount: over });
     }

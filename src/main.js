@@ -1946,7 +1946,7 @@ function completeRoom() {
   // not a difficulty setting, it is a trap with a menu entry.
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
-    hud.showBanner('Swept in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
+    hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
   openExits();
   showRoomResult({ ...tableResult(result), filled: true }, shownRun);

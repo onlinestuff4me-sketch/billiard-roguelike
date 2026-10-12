@@ -289,8 +289,6 @@ export class Moments {
    * rarity is the 1–3 diamonds on each card, not a colour.
    */
   async _openShop(root, shop, live) {
-    const cashBox = root.querySelector('.mo-cashpanel');
-    if (cashBox) this.anim(cashBox, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).then(() => cashBox.remove());
     const ledger = root.querySelector('.mo-ledger');
     if (ledger) {
       await this.anim(ledger, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -24px) scale(0.96)', opacity: 0 }], { duration: 260, easing: IN });
@@ -352,7 +350,7 @@ export class Moments {
       el('span', 'p', reroll).textContent = money(shop.rerollPrice());
       grid.querySelectorAll('.mo-card').forEach(paintCard);
     };
-    const renderCards = (animate) => {
+    const renderCards = (animate, still = null) => {
       grid.textContent = '';
       shop.items.forEach((it, i) => {
         const c = el('div', `mo-card ${it.rarity}`, grid);
@@ -384,15 +382,29 @@ export class Moments {
           spendTo(before);
           renderTools();
         });
-        if (animate) this.anim(c, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 70 * i, easing: BACK });
+        // a held card stays put through a reroll; the rest deal in
+        if (animate && !(still && still.has(it.id))) this.anim(c, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 70 * i, easing: BACK });
       });
       renderTools();
     };
-    tap(reroll, () => {
+    // A REROLL ANSWERS THE TAP: the button flashes, the old cards leave (held
+    // ones stay put), the new ones come in, and the new price pops.
+    let rolling = false;
+    tap(reroll, async () => {
+      if (rolling) return;
       const before = shop.cash();
-      if (!shop.reroll()) return;
+      const keep = new Set(shop.items.filter((it) => it.held && !it.sold).map((it) => it.id));
+      if (!shop.reroll()) return shake(reroll);
+      rolling = true;
+      this.anim(reroll, [{ filter: 'brightness(2.2)', transform: 'scale(0.96)' }, { filter: 'none', transform: 'none' }], { duration: 260, easing: OUT });
       spendTo(before);
-      renderCards(true);
+      const leaving = [...grid.querySelectorAll('.mo-card')].filter((c) => !keep.has(c._item.id));
+      await Promise.all(leaving.map((c, i) => this.anim(c, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-10px) scale(0.94)', opacity: 0 }], { duration: 160, delay: 40 * i, easing: IN })));
+      if (!live()) return;
+      renderCards(true, keep);
+      const p = reroll.querySelector('.p');
+      if (p) this.anim(p, [{ transform: 'scale(1.6)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 300, easing: OUT });
+      rolling = false;
     });
     tap(next, () => {
       next.disabled = true;
@@ -509,6 +521,27 @@ export class Moments {
       tick.style.left = `${(d.target / scale) * 100}%`;
       this._verdict = { row, fill, to: (d.roomScore / scale) * 100 };
     }
+    // CASH EARNED sits right under the verdict, in the same panel, so the
+    // reward reads as the result of beating the target. Every line is in
+    // place from the start (invisible), so the panel never grows.
+    this._pay = null;
+    if (d.target && (d.payout || []).length) {
+      const box = el('div', 'mo-pay2', panel);
+      el('div', 'mo-pay-k', box).textContent = 'Cash earned';
+      const rowEls = d.payout.map((p) => {
+        const r = el('div', 'mo-cash-row', box);
+        el('span', 'k', r).textContent = p.label;
+        el('span', 'd', r).textContent = p.detail || '';
+        el('span', 'v', r).textContent = `+$${p.amount}`;
+        r.style.opacity = '0';
+        return r;
+      });
+      const sum = el('div', 'mo-cash-total', box);
+      el('span', 'k', sum).textContent = 'Cash';
+      const sumV = el('span', 'v', sum);
+      sumV.textContent = '+$0';
+      this._pay = { box, rowEls, sumV };
+    }
 
     // panel and title arrive together, once each
     this.anim(kicker, [{ letterSpacing: '0.7em', opacity: 0, filter: 'blur(4px)' }, { letterSpacing: '0.16em', opacity: 1, filter: 'blur(0)' }], { duration: 420, delay: 120, easing: OUT });
@@ -603,35 +636,14 @@ export class Moments {
       }
     }
 
-    const pays = d.payout || [];
-    if (!pays.length) {
+    if (!this._pay) {
       d.onCashLanded?.();
       return;
     }
-    // CASH EARNED: its own panel under the ledger, each line with its reason,
-    // a total, and where it goes. Then the total flies there.
-    const P = panel.getBoundingClientRect();
-    const L = this.layer.getBoundingClientRect();
-    const box = el('div', 'mo-cashpanel', this._clearRoot);
-    box.style.top = `${P.bottom - L.top + 10}px`;
-    el('div', 'mo-cash-k', box).textContent = 'Cash earned';
-    const lines = el('div', 'mo-cash-rows', box);
-    const sum = el('div', 'mo-cash-total', box);
-    el('span', 'k', sum).textContent = 'Total';
-    const sumV = el('span', 'v', sum);
-    sumV.textContent = '+$0';
-    const dest = el('div', 'mo-cash-dest', box);
-    dest.innerHTML = `Into your cash <b>$${d.cashFrom}</b> → <b>$${d.cash}</b>`;
-    // every line is in place before the panel shows, so it never grows
-    const rowEls = pays.map((p) => {
-      const r = el('div', 'mo-cash-row', lines);
-      el('span', 'k', r).textContent = p.label;
-      el('span', 'd', r).textContent = p.detail || '';
-      el('span', 'v', r).textContent = `+$${p.amount}`;
-      r.style.opacity = '0';
-      return r;
-    });
-    await this.anim(box, [{ transform: 'translate(-50%, -10px)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 220, easing: OUT });
+    const { box, rowEls, sumV } = this._pay;
+    const pays = d.payout;
+    await this.anim(box, [{ opacity: 0 }, { opacity: 1 }], { duration: 180 });
+    box.style.opacity = '1';
     let total = 0;
     for (const [i, p] of pays.entries()) {
       if (!live()) return;
