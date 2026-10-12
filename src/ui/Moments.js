@@ -637,10 +637,11 @@ export class Moments {
       if (!live()) return;
       const r = rowEls[i];
       this.audio.scoreNote?.(3, 'mult');
-      await this.anim(r, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
-      r.style.opacity = '1';
+      // the line and the total it adds to change together
       total += p.amount;
       sumV.textContent = `+$${total}`;
+      await this.anim(r, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      r.style.opacity = '1';
       await this.wait(200);
     }
     await this.wait(260);
