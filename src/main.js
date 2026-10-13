@@ -4288,6 +4288,7 @@ if (typeof window !== 'undefined') {
       game.state = 'playing';
       game.phase = 'aim';
       game.midStroke = false;
+      input.setHeading(0, -1);
       return { mission: rooms.mission, target: rules.target, name: rooms.authored?.name || rooms.layout.name };
     },
     beginStroke,
