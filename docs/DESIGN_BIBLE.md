@@ -346,8 +346,10 @@ in: SHOP. **One wallet** (from review): a gold box in the top-left corner, all
 run, never repeated. From the table's result through the shop it is lifted
 above the dimmed table so it stays in focus. **Money always travels** between
 the wallet and what it pays for: spending sends the price out of the wallet
-to the card as coins, one per dollar, and the wallet ticks down coin by coin;
-a refund sends them back. **Three actions**
+to the card as coins, one per dollar (up to 8): each coin leaves the wallet,
+which ticks down as it goes, and drops into the button that spent it, which
+takes the hit with a gold ring. A refund lifts the coins off that button and
+drops them into the wallet, which ticks up as each lands. **Three actions**
 (decided in review), and nothing else: **buy** a card, **hold** a card ($2: it
 waits in the next shop at its normal price; cards you don't hold are gone), or
 **reroll** ($3, then $1 more each time; a held card stays). A reroll answers

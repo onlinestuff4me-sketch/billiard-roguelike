@@ -958,34 +958,46 @@ export class Moments {
     await this.wait(260);
   }
 
+  /** A coin lands: a small gold ring opens where it hit. */
+  _coinPop(p) {
+    const ring = el('div', 'mo-coinpop', this.root);
+    ring.style.left = `${p.x}px`;
+    ring.style.top = `${p.y}px`;
+    this.anim(ring, [{ transform: 'translate(-50%,-50%) scale(0.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.7)', opacity: 0 }], { duration: 280, easing: OUT }).then(() => ring.remove());
+  }
+
   /**
-   * SPENDING. Money always travels between the wallet and the thing it pays
-   * for, as coins (one per dollar, up to 8): spending leaves the wallet for
-   * the card and ticks it down coin by coin; a refund comes back.
+   * SPENDING. Money always travels between the wallet and what it pays for,
+   * as coins (one per dollar, up to 8), and every coin lands. Spending: each
+   * coin leaves the wallet (which ticks down as it goes) and drops into the
+   * button that spent it, which takes the hit with a gold ring. A refund:
+   * the coins lift off that button and drop into the wallet, which ticks up
+   * as each one lands.
    */
   async _payFx(wallet, target, delta, from, to) {
     if (!delta) return;
     const spend = delta < 0;
-    const amt = Math.abs(delta);
+    const n = Math.min(Math.abs(delta), 8);
     const W = this._at(wallet);
     const T = this._at(target);
     const [a, b] = spend ? [W, T] : [T, W];
-    const n = Math.min(amt, 8);
     const per = (to - from) / n;
+    const tick = (k) => {
+      wallet.textContent = `$${k === n - 1 ? to : Math.round(from + per * (k + 1))}`;
+      this._bumpWallet(wallet);
+    };
     const flights = [];
     for (let k = 0; k < n; k++) {
       const coin = el('div', 'mo-coin', this.root);
       coin.textContent = '$';
-      const step = () => {
-        wallet.textContent = `$${k === n - 1 ? to : Math.round(from + per * (k + 1))}`;
-        this.audio.coin?.(k, spend);
-        this._bumpWallet(wallet);
-      };
-      // spending: the wallet ticks down as each coin leaves; a refund ticks up as each lands
-      if (spend) setTimeout(step, this.skip ? 0 : k * 60);
-      flights.push(this._arc(coin, a, b, { ms: 420, lift: 40 + ((k * 23) % 30), s0: spend ? 0.7 : 1, s1: spend ? 1 : 0.7, delay: k * 60 }).then(() => {
+      // spending: the wallet ticks down as each coin leaves it
+      if (spend) setTimeout(() => tick(k), this.skip ? 0 : k * 60);
+      flights.push(this._arc(coin, a, b, { ms: 380, lift: 46 + ((k * 23) % 24), s0: 1, s1: 0.8, delay: k * 60 }).then(() => {
         coin.remove();
-        if (!spend) step();
+        this._coinPop(b);
+        this.audio.coin?.(k, spend);
+        if (spend) target.animate([{ transform: 'scale(1.1)', filter: 'brightness(1.6)' }, { transform: 'scale(1)', filter: 'none' }], { duration: 180, easing: OUT });
+        else tick(k);
       }));
     }
     await Promise.all(flights);
