@@ -242,9 +242,17 @@ export class Moments {
     const style = this.variant('clear');
     const root = el('div', `mo-clear ${style}${d.filled ? '' : ' failed'}`, this.root);
     // A TAP SKIPS: the whole moment jumps to its end, and the Shop button waits.
-    absorb(root, () => {
-      if (!this._clearReady) this.skipNow();
-    });
+    // A SKIP SHOWS IT HAPPENED: the button lights, the panel flashes as
+    // everything lands, a fast-forward mark sweeps across it, and the
+    // buttons come a beat later.
+    let skipped = false;
+    const skip = () => {
+      if (this._clearReady || skipped) return;
+      skipped = true;
+      this._skipFx(root, act);
+      this.skipNow();
+    };
+    absorb(root, skip);
     const act = el('button', 'mo-nexttable mo-act skip', root);
     act.type = 'button';
     act.innerHTML = 'Skip <span aria-hidden="true">▸▸</span>';
@@ -257,7 +265,7 @@ export class Moments {
       event.preventDefault();
       event.stopPropagation();
       if (this._actTap) this._actTap();
-      else if (!this._clearReady) this.skipNow();
+      else skip();
     });
     this._clearReady = false;
     this._clearRoot = root;
@@ -282,6 +290,8 @@ export class Moments {
     // THE SHOP replaces the exits: GO TO SHOP, or NEXT TABLE to skip it.
     if (d.shop) {
       this.skip = false;
+      if (skipped) await this.wait(420);
+      if (!live()) return;
       this._clearReady = true;
       await this._shopFlow(root, d, act, live);
       return;
@@ -318,6 +328,25 @@ export class Moments {
   }
 
   /**
+   * The skip's own feedback. It runs outside `anim` on purpose: a skip
+   * finishes every tracked animation at once, and this has to be seen.
+   */
+  _skipFx(root, act) {
+    this.audio.slingshot?.(0.5);
+    act.classList.add('pressed');
+    act.animate([{ transform: 'translate(-50%, 0) scale(1)' }, { transform: 'translate(-50%, 0) scale(0.86)', offset: 0.35 }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 340, easing: 'ease-out' });
+    const panel = root.querySelector('.mo-ledger');
+    if (!panel) return;
+    panel.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.9)', offset: 0.2 }, { filter: 'brightness(1)' }], { duration: 520, easing: 'ease-out' });
+    const P = this._at(panel);
+    const mark = el('div', 'mo-skipfx', this.root);
+    mark.textContent = '▸▸';
+    mark.style.left = `${P.x}px`;
+    mark.style.top = `${P.y}px`;
+    mark.animate([{ transform: 'translate(-90%, -50%) scale(0.7)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.1)', opacity: 0.9, offset: 0.3 }, { transform: 'translate(-10%, -50%) scale(1.4)', opacity: 0 }], { duration: 560, easing: 'ease-out' }).finished.then(() => mark.remove(), () => mark.remove());
+  }
+
+  /**
    * FROM THE RESULT TO THE SHOP (from review). One row of buttons under the
    * panel, in the place the Skip button was:
    *
@@ -339,7 +368,7 @@ export class Moments {
     const mid = el('div', 'slot m', row);
     const right = el('div', 'slot r', row);
     act.hidden = false;
-    act.classList.remove('skip');
+    act.classList.remove('skip', 'pressed');
     act.classList.add('collect', 'in-row');
     act.style.top = '';
     act.textContent = 'Go to shop';

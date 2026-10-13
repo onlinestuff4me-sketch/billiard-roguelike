@@ -317,7 +317,10 @@ result's last beat, as **coin rain** (picked in review, after Gambonanza, and
 made snappier in the next): the Cash total flashes with a burst behind it,
 then flies into the wallet as one gold plate with a short trail of coins, and
 the wallet counts up a ding per tick. Skip lands it all at once:
-every total stays in the panel and the wallet shows the new figure. Every
+every total stays in the panel and the wallet shows the new figure. A skip
+shows that it happened: the Skip button lights, the panel flashes as
+everything lands, a ▸▸ mark sweeps across it, and the buttons arrive a beat
+later. Every
 button dips and flashes the instant it is tapped. The cash lines read like
 Gambonanza's results: a count, the reason with its rule ("Unused shots ($1
 each)"), the dollars. Going to the shop sends the result up and away and
