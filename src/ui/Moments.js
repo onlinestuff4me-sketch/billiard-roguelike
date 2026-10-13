@@ -246,11 +246,11 @@ export class Moments {
     // everything lands, a fast-forward mark sweeps across it, and the
     // buttons come a beat later.
     let skipped = false;
-    let skipHold = 0;
+    let skipFill = null;
     const skip = () => {
       if (this._clearReady || skipped) return;
       skipped = true;
-      skipHold = this._skipFx(root, act);
+      skipFill = this._skipFx(root, act);
       this.skipNow();
     };
     absorb(root, skip);
@@ -284,6 +284,11 @@ export class Moments {
     }));
 
     await this._clearLedger(root, d, rows, live);
+    // a skip fills in what it jumped past before anything else happens
+    if (skipFill) {
+      this.skip = false;
+      await skipFill();
+    }
     if (!live() || d.lives <= 0) {
       act.hidden = true;
       return;
@@ -291,7 +296,6 @@ export class Moments {
     // THE SHOP replaces the exits: GO TO SHOP, or NEXT TABLE to skip it.
     if (d.shop) {
       this.skip = false;
-      if (skipped) await new Promise((r) => setTimeout(r, skipHold));
       if (!live()) return;
       this._clearReady = true;
       await this._shopFlow(root, d, act, live);
@@ -343,28 +347,38 @@ export class Moments {
     act.classList.add('pressed');
     act.animate([{ transform: 'translate(-50%, 0) scale(1)' }, { transform: 'translate(-50%, 0) scale(0.86)', offset: 0.35 }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 340, easing: 'ease-out' });
     const panel = root.querySelector('.mo-ledger');
-    if (!panel) return 0;
+    if (!panel) return null;
     const P = this._at(panel);
     const mark = el('div', 'mo-skipfx', this.root);
     mark.textContent = '▸▸';
     mark.style.left = `${P.x}px`;
     mark.style.top = `${P.y}px`;
     mark.animate([{ transform: 'translate(-110%, -50%) scale(0.8)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.1)', opacity: 0.85, offset: 0.35 }, { transform: 'translate(10%, -50%) scale(1.3)', opacity: 0 }], { duration: 520, easing: 'ease-out' }).finished.then(() => mark.remove(), () => mark.remove());
-    // what hasn't shown yet, top to bottom
+    // What hasn't shown yet, top to bottom, is hidden now (the jump to the
+    // end happens underneath) and filled in once the panel has settled.
     const box = panel.querySelector('.mo-pay2');
     const boxHidden = !!box && parseFloat(getComputedStyle(box).opacity) < 0.5;
     const hidden = (n) => n.style.opacity === '0' || parseFloat(getComputedStyle(n).opacity) < 0.5 || (boxHidden && box.contains(n));
     const pending = [...panel.querySelectorAll('.mo-row, .mo-total, .mo-target, .mo-pay-k, .mo-cash-row, .mo-cash-total')].filter(hidden);
+    pending.forEach((n) => n.classList.add('mo-skiphide'));
+    if (boxHidden) box.classList.add('mo-skiphide');
+    return () => this._skipFill(pending, boxHidden ? box : null);
+  }
+
+  /** The skip's fill-in: each row in turn, then the totals at the top pop. */
+  _skipFill(pending, box) {
     const step = 55;
-    const start = 180;
-    if (boxHidden) box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, delay: start + step * pending.findIndex((n) => box.contains(n)), fill: 'backwards' });
     pending.forEach((n, i) => {
-      n.animate([{ opacity: 0, transform: 'translateX(-28px)', background: 'rgba(233,248,255,0.35)' }, { opacity: 1, transform: 'none', background: 'rgba(233,248,255,0)' }], { duration: 200, delay: start + step * i, easing: 'ease-out', fill: 'backwards' });
+      setTimeout(() => {
+        if (box && box.contains(n)) box.classList.remove('mo-skiphide');
+        n.classList.remove('mo-skiphide');
+        n.animate([{ opacity: 0, transform: 'translateX(-28px)', background: 'rgba(233,248,255,0.35)' }, { opacity: 1, transform: 'none', background: 'rgba(233,248,255,0)' }], { duration: 200, easing: 'ease-out' });
+        if (i % 2 === 0) this.audio.scoreNote?.(4 + i, 'points');
+      }, step * i);
     });
-    for (let i = 0; i < pending.length; i += 2) setTimeout(() => this.audio.scoreNote?.(4 + i, 'points'), start + step * i);
-    // then the totals at the top pop with their new figures
-    const popAt = start + step * pending.length + 160;
+    const popAt = step * pending.length + 160;
     setTimeout(() => {
+      box?.classList.remove('mo-skiphide');
       this.audio.scoreLock?.();
       const pop = [{ transform: 'scale(1.45)', filter: 'brightness(1.9)' }, { transform: 'scale(1)', filter: 'none' }];
       this.hud.cashValue.animate(pop, { duration: 420, easing: 'ease-out' });
@@ -375,7 +389,7 @@ export class Moments {
       ring.style.top = `${W.y}px`;
       ring.animate([{ transform: 'translate(-50%,-50%) scale(0.4)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2.4)', opacity: 0 }], { duration: 520, easing: 'ease-out' }).finished.then(() => ring.remove(), () => ring.remove());
     }, popAt);
-    return popAt + 420;
+    return new Promise((r) => setTimeout(r, popAt + 420));
   }
 
   /**
