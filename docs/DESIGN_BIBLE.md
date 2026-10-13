@@ -319,8 +319,8 @@ then flies into the wallet as one gold plate with a short trail of coins, and
 the wallet counts up a ding per tick. Skip lands it all at once:
 every total stays in the panel and the wallet shows the new figure. A skip
 shows that it happened: the Skip button lights, the panel flashes as
-everything lands, a ▸▸ mark sweeps across it, and the buttons arrive a beat
-later. Every
+everything lands, a large ▸▸ mark slides in, holds at the centre for a beat
+and speeds off (about a second), and the buttons arrive after it. Every
 button dips and flashes the instant it is tapped. The cash lines read like
 Gambonanza's results: a count, the reason with its rule ("Unused shots ($1
 each)"), the dollars. Going to the shop sends the result up and away and
@@ -352,9 +352,10 @@ takes the hit with a gold ring. A refund lifts the coins off that button and
 drops them into the wallet, which ticks up as each lands. **Three actions**
 (decided in review), and nothing else: **buy** a card, **hold** a card ($2: it
 waits in the next shop at its normal price; cards you don't hold are gone), or
-**reroll** ($3, then $1 more each time; a held card stays). A reroll answers
-the tap: the button flashes, the cards it replaces lift away, the new ones deal
-in, and the new price pops. Each card has two
+**reroll** ($3, then $1 more each time; a held card stays). A reroll (from
+review): the coins go to the Reroll button first, then every card it replaces
+flips over to its new face at once (a held card stays put), and the new price
+pops. Each card has two
 buttons, BUY $6 and HOLD $2, and **every tap changes the button as well as the
 card**: BUY becomes BOUGHT ✓ (filled, `you`) and HOLD becomes HELD ✓ (filled,
 `ink`), each saying "tap to undo"; tapping again gives the money back. Four

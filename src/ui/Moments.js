@@ -290,7 +290,7 @@ export class Moments {
     // THE SHOP replaces the exits: GO TO SHOP, or NEXT TABLE to skip it.
     if (d.shop) {
       this.skip = false;
-      if (skipped) await this.wait(420);
+      if (skipped) await this.wait(760);
       if (!live()) return;
       this._clearReady = true;
       await this._shopFlow(root, d, act, live);
@@ -337,13 +337,14 @@ export class Moments {
     act.animate([{ transform: 'translate(-50%, 0) scale(1)' }, { transform: 'translate(-50%, 0) scale(0.86)', offset: 0.35 }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 340, easing: 'ease-out' });
     const panel = root.querySelector('.mo-ledger');
     if (!panel) return;
-    panel.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.9)', offset: 0.2 }, { filter: 'brightness(1)' }], { duration: 520, easing: 'ease-out' });
+    panel.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.9)', offset: 0.2 }, { filter: 'brightness(1.4)', offset: 0.6 }, { filter: 'brightness(1)' }], { duration: 900, easing: 'ease-out' });
     const P = this._at(panel);
     const mark = el('div', 'mo-skipfx', this.root);
     mark.textContent = '▸▸';
     mark.style.left = `${P.x}px`;
     mark.style.top = `${P.y}px`;
-    mark.animate([{ transform: 'translate(-90%, -50%) scale(0.7)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.1)', opacity: 0.9, offset: 0.3 }, { transform: 'translate(-10%, -50%) scale(1.4)', opacity: 0 }], { duration: 560, easing: 'ease-out' }).finished.then(() => mark.remove(), () => mark.remove());
+    // the mark slides in, holds at the centre, then speeds off
+    mark.animate([{ transform: 'translate(-110%, -50%) scale(0.8)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.15)', opacity: 1, offset: 0.25 }, { transform: 'translate(-45%, -50%) scale(1.2)', opacity: 1, offset: 0.65 }, { transform: 'translate(10%, -50%) scale(1.4)', opacity: 0 }], { duration: 1000, easing: 'ease-in-out' }).finished.then(() => mark.remove(), () => mark.remove());
   }
 
   /**
@@ -492,7 +493,7 @@ export class Moments {
       if (!delta) return;
       const shown = Number(String(walletV.textContent).replace(/[^0-9]/g, '')) || 0;
       const my = ++payId;
-      this._payFx(walletV, target, delta, shown, to).then(() => {
+      return this._payFx(walletV, target, delta, shown, to).then(() => {
         if (my === payId) walletV.textContent = money(shop.cash());
       });
     };
@@ -533,7 +534,7 @@ export class Moments {
       el('span', 'p', reroll).textContent = money(shop.rerollPrice());
       grid.querySelectorAll('.mo-card').forEach(paintCard);
     };
-    const renderCards = (animate, still = null) => {
+    const renderCards = (animate, still = null, flip = false) => {
       grid.textContent = '';
       shop.items.forEach((it, i) => {
         const c = el('div', `mo-card ${it.rarity}`, grid);
@@ -565,13 +566,17 @@ export class Moments {
           spendTo(before, hold);
           renderTools();
         });
-        // a held card stays put through a reroll; the rest deal in
-        if (animate && !(still && still.has(it.id))) this.anim(c, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 70 * i, easing: BACK });
+        // a held card stays put through a reroll; the rest deal in, or after
+        // a reroll flip over to their new face, all at once
+        if (!animate || (still && still.has(it.id))) return;
+        if (flip) this.anim(c, [{ transform: 'perspective(700px) rotateY(-90deg)' }, { transform: 'perspective(700px) rotateY(0deg)' }], { duration: 260, easing: OUT });
+        else this.anim(c, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 260, delay: 70 * i, easing: BACK });
       });
       renderTools();
     };
-    // A REROLL ANSWERS THE TAP: the button flashes, the old cards leave (held
-    // ones stay put), the new ones come in, and the new price pops.
+    // A REROLL (from review): the coins go to the Reroll button first, then
+    // every card flips over to a new one at once (a held card stays put), and
+    // the new price pops.
     let rolling = false;
     tap(reroll, async () => {
       if (rolling) return;
@@ -580,11 +585,13 @@ export class Moments {
       if (!shop.reroll()) return shake(reroll);
       rolling = true;
       this.anim(reroll, [{ filter: 'brightness(2.2)', transform: 'scale(0.96)' }, { filter: 'none', transform: 'none' }], { duration: 260, easing: OUT });
-      spendTo(before, reroll);
-      const leaving = [...grid.querySelectorAll('.mo-card')].filter((c) => !keep.has(c._item.id));
-      await Promise.all(leaving.map((c, i) => this.anim(c, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(-10px) scale(0.94)', opacity: 0 }], { duration: 160, delay: 40 * i, easing: IN })));
+      await spendTo(before, reroll);
       if (!live()) return;
-      renderCards(true, keep);
+      const leaving = [...grid.querySelectorAll('.mo-card')].filter((c) => !keep.has(c._item.id));
+      this.audio.doorOpen?.();
+      await Promise.all(leaving.map((c) => this.anim(c, [{ transform: 'perspective(700px) rotateY(0deg)' }, { transform: 'perspective(700px) rotateY(90deg)' }], { duration: 180, easing: IN })));
+      if (!live()) return;
+      renderCards(true, keep, true);
       const p = reroll.querySelector('.p');
       if (p) this.anim(p, [{ transform: 'scale(1.6)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 300, easing: OUT });
       rolling = false;
