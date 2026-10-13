@@ -318,9 +318,10 @@ made snappier in the next): the Cash total flashes with a burst behind it,
 then flies into the wallet as one gold plate with a short trail of coins, and
 the wallet counts up a ding per tick. Skip lands it all at once:
 every total stays in the panel and the wallet shows the new figure. A skip
-shows that it happened: the Skip button lights, the panel flashes as
-everything lands, a large ▸▸ mark slides in, holds at the centre for a beat
-and speeds off (about a second), and the buttons arrive after it. Every
+shows that it happened (from review): the Skip button lights, a ▸▸ mark
+flicks across, the rows that hadn't shown yet fill in quickly down the panel
+one after another, then the wallet and the score at the top pop with their
+new figures, and only then do the buttons arrive. Every
 button dips and flashes the instant it is tapped. The cash lines read like
 Gambonanza's results: a count, the reason with its rule ("Unused shots ($1
 each)"), the dollars. Going to the shop sends the result up and away and
@@ -358,8 +359,10 @@ flips over to its new face at once (a held card stays put), and the new price
 pops. Each card has two
 buttons, BUY $6 and HOLD $2, and **every tap changes the button as well as the
 card**: BUY becomes BOUGHT ✓ (filled, `you`) and HOLD becomes HELD ✓ (filled,
-`ink`), each saying "tap to undo"; tapping again gives the money back. Four
-cards from a pool of 22 (`src/systems/Upgrades.js`), weighted by rarity
+`ink`), each saying "tap to undo"; tapping again gives the money back. Every card is
+one fixed size: a name fits one line and a rule two (at most 14 and 46
+characters, checked in `npm run scoring`), so a reroll never moves the shelf.
+Four cards from a pool of 22 (`src/systems/Upgrades.js`), weighted by rarity
 (common 6, rare 3, epic 1), never one you already own unless it stacks. A
 Freeze frame charge is one of those cards, not a fourth action. **Rarity is
 marked by stars** (★, ★★, ★★★) in the card's tag, never by colour, and never

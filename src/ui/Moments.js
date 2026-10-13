@@ -246,10 +246,11 @@ export class Moments {
     // everything lands, a fast-forward mark sweeps across it, and the
     // buttons come a beat later.
     let skipped = false;
+    let skipHold = 0;
     const skip = () => {
       if (this._clearReady || skipped) return;
       skipped = true;
-      this._skipFx(root, act);
+      skipHold = this._skipFx(root, act);
       this.skipNow();
     };
     absorb(root, skip);
@@ -290,7 +291,7 @@ export class Moments {
     // THE SHOP replaces the exits: GO TO SHOP, or NEXT TABLE to skip it.
     if (d.shop) {
       this.skip = false;
-      if (skipped) await this.wait(760);
+      if (skipped) await new Promise((r) => setTimeout(r, skipHold));
       if (!live()) return;
       this._clearReady = true;
       await this._shopFlow(root, d, act, live);
@@ -328,23 +329,53 @@ export class Moments {
   }
 
   /**
-   * The skip's own feedback. It runs outside `anim` on purpose: a skip
-   * finishes every tracked animation at once, and this has to be seen.
+   * The skip's own feedback (from review). Everything jumps to its end at
+   * once underneath, but what the player sees is quick: the Skip button
+   * lights, a ▸▸ mark flicks across, the rows that hadn't shown yet fill in
+   * down the panel one after another, and then the wallet and the score at
+   * the top pop with their new figures. Returns how long that takes.
+   *
+   * It runs outside `anim` on purpose: a skip finishes every tracked
+   * animation at once, and this has to be seen.
    */
   _skipFx(root, act) {
     this.audio.slingshot?.(0.5);
     act.classList.add('pressed');
     act.animate([{ transform: 'translate(-50%, 0) scale(1)' }, { transform: 'translate(-50%, 0) scale(0.86)', offset: 0.35 }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 340, easing: 'ease-out' });
     const panel = root.querySelector('.mo-ledger');
-    if (!panel) return;
-    panel.animate([{ filter: 'brightness(1)' }, { filter: 'brightness(1.9)', offset: 0.2 }, { filter: 'brightness(1.4)', offset: 0.6 }, { filter: 'brightness(1)' }], { duration: 900, easing: 'ease-out' });
+    if (!panel) return 0;
     const P = this._at(panel);
     const mark = el('div', 'mo-skipfx', this.root);
     mark.textContent = '▸▸';
     mark.style.left = `${P.x}px`;
     mark.style.top = `${P.y}px`;
-    // the mark slides in, holds at the centre, then speeds off
-    mark.animate([{ transform: 'translate(-110%, -50%) scale(0.8)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.15)', opacity: 1, offset: 0.25 }, { transform: 'translate(-45%, -50%) scale(1.2)', opacity: 1, offset: 0.65 }, { transform: 'translate(10%, -50%) scale(1.4)', opacity: 0 }], { duration: 1000, easing: 'ease-in-out' }).finished.then(() => mark.remove(), () => mark.remove());
+    mark.animate([{ transform: 'translate(-110%, -50%) scale(0.8)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1.1)', opacity: 0.85, offset: 0.35 }, { transform: 'translate(10%, -50%) scale(1.3)', opacity: 0 }], { duration: 520, easing: 'ease-out' }).finished.then(() => mark.remove(), () => mark.remove());
+    // what hasn't shown yet, top to bottom
+    const box = panel.querySelector('.mo-pay2');
+    const boxHidden = !!box && parseFloat(getComputedStyle(box).opacity) < 0.5;
+    const hidden = (n) => n.style.opacity === '0' || parseFloat(getComputedStyle(n).opacity) < 0.5 || (boxHidden && box.contains(n));
+    const pending = [...panel.querySelectorAll('.mo-row, .mo-total, .mo-target, .mo-pay-k, .mo-cash-row, .mo-cash-total')].filter(hidden);
+    const step = 55;
+    const start = 180;
+    if (boxHidden) box.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, delay: start + step * pending.findIndex((n) => box.contains(n)), fill: 'backwards' });
+    pending.forEach((n, i) => {
+      n.animate([{ opacity: 0, transform: 'translateX(-28px)', background: 'rgba(233,248,255,0.35)' }, { opacity: 1, transform: 'none', background: 'rgba(233,248,255,0)' }], { duration: 200, delay: start + step * i, easing: 'ease-out', fill: 'backwards' });
+    });
+    for (let i = 0; i < pending.length; i += 2) setTimeout(() => this.audio.scoreNote?.(4 + i, 'points'), start + step * i);
+    // then the totals at the top pop with their new figures
+    const popAt = start + step * pending.length + 160;
+    setTimeout(() => {
+      this.audio.scoreLock?.();
+      const pop = [{ transform: 'scale(1.45)', filter: 'brightness(1.9)' }, { transform: 'scale(1)', filter: 'none' }];
+      this.hud.cashValue.animate(pop, { duration: 420, easing: 'ease-out' });
+      this.hud.scoreValue?.animate(pop, { duration: 420, easing: 'ease-out' });
+      const W = this._at(this.hud.cashValue);
+      const ring = el('div', 'mo-ring gold', this.root);
+      ring.style.left = `${W.x}px`;
+      ring.style.top = `${W.y}px`;
+      ring.animate([{ transform: 'translate(-50%,-50%) scale(0.4)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(2.4)', opacity: 0 }], { duration: 520, easing: 'ease-out' }).finished.then(() => ring.remove(), () => ring.remove());
+    }, popAt);
+    return popAt + 420;
   }
 
   /**
@@ -957,8 +988,8 @@ export class Moments {
     }
     await this._arc(plate, from, to, { ms: 460, lift: 60, s0: 1.1, s1: 0.55 });
     plate.remove();
-    // the landing: the wallet rings and counts up
-    this._bumpWallet(wallet, true);
+    // the landing: the wallet rings and counts up (a skip pops it later)
+    if (!this.skip) this._bumpWallet(wallet, true);
     let n = 0;
     await this.count(wallet, d.cashFrom, d.cash, Math.min(520, 120 + d.earned * 40), { prefix: '$', tick: () => this.audio.coin?.(n++) });
     d.onCashLanded?.();

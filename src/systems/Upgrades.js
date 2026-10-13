@@ -26,29 +26,29 @@ import { RULES } from '../config.js';
 export const UPGRADES = [
   /* -- scoring: what each contact pays ------------------------------- */
   { id: 'soft-touch', name: 'Soft Touch', text: 'Every ball you hit pays +5 more points.', rarity: 'common', price: 5, perk: { perHit: 5 } },
-  { id: 'long-rail', name: 'Long Rail', text: 'Every wall your ball takes pays +1 more Mult.', rarity: 'common', price: 5, perk: { perBank: 1 } },
+  { id: 'long-rail', name: 'Long Rail', text: 'Each wall your ball takes: +1 more Mult.', rarity: 'common', price: 5, perk: { perBank: 1 } },
   { id: 'kiss-chase', name: 'Kiss Chase', text: 'A ball driven into another pays +1 more Mult.', rarity: 'common', price: 5, perk: { perKiss: 1 } },
   { id: 'bank-vault', name: 'Bank Vault', text: 'Bank pots pay +2 more Mult.', rarity: 'common', price: 6, perk: { bankPot: 2 } },
-  { id: 'doubles', name: 'Doubles', text: 'Each extra ball down in one shot pays +2 more Mult.', rarity: 'common', price: 6, perk: { extraPot: 2 } },
-  { id: 'heavy-numbers', name: 'Heavy Numbers', text: 'Balls pay 15 points per number instead of 10.', rarity: 'rare', price: 8, perk: { perPip: 5 } },
+  { id: 'doubles', name: 'Doubles', text: 'Each extra ball in one shot: +2 Mult.', rarity: 'common', price: 6, perk: { extraPot: 2 } },
+  { id: 'heavy-numbers', name: 'Heavy Numbers', text: 'Balls pay 15 per number instead of 10.', rarity: 'rare', price: 8, perk: { perPip: 5 } },
   { id: 'prism', name: 'Prism', text: '× zones multiply by 3 instead of 2.', rarity: 'rare', price: 9, perk: { goldFactor: 1 } },
 
   /* -- scoring: where and what goes down ------------------------------ */
   { id: 'corner-office', name: 'Corner Office', text: 'A pot in a corner pocket: +3 Mult.', rarity: 'common', price: 6, perk: { corner: 3 } },
   { id: 'side-hustle', name: 'Side Hustle', text: 'A pot in a side pocket: +4 Mult.', rarity: 'common', price: 6, perk: { side: 4 } },
-  { id: 'odd-ones', name: 'Odd Ones', text: 'Odd-numbered balls pay +25 points when they drop.', rarity: 'common', price: 5, perk: { odd: 25 } },
-  { id: 'even-money', name: 'Even Money', text: 'Even-numbered balls pay +25 points when they drop.', rarity: 'common', price: 5, perk: { even: 25 } },
+  { id: 'odd-ones', name: 'Odd Ones', text: 'Odd-numbered balls pay +25 points.', rarity: 'common', price: 5, perk: { odd: 25 } },
+  { id: 'even-money', name: 'Even Money', text: 'Even-numbered balls pay +25 points.', rarity: 'common', price: 5, perk: { even: 25 } },
   { id: 'eight-ball', name: 'Eight Ball', text: 'Sinking the 8 doubles the shot’s Mult.', rarity: 'rare', price: 7, perk: { eight: 2 } },
 
   /* -- scoring: when ------------------------------------------------- */
   { id: 'opening-break', name: 'Opening Break', text: 'The first shot of every table: +3 Mult.', rarity: 'common', price: 6, perk: { opener: 3 } },
-  { id: 'run-out', name: 'Run Out', text: 'Sinking the last ball on the table doubles that shot’s Mult.', rarity: 'rare', price: 8, perk: { runout: 2 } },
-  { id: 'hot-streak', name: 'Hot Streak', text: 'Each shot in a row that pays: +1 Mult on the next.', rarity: 'epic', price: 10, perk: { streak: 1 } },
-  { id: 'spare-change', name: 'Spare Change', text: 'Every shot you don’t use pays +50 more at the end of a table.', rarity: 'common', price: 5, perk: { savedStroke: 50 } },
+  { id: 'run-out', name: 'Run Out', text: 'Sinking the last ball doubles that Mult.', rarity: 'rare', price: 8, perk: { runout: 2 } },
+  { id: 'hot-streak', name: 'Hot Streak', text: '+1 Mult per paying shot in a row.', rarity: 'epic', price: 10, perk: { streak: 1 } },
+  { id: 'spare-change', name: 'Spare Change', text: 'Each unused shot pays +50 more points.', rarity: 'common', price: 5, perk: { savedStroke: 50 } },
 
   /* -- Freeze frame ---------------------------------------------------- */
-  { id: 'ice-box', name: 'Ice Box', text: 'Start every table with half a Freeze frame charge.', rarity: 'rare', price: 7, perk: { icebox: 0.5 } },
-  { id: 'frostbite', name: 'Frostbite', text: 'A combination earns a whole Freeze frame charge, not half.', rarity: 'rare', price: 7, perk: { frostbite: 1 } },
+  { id: 'ice-box', name: 'Ice Box', text: 'Start each table with half a Freeze charge.', rarity: 'rare', price: 7, perk: { icebox: 0.5 } },
+  { id: 'frostbite', name: 'Frostbite', text: 'Combinations earn a whole Freeze charge.', rarity: 'rare', price: 7, perk: { frostbite: 1 } },
 
   /* -- the table ------------------------------------------------------- */
   {

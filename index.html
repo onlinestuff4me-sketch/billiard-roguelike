@@ -1184,9 +1184,10 @@
       /* Rarity is the diamonds in the tag, never a colour: every card shares one edge. */
       .mo-card { --edge: #3a87a8; }
       .mo-card .r { font-size: 9px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(233, 248, 255, 0.7); }
-      .mo-card .name { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; }
-      .mo-card .text { font-size: 12px; line-height: 1.25; color: rgba(233, 248, 255, 0.78); }
-      .mo-card .why { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ll-void); }
+      .mo-card .name { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* ONE CARD SIZE (from review): the rule always takes exactly two lines and the note line is always there, so nothing on the shelf moves when the cards change. */
+      .mo-card .text { font-size: 12px; line-height: 1.25; height: 2.5em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: rgba(233, 248, 255, 0.78); }
+      .mo-card .why { height: 12px; line-height: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ll-void); }
       .mo-card.poor .act.buy .p { color: var(--ll-void); }
       .mo-card.bought { box-shadow: inset 0 0 0 2px var(--ll-you); }
       .mo-shop-tools { display: grid; grid-template-columns: 1fr; gap: 8px; }
@@ -1198,7 +1199,7 @@
       .mo-owned { font-size: 11px; color: rgba(233, 248, 255, 0.55); }
       .mo-shop-points .v { color: #ffc266; }
       .mo-card .foot { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
-      .mo-card .act { display: grid; justify-items: center; gap: 1px; padding: 6px 4px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font); color: var(--bone); background: rgba(2, 5, 11, 0.6); box-shadow: inset 0 0 0 1px rgba(233, 248, 255, 0.45); }
+      .mo-card .act { display: grid; justify-items: center; align-content: center; height: 38px; box-sizing: border-box; overflow: hidden; gap: 1px; padding: 4px 4px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font); color: var(--bone); background: rgba(2, 5, 11, 0.6); box-shadow: inset 0 0 0 1px rgba(233, 248, 255, 0.45); }
       .mo-card .act b { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
       .mo-card .act .p { font-family: var(--font-num); font-size: 15px; font-weight: 800; color: #ffc266; line-height: 1; }
       .mo-card .act small { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }

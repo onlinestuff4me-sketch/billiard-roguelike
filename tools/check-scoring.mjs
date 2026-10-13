@@ -311,6 +311,9 @@ console.log('\nfreeze frame charges\n');
   check(rollShelf(owned, 4).every((u) => u.stack), 'and never one the run already owns, unless it stacks');
   check(UPGRADES.length >= 20, 'the pool is large enough to be a roguelike', `${UPGRADES.length}`);
   check(UPGRADES.every((u) => u.price >= 4 && u.price <= 10), 'every upgrade costs $4–10', UPGRADES.map((u) => u.price).join(','));
+  // Shop cards are one fixed size (from review): a name fits one line and the
+  // rule two, so a reroll never makes the grid jump.
+  check(UPGRADES.every((u) => u.name.length <= 14 && u.text.length <= 46), 'every card fits its fixed size (name ≤ 14, rule ≤ 46 characters)', UPGRADES.filter((u) => u.name.length > 14 || u.text.length > 46).map((u) => u.id).join(',') || 'all fit');
   const ctx = { rules: fresh(), game: {}, boons: { addRunBonus() {} } };
   const rail = UPGRADES.find((u) => u.id === 'long-rail');
   applyUpgrade(rail, ctx);
