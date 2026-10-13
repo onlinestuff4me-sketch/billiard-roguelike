@@ -250,6 +250,8 @@ export class Moments {
     const skip = () => {
       if (this._clearReady || skipped) return;
       skipped = true;
+      this._skipping = true;
+      this._skipLand = [];
       skipFill = this._skipFx(root, act);
       this.skipNow();
     };
@@ -289,6 +291,10 @@ export class Moments {
       this.skip = false;
       await skipFill();
     }
+    // anything still held for the pop lands now (a skip before the panel)
+    for (const land of this._skipLand || []) land();
+    this._skipLand = [];
+    this._skipping = false;
     if (!live() || d.lives <= 0) {
       act.hidden = true;
       return;
@@ -379,6 +385,8 @@ export class Moments {
     const popAt = step * pending.length + 160;
     setTimeout(() => {
       box?.classList.remove('mo-skiphide');
+      for (const land of this._skipLand || []) land();
+      this._skipLand = [];
       this.audio.scoreLock?.();
       const pop = [{ transform: 'scale(1.45)', filter: 'brightness(1.9)' }, { transform: 'scale(1)', filter: 'none' }];
       this.hud.cashValue.animate(pop, { duration: 420, easing: 'ease-out' });
@@ -701,6 +709,8 @@ export class Moments {
 
   closeClear() {
     this._clear = null;
+    this._skipping = false;
+    this._skipLand = [];
     this._actTap = null;
     // the wallet goes home to the corner, and the HUD paints it again
     this.hud.root.classList.remove('wallet-away', 'wallet-lit');
@@ -859,8 +869,10 @@ export class Moments {
       else this.audio.playerHurt?.();
       this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
     }
-    // the corner's table figure lands with the total
-    d.onTotal?.();
+    // the corner's table figure lands with the total (after a skip, with the
+    // fill-in's pop instead)
+    if (this._skipping) this._skipLand.push(() => d.onTotal?.());
+    else d.onTotal?.();
     await this.wait(620);
     if (!live()) return;
     if (d.target) await this._clearVerdict(panel, d, live, root);
@@ -1002,10 +1014,15 @@ export class Moments {
     }
     await this._arc(plate, from, to, { ms: 460, lift: 60, s0: 1.1, s1: 0.55 });
     plate.remove();
-    // the landing: the wallet rings and counts up (a skip pops it later)
-    if (!this.skip) this._bumpWallet(wallet, true);
-    let n = 0;
-    await this.count(wallet, d.cashFrom, d.cash, Math.min(520, 120 + d.earned * 40), { prefix: '$', tick: () => this.audio.coin?.(n++) });
+    // the landing: the wallet rings and counts up (after a skip, the new
+    // figure lands with the fill-in's pop instead)
+    if (this._skipping) {
+      this._skipLand.push(() => (wallet.textContent = `$${d.cash}`));
+    } else {
+      this._bumpWallet(wallet, true);
+      let n = 0;
+      await this.count(wallet, d.cashFrom, d.cash, Math.min(520, 120 + d.earned * 40), { prefix: '$', tick: () => this.audio.coin?.(n++) });
+    }
     d.onCashLanded?.();
     await this.wait(260);
   }
