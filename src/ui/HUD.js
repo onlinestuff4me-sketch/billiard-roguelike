@@ -458,7 +458,8 @@ export class HUD {
       this.missionOrder.classList.toggle('strict', warned || !!s.strictOrder);
       // Declutter (from review): the order hint shows only when it is a rule —
       // a refused line, or Strict Order mode — never as a standing reminder.
-      this.missionOrder.hidden = !order || !(warned || s.strictOrder);
+      // An authored table about the order (Table 2) shows it all table long.
+      this.missionOrder.hidden = !order || !(warned || s.strictOrder || s.orderHint);
     }
 
     // --- this table's points, against its target ---

@@ -14,7 +14,7 @@
  */
 
 import * as THREE from 'three';
-import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA, RULES, LAYER } from '../config.js';
+import { ENEMY, PHYSICS, PALETTE, ROOM, ARENA, RULES, LAYER, BALL_NUMERALS } from '../config.js';
 
 export const ENEMY_STATE = {
   SPAWNING: 'spawning',
@@ -108,7 +108,8 @@ function stripeTexture() {
  * on it reads at 60px on a phone.
  */
 function numberTexture(number, hex) {
-  const key = `${number}:${hex}`;
+  const face = BALL_NUMERALS.style === 'face';
+  const key = `${number}:${hex}:${face ? 'face' : 'inset'}`;
   if (NUMBER_TEXTURES.has(key)) return NUMBER_TEXTURES.get(key);
   const size = 128;
   const canvas = document.createElement('canvas');
@@ -149,10 +150,10 @@ function numberTexture(number, hex) {
   // and a confirmation that covers what it confirms has eaten it. This reaches
   // roughly half the ball's radius, leaving the outer half pure colour — which
   // is also where check-palette.mjs samples.
-  const r = size * 0.29;
+  const r = size * (face ? 0.43 : 0.29);
 
   ctx.beginPath();
-  ctx.arc(c, c, r * 1.1, 0, Math.PI * 2);
+  ctx.arc(c, c, r * 1.06, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(4, 6, 10, 0.82)';
   ctx.fill();
 
@@ -161,7 +162,10 @@ function numberTexture(number, hex) {
   ctx.fillStyle = '#f2f7fb';
   ctx.fill();
 
-  ctx.font = `800 ${size * 0.4}px Rajdhani, "Segoe UI", Arial, sans-serif`;
+  // BIGGER DIGIT, SAME DISC (from review: the numbers were hard to read). The
+  // disc stays inside the inner half of the ball so the colour still reads,
+  // and the digit now fills the disc instead of floating in it.
+  ctx.font = `800 ${size * (face ? 0.72 : 0.54)}px Rajdhani, "Segoe UI", Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = hex;
@@ -523,7 +527,7 @@ export class Enemy {
     // own hues: colour identifies at a glance, the numeral confirms, and a
     // confirmation does not need to cover the thing it confirms. Like a real
     // pool ball — a small numeral in the middle, colour all around it.
-    const scale = Math.max(0.86, this.radius * 1.85);
+    const scale = Math.max(0.86, this.radius * (BALL_NUMERALS.style === 'face' ? 2.3 : 1.85));
     // NEAR-BLACK ON EVERY BALL, and the palette is picked so that works —
     // see numberTexture above, and the 4.5:1 floor in tools/check-palette.mjs.
     // Ink light enough to bloom is ink that eats the ball it is written on.

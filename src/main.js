@@ -41,8 +41,7 @@ import {
   TUTORIAL,
   PROGRESSION,
   LAYER,
-  MOMENTS
-} from './config.js';
+  MOMENTS, BALL_NUMERALS } from './config.js';
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { AudioManager } from './core/AudioManager.js';
@@ -4261,6 +4260,11 @@ for (const kind of Object.keys(MOMENT_NAMES)) {
 }
 applyMoments();
 if (typeof window !== 'undefined') {
+  /** Review: switch how ball numbers are drawn (takes effect on the next rack). */
+  window.__ballNumerals = (style) => {
+    if (BALL_NUMERALS.options.includes(style)) BALL_NUMERALS.style = style;
+    return BALL_NUMERALS.style;
+  };
   window.__moment = (kind, variant) => {
     if (MOMENTS.options[kind]?.includes(variant)) MOMENTS[kind] = variant;
     applyMoments();
@@ -4290,6 +4294,21 @@ if (typeof window !== 'undefined') {
       game.midStroke = false;
       input.setHeading(0, -1);
       return { mission: rooms.mission, target: rules.target, name: rooms.authored?.name || rooms.layout.name };
+    },
+    /** Load an arbitrary table spec (tables.json shape) as table `level`, for searches. */
+    loadSpec(spec, level = 1) {
+      if (tutorial.active) tutorial.stop();
+      game.tutorialGuard = null;
+      game.level = level;
+      rooms.teardown();
+      rooms.loadAuthored(spec, level);
+      callPocket(null);
+      beginMission();
+      player.placeAt(rooms.layout.spawn.x, spawnZ());
+      game.state = 'playing';
+      game.phase = 'aim';
+      game.midStroke = false;
+      return { mission: rooms.mission };
     },
     beginStroke,
     /** Close the stroke the way finishStroke does, minus the screens. */
@@ -4624,6 +4643,8 @@ function frame(now) {
         cleared: game.state === 'cleared',
         // What the drawn line would be refused for, if anything.
         aimFoul: game.aimFoul,
+        // a table about the order shows "NEXT n" all table long
+        orderHint: !!rooms.authored?.showOrder,
         ...snapshot,
         // Held through the end-of-table moment, so each figure in the corner
         // changes only when the moment shows it change.

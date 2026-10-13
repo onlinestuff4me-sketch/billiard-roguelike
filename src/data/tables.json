@@ -7,7 +7,7 @@
       "name": "First Target",
       "intro": {
         "title": "Table 1 \u00b7 First Target",
-        "sub": "Beat the target: sink all 3. Shots you don't need pay extra."
+        "sub": "3 balls \u00b7 5 shots"
       },
       "spawn": {
         "x": 0,
@@ -74,7 +74,8 @@
         "bank-vault",
         "kiss-chase",
         "bounce"
-      ]
+      ],
+      "showOrder": true
     },
     {
       "id": "off-the-rail",
@@ -169,7 +170,7 @@
       "name": "Pay Twice",
       "intro": {
         "title": "Table 5 \u00b7 Pay Twice",
-        "sub": "Roll through the green ring before your ball drops: that shot pays double."
+        "sub": "The green ring comes back every shot. Roll through it before a ball drops: that shot pays double."
       },
       "spawn": {
         "x": 0,
@@ -183,18 +184,18 @@
         },
         {
           "number": 2,
+          "x": -6.4,
+          "z": 1.6
+        },
+        {
+          "number": 3,
           "x": -6.3,
           "z": -12.8
         },
         {
-          "number": 3,
-          "x": 5.9,
-          "z": -12.6
-        },
-        {
           "number": 8,
-          "x": -6.4,
-          "z": 1.6
+          "x": 6.0,
+          "z": -12.6
         }
       ],
       "strokes": 5,
@@ -202,8 +203,8 @@
       "objects": [
         {
           "kind": "double",
-          "x": 3.0,
-          "z": 4.2
+          "x": 0.0,
+          "z": -3.0
         }
       ]
     },
@@ -382,7 +383,7 @@
       "name": "Bumpers",
       "intro": {
         "title": "Table 9 \u00b7 Bumpers",
-        "sub": "Bumpers kick back harder than a rail. The white ring is a free shot."
+        "sub": "Bumpers kick back harder than a rail. The green ring with a + is a free extra shot."
       },
       "spawn": {
         "x": 0,
@@ -498,11 +499,11 @@
       ]
     },
     {
-      "id": "it-shoots-back",
-      "name": "It Shoots Back",
+      "id": "one-short",
+      "name": "One Short",
       "intro": {
-        "title": "Table 11 \u00b7 It Shoots Back",
-        "sub": "Touch the kicker and the nearest ball comes flying back at you."
+        "title": "Table 11 \u00b7 One Short",
+        "sub": "5 balls, 4 shots. You'll need two down in one shot. The 8 goes last."
       },
       "spawn": {
         "x": 0,
@@ -511,43 +512,38 @@
       "rack": [
         {
           "number": 1,
-          "x": 5.0,
-          "z": 1.0
+          "x": -5.65,
+          "z": 1.17
         },
         {
           "number": 2,
-          "x": -5.0,
-          "z": -1.5
+          "x": -7.2,
+          "z": 0.71
         },
         {
           "number": 3,
-          "x": 4.5,
-          "z": -8.0
+          "x": 5.65,
+          "z": 1.17
         },
         {
           "number": 4,
-          "x": -4.5,
-          "z": -10.0
+          "x": 7.2,
+          "z": 0.71
         },
         {
           "number": 8,
           "x": 0.0,
-          "z": -11.5
+          "z": -12.6
         }
       ],
-      "strokes": 5,
+      "strokes": 4,
       "target": 1250,
       "eightLast": true,
       "objects": [
         {
-          "kind": "kicker",
-          "x": 0,
-          "z": -4.0
-        },
-        {
           "kind": "double",
-          "x": -3.2,
-          "z": 3.6
+          "x": 0.0,
+          "z": -4.0
         }
       ]
     },

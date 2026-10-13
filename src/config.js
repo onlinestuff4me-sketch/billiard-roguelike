@@ -760,7 +760,9 @@ export const TABLE = {
     /** Hazards, likewise. */
     hazards: {
       mine: { chance: 0.55, minLevel: 3, label: 'Mine' },
-      kicker: { chance: 0.4, minLevel: 7, label: 'Kicker' }
+      // retired from the rolled tables in review ("a bit strange"); set a
+      // chance above 0 to bring it back
+      kicker: { chance: 0, minLevel: 7, label: 'Kicker' }
     },
     /** At most this many felt objects in one room. */
     maxPerRoom: 3
@@ -911,6 +913,16 @@ export const FEEL = {
  * Two treatments of each, to be compared in the real game and then cut to
  * one. Change them in Settings, or with window.__moment(kind, variant).
  * ------------------------------------------------------------------ */
+/**
+ * HOW BALL NUMBERS ARE DRAWN (on trial in review: the numbers were hard to
+ * read on a phone).
+ *   inset  a light disc in the inner half of the ball, the ball's colour all
+ *          round it (passes npm run palette as it stands)
+ *   face   a light face across the whole ball with a digit about twice the
+ *          size; the ball's colour is carried by its glow ring
+ */
+export const BALL_NUMERALS = { style: 'inset', options: ['inset', 'face'] };
+
 export const MOMENTS = {
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
   clear: 'ledger',

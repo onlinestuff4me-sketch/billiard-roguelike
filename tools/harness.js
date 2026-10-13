@@ -260,7 +260,7 @@
   window.__runTables = () => window.__run.tables;
 
   /** Every potting run from the table as it stands: what a player can open with. */
-  window.__runOpeners = ({ step = 1, powers = [0.5, 0.7, 0.85, 1] } = {}) => {
+  window.__runOpeners = ({ step = 1, powers = [0.5, 0.7, 0.85, 1], from = 0, to = 360 } = {}) => {
     const root = runSnap();
     const out = [];
     for (const power of powers) {
@@ -269,7 +269,7 @@
         if (cur && cur.sig && cur.sig !== 'x') out.push({ pots: cur.sig, from: cur.from, to: cur.to, width: cur.to - cur.from + step, power, paid: cur.paid });
         cur = null;
       };
-      for (let deg = 0; deg < 360; deg += step) {
+      for (let deg = from; deg < to; deg += step) {
         runRestore(root);
         const r = runShot(deg, power);
         const sig = r.scratched || r.mine ? 'x' : r.pots.join(',');
