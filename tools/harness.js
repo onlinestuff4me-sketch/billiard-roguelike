@@ -301,19 +301,27 @@
     const root = runSnap();
     const expand = (state) => {
       const runsOut = [];
+      const quiet = [];
       for (const power of powers) {
         let cur = null;
         const flush = () => {
           if (!cur) return;
           const width = cur.to - cur.from + step;
-          // a shot that scratches or sets off a mine pays nothing: never a plan
-          if (cur.sig !== 'x' && width + 1e-6 >= minWidth && cur.r.pots.length) runsOut.push({ ...cur, width, power });
+          // a void shot is never a plan; a shot that pots nothing is kept
+          // aside, as a positioning shot for when nothing can be potted
+          if (cur.sig === 'x' || width + 1e-6 < minWidth) {
+            cur = null;
+            return;
+          }
+          if (cur.r.pots.length) runsOut.push({ ...cur, width, power });
+          else quiet.push({ ...cur, width, power });
           cur = null;
         };
         for (let deg = 0; deg < 360; deg += step) {
           runRestore(state.snap);
           const r = runShot(deg, power);
-          const sig = r.scratched || r.mine ? 'x' : r.pots.join(',');
+          // a scratch, a mine, or a pot that paid nothing (a foul) is void
+          const sig = r.scratched || r.mine || (r.pots.length && !r.paid) ? 'x' : r.pots.join(',');
           if (cur && cur.sig === sig && Math.abs(deg - step - cur.to) < 1e-6) {
             cur.to = deg;
             cur.degs.push(deg);
@@ -324,9 +332,12 @@
         }
         flush();
       }
-      // the best few distinct shots from this state
+      // the best few distinct shots from this state; when nothing can be
+      // potted reliably, the widest shots that move the cue ball instead
       runsOut.sort((a, b) => b.r.ballsDown - a.r.ballsDown || b.r.roomScore - a.r.roomScore || b.width - a.width);
-      return runsOut.slice(0, perState).map((run) => {
+      quiet.sort((a, b) => b.width - a.width);
+      const picks = runsOut.length ? runsOut.slice(0, perState) : quiet.filter((_, i) => i % 7 === 0).slice(0, 3);
+      return picks.map((run) => {
         const mid = run.degs[Math.floor(run.degs.length / 2)];
         runRestore(state.snap);
         const r = runShot(mid, run.power);
