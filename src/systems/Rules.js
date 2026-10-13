@@ -116,7 +116,8 @@ export class Rules {
     this.level = 0;
     this.mission = missionFor(1);
     /** Numbers still on the felt, so the mission knows which one is next. */
-    this.standing = new Set(rackNumbers(this.mission.rack));
+    // an authored table names its own balls; a rolled one uses 1..n-1 and the 8
+    this.standing = new Set(this.mission.numbers || rackNumbers(this.mission.rack));
     /** Consecutive pots taken in order, this room. */
     this.orderStreak = 0;
     /** Set the first time a ball goes down out of order. */
@@ -170,7 +171,8 @@ export class Rules {
     this.ballsDown = 0;
     this.roomScore = 0;
     this.ledger = [];
-    this.target = targetFor(level);
+    // an authored table carries its own tuned target
+    this.target = this.mission.target ?? targetFor(level);
     this.paidStreak = 0;
     // ICE BOX: every table starts with some Freeze frame already in hand.
     if (this.perks.icebox) this.grantFreeze(this.perks.icebox);

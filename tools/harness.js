@@ -184,6 +184,153 @@
   }
 
   /* ---------------------------------------------------------------- *
+   * RUN TABLES (tools/tune-tables.mjs): a whole table played as a run plays
+   * it — every stroke opened and closed by the game's own stroke code and
+   * scored by the game's own Rules — so a target is tuned against the score
+   * the player would actually see.
+   * ---------------------------------------------------------------- */
+
+  /** Every data field of an object, deep-copied (methods left behind). */
+  function plainCopy(obj) {
+    const out = {};
+    for (const k of Object.keys(obj)) {
+      if (typeof obj[k] === 'function') continue;
+      out[k] = structuredClone(obj[k]);
+    }
+    return out;
+  }
+
+  function runSnap() {
+    const game = g();
+    return {
+      balls: game.rooms.scriptedEnemies
+        .filter((e) => e.alive && Number.isFinite(e.slotIndex))
+        .map((e) => ({ index: e.slotIndex, x: e.x, z: e.z })),
+      px: game.player.x,
+      pz: game.player.z,
+      armed: game.rooms.table.objects.map((o) => o.armed),
+      rules: plainCopy(game.rules)
+    };
+  }
+
+  function runRestore(snap) {
+    const game = g();
+    game.rooms.restoreScripted(snap.balls);
+    game.rooms.rack = game.rooms.scriptedEnemies;
+    game.rooms.table.objects.forEach((o, i) => {
+      o.armed = snap.armed[i];
+    });
+    game.player.placeAt(snap.px, snap.pz);
+    game.player.vx = 0;
+    game.player.vz = 0;
+    Object.assign(game.rules, plainCopy(snap.rules));
+    game.chain = { count: 0, best: 0, timer: 0 };
+  }
+
+  /** One stroke on a run table, opened and closed by the game's own code. */
+  function runShot(deg, power) {
+    const game = g();
+    window.__run.beginStroke();
+    const out = shoot(deg, power);
+    const sum = window.__run.endStroke();
+    const R = game.rules;
+    return {
+      pots: out.pots.map((p) => p.number).sort((a, b) => a - b),
+      scratched: out.scratched,
+      mine: out.mine,
+      paid: sum.paid,
+      mult: sum.multiplier,
+      filled: R.filled,
+      ballsDown: R.ballsDown,
+      roomScore: R.roomScore,
+      strokesLeft: R.strokesLeft
+    };
+  }
+
+  /** The table's final score if it ended now: end-of-table bonuses included. */
+  function runFinal() {
+    const game = g();
+    const keep = plainCopy(game.rules);
+    const end = game.rules.endRoom();
+    Object.assign(game.rules, plainCopy(keep));
+    return { total: end.roomScore, beaten: end.beaten, saved: end.saved, swept: end.swept };
+  }
+
+  window.__runLoad = (level) => window.__run.load(level);
+  window.__runTables = () => window.__run.tables;
+  window.__runShot = ({ deg, power }) => runShot(deg, power);
+
+  /**
+   * BEAM SEARCH over whole tables. At each state every heading (at `step`)
+   * and power is played; shots with the same outcome on neighbouring headings
+   * form a run, and a run narrower than `minWidth` degrees is one no human
+   * could aim, so it is dropped. The best `beam` states go on to the next
+   * stroke, until the rack is down or the shots run out.
+   */
+  window.__runPlan = ({ step = 1, powers = [0.5, 0.7, 0.85, 1], beam = 5, minWidth = 3, perState = 8 } = {}) => {
+    const game = g();
+    const t0 = performance.now();
+    const root = runSnap();
+    const expand = (state) => {
+      const runsOut = [];
+      for (const power of powers) {
+        let cur = null;
+        const flush = () => {
+          if (!cur) return;
+          const width = cur.to - cur.from + step;
+          if (width + 1e-6 >= minWidth && cur.r.pots.length) runsOut.push({ ...cur, width, power });
+          cur = null;
+        };
+        for (let deg = 0; deg < 360; deg += step) {
+          runRestore(state.snap);
+          const r = runShot(deg, power);
+          const sig = r.scratched || r.mine ? 'x' : r.pots.join(',');
+          if (cur && cur.sig === sig && Math.abs(deg - step - cur.to) < 1e-6) {
+            cur.to = deg;
+            cur.degs.push(deg);
+          } else {
+            flush();
+            cur = { sig, from: deg, to: deg, degs: [deg], r };
+          }
+        }
+        flush();
+      }
+      // the best few distinct shots from this state
+      runsOut.sort((a, b) => b.r.ballsDown - a.r.ballsDown || b.r.roomScore - a.r.roomScore || b.width - a.width);
+      return runsOut.slice(0, perState).map((run) => {
+        const mid = run.degs[Math.floor(run.degs.length / 2)];
+        runRestore(state.snap);
+        const r = runShot(mid, run.power);
+        const snap = runSnap();
+        return {
+          snap,
+          r,
+          line: [...state.line, { deg: mid, power: run.power, width: +run.width.toFixed(1), pots: r.pots, paid: r.paid, mult: r.mult }]
+        };
+      });
+    };
+    let frontier = [{ snap: root, line: [], r: null }];
+    const finished = [];
+    for (let depth = 0; depth < 12 && frontier.length; depth++) {
+      const next = [];
+      for (const state of frontier) {
+        const kids = expand(state);
+        for (const k of kids) {
+          if (k.r.filled || k.r.strokesLeft <= 0) {
+            runRestore(k.snap);
+            finished.push({ line: k.line, filled: k.r.filled, ...runFinal() });
+          } else next.push(k);
+        }
+      }
+      next.sort((a, b) => b.r.ballsDown - a.r.ballsDown || b.r.roomScore - a.r.roomScore);
+      frontier = next.slice(0, beam);
+    }
+    runRestore(root);
+    finished.sort((a, b) => b.filled - a.filled || b.total - a.total);
+    return { ms: Math.round(performance.now() - t0), best: finished.slice(0, 3), count: finished.length, target: game.rules.target };
+  };
+
+  /* ---------------------------------------------------------------- *
    * Public surface
    * ---------------------------------------------------------------- */
 

@@ -1272,6 +1272,12 @@ export const INPUT = {
  * ------------------------------------------------------------------ */
 export const TUTORIAL = {
   /**
+   * The lessons a new player walks, in order (from review): one shot, then a
+   * combo. The score, the target and the shop are taught from table 1, on the
+   * authored tables in src/data/tables.json.
+   */
+  sequence: ['angle', 'combo'],
+  /**
    * Room banners. These run AFTER the tutorial (see docs/TUTORIAL.md), so each
    * one may only introduce something the tutorial did not.
    *

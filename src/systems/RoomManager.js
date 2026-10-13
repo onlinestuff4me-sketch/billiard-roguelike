@@ -19,11 +19,12 @@
  */
 
 import * as THREE from 'three';
-import { ARENA, ROOM, PALETTE, ENEMY, PROGRESSION, PHYSICS, TABLE } from '../config.js';
+import { ARENA, ROOM, PALETTE, ENEMY, PROGRESSION, PHYSICS, TABLE, RACK } from '../config.js';
 import { Table } from './Table.js';
 import { missionFor, rackNumbers, archetypeForNumber } from './Rules.js';
 import { Enemy, ENEMY_STATE } from '../entities/Enemy.js';
 import layoutData from '../data/layouts.json';
+import tableData from '../data/tables.json';
 
 /* ------------------------------------------------------------------ *
  * The procedural half lives in ThreatDirector.js — pure, scene-free and
@@ -51,6 +52,15 @@ const pick = (rng, list) => list[Math.floor(rng() * list.length) % list.length];
  * never leave the other stale.
  */
 export const LAYOUTS = layoutData.layouts;
+
+/**
+ * THE FIRST TABLES OF A RUN, written by hand (from review): table N of the run
+ * is TABLES[N - 1] while one exists, procedural after that. Each one fixes its
+ * geometry, rack, felt objects, shots and points target, so a new player's
+ * first hour is designed and tuned rather than rolled. See
+ * src/data/tables.schema.md.
+ */
+export const TABLES = tableData.tables;
 
 /* ------------------------------------------------------------------ *
  * Door reward table
@@ -138,9 +148,12 @@ export class RoomManager {
    * Build a whole room: pick geometry, spend the threat budget, roll injectors.
    * @param {number} level 1-based room number
    */
-  generate(level) {
+  generate(level, { rolled = false } = {}) {
+    const authored = rolled ? null : TABLES[level - 1];
+    if (authored) return this.loadAuthored(authored, level);
     this.teardown();
     this.scripted = false;
+    this.authored = null;
     this.level = level;
     this.rng = makeRng(roomSeed(this.runSeed, level));
     const rng = this.rng;
@@ -271,6 +284,41 @@ export class RoomManager {
     return placed;
   }
 
+  /**
+   * An authored run table: the scripted loader builds it exactly as written,
+   * then it becomes an ordinary run room — a mission, a rack, a target — so
+   * the score, the result and the shop all work on it unchanged.
+   */
+  loadAuthored(t, level) {
+    this.loadScripted({
+      id: t.id,
+      name: t.name,
+      obstacles: t.obstacles || [],
+      objects: t.objects || [],
+      portals: t.portals || [],
+      spawn: t.spawn || { x: 0, z: 11 },
+      enemies: t.rack.map((b) => ({ type: b.type || archetypeForNumber(b.number), x: b.x, z: b.z, number: b.number, disarmed: true }))
+    });
+    this.scripted = false;
+    this.authored = t;
+    this.level = level;
+    this.rng = makeRng(roomSeed(this.runSeed, level));
+    this.layout.tags = ['authored'];
+    this.rack = this.scriptedEnemies;
+    const numbers = t.rack.map((b) => b.number);
+    this.mission = {
+      level,
+      rack: numbers.length,
+      numbers,
+      strokes: t.strokes,
+      eightLast: !!t.eightLast && numbers.includes(RACK.eight),
+      strictOrder: false,
+      spare: t.strokes - numbers.length,
+      target: t.target
+    };
+    return { layout: this.layout, mission: this.mission, rack: this.rack.length };
+  }
+
   /** Last resort when a layout runs out of anchors: jitter into open felt. */
   fallbackSpot(rng, placed) {
     for (let attempt = 0; attempt < 40; attempt++) {
@@ -290,7 +338,13 @@ export class RoomManager {
    * stroke that fouled pays nothing.
    */
   respot(ball) {
-    const spot = this.fallbackSpot(this.rng, this.game.enemies.filter((b) => b !== ball && b.alive));
+    const others = this.game.enemies.filter((b) => b !== ball && b.alive);
+    // On an authored table the ball goes back where the table put it, if the
+    // spot is clear; only then anywhere open.
+    const home = Number.isFinite(ball.homeX) && others.every((b) => Math.hypot(b.x - ball.homeX, b.z - ball.homeZ) > 1.6) && !this.table.blocked(ball.homeX, ball.homeZ, 1.2)
+      ? { x: ball.homeX, z: ball.homeZ }
+      : null;
+    const spot = (this.authored && home) || this.fallbackSpot(this.rng, others);
     if (!spot) return false;
     ball.x = spot.x;
     ball.z = spot.z;

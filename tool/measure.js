@@ -25,7 +25,7 @@
 import harnessSource from '../tools/harness.js?raw';
 
 /** Cleared before boot, because a measured board needs the tutorial running. */
-const TUTORIAL_KEY = 'billiard-tutorial-done-v2';
+const TUTORIAL_KEY = 'billiard-tutorial-done-v3';
 
 /**
  * The same six the sweep uses everywhere else. A thumb produces a continuum;

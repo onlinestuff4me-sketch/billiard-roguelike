@@ -49,13 +49,13 @@ import { AudioManager } from './core/AudioManager.js';
 import { Player, PLAYER_STATE } from './entities/Player.js';
 import { PhysicsSystem, carryDistance, speedAfterDistance } from './systems/PhysicsSystem.js';
 import { BoonSystem } from './systems/BoonSystem.js';
-import { RoomManager } from './systems/RoomManager.js';
+import { RoomManager, TABLES } from './systems/RoomManager.js';
 import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
-import { rollShelf, applyUpgrade, removeUpgrade } from './systems/Upgrades.js';
+import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -2021,11 +2021,17 @@ function openShop() {
   let rerolls = 0;
   const card = (u, held = false) => ({ id: u.id, name: u.name, text: u.text, rarity: u.rarity, price: u.price, sold: false, held, u });
   const ownedIds = () => new Set(shopRun.owned.filter((u) => !u.stack).map((u) => u.id));
+  // An authored table can set the shelf its shop opens with (a new player's
+  // first shops are chosen, not rolled); rerolls are random as ever.
+  let curated = rooms.authored?.shop || null;
   const shelf = (keepHeld) => {
     const held = keepHeld && shopRun.held ? [card(shopRun.held, true)] : [];
     const skip = ownedIds();
     if (shopRun.held) skip.add(shopRun.held.id);
-    return held.concat(rollShelf(skip, S.slots - held.length).map((u) => card(u)));
+    const chosen = (curated || []).map((id) => UPGRADES.find((u) => u.id === id)).filter((u) => u && !skip.has(u.id)).slice(0, S.slots - held.length);
+    curated = null;
+    for (const u of chosen) skip.add(u.id);
+    return held.concat(chosen.map((u) => card(u)), rollShelf(skip, S.slots - held.length - chosen.length).map((u) => card(u)));
   };
   const ctx = () => ({ rules, game, player, boons });
   const api = {
@@ -2274,9 +2280,12 @@ const strictOrder = {
  * first meet it.
  */
 function beginMission() {
+  // The room's own mission (an authored table's rack, shots and target, or
+  // the ramp's), with the run's extra shots and the strict-order mode on top.
   rules.beginRoom(game.level, {
+    ...rooms.mission,
     strictOrder: strictOrder.on,
-    ...(game.strokeBonus ? { strokes: rooms.mission.strokes + game.strokeBonus } : {})
+    strokes: rooms.mission.strokes + (game.strokeBonus || 0)
   });
 }
 
@@ -2362,6 +2371,12 @@ function showRoomBanner() {
   // read. They are not reports on something the player just watched; they are
   // the terms of the room, and a rule that scrolled past unread is a rule the
   // player does not have.
+  // an authored table introduces itself in its own words
+  const intro = rooms.authored?.intro;
+  if (intro) {
+    hud.showBanner(intro.title, intro.sub, HOLD);
+    return;
+  }
   const lesson = TUTORIAL.lessons[game.level];
   if (lesson) {
     hud.showBanner(lesson.title, lesson.sub, HOLD);
@@ -4255,6 +4270,35 @@ if (typeof window !== 'undefined') {
    * DEMO HOOKS, for recording the moments: each one drives the real code path
    * (the real clear, a real scratch shot, a real freeze) from a staged state.
    */
+  /**
+   * FOR THE TABLE TOOLS (tools/tune-tables.mjs): load run table `level` as a
+   * live room, and open and close strokes the way play does, without the
+   * result screens. Nothing in the game calls these.
+   */
+  window.__run = {
+    tables: TABLES.map((t) => ({ id: t.id, name: t.name })),
+    load(level) {
+      if (tutorial.active) tutorial.stop();
+      game.tutorialGuard = null;
+      game.level = level;
+      rooms.generate(level);
+      callPocket(null);
+      beginMission();
+      player.placeAt(rooms.layout.spawn.x, spawnZ());
+      game.state = 'playing';
+      game.phase = 'aim';
+      game.midStroke = false;
+      return { mission: rooms.mission, target: rules.target, name: rooms.authored?.name || rooms.layout.name };
+    },
+    beginStroke,
+    /** Close the stroke the way finishStroke does, minus the screens. */
+    endStroke() {
+      game.midStroke = false;
+      game.phase = 'aim';
+      return rules.endStroke();
+    }
+  };
+
   window.__demo = {
     /** End the room as if it went well (or, with `fail`, ran out of shots). */
     clear(fail = false) {
@@ -4353,7 +4397,9 @@ function attract(rawDt) {
   if (alive.length <= 1) {
     if (attractTimer > 0) return;
     game.level = 2 + Math.floor(Math.random() * 6);
-    rooms.generate(game.level);
+    // the menu's demo table is always a rolled one: the authored tables are
+    // puzzles, and the menu should not play their answers
+    rooms.generate(game.level, { rolled: true });
     player.placeAt(rooms.layout.spawn.x, spawnZ());
     player.hp = player.maxHp;
     hud.setDoors([]);

@@ -34,7 +34,7 @@
 
 import { PLAYER_STATE } from '../entities/Player.js';
 import lessonData from '../data/lessons.json';
-import { CSS_PALETTE, POCKET_NAME } from '../config.js';
+import { CSS_PALETTE, POCKET_NAME, TUTORIAL } from '../config.js';
 
 // BUMPED WITH THE CURRICULUM, DELIBERATELY.
 //
@@ -44,7 +44,9 @@ import { CSS_PALETTE, POCKET_NAME } from '../config.js';
 // so leaving the key alone would ship the new tutorial to new players only and
 // hide it from precisely the people who have been playing. A new curriculum
 // gets a new key.
-const KEY = 'billiard-tutorial-done-v2';
+// v3: the tutorial became two lessons (a shot, then a combo) and the first
+// twelve tables took over the teaching, so everyone sees the new opening.
+const KEY = 'billiard-tutorial-done-v3';
 
 /** Where the demonstrating thumb presses: clear of the ball, on the cue's axis. */
 const HAND_PRESS = 2.6;
@@ -313,6 +315,14 @@ const RULES = {
     nudge: 'Aim <em>left</em> into the wall. The road on the felt shows where it brings you back.'
   }
 };
+
+/**
+ * THE TUTORIAL A PLAYER WALKS (from review): two lessons, one shot and then a
+ * combo. Everything else is taught by the first twelve tables, which carry the
+ * score, the target and the shop from table 1. The other lesson boards stay
+ * in the data file because the tools measure and test against them.
+ */
+const SEQUENCE = TUTORIAL.sequence;
 
 /** Geometry from the data file, married to the rule of the same id. */
 export const LESSONS = lessonData.lessons.map((table) => ({
@@ -600,7 +610,26 @@ export class Tutorial {
     // (The route is solved once the board's table exists — see _buildRoom.)
     this._launched = false;
     this.hud?.hideBanner?.();
-    this._enter(0);
+    this._enter(Math.max(0, LESSONS.findIndex((l) => l.id === SEQUENCE[0])));
+  }
+
+  /** Where the current board sits in the walked sequence (-1: a tool-only board). */
+  _seqPos() {
+    return SEQUENCE.indexOf(LESSONS[this.index]?.id);
+  }
+
+  /** The board after this one, or -1 when the tutorial is over. */
+  _nextIndex() {
+    const pos = this._seqPos();
+    if (pos >= 0) return pos + 1 < SEQUENCE.length ? LESSONS.findIndex((l) => l.id === SEQUENCE[pos + 1]) : -1;
+    // a board the tools jumped to: walk the file, as before
+    return this.index + 1 < LESSONS.length ? this.index + 1 : -1;
+  }
+
+  /** "1 of 2": the walked sequence, or the file for a tool-only board. */
+  _progressOf() {
+    const pos = this._seqPos();
+    return pos >= 0 ? [pos + 1, SEQUENCE.length] : [this.index + 1, LESSONS.length];
   }
 
   stop() {
@@ -632,7 +661,7 @@ export class Tutorial {
     // in the DOM for a possible replay, and is otherwise one class toggle away
     // from reappearing over live play.
     this.lineEl.textContent = '';
-    this._setProgress(0, LESSONS.length);
+    this._setProgress(0, SEQUENCE.length);
     this.progEl.hidden = false;
     this.el.classList.remove('good', 'bad');
     this._hideTags();
@@ -2158,7 +2187,7 @@ export class Tutorial {
     // whether they were meant to shoot again. The card now says the lesson is
     // over, in the lesson's own words of praise, and the table stops taking
     // shots (see Tutorial.awaitingNext, read by the input gate).
-    const last = this.index + 1 >= LESSONS.length;
+    const last = this._nextIndex() < 0;
     // The lesson's own words of praise, not a generic one — "one ball moved
     // another" tells the player what they have just learned to do, which
     // "complete" does not.
@@ -2174,7 +2203,8 @@ export class Tutorial {
   _advance() {
     this._awaitingNext = false;
     this.nextEl.hidden = true;
-    if (this.index + 1 >= LESSONS.length) {
+    const next = this._nextIndex();
+    if (next < 0) {
       this._finish();
       return;
     }
@@ -2184,7 +2214,7 @@ export class Tutorial {
     this.skipEl.hidden = false;
     this.progEl.hidden = false;
     this.el.classList.remove('done');
-    this._enter(this.index + 1);
+    this._enter(next);
   }
 
   /* ---------------------------------------------------------------- *
@@ -2198,7 +2228,7 @@ export class Tutorial {
     // It is two numerals because the band's left side is spoken for, and
     // because a player two boards in wants to know how many are left, not to
     // read the phrase again.
-    this._setProgress(this.index + 1, LESSONS.length);
+    this._setProgress(...this._progressOf());
     this._say(lesson.say, null);
     this.el.classList.add('show');
   }
