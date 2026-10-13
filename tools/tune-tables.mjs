@@ -23,10 +23,20 @@ const step = opt('step', 1);
 const beam = opt('beam', 5);
 const width = opt('width', 3);
 
-const game = await openGame();
+const game = await openGame({ port: opt('port', 4173) });
 const tables = await game.page.evaluate(() => window.__runTables?.() || []);
 const pick = only.length ? only : tables.map((_, i) => i + 1);
 const fmt = (p) => (p ? `${p.filled ? 'clears' : 'short '} ${String(p.total).padStart(5)}  ${p.line.map((s) => `${s.deg}°@${s.power}[${s.width}°]→${s.pots.join('+') || '-'}=${s.paid}`).join('  ')}` : 'no line');
+if (args.includes('--openers')) {
+  for (const n of pick) {
+    const info = await game.page.evaluate((lv) => window.__runLoad(lv), n);
+    const runs = await game.page.evaluate((o) => window.__runOpeners(o), { step });
+    console.log(`\nTable ${n} · ${info.name} — openers ≥2°:`);
+    for (const r of runs.filter((r) => r.width >= 2).slice(0, 14)) console.log(`  ${String(r.width).padStart(3)}°  ${r.from}–${r.to}° @${r.power}  → ${r.pots}  pays ${r.paid}`);
+  }
+  await game.close();
+  process.exit(0);
+}
 for (const n of pick) {
   const info = await game.page.evaluate((lv) => window.__runLoad(lv), n);
   const robust = await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: width });

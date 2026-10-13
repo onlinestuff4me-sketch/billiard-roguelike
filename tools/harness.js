@@ -258,6 +258,34 @@
 
   window.__runLoad = (level) => window.__run.load(level);
   window.__runTables = () => window.__run.tables;
+
+  /** Every potting run from the table as it stands: what a player can open with. */
+  window.__runOpeners = ({ step = 1, powers = [0.5, 0.7, 0.85, 1] } = {}) => {
+    const root = runSnap();
+    const out = [];
+    for (const power of powers) {
+      let cur = null;
+      const flush = () => {
+        if (cur && cur.sig && cur.sig !== 'x') out.push({ pots: cur.sig, from: cur.from, to: cur.to, width: cur.to - cur.from + step, power, paid: cur.paid });
+        cur = null;
+      };
+      for (let deg = 0; deg < 360; deg += step) {
+        runRestore(root);
+        const r = runShot(deg, power);
+        const sig = r.scratched || r.mine ? 'x' : r.pots.join(',');
+        if (cur && cur.sig === sig && Math.abs(deg - step - cur.to) < 1e-6) {
+          cur.to = deg;
+          cur.paid = Math.max(cur.paid, r.paid);
+        } else {
+          flush();
+          cur = { sig, from: deg, to: deg, paid: r.paid };
+        }
+      }
+      flush();
+    }
+    runRestore(root);
+    return out.sort((a, b) => b.width - a.width);
+  };
   window.__runShot = ({ deg, power }) => runShot(deg, power);
 
   /**
@@ -278,7 +306,8 @@
         const flush = () => {
           if (!cur) return;
           const width = cur.to - cur.from + step;
-          if (width + 1e-6 >= minWidth && cur.r.pots.length) runsOut.push({ ...cur, width, power });
+          // a shot that scratches or sets off a mine pays nothing: never a plan
+          if (cur.sig !== 'x' && width + 1e-6 >= minWidth && cur.r.pots.length) runsOut.push({ ...cur, width, power });
           cur = null;
         };
         for (let deg = 0; deg < 360; deg += step) {
