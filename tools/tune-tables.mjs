@@ -39,9 +39,10 @@ if (args.includes('--openers')) {
 }
 for (const n of pick) {
   const info = await game.page.evaluate((lv) => window.__runLoad(lv), n);
-  const robust = await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: width });
+  const powers = args.includes('--robust-only') ? [0.6, 0.85, 1] : [0.5, 0.7, 0.85, 1];
+  const robust = await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: width, powers });
   await game.page.evaluate((lv) => window.__runLoad(lv), n);
-  const best = await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: 0.5 });
+  const best = args.includes('--robust-only') ? { best: [], ms: 0 } : await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: 0.5 });
   console.log(`\nTable ${n} · ${info.name} · ${info.mission.rack} balls · ${info.mission.strokes} shots · target ${info.target}`);
   console.log(`  ROBUST ${fmt(robust.best[0])}   (${robust.ms} ms)`);
   console.log(`  BEST   ${fmt(best.best[0])}   (${best.ms} ms)`);
