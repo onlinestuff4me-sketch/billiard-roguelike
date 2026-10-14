@@ -64,6 +64,10 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 
 `docs/PUZZLE_RAMP.md`. Fewer balls and harder questions instead of more balls; acts of three (open, target, house table that bends one rule); every authored table states its catch; the solver measures window, greed gap, decoys and solution families; one dial at a time, in a sawtooth; surprise from facts lists, moving value, solution signatures and remixes; nothing that makes the preview lie.
 
+## The first run (built, in review)
+
+Two lessons (one shot, then a combination), then twelve authored tables in `src/data/tables.json`, each with the full table-clear, score and shop screens so those are taught early. Each table opens on a card stating its rule, which then flies to a chip in the top-right corner. Every table is played by the real game in `tools/tune-tables.mjs` (a beam search that keeps only shots a person can aim, at least 3° of heading wide); targets sit under the score of the aimable line found and rise every table. Shops on these tables are curated. After Table 12 the rolled tables take over.
+
 ## The look (built)
 
 The Tron pass is done: an unlit black Grid floor whose lines ripple from pots, a cleared table, a scratch and hard strikes; rails as dark bodies with lit edges; pockets dimmer than the cue ball; Lightline cyan `#22e8ff`; Orbitron, Oxanium and Rajdhani served from the repo. What is still open is listed in `docs/DESIGN_BIBLE.md` §11.

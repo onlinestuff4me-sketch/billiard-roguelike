@@ -396,6 +396,18 @@ Bounce") is written in heat under it. Then two light-cycles leave the bottom
 centre and trace the rails, meeting at the top, and the strips open from the
 middle outward on the new table. About 3 s.
 
+### 8.5b The table card
+
+Each of the first twelve tables (`src/data/tables.json`) opens on its own card,
+because a rule the player was never shown is a rule they do not have. The
+table dims; the card says **Table n**, the table's name, its rule in one
+sentence, and three plain facts: balls, shots, target. Aiming is locked until
+it is tapped away (`game.introUp`). On the tap the card fades and the rule,
+shortened to a chip ("In order pays more", "Green ring ×2"), lifts off the
+sentence and arcs to the top-right corner, under the mission, where it stays
+for the table. A table whose idea is order (Table 2) also keeps the next
+number showing there all table long.
+
 ### 8.6 Smaller beats (today's treatment)
 
 | Beat | Treatment |
@@ -404,7 +416,7 @@ middle outward on the new table. About 3 s.
 | Lock | `you` ring from the boxes, "Locked in", lock chime. |
 | Take-back | Plates fly back in `hazard`, struck through, falling notes. |
 | Slam | Boxes collide (`ease-slam`), sub drop, jolt, product and trick name. |
-| Mission | A banner that waits for a tap: the terms of the table. |
+| Mission | A banner that waits for a tap: the terms of the table. On the twelve authored tables this is the **table card** (§8.5b). |
 
 ---
 

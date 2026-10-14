@@ -2325,6 +2325,7 @@ function advanceRoom() {
   const swap = () => {
     game.level += 1;
     game.introUp = false;
+    moments.closeIntro();
     game.chain.count = 0;
     game.launchHits = 0;
     game.pendingBoons = 0;
@@ -2415,6 +2416,8 @@ function resetRunState() {
   game.launchHits = 0;
   game.pendingBoons = 0;
   game.strokeBonus = 0;
+  game.introUp = false;
+  moments.closeIntro();
   game.state = 'playing';
   game.phase = 'aim';
   game.midStroke = false;
@@ -4303,6 +4306,8 @@ if (typeof window !== 'undefined') {
     load(level) {
       if (tutorial.active) tutorial.stop();
       game.tutorialGuard = null;
+      moments.closeIntro();
+      game.introUp = false;
       game.level = level;
       rooms.generate(level);
       callPocket(null);
@@ -4337,6 +4342,8 @@ if (typeof window !== 'undefined') {
     loadSpec(spec, level = 1) {
       if (tutorial.active) tutorial.stop();
       game.tutorialGuard = null;
+      moments.closeIntro();
+      game.introUp = false;
       game.level = level;
       rooms.teardown();
       rooms.loadAuthored(spec, level);

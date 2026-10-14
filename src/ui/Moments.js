@@ -231,8 +231,10 @@ export class Moments {
    * @param {{kicker:string, name:string, rule:string, stats:string[], chip?:string, chipTo:()=>HTMLElement}} o
    */
   tableIntro(o) {
+    this.closeIntro();
     return new Promise((resolve) => {
       const root = el('div', 'mo-intro', this.root);
+      this._intro = root;
       const shade = el('div', 'mo-intro-shade', root);
       const card = el('div', 'mo-intro-card', root);
       el('div', 'mo-kicker', card).textContent = o.kicker;
@@ -271,10 +273,20 @@ export class Moments {
         } else {
           await this.wait(240);
         }
+        if (this._intro !== root) return;
+        this._intro = null;
         root.remove();
         resolve();
       });
     });
+  }
+
+  /** Drop a table's opening card unanswered (the table changed under it). */
+  closeIntro() {
+    if (!this._intro) return;
+    this._intro.remove();
+    this._intro = null;
+    for (const f of this.root.querySelectorAll('.mo-intro-fly')) f.remove();
   }
 
   /* -------------------------------------------------------------- *
