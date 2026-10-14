@@ -208,7 +208,7 @@
         {
           "kind": "double",
           "x": 0.0,
-          "z": -3.0
+          "z": 3.0
         }
       ],
       "rule": "Green ring \u00d72"
