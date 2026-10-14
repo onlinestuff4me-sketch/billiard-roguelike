@@ -348,7 +348,7 @@
         return {
           snap,
           r,
-          line: [...state.line, { deg: mid, power: run.power, width: +run.width.toFixed(1), pots: r.pots, paid: r.paid, mult: r.mult }]
+          line: [...state.line, { deg: mid, power: run.power, width: +run.width.toFixed(1), pots: r.pots, paid: r.paid, mult: r.mult, green: !!r.green }]
         };
       });
     };
