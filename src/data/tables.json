@@ -7,7 +7,7 @@
       "name": "First Target",
       "intro": {
         "title": "Table 1 \u00b7 First Target",
-        "sub": "3 balls \u00b7 5 shots"
+        "sub": "Sink balls to score points. Beat the target to clear the table."
       },
       "spawn": {
         "x": 0,
@@ -37,14 +37,15 @@
         "long-rail",
         "freeze-charge",
         "odd-ones"
-      ]
+      ],
+      "rule": "Beat the target"
     },
     {
       "id": "by-the-numbers",
       "name": "By the Numbers",
       "intro": {
         "title": "Table 2 \u00b7 By the Numbers",
-        "sub": "Sink them in order, 1 then 2 then 8, and each shot pays more."
+        "sub": "Sink them in order, 1 then 2 then 8, and each one pays more."
       },
       "spawn": {
         "x": 0,
@@ -75,7 +76,8 @@
         "kiss-chase",
         "bounce"
       ],
-      "showOrder": true
+      "showOrder": true,
+      "rule": "In order pays more"
     },
     {
       "id": "off-the-rail",
@@ -121,7 +123,8 @@
         "kiss-chase",
         "opening-break",
         "extra-life"
-      ]
+      ],
+      "rule": "Rails add Mult"
     },
     {
       "id": "two-at-once",
@@ -163,7 +166,8 @@
         "corner-office",
         "side-hustle",
         "freeze-charge"
-      ]
+      ],
+      "rule": "Two in one shot"
     },
     {
       "id": "pay-twice",
@@ -206,7 +210,8 @@
           "x": 0.0,
           "z": -3.0
         }
-      ]
+      ],
+      "rule": "Green ring \u00d72"
     },
     {
       "id": "live-lane",
@@ -259,7 +264,8 @@
           "x": -3.4,
           "z": 4.0
         }
-      ]
+      ],
+      "rule": "Mines void a shot"
     },
     {
       "id": "the-freeze",
@@ -307,7 +313,8 @@
           "x": 0.0,
           "z": -6.0
         }
-      ]
+      ],
+      "rule": "Tap to freeze"
     },
     {
       "id": "through-the-ring",
@@ -376,7 +383,8 @@
             "z": -9.6
           }
         }
-      ]
+      ],
+      "rule": "Rings teleport"
     },
     {
       "id": "bumpers",
@@ -447,7 +455,8 @@
           "x": 0,
           "z": 1.6
         }
-      ]
+      ],
+      "rule": "Bumpers \u00b7 free shot"
     },
     {
       "id": "last-word",
@@ -496,7 +505,8 @@
           "x": -2.6,
           "z": 4.2
         }
-      ]
+      ],
+      "rule": "The 8 goes last"
     },
     {
       "id": "one-short",
@@ -545,7 +555,8 @@
           "x": 0.0,
           "z": -4.0
         }
-      ]
+      ],
+      "rule": "Two in one shot"
     },
     {
       "id": "final-table",
@@ -625,7 +636,8 @@
             "z": -8.4
           }
         }
-      ]
+      ],
+      "rule": "The 8 goes last"
     }
   ]
 }

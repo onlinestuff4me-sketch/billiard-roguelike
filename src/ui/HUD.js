@@ -79,6 +79,10 @@ export class HUD {
      * sentence you have to translate.
      */
     this.missionOrder = el('div', 'mission-order', missionBlock);
+    // THE TABLE'S RULE, in a few words (from review): it flies here from the
+    // table's intro card and stays for the whole table.
+    this.ruleChip = el('div', 'rule-chip', missionBlock);
+    this.ruleChip.hidden = true;
 
 
     const scoreBlock = el('div', 'hud-score', top);
@@ -212,6 +216,18 @@ export class HUD {
     this.bannerTimer = this.bannerHolds ? 0 : duration;
     this.bannerHint.style.display = this.bannerHolds ? '' : 'none';
     this.banner.classList.add('visible');
+  }
+
+  /** The table's rule chip under the mission; null hides it. */
+  setRule(text, arrived = false) {
+    this.ruleChip.hidden = !text;
+    this.ruleChip.textContent = text || '';
+    if (text && arrived) {
+      this.ruleChip.animate(
+        [{ transform: 'scale(1.25)', filter: 'brightness(1.8)' }, { transform: 'scale(1)', filter: 'none' }],
+        { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+      );
+    }
   }
 
   /** Is a hold-until-tapped banner up? */

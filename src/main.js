@@ -2324,6 +2324,7 @@ function advanceRoom() {
 
   const swap = () => {
     game.level += 1;
+    game.introUp = false;
     game.chain.count = 0;
     game.launchHits = 0;
     game.pendingBoons = 0;
@@ -2370,10 +2371,26 @@ function showRoomBanner() {
   // read. They are not reports on something the player just watched; they are
   // the terms of the room, and a rule that scrolled past unread is a rule the
   // player does not have.
-  // an authored table introduces itself in its own words
-  const intro = rooms.authored?.intro;
-  if (intro) {
-    hud.showBanner(intro.title, intro.sub, HOLD);
+  // AN AUTHORED TABLE OPENS ON ITS OWN CARD (from review): the table, its
+  // rule in a sentence, what it gives you and asks of you. Tapping it away
+  // sends the rule, shortened, to the top-right corner, where it stays.
+  const t = rooms.authored;
+  if (t?.intro) {
+    hud.setRule(null);
+    game.introUp = true;
+    moments
+      .tableIntro({
+        kicker: `Table ${game.level}`,
+        name: t.name,
+        rule: t.intro.sub,
+        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, `Target ${rules.target.toLocaleString()}`],
+        chip: t.rule || null,
+        chipTo: () => hud.ruleChip
+      })
+      .then(() => {
+        game.introUp = false;
+        if (t.rule) hud.setRule(t.rule, true);
+      });
     return;
   }
   const lesson = TUTORIAL.lessons[game.level];
@@ -3696,6 +3713,8 @@ const input = new InputManager(stage, {
     game.running &&
     player.alive &&
     game.state !== 'modal' &&
+    // a table's intro card is up: the first tap starts the table, not a shot
+    !game.introUp &&
     // A cleared room is decided. The exits are buttons on the scorecard now,
     // so there is nothing left to shoot at and a stray drag can only take the
     // cue ball somewhere confusing.
@@ -4294,6 +4313,25 @@ if (typeof window !== 'undefined') {
       game.midStroke = false;
       input.setHeading(0, -1);
       return { mission: rooms.mission, target: rules.target, name: rooms.authored?.name || rooms.layout.name };
+    },
+    /** Open the table the way a run does: its intro card, then play. */
+    intro: () => showRoomBanner(),
+    /** Point the resting cue along `deg` (0 is up the table, clockwise). */
+    aim(deg) {
+      const th = (deg * Math.PI) / 180;
+      input.setHeading(Math.sin(th), -Math.cos(th));
+    },
+    /** Play a shot the way a released thumb does: the stick, the strike, the stroke. */
+    fire(deg, power) {
+      const th = (deg * Math.PI) / 180;
+      const aim = { dirX: Math.sin(th), dirZ: -Math.cos(th), power, valid: true };
+      input.setHeading(aim.dirX, aim.dirZ);
+      player.launch(aim, game);
+      if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
+        const [f0, f1] = TRAJECTORY.strikeFreeze;
+        engine.hitStop(TRAJECTORY.stickStrike + f0 + f1 * power);
+      }
+      beginStroke();
     },
     /** Load an arbitrary table spec (tables.json shape) as table `level`, for searches. */
     loadSpec(spec, level = 1) {

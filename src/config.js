@@ -918,10 +918,12 @@ export const FEEL = {
  * read on a phone).
  *   inset  a light disc in the inner half of the ball, the ball's colour all
  *          round it (passes npm run palette as it stands)
+ *   medium between the two: the disc about half the ball, as a real pool
+ *          ball prints it, with a bigger digit
  *   face   a light face across the whole ball with a digit about twice the
  *          size; the ball's colour is carried by its glow ring
  */
-export const BALL_NUMERALS = { style: 'inset', options: ['inset', 'face'] };
+export const BALL_NUMERALS = { style: 'inset', options: ['inset', 'medium', 'face'] };
 
 export const MOMENTS = {
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */

@@ -219,6 +219,65 @@ export class Moments {
   }
 
   /* -------------------------------------------------------------- *
+   * TABLE INTRO — an authored table opens on its own card
+   * -------------------------------------------------------------- */
+
+  /**
+   * The card a table opens on (from review: "where are these instructions?").
+   * The table dims; the card says the table, its rule in a sentence, and what
+   * it gives and asks (balls, shots, target). One tap anywhere clears it, and
+   * the rule, shortened to a chip, flies from the card to the top-right corner
+   * where it stays for the table. Resolves once the chip has landed.
+   * @param {{kicker:string, name:string, rule:string, stats:string[], chip?:string, chipTo:()=>HTMLElement}} o
+   */
+  tableIntro(o) {
+    return new Promise((resolve) => {
+      const root = el('div', 'mo-intro', this.root);
+      const shade = el('div', 'mo-intro-shade', root);
+      const card = el('div', 'mo-intro-card', root);
+      el('div', 'mo-kicker', card).textContent = o.kicker;
+      el('div', 'mo-intro-name', card).textContent = o.name;
+      const rule = el('div', 'mo-intro-rule', card);
+      rule.textContent = o.rule;
+      const stats = el('div', 'mo-intro-stats', card);
+      for (const st of o.stats) el('span', '', stats).textContent = st;
+      el('div', 'mo-intro-hint', card).textContent = 'Tap to play';
+      this.audio.doorOpen?.();
+      this.anim(shade, [{ opacity: 0 }, { opacity: 1 }], { duration: 260 });
+      this.anim(card, [{ transform: 'translate(-50%, -50%) scale(0.9)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 320, easing: BACK });
+      let gone = false;
+      absorb(root, async () => {
+        if (gone) return;
+        gone = true;
+        const from = rule.getBoundingClientRect();
+        const L = this.layer.getBoundingClientRect();
+        this.anim(card, [{ opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%, -50%) scale(0.96)' }], { duration: 220, easing: IN });
+        this.anim(shade, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+        const target = o.chip && o.chipTo?.();
+        if (target) {
+          // the chip lifts off the rule line and flies to its corner
+          target.hidden = false;
+          target.textContent = o.chip;
+          target.style.visibility = 'hidden';
+          const to = target.getBoundingClientRect();
+          const fly = el('div', 'rule-chip mo-intro-fly', this.root);
+          fly.textContent = o.chip;
+          const a = { x: from.left - L.left + from.width / 2, y: from.top - L.top + from.height / 2 };
+          const b = { x: to.left - L.left + to.width / 2, y: to.top - L.top + to.height / 2 };
+          this.audio.slingshot?.(0.25);
+          await this._arc(fly, a, b, { ms: 620, lift: 40, s0: 1.6, s1: 1 });
+          fly.remove();
+          target.style.visibility = '';
+        } else {
+          await this.wait(240);
+        }
+        root.remove();
+        resolve();
+      });
+    });
+  }
+
+  /* -------------------------------------------------------------- *
    * CLEAR — the table is done
    * -------------------------------------------------------------- */
 
