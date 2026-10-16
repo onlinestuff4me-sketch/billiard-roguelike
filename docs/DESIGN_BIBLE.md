@@ -41,8 +41,9 @@ If an action or a reward does not get a reaction the player can see, hear and
 4. **Every number has a place.** A point appears where it was earned (the rail,
    the ball, the field, the pocket) and then flies to its box. Never in a corner.
 5. **One number at a time, and nothing counts until a ball drops.** Points build
-   live, stay faded until a pot locks them in, and fly back out and shatter if
-   the shot ends without one. (See §7, The count.)
+   live and stay faded until a pot locks them in. After a pot, a number that
+   needs another pot to count is shown as provisional and never added to a
+   box, so nothing the boxes show is ever taken back. (See §7, The count.)
 6. **Every moment earns a reaction.** From its cause, one at a time, never over
    the aim preview. Full power, a wall, a pot, a lock, a slam, a scratch, a
    freeze, a cleared table: each gets light, sound and, where possible, a buzz.
@@ -61,7 +62,7 @@ If an action or a reward does not get a reaction the player can see, hear and
 | Points | `pts` | `#e9f8ff` | POINTS box, + fields, hit and pot plates, table total | Large fills other than the box |
 | Multiplier | `mult` | `#ff8a1e` | MULT box, × fields, rail lights, heated trail | Hazards; resting UI |
 | Heat tip | `mult-hot` | `#ffc266` | Slam flash, bonus rows, ×N plates, cash and every $ price | A resting state (cash in the corner is the one exception) |
-| Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, take-back, out of shots | Anything without a chevron or a strike |
+| Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, out of shots | Anything without a chevron or a strike |
 | Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates | Anything else (it is a state, not a reward) |
 | Floor | `floor` / `void` | `#040b16` / `#02050b` | Table bed / beyond the table, cover panels | Text |
 | Architecture | `grid`, `structure`, `structure-lit` | `#0f2b3f`, `#1e4f6b`, `#3a87a8` | Grid, rails, lips, dividers | Text |
@@ -169,8 +170,16 @@ and the code in `src/systems/Rules.js` and `src/ui/ScoreFeed.js`.
 4. **A plate pops** beside the cause, holds, then **flies** into POINTS or
    MULT, which jumps; a note one scale degree higher plays.
 5. **Lock** on the first pot: the boxes go solid and a `you` ring expands.
-6. **Take-back:** anything after the last pot flies back to its cause in
-   `hazard` and shatters.
+6. **Provisional, not taken back:** after a pot, a number that only counts if
+   another ball drops shows as a dashed, faint plate, and lands as a small
+   tag under its box ("+1") instead of in it. Another pot folds the tags in;
+   when the table stops without one they fade with "After the last pot · not
+   counted", in `muted`, never `hazard`. A shot that sinks nothing empties its
+   faded boxes quietly ("No ball dropped"). From review: the red take-back read
+   as a penalty for a good shot.
+   **A pot never waits:** its pocket flares the moment the ball drops, the
+   plate on screen flies at once, and anything still queued is hurried, so
+   the pot's number follows straight after.
 7. **Slam:** the boxes collide, the product replaces them, the trick name
    shows, and it rolls into the total.
 
@@ -400,12 +409,14 @@ middle outward on the new table. About 3 s.
 
 Each of the first twelve tables (`src/data/tables.json`) opens on its own card,
 because a rule the player was never shown is a rule they do not have. The
-table dims; the card says **Table n**, the table's name, its rule in one
-sentence, and three plain facts: balls, shots, target. Aiming is locked until
-it is tapped away (`game.introUp`). On the tap the card fades and the rule,
-shortened to a chip ("In order pays more", "Green ring ×2"), lifts off the
-sentence and arcs to the top-right corner, under the mission, where it stays
-for the table. A table whose idea is order (Table 2) also keeps the next
+table dims; every card says the same things: **Table n**, the table's name,
+its rule in one sentence, then balls and shots (the target is on the score
+bar, where it reads as points). The name *is* the rule, short ("In Order Pays
+More", "Green Ring Pays ×2"), so the card and the corner never disagree.
+Aiming is locked until the card is tapped away (`game.introUp`), through a
+full-width **Tap to play** button or anywhere else. On the tap the card fades
+and the name, as a chip, lifts off the card and arcs to the top-right corner,
+under the mission, where it stays for the table. A table whose idea is order (Table 2) also keeps the next
 number showing there all table long.
 
 ### 8.6 Smaller beats (today's treatment)
@@ -414,7 +425,7 @@ number showing there all table long.
 | --- | --- |
 | Pot | Pocket flare, shockwave, ball derez into the void, plate "n SUNK". |
 | Lock | `you` ring from the boxes, "Locked in", lock chime. |
-| Take-back | Plates fly back in `hazard`, struck through, falling notes. |
+| After the last pot | Provisional tags fade in `muted`: no `hazard`, no shatter. |
 | Slam | Boxes collide (`ease-slam`), sub drop, jolt, product and trick name. |
 | Mission | A banner that waits for a tap: the terms of the table. On the twelve authored tables this is the **table card** (§8.5b). |
 

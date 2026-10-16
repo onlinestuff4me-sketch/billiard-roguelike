@@ -2373,8 +2373,8 @@ function showRoomBanner() {
   // the terms of the room, and a rule that scrolled past unread is a rule the
   // player does not have.
   // AN AUTHORED TABLE OPENS ON ITS OWN CARD (from review): the table, its
-  // rule in a sentence, what it gives you and asks of you. Tapping it away
-  // sends the rule, shortened, to the top-right corner, where it stays.
+  // name (which is its rule, short), the rule in a sentence, balls and shots.
+  // Tapping it away sends the name to the top-right corner, where it stays.
   const t = rooms.authored;
   if (t?.intro) {
     hud.setRule(null);
@@ -2384,13 +2384,16 @@ function showRoomBanner() {
         kicker: `Table ${game.level}`,
         name: t.name,
         rule: t.intro.sub,
-        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, `Target ${rules.target.toLocaleString()}`],
-        chip: t.rule || null,
+        // the same facts on every card (from review): number, name, rule, balls, shots.
+        // The target lives on the score bar, where it reads as points.
+        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`],
+        // the name IS the rule, so the card and the corner chip say the same thing
+        chip: t.name,
         chipTo: () => hud.ruleChip
       })
       .then(() => {
         game.introUp = false;
-        if (t.rule) hud.setRule(t.rule, true);
+        hud.setRule(t.name, true);
       });
     return;
   }

@@ -4,9 +4,9 @@
   "tables": [
     {
       "id": "first-target",
-      "name": "First Target",
+      "name": "Beat the Target",
       "intro": {
-        "title": "Table 1 \u00b7 First Target",
+        "title": "Table 1 · Beat the Target",
         "sub": "Sink balls to score points. Beat the target to clear the table."
       },
       "spawn": {
@@ -37,14 +37,13 @@
         "long-rail",
         "freeze-charge",
         "odd-ones"
-      ],
-      "rule": "Beat the target"
+      ]
     },
     {
       "id": "by-the-numbers",
-      "name": "By the Numbers",
+      "name": "In Order Pays More",
       "intro": {
-        "title": "Table 2 \u00b7 By the Numbers",
+        "title": "Table 2 · In Order Pays More",
         "sub": "Sink them in order, 1 then 2 then 8, and each one pays more."
       },
       "spawn": {
@@ -76,14 +75,13 @@
         "kiss-chase",
         "bounce"
       ],
-      "showOrder": true,
-      "rule": "In order pays more"
+      "showOrder": true
     },
     {
       "id": "off-the-rail",
-      "name": "Off the Rail",
+      "name": "Rails Add Mult",
       "intro": {
-        "title": "Table 3 \u00b7 Off the Rail",
+        "title": "Table 3 · Rails Add Mult",
         "sub": "The 8 is behind the wall. Bounce off a rail: every rail adds Mult."
       },
       "spawn": {
@@ -123,15 +121,14 @@
         "kiss-chase",
         "opening-break",
         "extra-life"
-      ],
-      "rule": "Rails add Mult"
+      ]
     },
     {
       "id": "two-at-once",
-      "name": "Two at Once",
+      "name": "Two in One Shot",
       "intro": {
-        "title": "Table 4 \u00b7 Two at Once",
-        "sub": "4 balls, 4 shots. Two down in one shot pays big, and saves a shot."
+        "title": "Table 4 · Two in One Shot",
+        "sub": "Two down in one shot pays big, and saves a shot."
       },
       "spawn": {
         "x": 0,
@@ -166,14 +163,13 @@
         "corner-office",
         "side-hustle",
         "freeze-charge"
-      ],
-      "rule": "Two in one shot"
+      ]
     },
     {
       "id": "pay-twice",
-      "name": "Pay Twice",
+      "name": "Green Ring Pays ×2",
       "intro": {
-        "title": "Table 5 \u00b7 Pay Twice",
+        "title": "Table 5 · Green Ring Pays ×2",
         "sub": "The green ring comes back every shot. Roll through it before a ball drops: that shot pays double."
       },
       "spawn": {
@@ -210,14 +206,13 @@
           "x": 0.0,
           "z": 3.0
         }
-      ],
-      "rule": "Green ring \u00d72"
+      ]
     },
     {
       "id": "live-lane",
-      "name": "The Live Lane",
+      "name": "Mines Void a Shot",
       "intro": {
-        "title": "Table 6 \u00b7 The Live Lane",
+        "title": "Table 6 · Mines Void a Shot",
         "sub": "Red is a mine. Roll over it and the shot pays nothing. Go around."
       },
       "spawn": {
@@ -264,14 +259,13 @@
           "x": -3.4,
           "z": 4.0
         }
-      ],
-      "rule": "Mines void a shot"
+      ]
     },
     {
       "id": "the-freeze",
-      "name": "The Freeze",
+      "name": "Tap to Freeze",
       "intro": {
-        "title": "Table 7 \u00b7 The Freeze",
+        "title": "Table 7 · Tap to Freeze",
         "sub": "Pick up the ice, then tap while the table moves to stop it and aim again."
       },
       "spawn": {
@@ -313,14 +307,13 @@
           "x": 0.0,
           "z": -6.0
         }
-      ],
-      "rule": "Tap to freeze"
+      ]
     },
     {
       "id": "through-the-ring",
-      "name": "Through the Ring",
+      "name": "Rings Teleport",
       "intro": {
-        "title": "Table 8 \u00b7 Through the Ring",
+        "title": "Table 8 · Rings Teleport",
         "sub": "A ball into one ring comes out of the other. Same speed, same heading."
       },
       "spawn": {
@@ -383,14 +376,13 @@
             "z": -9.6
           }
         }
-      ],
-      "rule": "Rings teleport"
+      ]
     },
     {
       "id": "bumpers",
-      "name": "Bumpers",
+      "name": "Bumpers and Free Shots",
       "intro": {
-        "title": "Table 9 \u00b7 Bumpers",
+        "title": "Table 9 · Bumpers and Free Shots",
         "sub": "Bumpers kick back harder than a rail. The green ring with a + is a free extra shot."
       },
       "spawn": {
@@ -455,15 +447,14 @@
           "x": 0,
           "z": 1.6
         }
-      ],
-      "rule": "Bumpers \u00b7 free shot"
+      ]
     },
     {
       "id": "last-word",
-      "name": "Last Word",
+      "name": "The 8 Goes Last",
       "intro": {
-        "title": "Table 10 \u00b7 Last Word",
-        "sub": "The 8 goes last. Knock it in early and it comes straight back."
+        "title": "Table 10 · The 8 Goes Last",
+        "sub": "Sink every other ball first. Knock the 8 in early and it comes straight back."
       },
       "spawn": {
         "x": 0,
@@ -505,15 +496,14 @@
           "x": -2.6,
           "z": 4.2
         }
-      ],
-      "rule": "The 8 goes last"
+      ]
     },
     {
       "id": "one-short",
-      "name": "One Short",
+      "name": "Two in One, 8 Last",
       "intro": {
-        "title": "Table 11 \u00b7 One Short",
-        "sub": "5 balls, 4 shots. You'll need two down in one shot. The 8 goes last."
+        "title": "Table 11 · Two in One, 8 Last",
+        "sub": "One shot short: you'll need two down in one shot. Sink the 8 last."
       },
       "spawn": {
         "x": 0,
@@ -555,14 +545,13 @@
           "x": 0.0,
           "z": -4.0
         }
-      ],
-      "rule": "Two in one shot"
+      ]
     },
     {
       "id": "final-table",
-      "name": "The Final Table",
+      "name": "Everything, 8 Last",
       "intro": {
-        "title": "Table 12 \u00b7 The Final Table",
+        "title": "Table 12 · Everything, 8 Last",
         "sub": "Everything you've learned, on one table. The 8 goes last."
       },
       "spawn": {
@@ -636,8 +625,7 @@
             "z": -8.4
           }
         }
-      ],
-      "rule": "The 8 goes last"
+      ]
     }
   ]
 }

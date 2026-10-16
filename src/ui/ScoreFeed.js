@@ -19,8 +19,15 @@
  *   4. FLIES the plate into its box, which jumps as it lands.
  *
  * Nothing counts until a ball drops, so the boxes stay faded until a pot locks
- * them in. When the table stops, whatever came after the last pot flies back
- * out to its cause and shatters, and anything locked slams together.
+ * them in. After that, a number only counts if another ball drops, so it is
+ * shown as PROVISIONAL: a faint tag beside its box, never added to it. Another
+ * pot folds the tags in; if none comes, they fade. What the boxes show is never
+ * taken back (from review: the red take-back read as a penalty for a good shot).
+ *
+ * A POT NEVER WAITS. A ball dropping lights its pocket the moment it drops,
+ * cuts the plate on screen short and hurries anything still queued, so the
+ * pot's own number follows at once (from review: "why is there a delay on the
+ * pocketing animation?").
  *
  * Timing lives in SCORE_FEED (config.js), mirroring the Lightline tokens.
  * It runs on real time: a hit-stop freezes the table, never the presentation.
@@ -75,6 +82,12 @@ export class ScoreFeed {
     el('small', '', this.multBox).textContent = 'Mult';
     this.multVal = el('span', '', this.multBox);
     this.product = el('span', 'sf-product', this.boxes);
+    // provisional numbers: earned after the last pot, counted only if another drops
+    // (a row of their own under the boxes: the boxes' cut corners would clip them)
+    this.tagRow = el('div', 'sf-tags', this.root);
+    this.ptsTag = el('span', 'sf-tag', this.tagRow);
+    el('span', 'sf-tag-gap', this.tagRow);
+    this.multTag = el('span', 'sf-tag', this.tagRow);
     this.plates = el('div', 'sf-plates', layer);
 
     this.enabled = false;
@@ -93,6 +106,7 @@ export class ScoreFeed {
     this.notes = 0;
     this.speed = 1;
     this.locked = false;
+    this.shown = { points: 0, mult: 1 };
   }
 
   /* ---------------------------------------------------------------- *
@@ -123,6 +137,7 @@ export class ScoreFeed {
     this.root.classList.remove('slam', 'void', 'paid', 'locking');
     this.product.textContent = '';
     this._show(0, 1);
+    this._tags(null);
     this.root.classList.add('pending');
     this._state('Not locked yet', '');
   }
@@ -153,6 +168,13 @@ export class ScoreFeed {
   /** One scoring event from Rules, carrying its `at` presentation data. */
   push(event) {
     if (!this.enabled || !event) return;
+    if (event.kind === 'pot') {
+      // the pocket answers now, not when the queue reaches it
+      this._juice(event);
+      event.juiced = true;
+      if (this.cur && this.cur.stage !== 'fly') this._fly();
+      for (const q of this.queue) q.quick = true;
+    }
     this.queue.push(event);
   }
 
@@ -177,6 +199,7 @@ export class ScoreFeed {
    * ---------------------------------------------------------------- */
 
   _show(points, mult) {
+    this.shown = { points, mult };
     this.ptsVal.textContent = Math.round(points).toLocaleString();
     this.multVal.textContent = Number.isInteger(mult) ? String(mult) : mult.toFixed(1);
   }
@@ -184,6 +207,16 @@ export class ScoreFeed {
   _state(text, tone) {
     this.stateEl.textContent = text;
     this.stateEl.className = `sf-state${tone ? ` ${tone}` : ''}`;
+  }
+
+  /** The provisional tags: what another pot would add to each box (null clears). */
+  _tags(e) {
+    const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+    const dp = e ? Math.round(e.points - this.shown.points) : 0;
+    const dm = e ? e.mult - this.shown.mult : 0;
+    this.ptsTag.textContent = dp > 0 ? `+${dp.toLocaleString()}` : '';
+    this.multTag.textContent = dm > 1e-6 ? `+${fmt(dm)}` : '';
+    this.root.classList.toggle('provisional', dp > 0 || dm > 1e-6);
   }
 
   /** World (x, z) to layer pixels. */
@@ -347,7 +380,9 @@ export class ScoreFeed {
 
   _start(event) {
     const colour = this._colour(event);
-    const cls = event.bucket === 'points' ? 'pts' : event.op === 'x' ? 'xmult' : 'mult';
+    // after a pot, anything but another pot only counts if one follows
+    event.provisional = this.locked && event.kind !== 'pot';
+    const cls = (event.bucket === 'points' ? 'pts' : event.op === 'x' ? 'xmult' : 'mult') + (event.provisional ? ' maybe' : '');
     const node = this._plate(event, cls);
     const anchor = this._anchor(event.at);
     this._place(node, anchor[0], anchor[1]);
@@ -364,14 +399,15 @@ export class ScoreFeed {
       SCORE_FEED.pop * 1000,
       'ease-out'
     );
-    const hold = Math.max(SCORE_FEED.holdMin, SCORE_FEED.hold * Math.pow(SCORE_FEED.holdStep, this.held));
+    let hold = Math.max(SCORE_FEED.holdMin, SCORE_FEED.hold * Math.pow(SCORE_FEED.holdStep, this.held));
+    if (event.quick) hold = SCORE_FEED.holdMin * 0.5;
     this.held += 1;
     this.cur = { event, node, anchor, colour, t: 0, stage: 'stop', hold };
     this.engine.hitStop(SCORE_FEED.hitStop / this.speed);
     this.engine.setPresentScale(SCORE_FEED.slow);
     this.engine.shake(60);
     this.audio.scoreThud?.();
-    this._juice(event);
+    if (!event.juiced) this._juice(event);
   }
 
   _fly() {
@@ -401,7 +437,12 @@ export class ScoreFeed {
     const c = this.cur;
     const e = c.event;
     c.node.remove();
-    this._show(e.points, e.mult);
+    if (e.provisional) {
+      this._tags(e);
+    } else {
+      this._show(e.points, e.mult);
+      this._tags(null);
+    }
     this._jump(c.box, c.colour);
     this.audio.scoreNote?.(this.notes++, e.bucket === 'points' ? 'points' : 'mult');
     if (e.kind === 'pot' && !this.locked) {
@@ -422,8 +463,7 @@ export class ScoreFeed {
 
   _buildFinale(result) {
     const steps = [];
-    const events = result.events || [];
-    const back = (result.takenBack || []).slice().reverse();
+    const back = result.takenBack || [];
 
     if (result.voided) {
       steps.push({
@@ -437,46 +477,22 @@ export class ScoreFeed {
       return steps;
     }
 
-    if (back.length) {
+    if (back.length && result.locked) {
+      // what came after the last pot was only ever shown as provisional:
+      // its tags fade, and the boxes, which never counted it, stay as they are
       steps.push({
-        hold: 0.4,
+        hold: 0.5,
         run: () => {
-          this.root.classList.remove('pending');
-          this.root.classList.add('void');
-          this._state('Taking back', 'hazard');
+          this.root.classList.add('fading');
+          this._state('After the last pot · not counted', '');
         }
       });
-      back.forEach((e, i) => {
-        const prev = events[e.index - 1] || null;
-        steps.push({
-          hold: SCORE_FEED.takeBack + 0.12,
-          run: () => {
-            const box = e.bucket === 'points' ? this.ptsBox : this.multBox;
-            const from = this._boxCentre(box);
-            const to = this._anchor(e.at);
-            const node = this._plate(e, 'void');
-            this._place(node, from[0], from[1], ' scale(0.6)');
-            const a = this._anim(
-              node,
-              [
-                { transform: `translate(${from[0]}px, ${from[1]}px) translate(-50%, -50%) scale(0.6)` },
-                { transform: `translate(${to[0]}px, ${to[1]}px) translate(-50%, -50%) scale(1)` }
-              ],
-              SCORE_FEED.takeBack * 1000,
-              'cubic-bezier(0.2, 0.6, 0.3, 1)',
-              'forwards'
-            );
-            const shatter = () => {
-              node.remove();
-              if (e.at) this.fx.burst(e.at.x, e.at.z, 16, this.colors.void, 10, 0.7);
-            };
-            if (a) a.onfinish = shatter;
-            else shatter();
-            this._show(prev ? prev.points : 0, prev ? prev.mult : 1);
-            this._jump(box, this.colors.void);
-            this.audio.scoreNote?.(Math.max(0, this.notes - 1 - i), e.bucket === 'points' ? 'points' : 'mult', true);
-          }
-        });
+      steps.push({
+        hold: 0.1,
+        run: () => {
+          this._tags(null);
+          this.root.classList.remove('fading');
+        }
       });
     }
 
@@ -507,7 +523,13 @@ export class ScoreFeed {
     } else {
       steps.push({
         hold: 1.0,
-        run: () => this._state('No ball dropped · 0', 'hazard')
+        run: () => {
+          // nothing dropped, so nothing was ever counted: the faded boxes empty quietly
+          this.root.classList.remove('pending');
+          this._show(0, 1);
+          this._tags(null);
+          this._state('No ball dropped', '');
+        }
       });
     }
     return steps;

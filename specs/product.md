@@ -35,13 +35,13 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 - Every shot builds two numbers, **Points** and **Mult**, multiplied together at the end.
   - Points: hit a ball +5; sink a ball +10 × its number.
   - Mult: cue off a wall +1; ball drives ball +1; bank pot +2; each extra pot in one shot +2; bonus zone ×2.
-- **Nothing counts until a ball drops.** Events are pending until a ball sinks, which locks in everything up to then. Anything after the last pot is taken back. A shot that sinks nothing scores 0. A scratch or foul voids the shot.
+- **Nothing counts until a ball drops.** Events are pending until a ball sinks, which locks in everything up to then. Anything after the last pot doesn't count: it shows only as a provisional tag, so nothing on the boxes is ever taken back. A shot that sinks nothing scores 0. A scratch or foul voids the shot.
 - **Build live.** Points appear as each thing happens, one at a time:
   - the table freezes briefly, then runs in slow motion while the number presents;
   - the cause (wall, zone, ball, pocket) lights up and wiggles;
   - a big labelled plate pops beside the cause and holds (0.8s, a bit quicker each time, never under 0.4s);
   - the plate flies into its box and the box jumps;
-  - the boxes stay faded until a ball drops, then go solid ("Locked in"). On a miss, plates fly back to their causes and shatter.
+  - the boxes stay faded until a ball drops, then go solid ("Locked in"). After a pot, numbers that need another pot show as faint provisional tags under the boxes and fade if none comes. A pot's pocket reacts the moment the ball drops.
   - Tap during a shot to speed the presentation up.
 
 ## Moments between shots

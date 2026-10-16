@@ -11,9 +11,9 @@ rolled.
   "tables": [
     {
       "id": "off-the-rail",                 // stable id, used by the tools
-      "name": "Off the Rail",               // the table's name
+      "name": "Rails Add Mult",             // name AND rule: shown on the card and as the corner chip
       "intro": {                            // the banner the table opens with
-        "title": "Table 3 · Off the Rail",
+        "title": "Table 3 · Rails Add Mult",
         "sub": "The 8 is behind the wall. Bounce off a rail: every rail adds Mult."
       },
       "spawn": { "x": 0, "z": 11 },         // only x is read; the cue ball sits at z 6.4

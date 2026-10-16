@@ -914,7 +914,7 @@ export const FEEL = {
  * one. Change them in Settings, or with window.__moment(kind, variant).
  * ------------------------------------------------------------------ */
 /**
- * HOW BALL NUMBERS ARE DRAWN (on trial in review: the numbers were hard to
+ * HOW BALL NUMBERS ARE DRAWN (medium picked in review, round 19; the numbers were hard to
  * read on a phone).
  *   inset  a light disc in the inner half of the ball, the ball's colour all
  *          round it (passes npm run palette as it stands)
@@ -923,7 +923,7 @@ export const FEEL = {
  *   face   a light face across the whole ball with a digit about twice the
  *          size; the ball's colour is carried by its glow ring
  */
-export const BALL_NUMERALS = { style: 'inset', options: ['inset', 'medium', 'face'] };
+export const BALL_NUMERALS = { style: 'medium', options: ['inset', 'medium', 'face'] };
 
 export const MOMENTS = {
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */

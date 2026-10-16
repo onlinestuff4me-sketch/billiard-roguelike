@@ -224,10 +224,10 @@ export class Moments {
 
   /**
    * The card a table opens on (from review: "where are these instructions?").
-   * The table dims; the card says the table, its rule in a sentence, and what
-   * it gives and asks (balls, shots, target). One tap anywhere clears it, and
-   * the rule, shortened to a chip, flies from the card to the top-right corner
-   * where it stays for the table. Resolves once the chip has landed.
+   * The table dims; the card says the table's number, its name (which is its
+   * rule, short), the rule in a sentence, and its balls and shots. One tap
+   * anywhere clears it, and the name, as a chip, flies from the card to the
+   * top-right corner where it stays for the table. Resolves once it has landed.
    * @param {{kicker:string, name:string, rule:string, stats:string[], chip?:string, chipTo:()=>HTMLElement}} o
    */
   tableIntro(o) {
@@ -238,12 +238,16 @@ export class Moments {
       const shade = el('div', 'mo-intro-shade', root);
       const card = el('div', 'mo-intro-card', root);
       el('div', 'mo-kicker', card).textContent = o.kicker;
-      el('div', 'mo-intro-name', card).textContent = o.name;
+      const nameEl = el('div', 'mo-intro-name', card);
+      nameEl.textContent = o.name;
       const rule = el('div', 'mo-intro-rule', card);
       rule.textContent = o.rule;
       const stats = el('div', 'mo-intro-stats', card);
       for (const st of o.stats) el('span', '', stats).textContent = st;
-      el('div', 'mo-intro-hint', card).textContent = 'Tap to play';
+      // a real button, big enough to read as one (from review); a tap anywhere still plays
+      const go = el('button', 'mo-intro-go', card);
+      go.type = 'button';
+      go.textContent = 'Tap to play';
       this.audio.doorOpen?.();
       this.anim(shade, [{ opacity: 0 }, { opacity: 1 }], { duration: 260 });
       this.anim(card, [{ transform: 'translate(-50%, -50%) scale(0.9)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 320, easing: BACK });
@@ -251,13 +255,16 @@ export class Moments {
       absorb(root, async () => {
         if (gone) return;
         gone = true;
-        const from = rule.getBoundingClientRect();
+        // the button answers the tap, wherever it landed
+        go.animate?.([{ transform: 'scale(1)', filter: 'brightness(1)' }, { transform: 'scale(0.95)', filter: 'brightness(1.5)' }, { transform: 'scale(1)', filter: 'brightness(1)' }], { duration: 200 });
+        // the chip lifts off the name, which says the same thing
+        const from = nameEl.getBoundingClientRect();
         const L = this.layer.getBoundingClientRect();
         this.anim(card, [{ opacity: 1, transform: 'translate(-50%, -50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%, -50%) scale(0.96)' }], { duration: 220, easing: IN });
         this.anim(shade, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
         const target = o.chip && o.chipTo?.();
         if (target) {
-          // the chip lifts off the rule line and flies to its corner
+          // ...and flies to its corner
           target.hidden = false;
           target.textContent = o.chip;
           target.style.visibility = 'hidden';
