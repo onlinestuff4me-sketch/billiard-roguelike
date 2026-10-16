@@ -105,7 +105,7 @@ for (const size of SIZES) {
     );
 
     // In a lesson: the coach has its own strip and the felt starts below it.
-    await game.gotoBoard('two-in-one');
+    await game.gotoBoard('combo');
     await game.page.waitForTimeout(400);
     const lesson = await game.page.evaluate(() => {
       const g = window.__game;

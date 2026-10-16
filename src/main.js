@@ -2376,6 +2376,9 @@ function showRoomBanner() {
   // name (which is its rule, short), the rule in a sentence, balls and shots.
   // Tapping it away sends the name to the top-right corner, where it stays.
   const t = rooms.authored;
+  // Not behind the title screen: the boot racks Table 1 under the menu, and a
+  // card there would sit under it with a Play button of its own.
+  if (t?.intro && menuOpen) return;
   if (t?.intro) {
     hud.setRule(null);
     game.introUp = true;
@@ -4102,6 +4105,8 @@ function play() {
   audio.unlock();
   applyMute();
   input.cancel();
+  moments.closeIntro();
+  game.introUp = false;
   // A first-time player gets the lesson rooms; everyone else gets the game.
   if (Tutorial.completed) startRun();
   else tutorial.start();
