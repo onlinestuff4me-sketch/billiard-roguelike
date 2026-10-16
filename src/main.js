@@ -1099,6 +1099,9 @@ function scored(make) {
   if (!event) return null;
   game.chain.count += 1;
   game.chain.best = Math.max(game.chain.best, game.chain.count);
+  // whether a pot has already locked it in: a pot's own events (SUNK, BANK,
+  // IN ORDER...) are locked together, so the presenter needn't guess
+  event.counts = Number.isFinite(event.index) && event.index < rules.lockedCount;
   if (feed.enabled) feed.push(event);
   else audio.chainNote(game.chain.count - 1);
   return event;

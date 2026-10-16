@@ -380,8 +380,8 @@ export class ScoreFeed {
 
   _start(event) {
     const colour = this._colour(event);
-    // after a pot, anything but another pot only counts if one follows
-    event.provisional = this.locked && event.kind !== 'pot';
+    // after a pot, anything a pot has not locked in only counts if one follows
+    event.provisional = this.locked && !event.counts && event.kind !== 'pot';
     const cls = (event.bucket === 'points' ? 'pts' : event.op === 'x' ? 'xmult' : 'mult') + (event.provisional ? ' maybe' : '');
     const node = this._plate(event, cls);
     const anchor = this._anchor(event.at);
