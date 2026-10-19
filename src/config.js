@@ -962,8 +962,15 @@ export const SCORE_FEED = {
   slow: 0.12,
   /** A tap runs everything still to come this much faster (timescale-fast). */
   fastSpeed: 2.5,
-  /** One plate flying back out of its box on a take-back (takeback-step). */
-  takeBack: 0.3,
+  /**
+   * When numbers show (in review, round 20): 'cash' shows them as each ball
+   * drops, cashing in what came before it; 'count' counts the shot once the
+   * table stops. Either way the boxes show only what counts.
+   */
+  style: 'cash',
+  /** count: the first plate's hold on the stopped table, and the shortest. */
+  count: 0.5,
+  countMin: 0.2,
   /** The pause before POINTS and MULT slam together (slam-breath). */
   breath: 0.4
 };

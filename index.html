@@ -1106,7 +1106,8 @@
       .sf-box.pts { background: var(--ll-pts); }
       .sf-box.mult { background: var(--ll-mult); }
       .sf-times { font-weight: 700; font-size: 17px; color: var(--muted); }
-      .score-feed.pending .sf-box { opacity: 0.5; }
+      /* count: out of the way while the table rolls; it is counted once it stops */
+      .score-feed.waiting { opacity: 0; }
       .score-feed.void .sf-box { background: var(--ll-void); opacity: 1; }
       .score-feed.slam .sf-boxes { gap: 0; }
       .score-feed.slam .sf-times { color: var(--ll-hot); text-shadow: 0 0 14px var(--ll-mult); }
@@ -1154,15 +1155,7 @@
       .sf-plate.xmult { --plate-bg: #ffc266; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.9)); }
       .sf-plate.void { --plate-bg: #ff2e7e; filter: drop-shadow(0 0 10px rgba(255, 46, 126, 0.85)); }
       .sf-plate.void b { text-decoration: line-through; }
-      /* provisional: earned after the last pot, counts only if another drops */
-      .sf-plate.maybe { --plate-bg: rgba(233, 248, 255, 0.16); color: var(--bone, #e9f8ff); filter: none; box-shadow: none; }
-      .sf-plate.maybe::after { content: ''; position: absolute; inset: 0; border: 1.5px dashed rgba(233, 248, 255, 0.55); pointer-events: none; }
-      .sf-tags { display: none; justify-content: center; gap: 8px; margin-top: 3px; }
-      .score-feed.provisional .sf-tags { display: flex; }
-      .sf-tag { min-width: 60px; text-align: center; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: rgba(233, 248, 255, 0.72); white-space: nowrap; transition: opacity 0.4s ease; }
-      .sf-tag-gap { width: 10px; }
-      .score-feed.paid .sf-tags { display: none; }
-      .score-feed.fading .sf-tag { opacity: 0; }
+
       .sf-streak { position: absolute; left: 0; top: 0; height: 3px; margin-top: -1.5px; transform-origin: 0 50%; border-radius: 2px; pointer-events: none; }
       @media (prefers-reduced-motion: reduce) { .sf-boxes { transition: none; } .score-feed.locking .sf-boxes::after { animation: none; opacity: 0; } }
 

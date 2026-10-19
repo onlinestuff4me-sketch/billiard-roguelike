@@ -40,10 +40,9 @@ If an action or a reward does not get a reaction the player can see, hear and
    `glow-3` is an event, 300 ms or less, one at a time.
 4. **Every number has a place.** A point appears where it was earned (the rail,
    the ball, the field, the pocket) and then flies to its box. Never in a corner.
-5. **One number at a time, and nothing counts until a ball drops.** Points build
-   live and stay faded until a pot locks them in. After a pot, a number that
-   needs another pot to count is shown as provisional and never added to a
-   box, so nothing the boxes show is ever taken back. (See §7, The count.)
+5. **One number at a time, and the boxes show only what counts.** Nothing
+   counts until a ball drops, so a number appears only once a pot has cashed
+   it in: never faded, never provisional, never taken back. (See §7, The count.)
 6. **Every moment earns a reaction.** From its cause, one at a time, never over
    the aim preview. Full power, a wall, a pot, a lock, a slam, a scratch, a
    freeze, a cleared table: each gets light, sound and, where possible, a buzz.
@@ -163,23 +162,28 @@ the table, never the presentation.
 Summarised here; the full spec is in the Lightline design system ("The count")
 and the code in `src/systems/Rules.js` and `src/ui/ScoreFeed.js`.
 
-1. **Freeze** (90 ms hit-stop, soft thud).
-2. **Slow motion** at 0.12×.
+Until a pot, a rail or a hit only **lights** its cause, briefly and with no
+number (from review, round 20: faded boxes, "Locked in", provisional tags and
+a grey "not counted" line each asked a new player to follow numbers that might
+not count). Then, by `SCORE_FEED.style` (in review):
+
+- **cash** (default): when a ball drops its pocket flares at once, and every
+  number that ball cashes in, the rails and hits before it included, plays as
+  below in the order it happened, then the pot's own.
+- **count**: the shot plays at full speed with only the lights; when the
+  table stops, everything that scored plays as below on the stopped table,
+  briskly (no freeze or slow motion), Balatro-style.
+
+Each number:
+
+1. **Freeze** (90 ms hit-stop, soft thud) — cash only.
+2. **Slow motion** at 0.12× — cash only.
 3. **The cause reacts** in the colour of the box it feeds: the wall lights, the
    zone swells, the ball wiggles, the pocket flares.
 4. **A plate pops** beside the cause, holds, then **flies** into POINTS or
    MULT, which jumps; a note one scale degree higher plays.
-5. **Lock** on the first pot: the boxes go solid and a `you` ring expands.
-6. **Provisional, not taken back:** after a pot, a number that only counts if
-   another ball drops shows as a dashed, faint plate, and lands as a small
-   tag under its box ("+1") instead of in it. Another pot folds the tags in;
-   when the table stops without one they fade with "After the last pot · not
-   counted", in `muted`, never `hazard`. A shot that sinks nothing empties its
-   faded boxes quietly ("No ball dropped"). From review: the red take-back read
-   as a penalty for a good shot.
-   **A pot never waits:** its pocket flares the moment the ball drops, the
-   plate on screen flies at once, and anything still queued is hurried, so
-   the pot's number follows straight after.
+5. A shot that sinks nothing never shows a number, and ends on "No ball
+   dropped · no score" in `muted`. A scratch voids the shot in `hazard`.
 7. **Slam:** the boxes collide, the product replaces them, the trick name
    shows, and it rolls into the total.
 
@@ -424,8 +428,7 @@ number showing there all table long.
 | Beat | Treatment |
 | --- | --- |
 | Pot | Pocket flare, shockwave, ball derez into the void, plate "n SUNK". |
-| Lock | `you` ring from the boxes, "Locked in", lock chime. |
-| After the last pot | Provisional tags fade in `muted`: no `hazard`, no shatter. |
+| Before a pot | The cause lights briefly; no number. |
 | Slam | Boxes collide (`ease-slam`), sub drop, jolt, product and trick name. |
 | Mission | A banner that waits for a tap: the terms of the table. On the twelve authored tables this is the **table card** (§8.5b). |
 

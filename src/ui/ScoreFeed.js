@@ -18,16 +18,18 @@
  *   3. Pops a big labelled PLATE beside the cause ("+1 WALL", "×2 ZONE").
  *   4. FLIES the plate into its box, which jumps as it lands.
  *
- * Nothing counts until a ball drops, so the boxes stay faded until a pot locks
- * them in. After that, a number only counts if another ball drops, so it is
- * shown as PROVISIONAL: a faint tag beside its box, never added to it. Another
- * pot folds the tags in; if none comes, they fade. What the boxes show is never
- * taken back (from review: the red take-back read as a penalty for a good shot).
+ * NOTHING COUNTS UNTIL A BALL DROPS, and the boxes only ever show what counts
+ * (from review: faded boxes, "Locked in", provisional tags and take-backs all
+ * asked the player to understand numbers that might not count). Two ways to
+ * keep that promise, set in SCORE_FEED.style or with window.__feedStyle(style):
  *
- * A POT NEVER WAITS. A ball dropping lights its pocket the moment it drops,
- * cuts the plate on screen short and hurries anything still queued, so the
- * pot's own number follows at once (from review: "why is there a delay on the
- * pocketing animation?").
+ *   cash   a rail or a hit lights up on the table and shows no number. When a
+ *          ball drops, its pocket flares at once and everything that ball
+ *          cashes in, the rails and hits before it included, pops at its cause
+ *          and flies into the boxes. A shot that sinks nothing shows nothing.
+ *   count  the shot plays at full speed with only the lights. When the table
+ *          stops, the shot is counted, Balatro-style: each thing that scored
+ *          pops at its cause in order and flies in, then the slam.
  *
  * Timing lives in SCORE_FEED (config.js), mirroring the Lightline tokens.
  * It runs on real time: a hit-stop freezes the table, never the presentation.
@@ -35,6 +37,8 @@
 
 import * as THREE from 'three';
 import { SCORE_FEED } from '../config.js';
+
+const style = () => SCORE_FEED.style;
 
 /** Balatro's wiggle: an instant squash, then ~8 Hz decaying over 0.45 s. */
 const wig = (age) => (age < 0 || age > 0.45 ? 0 : Math.sin(50 * age) * Math.pow(1 - age / 0.45, 3));
@@ -82,12 +86,6 @@ export class ScoreFeed {
     el('small', '', this.multBox).textContent = 'Mult';
     this.multVal = el('span', '', this.multBox);
     this.product = el('span', 'sf-product', this.boxes);
-    // provisional numbers: earned after the last pot, counted only if another drops
-    // (a row of their own under the boxes: the boxes' cut corners would clip them)
-    this.tagRow = el('div', 'sf-tags', this.root);
-    this.ptsTag = el('span', 'sf-tag', this.tagRow);
-    el('span', 'sf-tag-gap', this.tagRow);
-    this.multTag = el('span', 'sf-tag', this.tagRow);
     this.plates = el('div', 'sf-plates', layer);
 
     this.enabled = false;
@@ -105,8 +103,10 @@ export class ScoreFeed {
     this.held = 0;
     this.notes = 0;
     this.speed = 1;
-    this.locked = false;
-    this.shown = { points: 0, mult: 1 };
+    /** cash: events no pot has cashed in yet, lit on the table but not shown */
+    this.waiting = [];
+    /** count: true while the stopped table is being counted */
+    this.counting = false;
   }
 
   /* ---------------------------------------------------------------- *
@@ -131,15 +131,15 @@ export class ScoreFeed {
     this.engine.setPresentScale(1);
   }
 
-  /** A new stroke: both boxes back to 0 and ×1, faded until something drops. */
+  /** A new stroke: both boxes back to 0 and ×1. Nothing is shown until it counts. */
   beginStroke() {
     this.clear();
-    this.root.classList.remove('slam', 'void', 'paid', 'locking');
+    this.root.classList.remove('slam', 'void', 'paid', 'locking', 'pending', 'waiting');
     this.product.textContent = '';
     this._show(0, 1);
-    this._tags(null);
-    this.root.classList.add('pending');
-    this._state('Not locked yet', '');
+    this._state('', '');
+    // count: the boxes stay out of the way until the table stops and is counted
+    this.root.classList.toggle('waiting', style() === 'count');
   }
 
   /**
@@ -168,6 +168,17 @@ export class ScoreFeed {
   /** One scoring event from Rules, carrying its `at` presentation data. */
   push(event) {
     if (!this.enabled || !event) return;
+    if (style() === 'count') {
+      // the cause lights up now; its number waits for the count
+      this._juice(event, true);
+      return;
+    }
+    if (!event.counts) {
+      // cash: lit on the table, shown only if a pot cashes it in
+      this._juice(event, true);
+      this.waiting.push(event);
+      return;
+    }
     if (event.kind === 'pot') {
       // the pocket answers now, not when the queue reaches it
       this._juice(event);
@@ -175,12 +186,19 @@ export class ScoreFeed {
       if (this.cur && this.cur.stage !== 'fly') this._fly();
       for (const q of this.queue) q.quick = true;
     }
+    // what this pot cashes in goes first, quickly, in the order it happened
+    for (const w of this.waiting) {
+      w.quick = true;
+      this.queue.push(w);
+    }
+    this.waiting = [];
     this.queue.push(event);
   }
 
   /**
-   * The table has stopped. Once every number has landed: take back whatever
-   * came after the last pot, slam whatever was locked, then call `done`.
+   * The table has stopped. Once every number has landed (count: once the
+   * table has been counted), slam what the shot pays, then call `done`.
+   * Whatever came after the last pot was never shown, so nothing is undone.
    *
    * @param {ReturnType<import('../systems/Rules.js').Rules['strokeResult']>} result
    * @param {() => void} done
@@ -191,6 +209,15 @@ export class ScoreFeed {
       return;
     }
     if (this.finale) return;
+    // cash: whatever no pot cashed in was never shown, so there is nothing to undo
+    this.waiting = [];
+    if (style() === 'count' && !result.voided) {
+      // count only what scored: everything up to the last pot
+      const n = (result.events || []).length - (result.takenBack || []).length;
+      this.queue.push(...(result.events || []).slice(0, Math.max(0, n)));
+      this.counting = true;
+      if (this.queue.length) this.root.classList.remove('waiting');
+    }
     this.finale = { result, done, steps: null, i: 0, at: 0 };
   }
 
@@ -199,7 +226,6 @@ export class ScoreFeed {
    * ---------------------------------------------------------------- */
 
   _show(points, mult) {
-    this.shown = { points, mult };
     this.ptsVal.textContent = Math.round(points).toLocaleString();
     this.multVal.textContent = Number.isInteger(mult) ? String(mult) : mult.toFixed(1);
   }
@@ -207,16 +233,6 @@ export class ScoreFeed {
   _state(text, tone) {
     this.stateEl.textContent = text;
     this.stateEl.className = `sf-state${tone ? ` ${tone}` : ''}`;
-  }
-
-  /** The provisional tags: what another pot would add to each box (null clears). */
-  _tags(e) {
-    const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-    const dp = e ? Math.round(e.points - this.shown.points) : 0;
-    const dm = e ? e.mult - this.shown.mult : 0;
-    this.ptsTag.textContent = dp > 0 ? `+${dp.toLocaleString()}` : '';
-    this.multTag.textContent = dm > 1e-6 ? `+${fmt(dm)}` : '';
-    this.root.classList.toggle('provisional', dp > 0 || dm > 1e-6);
   }
 
   /** World (x, z) to layer pixels. */
@@ -297,10 +313,20 @@ export class ScoreFeed {
    * gives off is the cushion itself lighting up along its length; a pocket
    * flares; a ball and a zone wiggle.
    */
-  _juice(event) {
+  _juice(event, quiet = false) {
     const at = event.at;
     if (!at) return;
     const colour = this._colour(event);
+    if (quiet) {
+      // a number that has not counted yet: the cause lights, briefly, no plate
+      this.fx.shockwave(at.x, at.z, colour, at.kind === 'pocket' ? 4 : 2.2, 0.3);
+      if (at.kind === 'wall' && Number.isFinite(at.nx)) {
+        const tx = -at.nz;
+        const tz = at.nx;
+        this.fx.zap(at.x - tx * 2.2, at.z - tz * 2.2, at.x + tx * 2.2, at.z + tz * 2.2, colour, 0.35);
+      }
+      return;
+    }
     const fx = this.fx;
     const later = (s, fn) => this.timers.push({ t: s, fn });
     if (at.kind === 'wall') {
@@ -380,9 +406,7 @@ export class ScoreFeed {
 
   _start(event) {
     const colour = this._colour(event);
-    // after a pot, anything a pot has not locked in only counts if one follows
-    event.provisional = this.locked && !event.counts && event.kind !== 'pot';
-    const cls = (event.bucket === 'points' ? 'pts' : event.op === 'x' ? 'xmult' : 'mult') + (event.provisional ? ' maybe' : '');
+    const cls = event.bucket === 'points' ? 'pts' : event.op === 'x' ? 'xmult' : 'mult';
     const node = this._plate(event, cls);
     const anchor = this._anchor(event.at);
     this._place(node, anchor[0], anchor[1]);
@@ -401,10 +425,14 @@ export class ScoreFeed {
     );
     let hold = Math.max(SCORE_FEED.holdMin, SCORE_FEED.hold * Math.pow(SCORE_FEED.holdStep, this.held));
     if (event.quick) hold = SCORE_FEED.holdMin * 0.5;
+    // the count runs on a stopped table, so it can go briskly
+    if (this.counting) hold = Math.max(SCORE_FEED.countMin, SCORE_FEED.count * Math.pow(SCORE_FEED.holdStep, this.held));
     this.held += 1;
     this.cur = { event, node, anchor, colour, t: 0, stage: 'stop', hold };
-    this.engine.hitStop(SCORE_FEED.hitStop / this.speed);
-    this.engine.setPresentScale(SCORE_FEED.slow);
+    if (!this.counting) {
+      this.engine.hitStop(SCORE_FEED.hitStop / this.speed);
+      this.engine.setPresentScale(SCORE_FEED.slow);
+    }
     this.engine.shake(60);
     this.audio.scoreThud?.();
     if (!event.juiced) this._juice(event);
@@ -437,23 +465,9 @@ export class ScoreFeed {
     const c = this.cur;
     const e = c.event;
     c.node.remove();
-    if (e.provisional) {
-      this._tags(e);
-    } else {
-      this._show(e.points, e.mult);
-      this._tags(null);
-    }
+    this._show(e.points, e.mult);
     this._jump(c.box, c.colour);
     this.audio.scoreNote?.(this.notes++, e.bucket === 'points' ? 'points' : 'mult');
-    if (e.kind === 'pot' && !this.locked) {
-      this.locked = true;
-      this.root.classList.remove('pending');
-      this._state('Locked in', 'lock');
-      this.root.classList.remove('locking');
-      void this.root.offsetWidth;
-      this.root.classList.add('locking');
-      this.audio.scoreLock?.();
-    }
     this.cur = null;
   }
 
@@ -463,47 +477,22 @@ export class ScoreFeed {
 
   _buildFinale(result) {
     const steps = [];
-    const back = result.takenBack || [];
-
+    this.counting = false;
     if (result.voided) {
       steps.push({
         hold: 0.9,
         run: () => {
-          this.root.classList.remove('pending');
+          this.root.classList.remove('waiting');
           this.root.classList.add('void');
           this._state('Scratch · shot void', 'hazard');
         }
       });
       return steps;
     }
-
-    if (back.length && result.locked) {
-      // what came after the last pot was only ever shown as provisional:
-      // its tags fade, and the boxes, which never counted it, stay as they are
-      steps.push({
-        hold: 0.5,
-        run: () => {
-          this.root.classList.add('fading');
-          this._state('After the last pot · not counted', '');
-        }
-      });
-      steps.push({
-        hold: 0.1,
-        run: () => {
-          this._tags(null);
-          this.root.classList.remove('fading');
-        }
-      });
-    }
-
     if (result.locked && result.paid > 0) {
       steps.push({
         hold: SCORE_FEED.breath,
-        run: () => {
-          this.root.classList.remove('void', 'pending');
-          this._state('', '');
-          this._show(result.points, result.mult);
-        }
+        run: () => this._show(result.points, result.mult)
       });
       steps.push({
         hold: 0.22,
@@ -521,14 +510,13 @@ export class ScoreFeed {
         }
       });
     } else {
+      // nothing dropped, and nothing was ever shown: say so, plainly
       steps.push({
         hold: 1.0,
         run: () => {
-          // nothing dropped, so nothing was ever counted: the faded boxes empty quietly
-          this.root.classList.remove('pending');
+          this.root.classList.remove('waiting');
           this._show(0, 1);
-          this._tags(null);
-          this._state('No ball dropped', '');
+          this._state('No ball dropped · no score', '');
         }
       });
     }

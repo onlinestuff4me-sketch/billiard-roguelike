@@ -41,7 +41,7 @@ import {
   TUTORIAL,
   PROGRESSION,
   LAYER,
-  MOMENTS, BALL_NUMERALS } from './config.js';
+  MOMENTS, BALL_NUMERALS, SCORE_FEED } from './config.js';
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { AudioManager } from './core/AudioManager.js';
@@ -4294,6 +4294,10 @@ for (const kind of Object.keys(MOMENT_NAMES)) {
 applyMoments();
 if (typeof window !== 'undefined') {
   /** Review: switch how ball numbers are drawn (takes effect on the next rack). */
+  window.__feedStyle = (style) => {
+    if (style === 'cash' || style === 'count') SCORE_FEED.style = style;
+    return SCORE_FEED.style;
+  };
   window.__ballNumerals = (style) => {
     if (BALL_NUMERALS.options.includes(style)) BALL_NUMERALS.style = style;
     return BALL_NUMERALS.style;
