@@ -101,11 +101,11 @@
         },
         {
           "number": 8,
-          "x": -2.8,
-          "z": -13.6
+          "x": -6.5,
+          "z": -13.5
         }
       ],
-      "strokes": 4,
+      "strokes": 5,
       "target": 300,
       "obstacles": [
         {
