@@ -3,6 +3,7 @@
  * a beam search, in the real game, and report what each one pays.
  *
  *   node tools/tune-tables.mjs [table numbers...] [--step=1] [--beam=5] [--width=3]
+ *                              [--robust-only] [--powers=0.5,0.7,0.85,1] [--port=4173]
  *
  * For each table it reports two lines through the table:
  *   ROBUST  every shot sits in a run of headings at least --width degrees wide
@@ -39,7 +40,8 @@ if (args.includes('--openers')) {
 }
 for (const n of pick) {
   const info = await game.page.evaluate((lv) => window.__runLoad(lv), n);
-  const powers = args.includes('--robust-only') ? [0.6, 0.85, 1] : [0.5, 0.7, 0.85, 1];
+  const listed = args.find((x) => x.startsWith('--powers='));
+  const powers = listed ? listed.slice(9).split(',').map(Number) : args.includes('--robust-only') ? [0.6, 0.85, 1] : [0.5, 0.7, 0.85, 1];
   const robust = await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: width, powers });
   await game.page.evaluate((lv) => window.__runLoad(lv), n);
   const best = args.includes('--robust-only') ? { best: [], ms: 0 } : await game.page.evaluate((o) => window.__runPlan(o), { step, beam, minWidth: 0.5 });
