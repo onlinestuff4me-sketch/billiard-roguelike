@@ -1113,7 +1113,25 @@
       .score-feed.slam .sf-times { color: var(--ll-hot); text-shadow: 0 0 14px var(--ll-mult); }
       .sf-product { display: none; font-weight: 700; font-size: 30px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult); font-variant-numeric: tabular-nums; }
       .score-feed.paid .sf-box, .score-feed.paid .sf-times { display: none; }
-      .score-feed.paid .sf-product { display: block; }
+      .score-feed.paid .sf-product { display: block; animation: sf-tally 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      /* the final tally is celebrated (from review): it pops, glows gold and rings out */
+      @keyframes sf-tally {
+        0% { transform: scale(0.4); filter: brightness(2.2); }
+        45% { transform: scale(1.45) rotate(-3deg); filter: brightness(1.6) drop-shadow(0 0 22px #ffc266); }
+        70% { transform: scale(0.94) rotate(2deg); }
+        100% { transform: scale(1); filter: none; }
+      }
+      .score-feed.paid .sf-boxes::after {
+        content: '';
+        position: absolute;
+        inset: -8px -14px;
+        border: 2px solid #ffc266;
+        box-shadow: 0 0 20px #ff8a1e;
+        animation: sf-ring 0.7s ease-out forwards;
+        pointer-events: none;
+      }
+      @keyframes sf-ring { from { opacity: 1; transform: scale(0.8); } to { opacity: 0; transform: scale(1.7, 2.2); } }
+      @media (prefers-reduced-motion: reduce) { .score-feed.paid .sf-product, .score-feed.paid .sf-boxes::after { animation: none; } .score-feed.paid .sf-boxes::after { opacity: 0; } }
       .score-feed.locking .sf-boxes::after {
         content: '';
         position: absolute;

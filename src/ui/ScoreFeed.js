@@ -23,10 +23,13 @@
  * asked the player to understand numbers that might not count). Two ways to
  * keep that promise, set in SCORE_FEED.style or with window.__feedStyle(style):
  *
- *   cash   a rail or a hit lights up on the table and shows no number. When a
- *          ball drops, its pocket flares at once and everything that ball
- *          cashes in, the rails and hits before it included, pops at its cause
- *          and flies into the boxes. A shot that sinks nothing shows nothing.
+ *   cash   (picked in review) a rail or a hit lights up on the table and
+ *          shows no number. When a ball reaches a pocket the table all but
+ *          stops with the ball AT THE LIP (`brinking`), and everything it
+ *          cashes in, the rails and hits before it, pops at its cause and
+ *          flies into the boxes. Then the ball drops, its pocket flares, and
+ *          its own number lands. The stroke ends on a celebrated tally. A shot
+ *          that sinks nothing shows nothing.
  *   count  the shot plays at full speed with only the lights. When the table
  *          stops, the shot is counted, Balatro-style: each thing that scored
  *          pops at its cause in order and flies in, then the slam.
@@ -105,6 +108,8 @@ export class ScoreFeed {
     this.speed = 1;
     /** cash: events no pot has cashed in yet, lit on the table but not shown */
     this.waiting = [];
+    /** cash: a ball is held at the lip while what it cashes in plays */
+    this.brinking = false;
     /** count: true while the stopped table is being counted */
     this.counting = false;
   }
@@ -180,19 +185,30 @@ export class ScoreFeed {
       return;
     }
     if (event.kind === 'pot') {
-      // the pocket answers now, not when the queue reaches it
-      this._juice(event);
-      event.juiced = true;
-      if (this.cur && this.cur.stage !== 'fly') this._fly();
-      for (const q of this.queue) q.quick = true;
+      // THE BRINK (from review): the ball is at the lip. The table all but
+      // stops while what this ball cashes in plays, in the order it happened;
+      // then the ball drops and its own numbers follow.
+      this.brinking = true;
+      this.engine.setPresentScale(SCORE_FEED.brink);
+      for (const w of this.waiting) this.queue.push(w);
+      this.waiting = [];
+      this.queue.push({ release: true });
     }
-    // what this pot cashes in goes first, quickly, in the order it happened
-    for (const w of this.waiting) {
-      w.quick = true;
-      this.queue.push(w);
-    }
-    this.waiting = [];
     this.queue.push(event);
+  }
+
+  /** The ball at the lip: held a beat, then let go so it drops. */
+  _release(c, dt) {
+    c.t += dt;
+    if (c.stage === 'brink' && c.t >= SCORE_FEED.brinkHold) {
+      // let it fall: the sink runs while the table picks up speed
+      this.brinking = false;
+      this.engine.setPresentScale(1);
+      c.stage = 'drop';
+      c.t = 0;
+    } else if (c.stage === 'drop' && c.t >= SCORE_FEED.drop) {
+      this.cur = null;
+    }
   }
 
   /**
@@ -431,7 +447,7 @@ export class ScoreFeed {
     this.cur = { event, node, anchor, colour, t: 0, stage: 'stop', hold };
     if (!this.counting) {
       this.engine.hitStop(SCORE_FEED.hitStop / this.speed);
-      this.engine.setPresentScale(SCORE_FEED.slow);
+      this.engine.setPresentScale(this.brinking ? SCORE_FEED.brink : SCORE_FEED.slow);
     }
     this.engine.shake(60);
     this.audio.scoreThud?.();
@@ -458,7 +474,7 @@ export class ScoreFeed {
     this._streak(c.anchor, to, c.colour);
     // With nothing else waiting, let the table pick its speed back up while
     // this one is in the air.
-    if (!this.queue.length) this.engine.setPresentScale(0.5);
+    if (!this.queue.length && !this.brinking) this.engine.setPresentScale(0.5);
   }
 
   _arrive() {
@@ -505,8 +521,10 @@ export class ScoreFeed {
       steps.push({
         hold: 1.0,
         run: () => {
+          // the tally, celebrated: it pops gold and rings out, with a chime
           this.product.textContent = `+${result.paid.toLocaleString()}`;
           this.root.classList.add('paid');
+          this.audio.scoreLock?.();
         }
       });
     } else {
@@ -554,7 +572,16 @@ export class ScoreFeed {
       }
     }
 
-    if (!this.cur && this.queue.length) this._start(this.queue.shift());
+    if (!this.cur && this.queue.length) {
+      const next = this.queue.shift();
+      if (next.release) this.cur = { release: true, stage: 'brink', t: 0 };
+      else this._start(next);
+    }
+
+    if (this.cur?.release) {
+      this._release(this.cur, dt);
+      return;
+    }
 
     if (this.cur) {
       const c = this.cur;
@@ -563,7 +590,7 @@ export class ScoreFeed {
       if (c.stage === 'hold' && c.t >= SCORE_FEED.hitStop + c.hold) this._fly();
       else if (c.stage === 'fly' && c.t >= SCORE_FEED.flight) {
         this._arrive();
-        if (!this.queue.length) this.engine.setPresentScale(1);
+        if (!this.queue.length && !this.brinking) this.engine.setPresentScale(1);
       }
       return;
     }

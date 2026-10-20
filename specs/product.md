@@ -41,7 +41,7 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
   - the cause (wall, zone, ball, pocket) lights up and wiggles;
   - a big labelled plate pops beside the cause and holds (0.8s, a bit quicker each time, never under 0.4s);
   - the plate flies into its box and the box jumps;
-  - until a ball drops, rails and hits only light up on the table. When one drops, its pocket reacts at once and what it cashes in flies into the boxes (style "cash"), or the whole shot is counted once the table stops (style "count"); the pick is in review.
+  - until a ball drops, rails and hits only light up on the table. When a ball reaches a pocket, the table all but stops with the ball at the lip while what it cashes in flies into the boxes; then it drops and its own numbers land, and the shot ends on a celebrated tally (style "cash", picked in review).
   - Tap during a shot to speed the presentation up.
 
 ## Moments between shots

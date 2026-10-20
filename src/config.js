@@ -968,6 +968,12 @@ export const SCORE_FEED = {
    * table stops. Either way the boxes show only what counts.
    */
   style: 'cash',
+  /** cash: world speed while a ball waits at the lip (all but a freeze)... */
+  brink: 0.02,
+  /** ...the beat it holds there once its numbers are in... */
+  brinkHold: 0.3,
+  /** ...and the time it is given to drop before its own number shows. */
+  drop: 0.28,
   /** count: the first plate's hold on the stopped table, and the shortest. */
   count: 0.5,
   countMin: 0.2,

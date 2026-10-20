@@ -167,12 +167,15 @@ number (from review, round 20: faded boxes, "Locked in", provisional tags and
 a grey "not counted" line each asked a new player to follow numbers that might
 not count). Then, by `SCORE_FEED.style` (in review):
 
-- **cash** (default): when a ball drops its pocket flares at once, and every
-  number that ball cashes in, the rails and hits before it included, plays as
-  below in the order it happened, then the pot's own.
-- **count**: the shot plays at full speed with only the lights; when the
-  table stops, everything that scored plays as below on the stopped table,
-  briskly (no freeze or slow motion), Balatro-style.
+- **cash** (picked, round 21): when a ball reaches a pocket, the table all
+  but stops (0.02×) with the ball **at the lip**. Every number that ball
+  cashes in, the rails and hits before it, plays as below in the order it
+  happened. Then the ball drops, its pocket flares, and its own numbers land
+  (SUNK, IN ORDER, TWO IN ONE...). The stroke ends on the slam, and the tally
+  is **celebrated**: it pops gold, a ring goes out, a chime plays.
+- **count** (the other option, kept in config): the shot plays at full speed
+  with only the lights; when the table stops, everything that scored plays as
+  below on the stopped table, briskly (no freeze or slow motion).
 
 Each number:
 

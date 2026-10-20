@@ -1306,6 +1306,8 @@ function sinkBall(ball, pocket) {
 }
 
 function pumpSinking(rawDt) {
+  // a ball the score feed is holding at the lip waits there (see ScoreFeed: cash)
+  if (feed.brinking) return;
   for (let i = sinking.length - 1; i >= 0; i--) {
     const s = sinking[i];
     s.t += rawDt;
