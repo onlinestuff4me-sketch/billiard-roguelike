@@ -167,11 +167,14 @@ number (from review, round 20: faded boxes, "Locked in", provisional tags and
 a grey "not counted" line each asked a new player to follow numbers that might
 not count). Then, by `SCORE_FEED.style` (in review):
 
-- **cash** (picked, round 21): when a ball reaches a pocket, the table all
-  but stops (0.02×) with the ball **at the lip**. Every number that ball
-  cashes in, the rails and hits before it, plays as below in the order it
-  happened. Then the ball drops, its pocket flares, and its own numbers land
-  (SUNK, IN ORDER, TWO IN ONE...). The stroke ends on the slam, and the tally
+- **cash** (picked, round 21): **just before the cue ball strikes a ball
+  that the contact will sink** (foreseen with the aim line's own predictor,
+  `anticipatePot` in main.js, 0.16 s of roll ahead), the table all but stops
+  (0.02×). Every number that pot will cash in, the rails and hits before it,
+  plays as below in the order it happened. Then the table runs at full speed:
+  the hit, the drop, the pocket flaring, and the pot's own numbers (SUNK, IN
+  ORDER, TWO IN ONE...). A pot that cannot be foreseen (a ball knocked in by
+  another ball) is held **at the lip** for its numbers instead. The stroke ends on the slam, and the tally
   is **celebrated**: it pops gold, a ring goes out, a chime plays.
 - **count** (the other option, kept in config): the shot plays at full speed
   with only the lights; when the table stops, everything that scored plays as
