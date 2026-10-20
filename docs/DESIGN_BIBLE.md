@@ -162,7 +162,7 @@ the table, never the presentation.
 Summarised here; the full spec is in the Lightline design system ("The count")
 and the code in `src/systems/Rules.js` and `src/ui/ScoreFeed.js`.
 
-Until a pot, a rail or a hit only **lights** its cause, briefly and with no
+Until a pot, a rail or the ring only **lights** its cause, briefly and with no
 number (from review, round 20: faded boxes, "Locked in", provisional tags and
 a grey "not counted" line each asked a new player to follow numbers that might
 not count). Then, by `SCORE_FEED.style` (in review):
@@ -170,11 +170,14 @@ not count). Then, by `SCORE_FEED.style` (in review):
 - **cash** (picked, round 21): **just before the cue ball strikes a ball
   that the contact will sink** (foreseen with the aim line's own predictor,
   `anticipatePot` in main.js, 0.16 s of roll ahead), the table all but stops
-  (0.02×). Every number that pot will cash in, the rails and hits before it,
-  plays as below in the order it happened. Then the table runs at full speed:
-  the hit, the drop, the pocket flaring, and the pot's own numbers (SUNK, IN
-  ORDER, TWO IN ONE...). A pot that cannot be foreseen (a ball knocked in by
-  another ball) is held **at the lip** for its numbers instead. The stroke ends on the slam, and the tally
+  (0.02×). Every number that pot will cash in, the rails and the ring before
+  it, plays as below in the order it happened. Then the table runs at full
+  speed: the hit, the drop, the pocket flaring, and the pot's own numbers
+  (SUNK, IN ORDER, TWO IN ONE...). Any other ball already rolling into a
+  pocket (knocked in by another ball, or off a rail) is **held short of the
+  pocket** a beat before it drops (`anticipateBallPot`, 0.3 s of roll ahead),
+  and rolls in once its numbers have played. Only a pot neither predictor saw
+  is held at the lip. The stroke ends on the slam, and the tally
   is **celebrated**: it pops gold, a ring goes out, a chime plays.
 - **count** (the other option, kept in config): the shot plays at full speed
   with only the lights; when the table stops, everything that scored plays as
@@ -195,11 +198,10 @@ Each number:
 
 | Event | Box | Value | Plate |
 | --- | --- | --- | --- |
-| Cue touches a ball | PTS | +5 | HIT · n |
-| A ball drops | PTS | +10 × number | n SUNK |
+| A ball drops | PTS | +10 × number, +5 if the cue ball touched it | n SUNK |
 | Cue off a wall | MULT | +1 | WALL |
 | Ball drives ball | MULT | +1 | KISS |
-| Bank pot | MULT | +2 | BANK |
+| Bank pot (its last rail at least 4 from the pocket) | MULT | +2 | BANK |
 | Each pot after the first | MULT | +2 | TWO IN ONE |
 | × field | MULT | ×2 | ZONE |
 

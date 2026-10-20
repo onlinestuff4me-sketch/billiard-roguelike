@@ -570,7 +570,7 @@ export const RULES = {
   score: {
     /** A ball dropping adds its number times this to POINTS. */
     perPip: 10,
-    /** The cue ball's first contact with each ball adds this to POINTS. */
+    /** A ball the cue ball touched pays this much more POINTS when it drops. */
     perHit: 5,
     /** Every shot left in the budget at room end pays this times the room. */
     savedStroke: 50

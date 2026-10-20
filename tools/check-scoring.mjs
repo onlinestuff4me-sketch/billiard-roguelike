@@ -56,7 +56,7 @@ console.log('\npoints × mult\n');
   check(out.points === 90 && out.mult === 8, 'the worked example builds 90 points and ×8', `${out.points} × ${out.mult}`);
   check(out.paid === 720, 'and pays their product', `${out.paid}`);
   check(
-    rules.events.map((e) => e.label).join(',') === 'WALL,ZONE,HIT · 3,HIT · 5,5 SUNK,3 SUNK,BANK,TWO IN ONE',
+    rules.events.map((e) => e.label).join(',') === 'WALL,ZONE,5 SUNK,3 SUNK,BANK,TWO IN ONE',
     'and records every event in the order it happened',
     rules.events.map((e) => e.label).join(', ')
   );
@@ -76,12 +76,14 @@ console.log('\npoints × mult\n');
 }
 
 // Touching the same ball twice is one contact, so two balls cannot be rattled
-// together for points.
+// together for points; and a touch is paid with its ball, never on its own.
 {
   const rules = fresh();
   rules.hit(3);
-  const again = rules.hit(3);
-  check(again === null && rules.points === 5, 'a second contact with the same ball pays nothing', `${rules.points} points`);
+  rules.hit(3);
+  check(rules.points === 0, 'a touch is not a number of its own', `${rules.points} points`);
+  rules.pot(3);
+  check(rules.points === 35, 'it pays +5 once, with the ball when it drops', `${rules.points} points`);
 }
 
 console.log('\nnothing counts until a ball drops\n');
@@ -94,7 +96,7 @@ console.log('\nnothing counts until a ball drops\n');
   rules.hit(2);
   const out = rules.strokeResult();
   check(out.paid === 0 && !out.locked, 'a stroke with no pot pays 0', `${out.paid}`);
-  check(out.takenBack.length === 3, 'and every event it built is taken back', `${out.takenBack.length} events`);
+  check(out.takenBack.length === 2, 'and every event it built is taken back', `${out.takenBack.length} events`);
   const summary = rules.endStroke();
   check(summary.paid === 0 && rules.roomScore === 0, 'and the room banks nothing');
 }
@@ -285,7 +287,7 @@ console.log('\nfreeze frame charges\n');
   r.hit(3);
   r.pot(3, pocket('tl'));
   const out = r.strokeResult();
-  check(out.points === plain.points + 5, 'Soft Touch: a hit pays +5 more points', `${plain.points} → ${out.points}`);
+  check(out.points === plain.points + 5, 'Soft Touch: a touched ball pays +5 more when it drops', `${plain.points} → ${out.points}`);
   check(out.mult === plain.mult + 1 + 3, 'Long Rail and Corner Office add their Mult', `${plain.mult} → ${out.mult}`);
 
   const side = fresh();

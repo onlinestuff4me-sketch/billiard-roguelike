@@ -33,7 +33,7 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 ## Scoring (building now)
 
 - Every shot builds two numbers, **Points** and **Mult**, multiplied together at the end.
-  - Points: hit a ball +5; sink a ball +10 × its number.
+  - Points: sink a ball +10 × its number, +5 more if the cue ball touched it (a touch is never a number of its own).
   - Mult: cue off a wall +1; ball drives ball +1; bank pot +2; each extra pot in one shot +2; bonus zone ×2.
 - **Nothing counts until a ball drops.** A ball sinking cashes in everything the shot did up to then; anything after the last pot doesn't count. The boxes only ever show what counts, so nothing is shown and then taken back. A shot that sinks nothing scores 0. A scratch or foul voids the shot.
 - **Build live.** Points appear as each thing happens, one at a time:

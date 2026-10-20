@@ -387,20 +387,22 @@ export class Rules {
   }
 
   /**
-   * The cue ball's first contact with a ball this stroke: +POINTS. A second
-   * contact with the same ball pays nothing, so rattling two balls together
-   * cannot farm points. Returns the event, or null if it paid nothing.
+   * The cue ball's first contact with a ball this stroke, remembered for that
+   * ball's pot (see below). A second contact with the same ball adds nothing,
+   * so rattling two balls together cannot farm points. Returns null: a touch
+   * is never a number of its own.
    */
   hit(number, at = null) {
+    // A TOUCH PAYS WITH ITS BALL (from review: "one for hitting the ball and
+    // another for sinking it?"). The cue ball's first contact with a ball is
+    // remembered, not scored: if that ball drops this shot, its SUNK pays
+    // perHit more. So every ball sunk is one number, and a ball touched but
+    // never sunk pays nothing.
     this.ballsTouched += 1;
     const key = number ?? `#${this.ballsTouched}`;
     if (this._hitBalls.has(key)) return null;
     this._hitBalls.add(key);
-    const label = number != null && number > 0 ? `HIT · ${number}` : 'HIT';
-    const event = this._add('hit', 'points', '+', this.val('perHit'), label, at);
-    // which ball, so the presenter can fold this into that ball's pot
-    event.number = number;
-    return event;
+    return null;
   }
 
   /** The cue ball banked off a wall or an obstacle: +MULT. */
@@ -513,7 +515,8 @@ export class Rules {
 
     const at = opts.at ?? null;
     const P = this.perks;
-    added.push(this._add('pot', 'points', '+', number * this.val('perPip'), `${number} SUNK`, at));
+    const touched = this._hitBalls.has(number) ? this.val('perHit') : 0;
+    added.push(this._add('pot', 'points', '+', number * this.val('perPip') + touched, `${number} SUNK`, at));
     added[0].number = number;
     if (opts.banked) {
       added.push(this._add('bankPot', 'mult', '+', this.val('bankPot'), 'BANK', opts.bankAt ?? at));

@@ -209,35 +209,10 @@ export class ScoreFeed {
       this.waiting = [];
       this.queue.push({ release: true });
     }
-    if (event.kind === 'pot') this._fold(event);
     for (const w of this.waiting) this.queue.push(w);
     this.waiting = [];
     this.counted = { points: event.points, mult: event.mult };
     this.queue.push(event);
-  }
-
-  /**
-   * ONE PLATE PER BALL (from review: "one for hitting the ball and another
-   * for sinking it?"). The cue ball's touch on a ball that then drops is not
-   * shown on its own: it is folded into that ball's SUNK plate (+5 and +10
-   * show as one +15). The score is unchanged; only the telling is.
-   */
-  _fold(pot) {
-    const list = [...this.queue, ...this.waiting];
-    let folded = 0;
-    for (const e of list) {
-      if (e.kind === 'hit' && e.number === pot.number && !e.folded) {
-        e.folded = true;
-        folded += e.amount;
-      } else if (folded && e.bucket) {
-        // numbers after the folded touch show without it until the pot lands
-        e.showPoints = (e.showPoints ?? e.points) - folded;
-      }
-    }
-    if (!folded) return;
-    pot.display = pot.amount + folded;
-    this.queue = this.queue.filter((e) => !e.folded);
-    this.waiting = this.waiting.filter((e) => !e.folded);
   }
 
   /** May main.js look ahead for a pot? Only in cash, and only when nothing is held. */
@@ -257,10 +232,8 @@ export class ScoreFeed {
     this.expecting = { t: 0, number };
     this.brinking = true;
     this.engine.setPresentScale(SCORE_FEED.brink);
-    // the touch on the ball about to drop waits, to be folded into its pot
-    const keep = (w) => w.kind === 'hit' && number !== null && w.number === number;
-    for (const w of this.waiting) if (!keep(w)) this.queue.push(w);
-    this.waiting = this.waiting.filter(keep);
+    for (const w of this.waiting) this.queue.push(w);
+    this.waiting = [];
     this.queue.push({ release: true, expect: true });
   }
 
@@ -372,7 +345,7 @@ export class ScoreFeed {
   _plate(event, cls) {
     const node = el('div', `sf-plate ${cls}`, this.plates);
     const sign = event.op === 'x' ? '×' : '+';
-    el('b', '', node).textContent = `${sign}${event.display ?? event.amount}`;
+    el('b', '', node).textContent = `${sign}${event.amount}`;
     el('small', '', node).textContent = event.label;
     return node;
   }
@@ -554,7 +527,7 @@ export class ScoreFeed {
     const c = this.cur;
     const e = c.event;
     c.node.remove();
-    this._show(e.showPoints ?? e.points, e.mult);
+    this._show(e.points, e.mult);
     this._jump(c.box, c.colour);
     this.audio.scoreNote?.(this.notes++, e.bucket === 'points' ? 'points' : 'mult');
     this.cur = null;
