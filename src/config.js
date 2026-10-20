@@ -974,6 +974,10 @@ export const SCORE_FEED = {
   brinkHold: 0.3,
   /** ...and the time it is given to drop before its own number shows. */
   drop: 0.28,
+  /** cash: how far ahead (seconds of roll) a contact that sinks a ball is foreseen... */
+  lead: 0.16,
+  /** ...and how long the foreseen pot is waited for before it is given up on. */
+  expectWait: 1.6,
   /** count: the first plate's hold on the stopped table, and the shortest. */
   count: 0.5,
   countMin: 0.2,

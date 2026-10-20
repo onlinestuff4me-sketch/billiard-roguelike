@@ -4530,6 +4530,35 @@ function sweepEntities() {
   }
 }
 
+/**
+ * THE FREEZE BEFORE THE HIT (from review). While the cue ball rolls, project
+ * its path with the aim preview's own predictor: if it is about to strike a
+ * ball, and that contact sinks the ball (and the mission allows it), tell the
+ * score feed now, so the table stops just BEFORE the hit, the numbers play,
+ * and then the hit and the drop are watched at full speed.
+ */
+function anticipatePot() {
+  if (!game.midStroke || !feed.canAnticipate) return;
+  const speed = Math.hypot(player.vx, player.vz);
+  if (speed < 1) return;
+  const pred = physics.predictTrajectory({ x: player.x, z: player.z }, { x: player.vx / speed, z: player.vz / speed }, {
+    radius: player.radius,
+    maxBounces: 1,
+    speed,
+    drag: PLAYER.dragLaunched,
+    pockets: rooms.table.pockets,
+    portals: rooms.table.portalRings,
+    bodies: game.enemies
+  });
+  const ball = pred?.hit?.body;
+  if (!ball || !ball.alive || !(ball.number > 0)) return;
+  if (pred.totalDistance / speed > SCORE_FEED.lead) return;
+  const leg = chainFrom(pred, player.mass, [])[0];
+  if (!leg || leg.ball !== ball || !(leg.pocket || leg.tailPocket)) return;
+  if (foulPreview([leg]).size) return;
+  feed.anticipate();
+}
+
 function simulate(dt, rawDt, aiming) {
   player.update(dt, rawDt, game, aiming);
 
@@ -4541,6 +4570,7 @@ function simulate(dt, rawDt, aiming) {
   for (const projectile of game.projectiles) projectile.update(dt);
 
   physics.update(dt, game);
+  anticipatePot();
   boons.update(dt, game);
   sweepEntities();
 

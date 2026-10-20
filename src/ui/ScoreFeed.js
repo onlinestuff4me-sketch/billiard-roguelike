@@ -24,11 +24,14 @@
  * keep that promise, set in SCORE_FEED.style or with window.__feedStyle(style):
  *
  *   cash   (picked in review) a rail or a hit lights up on the table and
- *          shows no number. When a ball reaches a pocket the table all but
- *          stops with the ball AT THE LIP (`brinking`), and everything it
- *          cashes in, the rails and hits before it, pops at its cause and
- *          flies into the boxes. Then the ball drops, its pocket flares, and
- *          its own number lands. The stroke ends on a celebrated tally. A shot
+ *          shows no number. JUST BEFORE THE CUE BALL STRIKES A BALL THAT
+ *          CONTACT WILL SINK (main.js foresees it with the aim preview's own
+ *          predictor) the table all but stops, and everything that ball will
+ *          cash in, the rails and hits before it, pops at its cause and flies
+ *          into the boxes. Then the table runs: the hit, the ball dropping, its
+ *          pocket flaring and its own numbers landing. A pot nobody could
+ *          foresee (a ball knocked in by another ball) waits AT THE LIP for
+ *          its numbers instead. The stroke ends on a celebrated tally. A shot
  *          that sinks nothing shows nothing.
  *   count  the shot plays at full speed with only the lights. When the table
  *          stops, the shot is counted, Balatro-style: each thing that scored
@@ -108,8 +111,12 @@ export class ScoreFeed {
     this.speed = 1;
     /** cash: events no pot has cashed in yet, lit on the table but not shown */
     this.waiting = [];
-    /** cash: a ball is held at the lip while what it cashes in plays */
+    /** cash: the table is all but stopped while what a pot cashes in plays */
     this.brinking = false;
+    /** cash: a pot foreseen before its contact, now being watched for */
+    this.expecting = null;
+    /** cash: the boxes as a pot last left them, for a foreseen pot that never comes */
+    this.counted = { points: 0, mult: 1 };
     /** count: true while the stopped table is being counted */
     this.counting = false;
   }
@@ -184,7 +191,15 @@ export class ScoreFeed {
       this.waiting.push(event);
       return;
     }
-    if (event.kind === 'pot') {
+    if (event.kind === 'pot' && this.expecting) {
+      // foreseen: its numbers have played, and the hit and the drop were
+      // watched at full speed, so the pot's own numbers follow at once
+      this.expecting = null;
+      this.brinking = false;
+      this.queue = this.queue.filter((q) => !q.release);
+      if (this.cur?.release) this.cur = null;
+      this.engine.setPresentScale(1);
+    } else if (event.kind === 'pot') {
       // THE BRINK (from review): the ball is at the lip. The table all but
       // stops while what this ball cashes in plays, in the order it happened;
       // then the ball drops and its own numbers follow.
@@ -194,19 +209,50 @@ export class ScoreFeed {
       this.waiting = [];
       this.queue.push({ release: true });
     }
+    for (const w of this.waiting) this.queue.push(w);
+    this.waiting = [];
+    this.counted = { points: event.points, mult: event.mult };
     this.queue.push(event);
+  }
+
+  /** May main.js look ahead for a pot? Only in cash, and only when nothing is held. */
+  get canAnticipate() {
+    return this.enabled && style() === 'cash' && !this.expecting && !this.brinking;
+  }
+
+  /**
+   * THE FREEZE BEFORE THE HIT (from review: "have the freeze happen a bit
+   * sooner, before the cue ball hits the final ball"). The cue ball is about
+   * to strike a ball that this contact sinks: the table all but stops now,
+   * what that pot will cash in plays, and then the hit and the drop are
+   * watched at full speed.
+   */
+  anticipate() {
+    if (!this.canAnticipate) return;
+    this.expecting = { t: 0 };
+    this.brinking = true;
+    this.engine.setPresentScale(SCORE_FEED.brink);
+    for (const w of this.waiting) this.queue.push(w);
+    this.waiting = [];
+    this.queue.push({ release: true, expect: true });
   }
 
   /** The ball at the lip: held a beat, then let go so it drops. */
   _release(c, dt) {
     c.t += dt;
     if (c.stage === 'brink' && c.t >= SCORE_FEED.brinkHold) {
-      // let it fall: the sink runs while the table picks up speed
+      // let it go: the sink runs (or, foreseen, the hit plays) at full speed
       this.brinking = false;
       this.engine.setPresentScale(1);
-      c.stage = 'drop';
+      c.stage = c.expect ? 'watch' : 'drop';
       c.t = 0;
     } else if (c.stage === 'drop' && c.t >= SCORE_FEED.drop) {
+      this.cur = null;
+    } else if (c.stage === 'watch' && c.t >= SCORE_FEED.expectWait) {
+      // the foreseen pot did not come (the preview's rare miss): the boxes go
+      // quietly back to what last counted, and the finale says the rest
+      this.expecting = null;
+      this._show(this.counted.points, this.counted.mult);
       this.cur = null;
     }
   }
