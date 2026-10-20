@@ -1682,7 +1682,11 @@ game.on = {
     // took a rail on the way, a second-pot bonus, the order bonus — and locks
     // in everything the stroke has done up to now. The presenter shows each
     // one beside its cause: the value at the pocket, the bank at the rail.
-    const banked = (ball.railsThisStroke || 0) > 0;
+    // A BANK IS A RUN OFF A RAIL INTO THE POCKET (from review: a ball that
+    // brushed the jaw on its way in was paid as a bank). The last rail it took
+    // has to be at least RULES.multiplier.bankMinRun from the pocket it drops in.
+    const run = ball.lastRail ? Math.hypot(ball.lastRail.x - pocket.x, ball.lastRail.z - pocket.z) : 0;
+    const banked = (ball.railsThisStroke || 0) > 0 && run >= RULES.multiplier.bankMinRun;
     if (game.midStroke && ball.knockedByBall) game.strokeCombos = (game.strokeCombos || 0) + 1;
     const paid = game.midStroke
       ? rules.pot(ball.number, {
@@ -4539,6 +4543,7 @@ function sweepEntities() {
  */
 function anticipatePot() {
   if (!game.midStroke || !feed.canAnticipate) return;
+  if (anticipateBallPot()) return;
   const speed = Math.hypot(player.vx, player.vz);
   if (speed < 1) return;
   const pred = physics.predictTrajectory({ x: player.x, z: player.z }, { x: player.vx / speed, z: player.vz / speed }, {
@@ -4556,7 +4561,39 @@ function anticipatePot() {
   const leg = chainFrom(pred, player.mass, [])[0];
   if (!leg || leg.ball !== ball || !(leg.pocket || leg.tailPocket)) return;
   if (foulPreview([leg]).size) return;
-  feed.anticipate();
+  feed.anticipate(ball.number);
+}
+
+/**
+ * THE BALL HELD AT A DISTANCE (from review: "hold the ball at a distance
+ * before it sinks, show all the score messages, then show the ball travel and
+ * sink"). Any numbered ball already rolling into a pocket, however it got
+ * there (the cue ball, another ball, a rail), is projected along its own path;
+ * a beat before it would drop (SCORE_FEED.leadBall), the table all but stops
+ * with the ball still short of the pocket, its numbers play, and then it
+ * rolls in.
+ */
+function anticipateBallPot() {
+  for (const ball of game.enemies) {
+    if (!ball.alive || !(ball.number > 0) || ball.sinking) continue;
+    const speed = Math.hypot(ball.vx, ball.vz);
+    if (speed < 0.8) continue;
+    const pred = physics.predictTrajectory({ x: ball.x, z: ball.z }, { x: ball.vx / speed, z: ball.vz / speed }, {
+      radius: ball.radius,
+      maxBounces: 1,
+      speed,
+      drag: ball.drag,
+      pockets: rooms.table.pockets,
+      portals: rooms.table.portalRings,
+      bodies: game.enemies.filter((b) => b !== ball && b.alive)
+    });
+    if (!pred?.pocket || pred.hit) continue;
+    if (pred.totalDistance / speed > SCORE_FEED.leadBall) continue;
+    if (rules.foulsAhead([ball.number])[0]) continue;
+    feed.anticipate(ball.number);
+    return true;
+  }
+  return false;
 }
 
 function simulate(dt, rawDt, aiming) {

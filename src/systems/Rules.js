@@ -397,7 +397,10 @@ export class Rules {
     if (this._hitBalls.has(key)) return null;
     this._hitBalls.add(key);
     const label = number != null && number > 0 ? `HIT · ${number}` : 'HIT';
-    return this._add('hit', 'points', '+', this.val('perHit'), label, at);
+    const event = this._add('hit', 'points', '+', this.val('perHit'), label, at);
+    // which ball, so the presenter can fold this into that ball's pot
+    event.number = number;
+    return event;
   }
 
   /** The cue ball banked off a wall or an obstacle: +MULT. */
@@ -511,6 +514,7 @@ export class Rules {
     const at = opts.at ?? null;
     const P = this.perks;
     added.push(this._add('pot', 'points', '+', number * this.val('perPip'), `${number} SUNK`, at));
+    added[0].number = number;
     if (opts.banked) {
       added.push(this._add('bankPot', 'mult', '+', this.val('bankPot'), 'BANK', opts.bankAt ?? at));
     }

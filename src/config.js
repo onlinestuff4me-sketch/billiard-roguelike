@@ -583,8 +583,10 @@ export const RULES = {
     perBank: 1,
     /** One object ball driving another (once per struck ball, per shot). */
     perKiss: 1,
-    /** An object ball that took a wall on its way in. */
+    /** An object ball that took a wall on its way in... */
     bankPot: 2,
+    /** ...at least this far from the pocket it drops in (a brush of the jaw is not a bank). */
+    bankMinRun: 4,
     /** Every pot after the first in one shot. */
     extraPot: 2,
     /** The bonus zone doubles whatever has been built. */
@@ -976,6 +978,8 @@ export const SCORE_FEED = {
   drop: 0.28,
   /** cash: how far ahead (seconds of roll) a contact that sinks a ball is foreseen... */
   lead: 0.16,
+  /** ...and how far ahead a ball already rolling into a pocket is held, short of it */
+  leadBall: 0.3,
   /** ...and how long the foreseen pot is waited for before it is given up on. */
   expectWait: 1.6,
   /** count: the first plate's hold on the stopped table, and the shortest. */
