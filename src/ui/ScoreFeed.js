@@ -227,9 +227,9 @@ export class ScoreFeed {
    * what that pot will cash in plays, and then the hit and the drop are
    * watched at full speed.
    */
-  anticipate(number = null) {
+  anticipate(number = null, travel = 1) {
     if (!this.canAnticipate) return;
-    this.expecting = { t: 0, number };
+    this.expecting = { t: 0, number, travel };
     this.brinking = true;
     this.engine.setPresentScale(SCORE_FEED.brink);
     for (const w of this.waiting) this.queue.push(w);
@@ -241,9 +241,10 @@ export class ScoreFeed {
   _release(c, dt) {
     c.t += dt;
     if (c.stage === 'brink' && c.t >= SCORE_FEED.brinkHold) {
-      // let it go: the sink runs (or, foreseen, the hit plays) at full speed
+      // let it go: the sink runs; or, foreseen, the hit and the ball's run to
+      // the pocket play slowly enough to be watched (from review)
       this.brinking = false;
-      this.engine.setPresentScale(1);
+      this.engine.setPresentScale(c.expect ? this.expecting?.travel ?? 1 : 1);
       c.stage = c.expect ? 'watch' : 'drop';
       c.t = 0;
     } else if (c.stage === 'drop' && c.t >= SCORE_FEED.drop) {
@@ -620,7 +621,7 @@ export class ScoreFeed {
 
     if (!this.cur && this.queue.length) {
       const next = this.queue.shift();
-      if (next.release) this.cur = { release: true, stage: 'brink', t: 0 };
+      if (next.release) this.cur = { release: true, expect: !!next.expect, stage: 'brink', t: 0 };
       else this._start(next);
     }
 

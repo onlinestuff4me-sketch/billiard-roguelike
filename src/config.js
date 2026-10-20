@@ -976,12 +976,19 @@ export const SCORE_FEED = {
   brinkHold: 0.3,
   /** ...and the time it is given to drop before its own number shows. */
   drop: 0.28,
-  /** cash: how far ahead (seconds of roll) a contact that sinks a ball is foreseen... */
-  lead: 0.16,
-  /** ...and how far ahead a ball already rolling into a pocket is held, short of it */
-  leadBall: 0.3,
-  /** ...and how long the foreseen pot is waited for before it is given up on. */
-  expectWait: 1.6,
+  /**
+   * cash: how far short (table units, not seconds: a hard shot would be
+   * frozen far off) the cue ball is stopped before a contact that sinks a
+   * ball, and a rolling ball before the pocket it is about to drop in...
+   */
+  leadDist: 2.5,
+  leadBallDist: 3.5,
+  /** ...then the table runs slow enough that the travel and the drop take about this long (real seconds)... */
+  travel: 0.7,
+  /** ...and never slower than this, or faster than full speed. */
+  travelMin: 0.15,
+  /** How long a foreseen pot is waited for (real seconds) before it is given up on. */
+  expectWait: 4,
   /** count: the first plate's hold on the stopped table, and the shortest. */
   count: 0.5,
   countMin: 0.2,

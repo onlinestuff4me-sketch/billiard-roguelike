@@ -4300,6 +4300,8 @@ for (const kind of Object.keys(MOMENT_NAMES)) {
 applyMoments();
 if (typeof window !== 'undefined') {
   /** Review: switch how ball numbers are drawn (takes effect on the next rack). */
+  /** The score feed's look-ahead state, for capture tools (read only). */
+  window.__feedState = () => ({ enabled: feed.enabled, brinking: feed.brinking, expecting: !!feed.expecting, can: feed.canAnticipate, presentScale: engine.presentTarget });
   window.__feedStyle = (style) => {
     if (style === 'cash' || style === 'count') SCORE_FEED.style = style;
     return SCORE_FEED.style;
@@ -4557,11 +4559,19 @@ function anticipatePot() {
   });
   const ball = pred?.hit?.body;
   if (!ball || !ball.alive || !(ball.number > 0)) return;
-  if (pred.totalDistance / speed > SCORE_FEED.lead) return;
+  if (pred.totalDistance > SCORE_FEED.leadDist) return;
   const leg = chainFrom(pred, player.mass, [])[0];
   if (!leg || leg.ball !== ball || !(leg.pocket || leg.tailPocket)) return;
   if (foulPreview([leg]).size) return;
-  feed.anticipate(ball.number);
+  // the rest of the way: to the contact, then the struck ball to its pocket
+  const legLength = (leg.segs || []).reduce((n, s) => n + Math.hypot(s.bx - s.ax, s.bz - s.az), 0);
+  feed.anticipate(ball.number, travelScale(pred.totalDistance + legLength, speed));
+}
+
+/** The world speed at which `dist` at `speed` takes SCORE_FEED.travel real seconds. */
+function travelScale(dist, speed) {
+  const s = dist / Math.max(speed, 0.1) / SCORE_FEED.travel;
+  return Math.max(SCORE_FEED.travelMin, Math.min(1, s));
 }
 
 /**
@@ -4588,9 +4598,9 @@ function anticipateBallPot() {
       bodies: game.enemies.filter((b) => b !== ball && b.alive)
     });
     if (!pred?.pocket || pred.hit) continue;
-    if (pred.totalDistance / speed > SCORE_FEED.leadBall) continue;
+    if (pred.totalDistance > SCORE_FEED.leadBallDist) continue;
     if (rules.foulsAhead([ball.number])[0]) continue;
-    feed.anticipate(ball.number);
+    feed.anticipate(ball.number, travelScale(pred.totalDistance, speed));
     return true;
   }
   return false;
