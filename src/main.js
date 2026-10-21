@@ -1719,7 +1719,7 @@ game.on = {
     // board unpassable for anyone who had turned the mode on.
     const foul = tutorial.running ? null : rules.foulReason(ball.number);
     if (foul) {
-      rules.scratch();
+      rules.scratch('foul');
       audio.playerHurt();
       engine.shake(9);
       fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);

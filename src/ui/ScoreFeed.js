@@ -547,7 +547,7 @@ export class ScoreFeed {
         run: () => {
           this.root.classList.remove('waiting');
           this.root.classList.add('void');
-          this._state('Scratch · shot void', 'hazard');
+          this._state(result.voidReason === 'foul' ? 'Foul · shot void' : 'Scratch · shot void', 'hazard');
         }
       });
       return steps;

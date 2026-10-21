@@ -322,6 +322,7 @@ export class Rules {
     this.paidBanks = 0;
     this.paidTouched = 0;
     this.scratched = false;
+    this.voidReason = null;
   }
 
   beginStroke() {
@@ -588,6 +589,7 @@ export class Rules {
       paid: voided ? 0 : this.strokeScore,
       locked: this.lockedCount > 0,
       voided,
+      voidReason: voided ? this.voidReason || 'scratch' : null,
       takenBack: this.pending,
       events: this.events
     };
@@ -647,9 +649,14 @@ export class Rules {
     return this.ballsTouched;
   }
 
-  /** The cue ball went down a pocket. */
-  scratch() {
+  /**
+   * The shot is void: the cue ball went down a pocket, or (`why` 'foul') a
+   * ball went in that the mission refused. Kept apart so the table can say
+   * which it was (from review: an early 8 read "Scratch").
+   */
+  scratch(why = 'scratch') {
     this.scratched = true;
+    this.voidReason = this.voidReason === 'scratch' ? 'scratch' : why;
   }
 
   /* ---------------------------------------------------------------- *
