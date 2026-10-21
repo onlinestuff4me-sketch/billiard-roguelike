@@ -146,7 +146,7 @@ export class ScoreFeed {
   /** A new stroke: both boxes back to 0 and ×1. Nothing is shown until it counts. */
   beginStroke() {
     this.clear();
-    this.root.classList.remove('slam', 'void', 'paid', 'locking', 'pending', 'waiting');
+    this.root.classList.remove('slam', 'void', 'paid', 'locking', 'pending', 'waiting', 'flown');
     this.product.textContent = '';
     this._show(0, 1);
     this._state('', '');
@@ -574,6 +574,17 @@ export class ScoreFeed {
           this.audio.scoreLock?.();
         }
       });
+      // ...and then it goes where it belongs (from review): it lifts off the
+      // boxes, flies to YOUR SCORE at the top, and is counted into it there
+      if (this.onTally) {
+        steps.push({
+          hold: SCORE_FEED.tallyFly + SCORE_FEED.tallyCount + 0.1,
+          run: () => {
+            this.root.classList.add('flown');
+            this.onTally(result.paid, this.product.getBoundingClientRect());
+          }
+        });
+      }
     } else {
       // nothing dropped, and nothing was ever shown: say so, plainly
       steps.push({

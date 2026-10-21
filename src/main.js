@@ -1434,6 +1434,64 @@ function resumeStroke() {
  * The table has stopped. Bank what the stroke paid, spend one from the budget,
  * and ask the mission whether the room is over.
  */
+/**
+ * THE TALLY GOES TO THE SCORE (from review: "have the 240 fly up to the top
+ * and animate getting added to the top score"). The feed hands over the
+ * shot's tally and where it sits; it flies to YOUR SCORE, lands with a pulse,
+ * and the score counts up to include it. The shot itself banks it a moment
+ * later (endStroke), by which time the count has already arrived there.
+ */
+feed.onTally = (paid, from) => {
+  const to = hud.scoreValue.getBoundingClientRect();
+  const L = uiLayer.getBoundingClientRect();
+  const start = rules.snapshot().displayScore;
+  game.scoreHold = start;
+  const fly = document.createElement('div');
+  fly.className = 'sf-tallyfly';
+  fly.textContent = `+${paid.toLocaleString()}`;
+  uiLayer.appendChild(fly);
+  const a = [from.left - L.left + from.width / 2, from.top - L.top + from.height / 2];
+  const b = [to.left - L.left + to.width / 2, to.top - L.top + to.height / 2];
+  const at = (p, s) => `translate(${p[0]}px, ${p[1]}px) translate(-50%, -50%) scale(${s})`;
+  const mid = [(a[0] + b[0]) / 2 + 30, (a[1] + b[1]) / 2];
+  const ms = SCORE_FEED.tallyFly * 1000;
+  const flight = reducedMotion || !fly.animate ? null : fly.animate(
+    [
+      { transform: at(a, 1) },
+      { transform: at(mid, 0.9), offset: 0.5 },
+      { transform: at(b, 0.55), opacity: 0.9 }
+    ],
+    { duration: ms, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' }
+  );
+  const land = () => {
+    fly.remove();
+    hud.scoreValue.animate?.(
+      [
+        { transform: 'scale(1)', filter: 'brightness(1)' },
+        { transform: 'scale(1.35)', filter: 'brightness(1.8) drop-shadow(0 0 12px #ffc266)', offset: 0.35 },
+        { transform: 'scale(1)', filter: 'brightness(1)' }
+      ],
+      { duration: 520, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+    );
+    audio.scoreSlam?.();
+    // count up, on real time, and done before the shot banks the points
+    const t0 = performance.now();
+    let mine = game.scoreHold;
+    const step = (now) => {
+      // stop the moment anything else takes the score over (the table's end)
+      if (game.scoreHold !== mine) return;
+      const k = Math.min(1, (now - t0) / (SCORE_FEED.tallyCount * 1000));
+      mine = Math.round(start + paid * (1 - (1 - k) * (1 - k)));
+      game.scoreHold = mine;
+      if (k < 1) requestAnimationFrame(step);
+      else game.scoreHold = null;
+    };
+    requestAnimationFrame(step);
+  };
+  if (flight) flight.onfinish = land;
+  else land();
+};
+
 function finishStroke() {
   game.midStroke = false;
   game.phase = 'aim';

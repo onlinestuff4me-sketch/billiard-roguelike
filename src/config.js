@@ -989,6 +989,9 @@ export const SCORE_FEED = {
   travelMin: 0.15,
   /** How long a foreseen pot is waited for (real seconds) before it is given up on. */
   expectWait: 4,
+  /** The shot's tally flying from the boxes to YOUR SCORE, then counting into it. */
+  tallyFly: 0.55,
+  tallyCount: 0.45,
   /** count: the first plate's hold on the stopped table, and the shortest. */
   count: 0.5,
   countMin: 0.2,

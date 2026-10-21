@@ -1114,6 +1114,9 @@
       .sf-product { display: none; font-weight: 700; font-size: 30px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult); font-variant-numeric: tabular-nums; }
       .score-feed.paid .sf-box, .score-feed.paid .sf-times { display: none; }
       .score-feed.paid .sf-product { display: block; animation: sf-tally 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      /* the tally leaves the boxes for YOUR SCORE (main.js feed.onTally) */
+      .score-feed.flown .sf-product { visibility: hidden; }
+      .sf-tallyfly { position: absolute; left: 0; top: 0; z-index: 30; pointer-events: none; font-family: var(--font); font-weight: 700; font-size: 30px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult), 0 0 4px #ffc266; font-variant-numeric: tabular-nums; white-space: nowrap; }
       /* the final tally is celebrated (from review): it pops, glows gold and rings out */
       @keyframes sf-tally {
         0% { transform: scale(0.4); filter: brightness(2.2); }
