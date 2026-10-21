@@ -215,6 +215,9 @@ export class HUD {
     this.bannerHolds = duration === HOLD;
     this.bannerTimer = this.bannerHolds ? 0 : duration;
     this.bannerHint.style.display = this.bannerHolds ? '' : 'none';
+    // A banner that waits is read, not glanced at: it gets a dark band so the
+    // resting aim line underneath doesn't run through the words.
+    this.banner.classList.toggle('holds', this.bannerHolds);
     this.banner.classList.add('visible');
   }
 

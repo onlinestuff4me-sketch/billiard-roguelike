@@ -208,9 +208,12 @@ Each number:
 
 After a scratch or a foul the shot is void, and nothing more lights up for it:
 no rail plates, and the green ring stays dark (and armed for the next shot).
+The foul says why once, in its banner (TOO EARLY · the 8 goes last); no
+floating copy over the pocket.
 
 **Messages that wait for a tap** ("Tap anywhere to continue"): the table
-card, LAST SHOT, and the first freeze pickup ever. The freeze one waits for the
+card, LAST SHOT, and the first freeze pickup ever. They sit on a dark band so
+the resting aim line never runs through the words. The freeze one waits for the
 table to stop, because mid-shot a tap *is* a freeze. **+1 SHOT** flies a mint
 "+1" from the ring into the shot counter, which gains a mark and pulses.
 

@@ -1781,7 +1781,7 @@ game.on = {
       engine.shake(9);
       fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
       const next = rules.nextInOrder;
-      fx.floatText(ball.x, ball.z, foul === 'eight' ? 'THE 8 GOES LAST' : 'OUT OF ORDER', 'splat');
+      // the banner says why; a floating copy over the pocket said it twice
       hud.showBanner(
         foul === 'eight' ? 'Too early' : 'Out of order',
         foul === 'eight'
