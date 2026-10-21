@@ -959,6 +959,7 @@ const feed = new ScoreFeed({
     points: PALETTE.scorePoints,
     mult: PALETTE.scoreMult,
     multHot: PALETTE.scoreMultHot,
+    multX: PALETTE.good,
     void: PALETTE.scoreVoid
   },
   reducedMotion
@@ -1349,6 +1350,7 @@ function removeBall(ball, pocket) {
 function voidShot(label) {
   if (!game.midStroke || rules.scratched) return;
   rules.scratch();
+    feed.voidShot();
   audio.playerHurt?.();
   engine.shake(10);
   hud.flashDamage();
@@ -1530,8 +1532,62 @@ function finishStroke() {
   } else if (rules.strokesLeft <= 0) {
     failRoom();
   } else if (rules.strokesLeft === 1) {
-    hud.showBanner('Last shot', `${rules.mission.rack - rules.ballsDown} still on the table`, 1.8);
+    // it waits to be read (from review): this is the one that changes the shot
+    hud.showBanner('Last shot', `${rules.mission.rack - rules.ballsDown} still on the table`, HOLD);
   }
+  if (game.teachFreeze && game.state === 'playing') {
+    game.teachFreeze = false;
+    markFreezeTaught();
+    hud.showBanner('Freeze frame', 'While the table is still moving, tap to stop it and aim again. It costs a charge, not a shot.', HOLD);
+  }
+}
+
+const FREEZE_TAUGHT = 'lightline-freeze-taught-v1';
+function freezeTaught() {
+  try {
+    return localStorage.getItem(FREEZE_TAUGHT) === '1';
+  } catch {
+    return false;
+  }
+}
+function markFreezeTaught() {
+  try {
+    localStorage.setItem(FREEZE_TAUGHT, '1');
+  } catch {}
+}
+
+/**
+ * +1 SHOT, SEEN ARRIVING (from review: "show how it's reflected in their shot
+ * counter"). A cue mark flies from the ring to the shot counter, the counter
+ * grows by one mark as it lands, and it pulses.
+ */
+function flyShotToCounter(object, before) {
+  game.strokesHold = { left: before, total: rules.snapshot().strokesTotal - 1 };
+  const v = new THREE.Vector3(object.x, 0.7, object.z).project(camera);
+  const L = uiLayer.getBoundingClientRect();
+  const a = [(v.x * 0.5 + 0.5) * uiLayer.clientWidth, (-v.y * 0.5 + 0.5) * uiLayer.clientHeight];
+  const r = hud.strokeRow.getBoundingClientRect();
+  const b = [r.right - L.left - 4, r.top - L.top + r.height / 2];
+  const pip = document.createElement('div');
+  pip.className = 'shot-fly';
+  pip.textContent = '+1';
+  uiLayer.appendChild(pip);
+  const at = (p, s) => `translate(${p[0]}px, ${p[1]}px) translate(-50%, -50%) scale(${s})`;
+  const land = () => {
+    pip.remove();
+    game.strokesHold = null;
+    hud.strokeRow.animate?.(
+      [{ transform: 'scale(1)', filter: 'none' }, { transform: 'scale(1.3)', filter: 'brightness(1.8) drop-shadow(0 0 10px #2ef2c4)', offset: 0.35 }, { transform: 'scale(1)', filter: 'none' }],
+      { duration: 560, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+    );
+    audio.scoreLock?.();
+  };
+  const fly = reducedMotion || !pip.animate ? null : pip.animate(
+    [{ transform: at(a, 1.4) }, { transform: at([(a[0] + b[0]) / 2 - 40, (a[1] + b[1]) / 2], 1.1), offset: 0.5 }, { transform: at(b, 0.7) }],
+    { duration: 700, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' }
+  );
+  if (fly) fly.onfinish = land;
+  else land();
 }
 
 /**
@@ -1720,6 +1776,7 @@ game.on = {
     const foul = tutorial.running ? null : rules.foulReason(ball.number);
     if (foul) {
       rules.scratch('foul');
+      feed.voidShot();
       audio.playerHurt();
       engine.shake(9);
       fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
@@ -1780,6 +1837,7 @@ game.on = {
     if (p.scratchGuard > 0) return;
     p.scratchGuard = 0.6;
     rules.scratch();
+    feed.voidShot();
     engine.shake(14);
     engine.zoomPunch();
     gridPulse(pocket.x, pocket.z, 0.8);
@@ -1817,6 +1875,9 @@ game.on = {
    */
   objectHit({ object, body, isCue }) {
     if (!object.armed || !isCue) return;
+    // a void shot cannot be doubled: the ring stays dark, and armed for the next
+    // shot (from review: it lit up after a foul, which counted for nothing)
+    if (rules.scratched && object.kind === 'double') return;
     rooms.table.consume(object);
     const colour = object.good ? PALETTE.good : PALETTE.bad;
     fx.shockwave(object.x, object.z, colour, 5, 0.42);
@@ -1836,7 +1897,11 @@ game.on = {
         audio.boonPick?.();
         engine.zoomPunch();
         fx.floatText(object.x, object.z, `FREEZE ×${charges}`, 'crit');
-        hud.showBanner('Freeze frame', 'Tap while the table is still moving', 2);
+        // THE FIRST TIME, it waits to be read (from review). Not now: mid-shot
+        // a tap IS a freeze, so a banner waiting for a tap would spend the
+        // charge just picked up. It waits for the table to stop instead.
+        if (!freezeTaught()) game.teachFreeze = true;
+        else hud.showBanner('Freeze frame', 'Tap while the table is still moving', 2);
         return;
       }
       case 'upgrade': {
@@ -1846,9 +1911,12 @@ game.on = {
         return;
       }
       case 'shot': {
-        rules.strokesLeft += 1;
+        // the extra shot is seen arriving in the counter (from review)
+        const before = rules.strokesLeft;
+        rules.grantStroke();
         audio.boonPick?.();
         fx.floatText(object.x, object.z, '+1 SHOT', 'crit');
+        flyShotToCounter(object, before);
         return;
       }
       case 'kicker': {
@@ -4360,6 +4428,10 @@ if (typeof window !== 'undefined') {
   /** Review: switch how ball numbers are drawn (takes effect on the next rack). */
   /** The score feed's look-ahead state, for capture tools (read only). */
   window.__feedState = () => ({ enabled: feed.enabled, brinking: feed.brinking, expecting: !!feed.expecting, can: feed.canAnticipate, presentScale: engine.presentTarget });
+  window.__feedX = (style) => {
+    if (['gold', 'orange', 'mint'].includes(style)) SCORE_FEED.xStyle = style;
+    return SCORE_FEED.xStyle;
+  };
   window.__feedStyle = (style) => {
     if (style === 'cash' || style === 'count') SCORE_FEED.style = style;
     return SCORE_FEED.style;
@@ -4846,6 +4918,7 @@ function frame(now) {
         // Held through the end-of-table moment, so each figure in the corner
         // changes only when the moment shows it change.
         ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {}),
+        ...(game.strokesHold ? { strokesLeft: game.strokesHold.left, strokesTotal: game.strokesHold.total } : {}),
         ...(game.cashHold != null ? { cash: game.cashHold } : {}),
         ...(game.livesHold != null ? { lives: game.livesHold } : {})
       },

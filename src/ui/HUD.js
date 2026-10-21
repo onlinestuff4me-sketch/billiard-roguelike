@@ -123,7 +123,7 @@ export class HUD {
     /** A banner that waits for a tap rather than a clock. */
     this.bannerHolds = false;
     this.bannerHint = el('div', 'banner-hint', this.banner);
-    this.bannerHint.textContent = 'Tap anywhere to dismiss';
+    this.bannerHint.textContent = 'Tap anywhere to continue';
 
     /* ---------------- room scorecard ---------------- */
     this.card = el('div', 'hud-card', this.root);

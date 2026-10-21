@@ -167,6 +167,8 @@ export class Rules {
     this.orderBroken = false;
     this.orderPots = 0;
     this.strokesLeft = this.mission.strokes;
+    /** shots added this table (the green ring with a +) */
+    this.bonusStrokes = 0;
     this.strokesUsed = 0;
     this.ballsDown = 0;
     this.roomScore = 0;
@@ -649,6 +651,12 @@ export class Rules {
     return this.ballsTouched;
   }
 
+  /** An extra shot this table: the budget and the counter both grow by one. */
+  grantStroke() {
+    this.strokesLeft += 1;
+    this.bonusStrokes = (this.bonusStrokes || 0) + 1;
+  }
+
   /**
    * The shot is void: the cue ball went down a pocket, or (`why` 'foul') a
    * ball went in that the mission refused. Kept apart so the table can say
@@ -720,7 +728,7 @@ export class Rules {
       ballsDown: this.ballsDown,
       rack: this.mission.rack,
       strokesLeft: this.strokesLeft,
-      strokesTotal: this.mission.strokes,
+      strokesTotal: this.mission.strokes + (this.bonusStrokes || 0),
       multiplier: this.shownMultiplier,
       points: this.points,
       mult: this.mult,

@@ -147,6 +147,7 @@ export class ScoreFeed {
   beginStroke() {
     this.clear();
     this.root.classList.remove('slam', 'void', 'paid', 'locking', 'pending', 'waiting', 'flown');
+    this.voided = false;
     this.product.textContent = '';
     this._show(0, 1);
     this._state('', '');
@@ -180,6 +181,9 @@ export class ScoreFeed {
   /** One scoring event from Rules, carrying its `at` presentation data. */
   push(event) {
     if (!this.enabled || !event) return;
+    // a void shot shows nothing more (from review: after a foul, rails and the
+    // ring still lit up though nothing could count any more)
+    if (this.voided) return;
     if (style() === 'count') {
       // the cause lights up now; its number waits for the count
       this._juice(event, true);
@@ -215,9 +219,16 @@ export class ScoreFeed {
     this.queue.push(event);
   }
 
+  /** The shot is void (a scratch or a foul): drop what is waiting, light nothing more. */
+  voidShot() {
+    this.voided = true;
+    this.waiting = [];
+    this.queue = this.queue.filter((e) => e.release);
+  }
+
   /** May main.js look ahead for a pot? Only in cash, and only when nothing is held. */
   get canAnticipate() {
-    return this.enabled && style() === 'cash' && !this.expecting && !this.brinking;
+    return this.enabled && style() === 'cash' && !this.expecting && !this.brinking && !this.voided;
   }
 
   /**
@@ -340,7 +351,8 @@ export class ScoreFeed {
 
   _colour(event) {
     if (event.bucket === 'points') return this.colors.points;
-    return event.op === 'x' ? this.colors.multHot : this.colors.mult;
+    if (event.op !== 'x') return this.colors.mult;
+    return { orange: this.colors.mult, mint: this.colors.multX ?? this.colors.multHot }[SCORE_FEED.xStyle] ?? this.colors.multHot;
   }
 
   _plate(event, cls) {
@@ -469,7 +481,7 @@ export class ScoreFeed {
 
   _start(event) {
     const colour = this._colour(event);
-    const cls = event.bucket === 'points' ? 'pts' : event.op === 'x' ? 'xmult' : 'mult';
+    const cls = event.bucket === 'points' ? 'pts' : event.op === 'x' ? `xmult x-${SCORE_FEED.xStyle}` : 'mult';
     const node = this._plate(event, cls);
     const anchor = this._anchor(event.at);
     this._place(node, anchor[0], anchor[1]);

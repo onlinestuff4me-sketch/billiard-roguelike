@@ -578,8 +578,8 @@ export const RULES = {
 
   /** Words on the table's score plates that are a choice, not a rule (in review). */
   labels: {
-    /** One ball driving another: KISS is the billiards word; picked in review. */
-    kiss: 'KISS'
+    /** One ball driving another (was KISS; ASSIST picked in review, round 27). */
+    kiss: 'ASSIST'
   },
 
   multiplier: {
@@ -984,6 +984,13 @@ export const SCORE_FEED = {
   brinkHold: 0.3,
   /** ...and the time it is given to drop before its own number shows. */
   drop: 0.28,
+  /**
+   * How a ×-Mult plate (the green ring's ×2) is coloured against the +-Mult
+   * plates (in review: gold beside orange was too close to tell apart):
+   * 'gold' (as it was), 'orange' (one colour, the sign tells them apart),
+   * 'mint' (the ring's own colour).
+   */
+  xStyle: 'mint',
   /**
    * cash: how far short (table units, not seconds: a hard shot would be
    * frozen far off) the cue ball is stopped before a contact that sinks a

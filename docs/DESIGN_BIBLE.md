@@ -200,11 +200,19 @@ Each number:
 | --- | --- | --- | --- |
 | A ball drops | PTS | +10 × number, +5 if the cue ball touched it | n SUNK |
 | Cue off a wall | MULT | +1 | WALL |
-| Ball drives ball | MULT | +1 | KISS |
+| Ball drives ball | MULT | +1 | ASSIST (was KISS; `RULES.labels.kiss`) |
 | Bank pot (its last rail at least 4 from the pocket) | MULT | +2 | BANK |
 | Each pot after the first | MULT | +2 each | 2 IN ONE, 3 IN ONE... |
 | A ball sunk in the mission's order (not on Table 1, `orderBonus: false`) | MULT | +1, rising with the streak | IN ORDER |
-| × field | MULT | ×2 | ZONE |
+| × field | MULT | ×2 (multiplies: Mult 3 becomes 6, where +2 makes 5) | ZONE, its plate in `SCORE_FEED.xStyle` |
+
+After a scratch or a foul the shot is void, and nothing more lights up for it:
+no rail plates, and the green ring stays dark (and armed for the next shot).
+
+**Messages that wait for a tap** ("Tap anywhere to continue"): the table
+card, LAST SHOT, and the first freeze pickup ever. The freeze one waits for the
+table to stop, because mid-shot a tap *is* a freeze. **+1 SHOT** flies a mint
+"+1" from the ring into the shot counter, which gains a mark and pulses.
 
 ---
 
