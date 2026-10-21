@@ -168,10 +168,10 @@
     },
     {
       "id": "pay-twice",
-      "name": "Green Ring Pays ×2",
+      "name": "Orange Ring Pays ×2",
       "intro": {
-        "title": "Table 5 · Green Ring Pays ×2",
-        "sub": "The green ring comes back every shot. Roll through it before a ball drops: that shot pays double."
+        "title": "Table 5 · Orange Ring Pays ×2",
+        "sub": "The orange ring comes back every shot. Roll through it before a ball drops: that shot pays double."
       },
       "spawn": {
         "x": 0,

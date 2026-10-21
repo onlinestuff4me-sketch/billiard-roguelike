@@ -233,6 +233,19 @@ export class HUD {
     }
   }
 
+  /**
+   * A shot was just added (+1 SHOT). The mark at `index` is the new one: it
+   * opens a gap between the shots you have and the ones you've spent, lands
+   * mint and settles to the counter's own colour, and the count flashes.
+   */
+  shotAdded(index) {
+    this.freshShot = index;
+    this.strokeText.animate?.(
+      [{ color: '#2ef2c4', transform: 'scale(1.25)' }, { color: '#2ef2c4', transform: 'scale(1)', offset: 0.6 }, { color: '' }],
+      { duration: 1400, easing: 'ease-out' }
+    );
+  }
+
   /** Is a hold-until-tapped banner up? */
   get bannerWaiting() {
     return this.bannerHolds && this.banner.classList.contains('visible');
@@ -507,8 +520,10 @@ export class HUD {
       cache.strokes = strokeKey;
       this.strokeRow.textContent = '';
       for (let i = 0; i < (s.strokesTotal || 0); i++) {
-        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}`, this.strokeRow);
+        const fresh = i === this.freshShot ? ' fresh' : '';
+        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}${fresh}`, this.strokeRow);
       }
+      this.freshShot = null;
       this.strokeText.textContent = `${s.strokesLeft} of ${s.strokesTotal} left`;
       this.strokeRow.classList.toggle('last', s.strokesLeft === 1);
       this.strokeRow.classList.toggle('out', s.strokesLeft === 0);

@@ -13,7 +13,8 @@
  * FELT OBJECTS are the opposite: rolled per room, and the only things on the
  * table allowed to carry a semantic colour. One form — a dashed outline
  * around a hollow interior — and two meanings. Mint is a pick-up you want to
- * hit; red is a hazard to route around. The glyph says which.
+ * hit; red is a hazard to route around. The glyph says which. One exception,
+ * from review: the ×2 ring is Mult orange, because what it pays is Mult.
  */
 
 import * as THREE from 'three';
@@ -335,7 +336,9 @@ export class Table {
       x,
       z,
       radius: opts.radius ?? TABLE.object.radius,
-      color: good ? PALETTE.good : PALETTE.bad,
+      // ×2 is Mult, so it wears Mult's orange like the box and its plate
+      // (from review); every other pick-up is mint, every hazard red.
+      color: kind === 'double' ? PALETTE.scoreMult : good ? PALETTE.good : PALETTE.bad,
       armed: true,
       pulse: Math.random() * Math.PI * 2,
       ...opts

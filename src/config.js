@@ -985,12 +985,12 @@ export const SCORE_FEED = {
   /** ...and the time it is given to drop before its own number shows. */
   drop: 0.28,
   /**
-   * How a ×-Mult plate (the green ring's ×2) is coloured against the +-Mult
+   * How a ×-Mult plate (the ×2 ring's) is coloured against the +-Mult
    * plates (in review: gold beside orange was too close to tell apart):
    * 'gold' (as it was), 'orange' (one colour, the sign tells them apart),
    * 'mint' (the ring's own colour).
    */
-  xStyle: 'mint',
+  xStyle: 'orange',
   /**
    * cash: how far short (table units, not seconds: a hard shot would be
    * frozen far off) the cue ball is stopped before a contact that sinks a
@@ -1349,7 +1349,7 @@ export const TUTORIAL = {
    */
   lessons: {
     1: { title: 'The Mission', sub: 'Sink every ball · in order pays more, and the shots you save are points' },
-    2: { title: 'The Double', sub: 'Green is good · hit it and the shot is worth twice as much' },
+    2: { title: 'The Double', sub: 'Orange is Mult · roll through it and the shot is worth twice as much' },
     3: { title: 'Mines', sub: 'Red is bad · they only bite your ball, so go around' },
     4: { title: 'The Freeze', sub: 'Three charges · tap while the table is still moving' },
     5: { title: 'The 8 Goes Last', sub: 'Knock it in early and it comes straight back' },

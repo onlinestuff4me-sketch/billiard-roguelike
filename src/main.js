@@ -1566,24 +1566,30 @@ function flyShotToCounter(object, before) {
   const v = new THREE.Vector3(object.x, 0.7, object.z).project(camera);
   const L = uiLayer.getBoundingClientRect();
   const a = [(v.x * 0.5 + 0.5) * uiLayer.clientWidth, (-v.y * 0.5 + 0.5) * uiLayer.clientHeight];
+  // It lands where the new mark will open: after the shots you still have,
+  // before any you've spent.
   const r = hud.strokeRow.getBoundingClientRect();
-  const b = [r.right - L.left - 4, r.top - L.top + r.height / 2];
+  const spent = hud.strokeRow.children[before]?.getBoundingClientRect();
+  const b = [(spent ? spent.left - 3 : r.right + 4) - L.left, r.top - L.top - 14];
   const pip = document.createElement('div');
   pip.className = 'shot-fly';
   pip.textContent = '+1';
   uiLayer.appendChild(pip);
   const at = (p, s) => `translate(${p[0]}px, ${p[1]}px) translate(-50%, -50%) scale(${s})`;
   const land = () => {
-    pip.remove();
-    game.strokesHold = null;
-    hud.strokeRow.animate?.(
-      [{ transform: 'scale(1)', filter: 'none' }, { transform: 'scale(1.3)', filter: 'brightness(1.8) drop-shadow(0 0 10px #2ef2c4)', offset: 0.35 }, { transform: 'scale(1)', filter: 'none' }],
-      { duration: 560, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+    // the chip sits on the new mark while it opens, then lifts away
+    const off = pip.animate?.(
+      [{ transform: at(b, 0.8), opacity: 1 }, { transform: at(b, 0.8), opacity: 1, offset: 0.55 }, { transform: at([b[0], b[1] - 26], 0.7), opacity: 0 }],
+      { duration: 1100, easing: 'ease-out', fill: 'forwards' }
     );
+    if (off) off.onfinish = () => pip.remove();
+    else pip.remove();
+    game.strokesHold = null;
+    hud.shotAdded(before);
     audio.scoreLock?.();
   };
   const fly = reducedMotion || !pip.animate ? null : pip.animate(
-    [{ transform: at(a, 1.4) }, { transform: at([(a[0] + b[0]) / 2 - 40, (a[1] + b[1]) / 2], 1.1), offset: 0.5 }, { transform: at(b, 0.7) }],
+    [{ transform: at(a, 1.4) }, { transform: at([(a[0] + b[0]) / 2 - 40, (a[1] + b[1]) / 2], 1.1), offset: 0.5 }, { transform: at(b, 0.8) }],
     { duration: 700, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' }
   );
   if (fly) fly.onfinish = land;
@@ -1879,7 +1885,7 @@ game.on = {
     // shot (from review: it lit up after a foul, which counted for nothing)
     if (rules.scratched && object.kind === 'double') return;
     rooms.table.consume(object);
-    const colour = object.good ? PALETTE.good : PALETTE.bad;
+    const colour = object.color;
     fx.shockwave(object.x, object.z, colour, 5, 0.42);
     fx.burst(object.x, object.z, 18, colour, 12, 0.9);
     tutorial.notify('object', { object });

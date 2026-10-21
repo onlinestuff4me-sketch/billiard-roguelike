@@ -514,6 +514,16 @@
         background: rgba(255, 179, 64, 0.16);
         box-shadow: none;
       }
+      /* +1 SHOT: the new mark opens its own gap, lands mint, settles amber. */
+      .stroke-row .cue.fresh { animation: cue-fresh 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+      @keyframes cue-fresh {
+        0% { max-width: 0; opacity: 0; transform: scaleY(1.6); background: #2ef2c4; box-shadow: 0 0 18px #2ef2c4; }
+        22% { max-width: 8px; opacity: 1; transform: scaleY(1.4); background: #e9fff8; box-shadow: 0 0 22px #2ef2c4; }
+        45% { transform: scaleY(1); background: #2ef2c4; box-shadow: 0 0 16px rgba(46, 242, 196, 0.9); }
+        75% { background: #2ef2c4; box-shadow: 0 0 14px rgba(46, 242, 196, 0.8); }
+        100% { max-width: 8px; background: var(--amber); box-shadow: 0 0 10px rgba(255, 179, 64, 0.55); }
+      }
+      @media (prefers-reduced-motion: reduce) { .stroke-row .cue.fresh { animation: none; } }
       .stroke-row.last .cue:not(.spent) {
         background: var(--magenta);
         box-shadow: 0 0 14px rgba(255, 61, 139, 0.8);

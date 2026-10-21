@@ -204,10 +204,10 @@ Each number:
 | Bank pot (its last rail at least 4 from the pocket) | MULT | +2 | BANK |
 | Each pot after the first | MULT | +2 each | 2 IN ONE, 3 IN ONE... |
 | A ball sunk in the mission's order (not on Table 1, `orderBonus: false`) | MULT | +1, rising with the streak | IN ORDER |
-| × field | MULT | ×2 (multiplies: Mult 3 becomes 6, where +2 makes 5) | ZONE, its plate in `SCORE_FEED.xStyle` |
+| × field | MULT | ×2 (multiplies: Mult 3 becomes 6, where +2 makes 5) | ZONE. Ring and plate are Mult orange, like every Mult thing; the sign says × (`SCORE_FEED.xStyle`) |
 
 After a scratch or a foul the shot is void, and nothing more lights up for it:
-no rail plates, and the green ring stays dark (and armed for the next shot).
+no rail plates, and the ×2 ring stays dark (and armed for the next shot).
 The foul says why once, in its banner (TOO EARLY · the 8 goes last); no
 floating copy over the pocket.
 
@@ -215,7 +215,9 @@ floating copy over the pocket.
 card, LAST SHOT, and the first freeze pickup ever. They sit on a dark band so
 the resting aim line never runs through the words. The freeze one waits for the
 table to stop, because mid-shot a tap *is* a freeze. **+1 SHOT** flies a mint
-"+1" from the ring into the shot counter, which gains a mark and pulses.
+"+1" from the ring to where the new mark will open (after the shots left,
+before any spent). The mark opens its own gap, lands mint, settles to amber,
+and the count flashes ("3 of 5" becomes "4 of 6").
 
 ---
 
@@ -437,7 +439,7 @@ because a rule the player was never shown is a rule they do not have. The
 table dims; every card says the same things: **Table n**, the table's name,
 its rule in one sentence, then balls and shots (the target is on the score
 bar, where it reads as points). The name *is* the rule, short ("In Order Pays
-More", "Green Ring Pays ×2"), so the card and the corner never disagree.
+More", "Orange Ring Pays ×2"), so the card and the corner never disagree.
 Aiming is locked until the card is tapped away (`game.introUp`), through a
 full-width **Tap to play** button or anywhere else. On the tap the card fades
 and the name, as a chip, lifts off the card and arcs to the top-right corner,
