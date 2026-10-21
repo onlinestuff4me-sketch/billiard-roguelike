@@ -37,7 +37,8 @@
         "long-rail",
         "freeze-charge",
         "odd-ones"
-      ]
+      ],
+      "orderBonus": false
     },
     {
       "id": "by-the-numbers",

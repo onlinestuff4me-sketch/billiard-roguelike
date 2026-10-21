@@ -56,7 +56,7 @@ console.log('\npoints × mult\n');
   check(out.points === 90 && out.mult === 8, 'the worked example builds 90 points and ×8', `${out.points} × ${out.mult}`);
   check(out.paid === 720, 'and pays their product', `${out.paid}`);
   check(
-    rules.events.map((e) => e.label).join(',') === 'WALL,ZONE,5 SUNK,3 SUNK,BANK,TWO IN ONE',
+    rules.events.map((e) => e.label).join(',') === 'WALL,ZONE,5 SUNK,3 SUNK,BANK,2 IN ONE',
     'and records every event in the order it happened',
     rules.events.map((e) => e.label).join(', ')
   );

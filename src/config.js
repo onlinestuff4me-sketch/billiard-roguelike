@@ -576,6 +576,12 @@ export const RULES = {
     savedStroke: 50
   },
 
+  /** Words on the table's score plates that are a choice, not a rule (in review). */
+  labels: {
+    /** One ball driving another: KISS is the billiards word; picked in review. */
+    kiss: 'KISS'
+  },
+
   multiplier: {
     /** Every stroke opens here. */
     base: 1,
@@ -928,6 +934,8 @@ export const FEEL = {
 export const BALL_NUMERALS = { style: 'medium', options: ['inset', 'medium', 'face'] };
 
 export const MOMENTS = {
+  /** A plate for each half freeze charge earned; off, the meter just pulses (from review). */
+  chargePlates: false,
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
   clear: 'ledger',
   /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */

@@ -750,11 +750,22 @@ export class Moments {
   }
 
   /**
-   * FREEZE FRAME CHARGES EARNED: each one is an ice plate that pops above the
-   * score boxes, says what earned it, and flies into the meter. One at a time.
+   * FREEZE FRAME CHARGES EARNED: the meter in the corner fills with a pulse,
+   * once per half earned (from review: the "+½ FREEZE FRAME" plate popped over
+   * the table on top of the tally). MOMENTS.chargePlates brings the plate back.
    * @param {{amount:number, label:string}[]} awards
    */
   charges(awards) {
+    if (!MOMENTS.chargePlates) {
+      this._chargeQ = (this._chargeQ || Promise.resolve()).then(async () => {
+        for (const _ of awards) {
+          this.audio.shatter?.();
+          this._pulseFreeze();
+          await this.wait(260);
+        }
+      });
+      return this._chargeQ;
+    }
     this._chargeQ = (this._chargeQ || Promise.resolve()).then(async () => {
       for (const a of awards) {
         const plate = el('div', 'sf-plate mo-charge', this.root);

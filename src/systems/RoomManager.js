@@ -314,7 +314,8 @@ export class RoomManager {
       eightLast: !!t.eightLast && numbers.includes(RACK.eight),
       strictOrder: false,
       spare: t.strokes - numbers.length,
-      target: t.target
+      target: t.target,
+      orderBonus: t.orderBonus !== false
     };
     return { layout: this.layout, mission: this.mission, rack: this.rack.length };
   }

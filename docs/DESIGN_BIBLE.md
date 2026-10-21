@@ -173,7 +173,7 @@ not count). Then, by `SCORE_FEED.style` (in review):
   (0.02×). Every number that pot will cash in, the rails and the ring before
   it, plays as below in the order it happened. Then the table runs at full
   speed: the hit, the drop, the pocket flaring, and the pot's own numbers
-  (SUNK, IN ORDER, TWO IN ONE...). Any other ball already rolling into a
+  (SUNK, IN ORDER, 2 IN ONE...). Any other ball already rolling into a
   pocket (knocked in by another ball, or off a rail) is **held short of the
   pocket** a beat before it drops (`anticipateBallPot`, 0.3 s of roll ahead),
   and rolls in once its numbers have played. Only a pot neither predictor saw
@@ -202,7 +202,8 @@ Each number:
 | Cue off a wall | MULT | +1 | WALL |
 | Ball drives ball | MULT | +1 | KISS |
 | Bank pot (its last rail at least 4 from the pocket) | MULT | +2 | BANK |
-| Each pot after the first | MULT | +2 | TWO IN ONE |
+| Each pot after the first | MULT | +2 each | 2 IN ONE, 3 IN ONE... |
+| A ball sunk in the mission's order (not on Table 1, `orderBonus: false`) | MULT | +1, rising with the streak | IN ORDER |
 | × field | MULT | ×2 | ZONE |
 
 ---
@@ -273,9 +274,10 @@ earned only by shots that pay (`RULES.freeze`):
 | Bought in the shop between tables, for $4 (`RULES.shop.chargePrice`) | +1 |
 | The Ice Box upgrade, at the start of every table | +½ |
 
-Each earned charge lands as an ice plate above the score boxes ("+½ Freeze
-frame · Combination") that flies into the meter, which pulses. In the meter
-a half charge fills half a diamond, and only a whole charge freezes.
+Each earned half makes the meter in the corner pulse with an ice ring and a
+chime; there is no plate over the table (from review: it popped on top of
+the tally; `MOMENTS.chargePlates` brings it back). In the meter a half charge
+fills half a diamond, and only a whole charge freezes.
 
 **The economy** (decided in review, after Balatro and Gambonanza). Two
 numbers, but only one carries over. **Points** are each table's test: every

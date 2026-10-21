@@ -416,7 +416,7 @@ export class Rules {
     const key = number ?? `#${this._kissedBalls.size}`;
     if (this._kissedBalls.has(key)) return null;
     this._kissedBalls.add(key);
-    return this._add('kiss', 'mult', '+', this.val('perKiss'), 'KISS', at);
+    return this._add('kiss', 'mult', '+', this.val('perKiss'), RULES.labels?.kiss || 'KISS', at);
   }
 
   /** The bonus zone: multiply whatever MULT has been built. */
@@ -523,8 +523,8 @@ export class Rules {
     }
     if (this.potsThisStroke > 0) {
       const n = this.potsThisStroke + 1;
-      const words = ['', '', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN'];
-      added.push(this._add('multiPot', 'mult', '+', this.val('extraPot'), `${words[n] || n} IN ONE`, at));
+      // numerals, like "3 SUNK" (from review): 2 IN ONE, 3 IN ONE, 4 IN ONE...
+      added.push(this._add('multiPot', 'mult', '+', this.val('extraPot'), `${n} IN ONE`, at));
     }
     // UPGRADES that read the pot itself: which pocket, which ball, when.
     const slot = at?.ref?.slot || '';
@@ -549,7 +549,9 @@ export class Rules {
       this.orderStreak += 1;
       this.orderPots += 1;
       rungs = Math.min(this.orderStreak, RULES.order.streakCap) * RULES.order.bonusRung;
-      if (rungs > 0) added.push(this._add('order', 'mult', '+', rungs, 'IN ORDER', opts.at ?? null));
+      // a table can leave the order unpaid (from review: Table 1 teaches the
+      // target; the order is Table 2's idea, so it pays from there on)
+      if (rungs > 0 && this.mission?.orderBonus !== false) added.push(this._add('order', 'mult', '+', rungs, 'IN ORDER', opts.at ?? null));
     } else {
       this.orderStreak = 0;
       this.orderBroken = true;
