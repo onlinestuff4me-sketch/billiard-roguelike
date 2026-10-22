@@ -323,6 +323,8 @@ export const TRAJECTORY = {
   stickLength: 15,
   stickWidth: 0.34,
   stickHeight: 1.4,
+  /** The stick's return after a shot or a freeze (from review): a beam of light runs out along it, then it fills in. [beam, fill] seconds. */
+  stickReveal: [0.22, 0.3],
   stickShaft: 0x335f7c,
   /** The shaft's lit centre streak, and the butt. */
   stickShine: 0x9fe8ff,
@@ -934,8 +936,13 @@ export const FEEL = {
 export const BALL_NUMERALS = { style: 'medium', options: ['inset', 'medium', 'face'] };
 
 export const MOMENTS = {
-  /** A plate for each half freeze charge earned; off, the meter just pulses (from review). */
-  chargePlates: false,
+  /**
+   * A plate for each half freeze charge earned, risen where the shot's tally
+   * was and flown into the meter, which holds its old value until it lands
+   * (from review: "anytime something changes on the screen we need to
+   * telegraph it"). Off, the meter just pulses.
+   */
+  chargePlates: true,
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
   clear: 'ledger',
   /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */
@@ -1357,7 +1364,7 @@ export const TUTORIAL = {
     1: { title: 'The Mission', sub: 'Sink every ball · in order pays more, and the shots you save are points' },
     2: { title: 'The Double', sub: 'Orange is Mult · roll through it and the shot is worth twice as much' },
     3: { title: 'Mines', sub: 'Red is bad · they only bite your ball, so go around' },
-    4: { title: 'The Freeze', sub: 'Three charges · tap while the table is still moving' },
+    4: { title: 'The Freeze', sub: 'Three charges · tap FREEZE while the table is still moving' },
     5: { title: 'The 8 Goes Last', sub: 'Knock it in early and it comes straight back' },
     6: { title: 'The Upgrade', sub: 'Buys you a free pick at the door' },
     7: { title: 'The Kicker', sub: 'Hit it and the nearest ball comes back at you' },
@@ -1459,10 +1466,11 @@ export const TEACH = {
     key: 'lightline-freeze-taught-v1',
     kicker: 'New control',
     name: 'Freeze frame',
-    rule: 'While the balls are still moving, tap anywhere. The table stops, and you aim again from there. It costs a charge, not a shot.',
+    rule: 'While the balls are still moving, tap FREEZE in the bottom corner. The table stops; drag to aim again from where the cue ball is, and let go to shoot. It costs a charge, not a shot.',
     stats: ['Try it on a practice table first'],
-    demo: './teach/freeze.webp',
-    demoAlt: 'A shot rolling; a tap stops the table; the cue ball is aimed again and shot.',
+    /** recorded on the practice table with a real drag and tap, a finger drawn on */
+    demo: { sheet: './teach/freeze-sheet.webp', cols: 15, rows: 10, frames: 150, fps: 25 },
+    demoAlt: 'A finger drags to aim and shoots; while the balls roll it taps FREEZE in the corner; the table freezes; the finger drags again to re-aim the cue ball and lets go.',
     go: 'Tap to practise',
     practice: {
       id: 'practice-freeze',
@@ -1482,9 +1490,9 @@ export const TEACH = {
     charges: 3,
     title: 'Practice · Freeze frame',
     lines: {
-      start: 'Shoot, then tap anywhere while the balls are still moving.',
-      frozen: 'Frozen. Aim again from here, and shoot.',
-      missed: 'Tap sooner: while the balls are still moving.',
+      start: 'Shoot, then tap FREEZE (bottom right) while the balls are still moving.',
+      frozen: 'Frozen. Drag to aim again from here, then let go to shoot.',
+      missed: 'Tap FREEZE sooner, while the balls are still moving.',
       again: 'Nice. Freeze as often as you like, then tap Done.'
     },
     done: 'Done · next table',

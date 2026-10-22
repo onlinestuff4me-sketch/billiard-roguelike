@@ -1486,7 +1486,18 @@ feed.onTally = (paid, from) => {
       mine = Math.round(start + paid * (1 - (1 - k) * (1 - k)));
       game.scoreHold = mine;
       if (k < 1) requestAnimationFrame(step);
-      else game.scoreHold = null;
+      else hold(performance.now());
+    };
+    // ...and it keeps showing the counted figure until the shot has banked
+    // it (it used to let go first, and the score dropped back for a frame).
+    const end = start + paid;
+    const hold = (t1) => {
+      const wait = (now) => {
+        if (game.scoreHold !== mine) return;
+        if (rules.snapshot().displayScore >= end || now - t1 > 3000) game.scoreHold = null;
+        else requestAnimationFrame(wait);
+      };
+      requestAnimationFrame(wait);
     };
     requestAnimationFrame(step);
   };
@@ -1516,11 +1527,22 @@ function finishStroke() {
 
   const summary = rules.endStroke();
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
-  // ice plate flying into the meter.
+  // ice plate flying into the meter, and the meter holds its old value until
+  // the plate lands (from review: every change is telegraphed).
+  const chargesBefore = rules.freezeCharges;
   const awards = rules.earnCharges(summary, game.strokeCombos || 0);
   game.strokeCombos = 0;
   if (awards.length) {
-    if (momentsOn()) moments.charges(awards);
+    if (momentsOn()) {
+      game.freezeHold = chargesBefore;
+      moments
+        .charges(awards, (amount) => {
+          if (game.freezeHold != null) game.freezeHold = Math.min(rules.freezeCharges, game.freezeHold + amount);
+        })
+        .then(() => {
+          game.freezeHold = null;
+        });
+    }
     else fx.floatText(player.x, player.z - 3.2, `+${awards.reduce((n, a) => n + a.amount, 0)} FREEZE FRAME`, 'combo');
   }
   if (!feed.enabled) {
@@ -1542,7 +1564,7 @@ function finishStroke() {
   if (game.teachFreeze && game.state === 'playing') {
     game.teachFreeze = false;
     markFreezeTaught();
-    hud.showBanner('Freeze frame', 'While the table is still moving, tap to stop it and aim again. It costs a charge, not a shot.', HOLD);
+    hud.showBanner('Freeze frame', 'While the table is still moving, tap FREEZE (bottom right) to stop it and aim again. It costs a charge, not a shot.', HOLD);
   }
 }
 
@@ -1566,6 +1588,12 @@ function markFreezeTaught() {
  * grows by one mark as it lands, and it pulses.
  */
 function flyShotToCounter(object, before) {
+  // the table slows while the shot flies in, as it does for a plate (from review)
+  if (feed.enabled) return feed.aside(() => new Promise((done) => shotFlight(object, before, done)));
+  return new Promise((done) => shotFlight(object, before, done));
+}
+
+function shotFlight(object, before, done) {
   game.strokesHold = { left: before, total: rules.snapshot().strokesTotal - 1 };
   const v = new THREE.Vector3(object.x, 0.7, object.z).project(camera);
   const L = uiLayer.getBoundingClientRect();
@@ -1591,6 +1619,8 @@ function flyShotToCounter(object, before) {
     game.strokesHold = null;
     hud.shotAdded(before);
     audio.scoreLock?.();
+    // the slow-down holds while the new mark opens, then lets go
+    setTimeout(done, 700);
   };
   const fly = reducedMotion || !pip.animate ? null : pip.animate(
     [{ transform: at(a, 1.4) }, { transform: at([(a[0] + b[0]) / 2 - 40, (a[1] + b[1]) / 2], 1.1), offset: 0.5 }, { transform: at(b, 0.8) }],
@@ -1912,7 +1942,7 @@ game.on = {
         // a tap IS a freeze, so a banner waiting for a tap would spend the
         // charge just picked up. It waits for the table to stop instead.
         if (!freezeTaught()) game.teachFreeze = true;
-        else hud.showBanner('Freeze frame', 'Tap while the table is still moving', 2);
+        else hud.showBanner('Freeze frame', 'Tap FREEZE, bottom right, while the table is still moving', 2);
         return;
       }
       case 'upgrade': {
@@ -2713,6 +2743,7 @@ function resetRunState() {
   rules.lives = RULES.lives.start;
   game.cashHold = null;
   game.livesHold = null;
+  game.freezeHold = null;
   shopRun.owned = [];
   shopRun.bought = [];
   shopRun.held = null;
@@ -4104,14 +4135,13 @@ stage.addEventListener(
     event.preventDefault();
     // A tap with a freeze in hand still freezes, while the balls are moving.
     // Otherwise it hurries the numbers along.
-    if (feed.busy && (game.feedSettling || rules.freezeCharges <= 0)) {
-      feed.speedUp();
-      return;
-    }
-    tryFreeze();
+    // The FREEZE button freezes (from review); anywhere else, a tap hurries
+    // the numbers along.
+    if (feed.busy) feed.speedUp();
   },
   { passive: false }
 );
+hud.onFreeze = () => tryFreeze();
 
 /* ------------------------------------------------------------------ *
  * Resize handling
@@ -5015,8 +5045,10 @@ function frame(now) {
       !tutorial?.resolving &&
       // Nor while the stroke's numbers are still being presented: the cue
       // ball can be at rest long before the shot is over, and a line drawn
-      // across the count invites a shot the table will not take yet.
-      !game.midStroke &&
+      // across the count invites a shot the table will not take yet. A FROZEN
+      // table is the exception (from review): the stick beams back in at the
+      // stopped cue ball at once, so re-aiming is what it plainly asks for.
+      (!game.midStroke || game.phase === 'aim') &&
       player.state === PLAYER_STATE.IDLE
     ) {
       // THE CUE AT REST.
@@ -5062,7 +5094,10 @@ function frame(now) {
         ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {}),
         ...(game.strokesHold ? { strokesLeft: game.strokesHold.left, strokesTotal: game.strokesHold.total } : {}),
         ...(game.cashHold != null ? { cash: game.cashHold } : {}),
-        ...(game.livesHold != null ? { lives: game.livesHold } : {})
+        ...(game.livesHold != null ? { lives: game.livesHold } : {}),
+        ...(game.freezeHold != null ? { freezeCharges: game.freezeHold } : {}),
+        // the FREEZE button is live while the balls roll and a charge is in hand
+        canFreeze: game.phase === 'resolve' && game.midStroke && rules.freezeCharges >= 1 && game.state === 'playing'
       },
       rawDt
     );

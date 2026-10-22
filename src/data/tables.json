@@ -267,7 +267,7 @@
       "name": "Tap to Freeze",
       "intro": {
         "title": "Table 7 · Tap to Freeze",
-        "sub": "Pick up the ice, then tap while the table moves to stop it and aim again."
+        "sub": "Pick up the ice, then tap FREEZE while the table moves to stop it and aim again."
       },
       "spawn": {
         "x": 0,

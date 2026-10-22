@@ -240,12 +240,33 @@ export class Moments {
       el('div', 'mo-kicker', card).textContent = o.kicker;
       const nameEl = el('div', 'mo-intro-name', card);
       nameEl.textContent = o.name;
-      // A NEW CONTROL IS SHOWN WORKING (from review): a loop from the real game.
+      // A NEW CONTROL IS SHOWN WORKING (from review): a loop from the real
+      // game, finger and all. It is a sprite sheet stepped on the frame clock
+      // rather than an animated image, so it plays evenly (an animated image
+      // was reported glitchy).
       if (o.media) {
-        const demo = el('img', 'mo-intro-demo', card);
-        demo.alt = o.mediaAlt || '';
-        demo.onerror = () => demo.remove();
-        demo.src = o.media;
+        const m = o.media;
+        const demo = el('div', 'mo-intro-demo', card);
+        demo.setAttribute('role', 'img');
+        demo.setAttribute('aria-label', o.mediaAlt || '');
+        demo.style.backgroundSize = `${m.cols * 100}% ${m.rows * 100}%`;
+        const sheet = new Image();
+        sheet.onerror = () => demo.remove();
+        sheet.onload = () => {
+          demo.style.backgroundImage = `url("${m.sheet}")`;
+          let t0 = null;
+          const step = (now) => {
+            if (!demo.isConnected) return;
+            t0 ??= now;
+            const i = Math.floor(((now - t0) / 1000) * m.fps) % m.frames;
+            const cx = m.cols > 1 ? ((i % m.cols) / (m.cols - 1)) * 100 : 0;
+            const cy = m.rows > 1 ? (Math.floor(i / m.cols) / (m.rows - 1)) * 100 : 0;
+            demo.style.backgroundPosition = `${cx}% ${cy}%`;
+            requestAnimationFrame(step);
+          };
+          requestAnimationFrame(step);
+        };
+        sheet.src = m.sheet;
       }
       const rule = el('div', 'mo-intro-rule', card);
       rule.textContent = o.rule;
@@ -762,7 +783,7 @@ export class Moments {
    * the table on top of the tally). MOMENTS.chargePlates brings the plate back.
    * @param {{amount:number, label:string}[]} awards
    */
-  charges(awards) {
+  charges(awards, step) {
     if (!MOMENTS.chargePlates) {
       this._chargeQ = (this._chargeQ || Promise.resolve()).then(async () => {
         for (const _ of awards) {
@@ -774,31 +795,40 @@ export class Moments {
       return this._chargeQ;
     }
     this._chargeQ = (this._chargeQ || Promise.resolve()).then(async () => {
+      // THE CAUSE, THEN THE EFFECT: each half rises where the shot's tally
+      // just was, says what earned it, and flies into the meter, which only
+      // changes as it lands.
+      this.hud.root.classList.add('freeze-lit');
       for (const a of awards) {
         const plate = el('div', 'sf-plate mo-charge', this.root);
         el('b', '', plate).textContent = a.amount === 0.5 ? '+½' : `+${a.amount}`;
-        el('small', '', plate).textContent = `Freeze frame · ${a.label}`;
-        const x0 = this.W / 2;
-        const y0 = this.H - 200;
-        plate.style.left = `${x0}px`;
-        plate.style.top = `${y0}px`;
+        el('small', '', plate).textContent = `Freeze · ${a.label}`;
+        const boxes = document.querySelector('.score-feed:not([hidden]) .sf-boxes')?.getBoundingClientRect();
+        const L = this.layer.getBoundingClientRect();
+        const p0 = boxes?.width
+          ? { x: boxes.left - L.left + boxes.width / 2, y: boxes.top - L.top - 36 }
+          : { x: this.W / 2, y: this.H - 200 };
+        plate.style.left = '0px';
+        plate.style.top = '0px';
+        const at = `translate(${p0.x}px, ${p0.y}px) translate(-50%, -50%)`;
         this.audio.scoreNote?.(10, 'points');
         await this.anim(plate, [
-          { transform: 'translate(-50%,-50%) scale(0.2) rotate(-10deg)', opacity: 0 },
-          { transform: 'translate(-50%,-50%) scale(1.25) rotate(4deg)', opacity: 1, offset: 0.6 },
-          { transform: 'translate(-50%,-50%) scale(1) rotate(0deg)', opacity: 1 }
+          { transform: `${at} scale(0.2) rotate(-10deg)`, opacity: 0 },
+          { transform: `${at} scale(1.3) rotate(4deg)`, opacity: 1, offset: 0.6 },
+          { transform: `${at} scale(1) rotate(0deg)`, opacity: 1 }
         ], { duration: 320, easing: OUT });
-        await this.wait(520);
+        await this.wait(560);
         const m = this._freezeMeter();
-        await this.anim(plate, [
-          { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
-          { transform: `translate(calc(-50% + ${m.x - x0}px), calc(-50% + ${m.y - y0}px)) scale(0.35)`, opacity: 0.9 }
-        ], { duration: 340, easing: IN });
+        this.audio.slingshot?.(0.2);
+        await this._arc(plate, p0, { x: m.x, y: m.y }, { ms: 560, lift: 70, s0: 1, s1: 0.45 });
         plate.remove();
+        step?.(a.amount);
         this.audio.shatter?.();
         this._pulseFreeze();
-        await this.wait(160);
+        await this.wait(320);
       }
+      await this.wait(900);
+      this.hud.root.classList.remove('freeze-lit');
     });
     return this._chargeQ;
   }

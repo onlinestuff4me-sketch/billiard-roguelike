@@ -111,9 +111,25 @@ export class HUD {
     this.strokeText = el('div', 'stroke-text', strokeBlock);
 
     /* ---------------- freeze charges ---------------- */
+    // THE FREEZE BUTTON (from review: "is there a button … near the natural
+    // thumb placement?"). The meter is the button: while the balls roll and a
+    // charge is in hand it lights up and says FREEZE, and a tap on it stops
+    // the table. Anywhere else, a tap only hurries the numbers along.
     const freezeBlock = el('div', 'hud-freeze', this.root);
-    el('div', 'hud-label', freezeBlock).textContent = 'Freeze frame';
+    this.freezeBlock = freezeBlock;
+    this.freezeLabel = el('div', 'hud-label', freezeBlock);
+    this.freezeLabel.textContent = 'Freeze frame';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
+    this.freezeCall = el('div', 'freeze-call', freezeBlock);
+    this.freezeCall.textContent = 'Tap to freeze';
+    /** set by the game: what a press on the button does */
+    this.onFreeze = null;
+    freezeBlock.addEventListener('pointerdown', (e) => {
+      if (!freezeBlock.classList.contains('armed')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      this.onFreeze?.();
+    });
 
     /* ---------------- practice ---------------- */
     // A practice table (from review): what to try, and the way out.
@@ -568,12 +584,21 @@ export class HUD {
       this.freezeRow.textContent = '';
       // Halves: a charge is earned half at a time and spent whole.
       const shown = Math.max(3, Math.ceil(s.freezeCharges));
+      // the diamond a gain just filled flashes in (from review: every change
+      // is telegraphed)
+      const prev = cache.freezePrev ?? s.freezeCharges;
+      const fresh = s.freezeCharges > prev ? Math.floor(prev) : -1;
+      cache.freezePrev = s.freezeCharges;
       for (let i = 0; i < shown; i++) {
         const full = s.freezeCharges >= i + 1;
         const half = !full && s.freezeCharges >= i + 0.5;
-        el('span', `frz${full ? ' on' : half ? ' half' : ''}`, this.freezeRow);
+        el('span', `frz${full ? ' on' : half ? ' half' : ''}${i === fresh ? ' fresh' : ''}`, this.freezeRow);
       }
       this.root.classList.toggle('has-freeze', s.freezeCharges >= 1);
+    }
+    if (!!s.canFreeze !== cache.canFreeze) {
+      cache.canFreeze = !!s.canFreeze;
+      this.freezeBlock.classList.toggle('armed', cache.canFreeze);
     }
 
     // --- the multiplier, while a stroke is running ---

@@ -533,7 +533,25 @@ export class ScoreFeed {
     this._streak(c.anchor, to, c.colour);
     // With nothing else waiting, let the table pick its speed back up while
     // this one is in the air.
-    if (!this.queue.length && !this.brinking) this.engine.setPresentScale(0.5);
+    if (!this.queue.length && !this.brinking && !this.asides) this.engine.setPresentScale(0.5);
+  }
+
+  /**
+   * A moment off the score boxes that the table slows for, the way it does
+   * for a plate (from review: +1 SHOT flying to the shot counter). The table
+   * runs at the plates' slow speed until `run` resolves.
+   * @param {() => Promise} run
+   */
+  async aside(run) {
+    this.asides = (this.asides || 0) + 1;
+    this.engine.hitStop(SCORE_FEED.hitStop);
+    this.engine.setPresentScale(this.brinking ? SCORE_FEED.brink : SCORE_FEED.slow);
+    try {
+      await run();
+    } finally {
+      this.asides -= 1;
+      if (!this.asides && !this.cur && !this.queue.length && !this.brinking) this.engine.setPresentScale(1);
+    }
   }
 
   _arrive() {
@@ -660,7 +678,7 @@ export class ScoreFeed {
       if (c.stage === 'hold' && c.t >= SCORE_FEED.hitStop + c.hold) this._fly();
       else if (c.stage === 'fly' && c.t >= SCORE_FEED.flight) {
         this._arrive();
-        if (!this.queue.length && !this.brinking) this.engine.setPresentScale(1);
+        if (!this.queue.length && !this.brinking) this.engine.setPresentScale(this.asides ? SCORE_FEED.slow : 1);
       }
       return;
     }

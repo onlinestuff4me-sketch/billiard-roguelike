@@ -602,6 +602,14 @@ class AimRenderer {
     // shown behind the ball, never on the line ahead of it.
     this.stick = new Ribbon(this.group, { color: PALETTE.bone, opacity: 0.85 }, 8);
     this.stickTip = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 }, 8);
+    // THE STICK COMES BACK IN LIGHT (from review: it reappeared abruptly). A
+    // line of light shoots out from the ball along where the stick will lie,
+    // and the stick fills in along it. Every time it returns: after a shot,
+    // after a freeze, at the start of a table.
+    this.beamIn = new Ribbon(this.group, { color: PALETTE.aim, opacity: 1 }, 8);
+    this.beamIn.mat.blending = THREE.AdditiveBlending;
+    /** seconds into the stick's return, or null once it is fully back */
+    this.revealT = 0;
     this.comet.mat.blending = THREE.AdditiveBlending;
     this.cometPhase = 0;
     this._lastShow = 0;
@@ -852,7 +860,32 @@ class AimRenderer {
     if (!this.strike) {
       this.cue.hide();
       this.cueState = null;
+      // the next time it is drawn, it comes back in light
+      this.revealT = 0;
     }
+    this.beamIn.hide();
+  }
+
+  /**
+   * How far into its return the stick is: the beam's length and glow, and the
+   * stick's own opacity. `TRAJECTORY.stickReveal` is [beam, fill] seconds.
+   */
+  _reveal(dt) {
+    if (this.revealT == null) return { beam: 0, glow: 0, stick: 1 };
+    const [tb, tf] = TRAJECTORY.stickReveal || [0.22, 0.3];
+    // the first frame back carries the time it was hidden; it starts from zero
+    this.revealT += this.revealT === 0 ? 0.0001 : dt;
+    const t = this.revealT;
+    if (t >= tb + tf) {
+      this.revealT = null;
+      return { beam: 0, glow: 0, stick: 1 };
+    }
+    if (t < tb) {
+      const u = t / tb;
+      return { beam: 1 - Math.pow(1 - u, 3), glow: 1, stick: 0 };
+    }
+    const u = (t - tb) / tf;
+    return { beam: 1, glow: 1 - u, stick: u * u * (3 - 2 * u) };
   }
 
   /**
@@ -1086,13 +1119,30 @@ class AimRenderer {
         this.stick.hide();
         this.stickTip.hide();
         if (!this.strike) {
-          this.cue.set(player.x - ux * gap, player.z - uz * gap, ux, uz, {
-            len: TRAJECTORY.stickLength,
-            tipLit: full,
-            opacity: 1,
-            heat,
-            jitter
-          });
+          const R = this._reveal(frameDt);
+          const tx = player.x - ux * gap;
+          const tz = player.z - uz * gap;
+          if (R.stick > 0) {
+            this.cue.set(tx, tz, ux, uz, {
+              len: TRAJECTORY.stickLength,
+              tipLit: full,
+              opacity: R.stick,
+              heat,
+              jitter
+            });
+          } else {
+            this.cue.hide();
+          }
+          if (R.glow > 0) {
+            const reach = TRAJECTORY.stickLength * R.beam;
+            this.beamIn.set([{ ax: tx, az: tz, bx: tx - ux * reach, bz: tz - uz * reach }], {
+              y: TRAJECTORY.stickHeight + 0.03,
+              width: TRAJECTORY.stickWidth * 1.4,
+              opacity: R.glow
+            });
+          } else {
+            this.beamIn.hide();
+          }
         }
         this.cueState = { bx: player.x, bz: player.z, ux, uz, gap, full, heat, r: player.radius };
       } else {
