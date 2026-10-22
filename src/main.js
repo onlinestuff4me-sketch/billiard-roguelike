@@ -41,7 +41,7 @@ import {
   TUTORIAL,
   PROGRESSION,
   LAYER,
-  MOMENTS, BALL_NUMERALS, SCORE_FEED } from './config.js';
+  MOMENTS, BALL_NUMERALS, SCORE_FEED, TEACH } from './config.js';
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { AudioManager } from './core/AudioManager.js';
@@ -1502,6 +1502,10 @@ function finishStroke() {
   // Shooting into a door is not a shot off the budget. The room is already decided; the
   // exit shot must not be able to bankrupt you.
   if (game.state === 'cleared') return;
+  if (game.practice) {
+    practiceShotOver();
+    return;
+  }
   // Neither is a lesson rep. A tutorial with a budget is a tutorial you can
   // fail, and every board here is meant to be repeatable until it lands.
   if (game.tutorialGuard) {
@@ -1542,7 +1546,7 @@ function finishStroke() {
   }
 }
 
-const FREEZE_TAUGHT = 'lightline-freeze-taught-v1';
+const FREEZE_TAUGHT = TEACH.freeze.key;
 function freezeTaught() {
   try {
     return localStorage.getItem(FREEZE_TAUGHT) === '1';
@@ -1609,6 +1613,7 @@ function tryFreeze() {
     return false;
   }
   game.phase = 'aim';
+  if (game.practice) practiceFroze();
   // The cue ball stops where it is; it is about to be re-aimed from here.
   player.vx = 0;
   player.vz = 0;
@@ -1824,7 +1829,7 @@ game.on = {
 
     engine.zoomPunch();
     engine.shake(10);
-    if (!feed.enabled) {
+    if (!feed.enabled && !game.practice) {
       // Lessons and headless runs keep the short version: one figure, thrown
       // clear of the pocket toward the middle of the table.
       const len = Math.hypot(pocket.x, pocket.z) || 1;
@@ -2314,6 +2319,7 @@ function exitChoices() {
 
 function handleRoomClear() {
   // Kept for the RoomManager handler contract; the mission decides clears now.
+  if (game.practice) return;
   completeRoom();
 }
 
@@ -2462,8 +2468,15 @@ function advanceRoom() {
     openBoonModal(null);
     return;
   }
+  // A NEW CONTROL IS TAUGHT BEFORE THE TABLE THAT NEEDS IT (from review).
+  const teach = teachDue(game.level + 1);
+  if (teach) {
+    startPractice(teach, advanceRoom);
+    return;
+  }
 
   const swap = () => {
+    hud.root.classList.remove('practicing');
     game.level += 1;
     game.introUp = false;
     moments.closeIntro();
@@ -2497,6 +2510,126 @@ function advanceRoom() {
   }
   swap();
   showRoomBanner();
+}
+
+/* ------------------------------------------------------------------ *
+ * Practice: a new control, tried before the table that needs it
+ * ------------------------------------------------------------------ */
+
+/**
+ * Which control, if any, wants teaching before table `next` (from review: a
+ * card that introduces it, then a table to try it on as often as you like).
+ * Freeze is due before the first table with ice on it, or as soon as the run
+ * has freeze in hand some other way (bought in the shop, Ice Box, Frostbite).
+ */
+function teachDue(next) {
+  if (game.headless || game.practice || freezeTaught()) return null;
+  const ice = TABLES[next - 1]?.objects?.some((o) => o.kind === 'freeze');
+  const owned = rules.freezeCharges > 0 || rules.perks.icebox || rules.perks.frostbite;
+  return ice || owned ? 'freeze' : null;
+}
+
+/** The card, then the practice table; `then` carries on to the real one. */
+function startPractice(kind, then) {
+  const t = TEACH[kind];
+  // the table is set up behind the card, so it is there when the card lifts
+  moments.closeIntro();
+  moments.closeClear();
+  hud.hideScorecard();
+  hud.setDoors([]);
+  hud.setRule(null);
+  fx.clearTexts();
+  boons.clearFields();
+  game.scoreHold = null;
+  game.practice = { kind, then, freezes: 0, thisShot: 0, savedCharges: rules.freezeCharges };
+  game.tutorialGuard = () => false;
+  rooms.teardown();
+  rooms.loadAuthored(t.practice, game.level);
+  callPocket(null);
+  rules.beginRoom(game.level, { ...rooms.mission, strictOrder: false });
+  rules.freezeCharges = t.charges;
+  player.placeAt(rooms.layout.spawn.x, spawnZ());
+  game.state = 'playing';
+  game.phase = 'aim';
+  game.midStroke = false;
+  input.setHeading(0, -1);
+  // the score, mission and shots step aside already, behind the card
+  hud.root.classList.add('practicing');
+  game.introUp = true;
+  moments
+    .tableIntro({ kicker: t.kicker, name: t.name, rule: t.rule, stats: t.stats, media: t.demo, mediaAlt: t.demoAlt, go: t.go })
+    .then(() => {
+      game.introUp = false;
+      showPractice('start');
+    });
+}
+
+function showPractice(line) {
+  const p = game.practice;
+  if (!p) return;
+  const t = TEACH[p.kind];
+  hud.setPractice({
+    title: t.title,
+    line: t.lines[line],
+    count: p.freezes ? t.count(p.freezes) : '',
+    done: t.done,
+    ready: p.freezes > 0,
+    onDone: finishPractice
+  });
+}
+
+/** A freeze landed: count it, and say what to do with it. */
+function practiceFroze() {
+  const p = game.practice;
+  p.freezes += 1;
+  p.thisShot += 1;
+  showPractice('frozen');
+}
+
+/**
+ * A practice shot is over. Nothing is spent or scored: the charges refill,
+ * the rack comes back once it's nearly gone, and the line says how it went.
+ */
+function practiceShotOver() {
+  const p = game.practice;
+  const t = TEACH[p.kind];
+  rules.resetStroke();
+  rooms.table.rearmForStroke();
+  rules.strokesLeft = rules.mission.strokes;
+  rules.freezeCharges = t.charges;
+  const standing = game.enemies.filter((b) => b.alive).length;
+  if (standing < 2) {
+    rooms.teardown();
+    rooms.loadAuthored(t.practice, game.level);
+    rules.beginRoom(game.level, { ...rooms.mission, strictOrder: false });
+    rules.freezeCharges = t.charges;
+    player.placeAt(rooms.layout.spawn.x, spawnZ());
+    input.setHeading(0, -1);
+  }
+  showPractice(p.thisShot ? 'again' : p.freezes ? 'again' : 'missed');
+  p.thisShot = 0;
+}
+
+/** Done: the control is taught, and the run goes on to its real table. */
+function finishPractice() {
+  const p = game.practice;
+  if (!p || game.midStroke) return;
+  markFreezeTaught();
+  const then = p.then;
+  // the practice layout stays until the next table is built under the cover
+  endPractice({ keepLayout: true });
+  then?.();
+}
+
+/** Put the run back the way it was (also when a run is abandoned mid-practice). */
+function endPractice({ keepLayout = false } = {}) {
+  const p = game.practice;
+  if (!p) return;
+  rules.freezeCharges = p.savedCharges;
+  game.practice = null;
+  game.tutorialGuard = null;
+  hud.setPractice(null);
+  if (keepLayout) hud.root.classList.add('practicing');
 }
 
 /** Spawn height: PLAYER.spawnFromBottom of the table, measured up from the bottom. */
@@ -2554,6 +2687,7 @@ function showRoomBanner() {
 
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
+  endPractice();
   boons.reset();
   boons.recompute();
   hud.setBuild(boons.owned);
@@ -4480,6 +4614,8 @@ if (typeof window !== 'undefined') {
     },
     /** Open the table the way a run does: its intro card, then play. */
     intro: () => showRoomBanner(),
+    /** Leave this table for the next, the way the shop's Next table does. */
+    advance: () => advanceRoom(),
     /** Point the resting cue along `deg` (0 is up the table, clockwise). */
     aim(deg) {
       const th = (deg * Math.PI) / 180;
@@ -4813,7 +4949,7 @@ function frame(now) {
   pulseCalledPocket(rawDt);
   pumpCelebrations(rawDt);
   pumpSinking(rawDt);
-  feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.headless && game.state !== 'dead');
+  feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.practice && !game.headless && game.state !== 'dead');
   feed.update(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;

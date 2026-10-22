@@ -115,6 +115,19 @@ export class HUD {
     el('div', 'hud-label', freezeBlock).textContent = 'Freeze frame';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
 
+    /* ---------------- practice ---------------- */
+    // A practice table (from review): what to try, and the way out.
+    this.practice = el('div', 'hud-practice', this.root);
+    this.practice.hidden = true;
+    this.practiceTitle = el('div', 'practice-title', this.practice);
+    this.practiceLine = el('div', 'practice-line', this.practice);
+    this.practiceCount = el('div', 'practice-count', this.practice);
+    this.practiceDone = el('button', 'practice-done', this.root);
+    this.practiceDone.type = 'button';
+    this.practiceDone.hidden = true;
+    // the button is not a shot or a freeze
+    this.practiceDone.addEventListener('pointerdown', (e) => e.stopPropagation());
+
     /* ---------------- banner ---------------- */
     this.banner = el('div', 'hud-banner', this.root);
     this.bannerTitle = el('div', 'banner-title', this.banner);
@@ -236,14 +249,34 @@ export class HUD {
   /**
    * A shot was just added (+1 SHOT). The mark at `index` is the new one: it
    * opens a gap between the shots you have and the ones you've spent, lands
-   * mint and settles to the counter's own colour, and the count flashes.
+   * white-hot and settles to the counter's amber, and the count flashes.
    */
   shotAdded(index) {
     this.freshShot = index;
     this.strokeText.animate?.(
-      [{ color: '#2ef2c4', transform: 'scale(1.25)' }, { color: '#2ef2c4', transform: 'scale(1)', offset: 0.6 }, { color: '' }],
+      [{ color: '#ffb340', transform: 'scale(1.25)' }, { color: '#ffb340', transform: 'scale(1)', offset: 0.6 }, { color: '' }],
       { duration: 1400, easing: 'ease-out' }
     );
+  }
+
+  /**
+   * A practice table's panel, or null to put the table back the way it was.
+   * @param {{title:string, line:string, count?:string, done:string, ready?:boolean, onDone?:Function}|null} p
+   */
+  setPractice(p) {
+    this.root.classList.toggle('practicing', !!p);
+    this.practice.hidden = !p;
+    this.practiceDone.hidden = !p;
+    if (!p) return;
+    this.practiceTitle.textContent = p.title;
+    if (this.practiceLine.textContent !== p.line) {
+      this.practiceLine.textContent = p.line;
+      this.practiceLine.animate?.([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    }
+    this.practiceCount.textContent = p.count || '';
+    this.practiceDone.textContent = p.done;
+    this.practiceDone.classList.toggle('ready', !!p.ready);
+    if (p.onDone) this.practiceDone.onclick = p.onDone;
   }
 
   /** Is a hold-until-tapped banner up? */

@@ -13,8 +13,8 @@
  * FELT OBJECTS are the opposite: rolled per room, and the only things on the
  * table allowed to carry a semantic colour. One form — a dashed outline
  * around a hollow interior — and two meanings. Mint is a pick-up you want to
- * hit; red is a hazard to route around. The glyph says which. One exception,
- * from review: the ×2 ring is Mult orange, because what it pays is Mult.
+ * hit; red is a hazard to route around. The glyph says which. From review,
+ * the pick-ups that fill a counter wear that counter's colour (see inkFor).
  */
 
 import * as THREE from 'three';
@@ -25,6 +25,14 @@ export const PICKUPS = Object.keys(TABLE.object.pickups);
 export const HAZARDS = Object.keys(TABLE.object.hazards);
 
 export const isPickup = (kind) => PICKUPS.includes(kind);
+
+/**
+ * A pick-up wears the colour of the counter it fills (from review): ×2 the
+ * MULT box's orange, +1 SHOT the shot counter's amber, freeze the meter's ice.
+ * Anything else you collect is mint; every hazard is red.
+ */
+const PICKUP_INK = { double: PALETTE.scoreMult, shot: PALETTE.shots, freeze: PALETTE.ice };
+const inkFor = (kind, good) => (good ? PICKUP_INK[kind] ?? PALETTE.good : PALETTE.bad);
 
 /** Plain-English name, in the same words the lesson cards use. */
 export function objectLabel(kind) {
@@ -336,9 +344,7 @@ export class Table {
       x,
       z,
       radius: opts.radius ?? TABLE.object.radius,
-      // ×2 is Mult, so it wears Mult's orange like the box and its plate
-      // (from review); every other pick-up is mint, every hazard red.
-      color: kind === 'double' ? PALETTE.scoreMult : good ? PALETTE.good : PALETTE.bad,
+      color: inkFor(kind, good),
       armed: true,
       pulse: Math.random() * Math.PI * 2,
       ...opts

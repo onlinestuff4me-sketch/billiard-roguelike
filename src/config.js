@@ -996,10 +996,10 @@ export const SCORE_FEED = {
    * frozen far off) the cue ball is stopped before a contact that sinks a
    * ball, and a rolling ball before the pocket it is about to drop in...
    */
-  leadDist: 2.5,
+  leadDist: 4,
   leadBallDist: 3.5,
   /** ...then the table runs slow enough that the travel and the drop take about this long (real seconds)... */
-  travel: 0.7,
+  travel: 0.85,
   /** ...and never slower than this, or faster than full speed. */
   travelMin: 0.15,
   /** How long a foreseen pot is waited for (real seconds) before it is given up on. */
@@ -1146,6 +1146,12 @@ export const PALETTE = {
 
   /* -- GOOD: every pick-up ------------------------------------------- */
   good: 0x2ef2c4,
+
+  /* -- PICK-UPS wear the colour of the counter they fill (from review) -- */
+  /** +1 SHOT: the shot counter's amber. */
+  shots: 0xffb340,
+  /** Freeze charges: the freeze meter's ice. */
+  ice: 0xbff4ff,
 
   /* -- BAD: every hazard --------------------------------------------- */
   bad: 0xff5a3d,
@@ -1435,4 +1441,53 @@ export default {
   RENDER,
   INPUT,
   PROGRESSION
+};
+
+/**
+ * TEACHING A NEW CONTROL (from review: "a card that introduces it, tap to
+ * continue, then a table where you try it as many times as you want").
+ *
+ * Before the first table that needs it (or once you've bought it), the game
+ * shows a card with the control working, then a practice table: unlimited
+ * shots, charges that refill, nothing scored, and a Done button that goes on
+ * to the real table. Shown once per device. Freeze is the only control so far;
+ * every other upgrade pays more, and its plate shows it the first time.
+ */
+export const TEACH = {
+  freeze: {
+    /** the same key the old first-freeze banner used, so neither shows twice */
+    key: 'lightline-freeze-taught-v1',
+    kicker: 'New control',
+    name: 'Freeze frame',
+    rule: 'While the balls are still moving, tap anywhere. The table stops, and you aim again from there. It costs a charge, not a shot.',
+    stats: ['Try it on a practice table first'],
+    demo: './teach/freeze.webp',
+    demoAlt: 'A shot rolling; a tap stops the table; the cue ball is aimed again and shot.',
+    go: 'Tap to practise',
+    practice: {
+      id: 'practice-freeze',
+      name: 'Practice',
+      spawn: { x: 0, z: 11 },
+      rack: [
+        { number: 1, x: -4.5, z: 2 },
+        { number: 2, x: 4.5, z: -1.5 },
+        { number: 3, x: -2, z: -9 },
+        { number: 4, x: 5, z: -12 }
+      ],
+      strokes: 99,
+      target: 0,
+      objects: []
+    },
+    /** charges in hand while practising, refilled after every shot */
+    charges: 3,
+    title: 'Practice · Freeze frame',
+    lines: {
+      start: 'Shoot, then tap anywhere while the balls are still moving.',
+      frozen: 'Frozen. Aim again from here, and shoot.',
+      missed: 'Tap sooner: while the balls are still moving.',
+      again: 'Nice. Freeze as often as you like, then tap Done.'
+    },
+    done: 'Done · next table',
+    count: (n) => (n === 1 ? '1 freeze' : `${n} freezes`)
+  }
 };

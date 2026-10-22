@@ -62,7 +62,12 @@ If an action or a reward does not get a reaction the player can see, hear and
 | Multiplier | `mult` | `#ff8a1e` | MULT box, × fields, rail lights, heated trail | Hazards; resting UI |
 | Heat tip | `mult-hot` | `#ffc266` | Slam flash, bonus rows, ×N plates, cash and every $ price | A resting state (cash in the corner is the one exception) |
 | Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, out of shots | Anything without a chevron or a strike |
-| Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates | Anything else (it is a state, not a reward) |
+| Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates, the freeze pickup | Anything else (it is a state, not a reward) |
+
+**A pickup on the felt wears the colour of the counter it fills** (from
+review): the ×2 ring is `mult` orange like the MULT box, +1 SHOT is the shot
+counter's amber `#ffb340`, freeze is `ice`. Anything else you collect is mint
+`#2ef2c4`; hazards are red. (`inkFor` in Table.js.)
 | Floor | `floor` / `void` | `#040b16` / `#02050b` | Table bed / beyond the table, cover panels | Text |
 | Architecture | `grid`, `structure`, `structure-lit` | `#0f2b3f`, `#1e4f6b`, `#3a87a8` | Grid, rails, lips, dividers | Text |
 | Text | `ink`, `muted-ink`, `on-plate` | `#e9f8ff`, `#7fa3b8`, `#02050b` | Words; `on-plate` is ink printed on a solid plate | |
@@ -169,13 +174,14 @@ not count). Then, by `SCORE_FEED.style` (in review):
 
 - **cash** (picked, round 21): **just before the cue ball strikes a ball
   that the contact will sink** (foreseen with the aim line's own predictor,
-  `anticipatePot` in main.js, 0.16 s of roll ahead), the table all but stops
+  `anticipatePot` in main.js, `SCORE_FEED.leadDist` 4 table units short of
+  the contact, so the slam has room to be seen), the table all but stops
   (0.02×). Every number that pot will cash in, the rails and the ring before
-  it, plays as below in the order it happened. Then the table runs at full
-  speed: the hit, the drop, the pocket flaring, and the pot's own numbers
+  it, plays as below in the order it happened. Then the table runs slowed
+  to take about `travel` 0.85 s: the run-up, the hit, the drop, the pocket flaring, and the pot's own numbers
   (SUNK, IN ORDER, 2 IN ONE...). Any other ball already rolling into a
   pocket (knocked in by another ball, or off a rail) is **held short of the
-  pocket** a beat before it drops (`anticipateBallPot`, 0.3 s of roll ahead),
+  pocket** a beat before it drops (`anticipateBallPot`, `leadBallDist` 3.5 units ahead),
   and rolls in once its numbers have played. Only a pot neither predictor saw
   is held at the lip. The stroke ends on the slam, and the tally
   is **celebrated**: it pops gold, a ring goes out, a chime plays.
@@ -212,12 +218,12 @@ The foul says why once, in its banner (TOO EARLY · the 8 goes last); no
 floating copy over the pocket.
 
 **Messages that wait for a tap** ("Tap anywhere to continue"): the table
-card, LAST SHOT, and the first freeze pickup ever. They sit on a dark band so
-the resting aim line never runs through the words. The freeze one waits for the
-table to stop, because mid-shot a tap *is* a freeze. **+1 SHOT** flies a mint
-"+1" from the ring to where the new mark will open (after the shots left,
-before any spent). The mark opens its own gap, lands mint, settles to amber,
-and the count flashes ("3 of 5" becomes "4 of 6").
+card and LAST SHOT. They sit on a dark band so the resting aim line never runs
+through the words. (The first freeze pickup used to wait too; a new control is
+now taught before play, §8.3a.) **+1 SHOT** flies an amber "+1" from the ring
+to where the new mark will open (after the shots left, before any spent). The
+chip sits there while the mark opens its own gap, lands white-hot and settles
+to amber, and the count flashes ("3 of 5" becomes "4 of 6").
 
 ---
 
@@ -275,6 +281,20 @@ rolling ball gets a frost hexagon and a dashed arrow showing where it is
 headed. FREEZE FRAME is set in ice type. On release the ice shatters outward
 from the cue ball and colour floods back. No viewfinder brackets: they
 collided with the corner pockets.
+
+### 8.3a Teaching a new control (from review)
+
+Before the first table that needs it (Table 7's ice), or as soon as the run has
+it in hand another way (bought in the shop, Ice Box, Frostbite), the game
+shows a **card** with the control working (a loop recorded from the real game,
+`public/teach/freeze.webp`) and **Tap to practise**. Then a **practice table**:
+unlimited shots, charges refilled after every shot, nothing scored, the rack
+put back when it runs low. A line at the top says what to try (shoot, then
+tap while it moves; frozen, aim again; freeze as often as you like) and counts
+the freezes. **Done · next table** is always there, and lights up once you've
+frozen once; it goes on to the real table. Shown once per device
+(`TEACH.freeze.key`). Freeze is the only control so far; other upgrades only
+pay more, and their plates show it the first time. (`TEACH` in config.js.)
 
 **Earning charges** (built). Charges come in halves, capped at 3, and are
 earned only by shots that pay (`RULES.freeze`):

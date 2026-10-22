@@ -240,6 +240,13 @@ export class Moments {
       el('div', 'mo-kicker', card).textContent = o.kicker;
       const nameEl = el('div', 'mo-intro-name', card);
       nameEl.textContent = o.name;
+      // A NEW CONTROL IS SHOWN WORKING (from review): a loop from the real game.
+      if (o.media) {
+        const demo = el('img', 'mo-intro-demo', card);
+        demo.alt = o.mediaAlt || '';
+        demo.onerror = () => demo.remove();
+        demo.src = o.media;
+      }
       const rule = el('div', 'mo-intro-rule', card);
       rule.textContent = o.rule;
       const stats = el('div', 'mo-intro-stats', card);
@@ -247,7 +254,7 @@ export class Moments {
       // a real button, big enough to read as one (from review); a tap anywhere still plays
       const go = el('button', 'mo-intro-go', card);
       go.type = 'button';
-      go.textContent = 'Tap to play';
+      go.textContent = o.go || 'Tap to play';
       this.audio.doorOpen?.();
       this.anim(shade, [{ opacity: 0 }, { opacity: 1 }], { duration: 260 });
       this.anim(card, [{ transform: 'translate(-50%, -50%) scale(0.9)', opacity: 0 }, { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }], { duration: 320, easing: BACK });
