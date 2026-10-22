@@ -5069,14 +5069,24 @@ function frame(now) {
       //
       // Showing the resting cue fixes both. The default is now something you
       // can see and nudge rather than something you discover by firing.
-      const h = input.heading;
-      player.aimDir.x = h.x;
-      player.aimDir.z = h.z;
-      player.aimPower = 0;
-      player.aimCharge = 0;
-      player.aimCue.x = player.x - h.x * 3.4;
-      player.aimCue.z = player.z - h.z * 3.4;
-      refreshPrediction();
+      //
+      // UNDER THE THUMB (from review, after Ultrapool): with the stick shown
+      // only while a thumb is down, the lines wait for the thumb too, so a
+      // table at rest shows nothing but the balls. The lessons keep the
+      // resting line, because the coaching points along it.
+      if ((TRAJECTORY.stickShow || 'rest') === 'drag' && !tutorial.running) {
+        player.hideTrajectory();
+        game.aimFoul = null;
+      } else {
+        const h = input.heading;
+        player.aimDir.x = h.x;
+        player.aimDir.z = h.z;
+        player.aimPower = 0;
+        player.aimCharge = 0;
+        player.aimCue.x = player.x - h.x * 3.4;
+        player.aimCue.z = player.z - h.z * 3.4;
+        refreshPrediction();
+      }
     } else {
       player.hideTrajectory();
       // NOTHING DRAWN, NOTHING WARNED. The refusal belongs to a line; with no
