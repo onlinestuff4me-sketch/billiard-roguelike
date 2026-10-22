@@ -46,6 +46,8 @@ If an action or a reward does not get a reaction the player can see, hear and
 6. **Every moment earns a reaction.** From its cause, one at a time, never over
    the aim preview. Full power, a wall, a pot, a lock, a slam, a scratch, a
    freeze, a cleared table: each gets light, sound and, where possible, a buzz.
+   Camera shake is kept light (`FEEL.shake`, toned down a quarter in review),
+   and the points × Mult slam in the boxes does not shake the table at all.
 7. **The preview never lies.** The drawn line is the shot the table plays
    (`npm run aim`). Twists may show less; they may never show something false.
    (This also binds puzzle design: see `docs/PUZZLE_RAMP.md`.)
@@ -57,8 +59,8 @@ If an action or a reward does not get a reaction the player can see, hear and
    flash on the part that changed, a sound). The player always sees what
    happened and why. A counter that jumps on its own is a bug. Moments that
    matter mid-roll slow the table while they play (`ScoreFeed.aside`). The same
-   goes for things that appear: the cue stick never pops back in, it beams in
-   (§8.1).
+   goes for things that appear: the cue stick never pops in, it fades in under
+   the thumb (§8.1).
 
 ---
 
@@ -253,7 +255,7 @@ until one is picked; the pick is then recorded here and the other deleted.
 | Power | **Cue** style (default). A full-length cue stick runs back off the table past the rail, tapered, with cyan lit edges, a lit centre streak, butt bands and a two-layer shadow on the felt and rail. It slides back 1:1 with the thumb (5.2 units over a full draw). The ring around the ball fills both ways as power builds. | `CueStick`, `_ring` |
 | Full power | The ring closes and flashes, a burst of light leaves the ball, a MAX POWER badge flies out away from the aim line, a two-note riser plays, the screen jolts and the phone buzzes (18 ms). One threshold: `TRAJECTORY.fullDraw`. | `noteAimPower`, `maxPowerBadge` |
 | Strike | The table holds (60 ms) while the stick snaps into the ball, accelerating, with a light smear over the ground it covers. It follows through past the ball, then eases back as it fades. The ball leaves when it is hit, not when the thumb lets go. | `AimRenderer.tick`, `onRelease` |
-| Return | The stick never pops back (from review). Whenever it reappears (after a shot, after a freeze, at the start of a table) a beam of light shoots out from the cue ball along where it will lie (0.22 s), then the stick fills in along it (0.3 s). `TRAJECTORY.stickReveal`. | `AimRenderer._reveal`, `beamIn` |
+| Showing | **Only under the thumb** (from review, after Ultrapool; `TRAJECTORY.stickShow` 'drag'). At rest there is no stick, only the resting aim line. It fades in as a thumb goes down (`stickFade` 0.16 s) and out if the thumb lets go without shooting; a shot plays the strike and fades it as before. The other setting, 'rest', keeps the stick on the table and beams it back in after every shot (a line of light along it, then it fills in; `stickReveal`). | `AimRenderer` (`heldFade`, `_reveal`) |
 
 **On trial (Settings → Stick, Full power, Strike; `TRAJECTORY.stickLook`,
 `maxStyle`, `strikeStyle`).** They mix freely.
@@ -284,7 +286,7 @@ the balls are moving and time stops. The button is the freeze meter itself,
 bottom right under the thumb (from review): while a freeze is possible (the
 balls are rolling and a whole charge is in hand) it lights ice-blue, pulses
 and says TAP TO FREEZE. A tap anywhere else only hurries the numbers along, so
-a freeze is never spent by accident. On the frozen table the stick beams in
+a freeze is never spent by accident. On the frozen table a drag brings the stick in
 at the stopped cue ball at once (§8.1), and you drag to re-aim it as usual. Your cue ball halts where it is and you re-aim it from there. Every
 other ball keeps the speed it had and carries on when you release. It costs a
 charge, not a shot. "Freeze frame" is the mechanic's name everywhere the player
@@ -304,17 +306,19 @@ collided with the corner pockets.
 
 Before the first table that needs it (Table 7's ice), or as soon as the run has
 it in hand another way (bought in the shop, Ice Box, Frostbite), the game
-shows a **card** with the control working and **Tap to practise**. The loop
-is recorded on the practice table with real input (a drag to aim and shoot, a
-tap on FREEZE, the stick beaming in on the frozen table, a drag to re-aim, the
-release) with a finger drawn over every touch, and plays from a sprite sheet
-stepped on the frame clock (`public/teach/freeze-sheet.webp`, 150 frames at
-25 fps), so it runs evenly. Then a **practice table**:
-unlimited shots, charges refilled after every shot, nothing scored, the rack
-put back when it runs low. A line at the top says what to try (shoot, then
-tap while it moves; frozen, aim again; freeze as often as you like) and counts
-the freezes. **Done · next table** is always there, and lights up once you've
-frozen once; it goes on to the real table. Shown once per device
+shows **one card** (from review: one screen, not two): the control working in
+a loop, one line ("Tap FREEZE while balls are still moving to re-aim and shoot
+again.") and **Tap to practise**. The loop is recorded on the practice table
+with real input (a drag to aim and shoot, a tap on FREEZE, a drag to re-aim on
+the frozen table, the release) with a finger drawn over every touch, and plays
+from a sprite sheet stepped on the frame clock
+(`public/teach/freeze-sheet.webp`, 150 frames at 25 fps), so it runs evenly.
+Then a **practice table** of three balls: unlimited shots, charges refilled
+after every shot, nothing scored. A short line at the top says what to try and
+counts the freezes. It ends either way you like: **sink all three**, or tap
+**Continue to next table** (bottom left, clear of FREEZE; it lights up once
+you've frozen once). The next table then opens without its own card, since
+the new-control card has just covered it; its name still flies to the corner. Shown once per device
 (`TEACH.freeze.key`). Freeze is the only control so far; other upgrades only
 pay more, and their plates show it the first time. (`TEACH` in config.js.)
 
@@ -330,8 +334,10 @@ earned only by shots that pay (`RULES.freeze`):
 | The Ice Box upgrade, at the start of every table | +½ |
 
 Each earned half is **telegraphed** (law 8, from review): once the shot's
-tally has flown to YOUR SCORE, an ice plate rises where the tally was ("+½ ·
-Freeze · Combination"), holds, and arcs into the meter. The meter keeps its
+tally has flown to YOUR SCORE, an ice plate pops where the tally was ("+½ ·
+Freeze · Combination") like a sticker (after Ultrapool's "Win!": out of a
+point, rising, its tilt wobbling as it settles; `STICKER` in Moments.js),
+holds, and arcs into the meter, where the new diamond pops the same way. The meter keeps its
 old value until the plate lands (`game.freezeHold`), then the diamond it
 filled flashes in with an ice ring and a chime. (`MOMENTS.chargePlates`; the
 plate used to pop over the table on top of the tally, which is why it now

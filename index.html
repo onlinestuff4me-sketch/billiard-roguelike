@@ -301,7 +301,7 @@
       .practice-title { font-family: var(--font-display); font-size: clamp(10px, 2.8vmin, 13px); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #bff4ff; }
       .practice-line { margin-top: 6px; font-size: clamp(13px, 3.9vmin, 16px); font-weight: 600; line-height: 1.3; color: var(--bone); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
       .practice-count { margin-top: 4px; min-height: 1.2em; font-size: clamp(9px, 2.4vmin, 11px); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(191, 244, 255, 0.75); }
-      .practice-done { position: absolute; left: 50%; bottom: calc(var(--hud-pad) + 4px); transform: translateX(-50%); pointer-events: auto; padding: 12px 22px 10px; border: 0; font-family: var(--font-display); font-size: clamp(13px, 3.8vmin, 16px); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(234, 246, 255, 0.85); background: rgba(8, 18, 30, 0.92); box-shadow: inset 0 0 0 1.5px rgba(234, 246, 255, 0.35); cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+      .practice-done { position: absolute; left: var(--hud-pad); bottom: calc(var(--hud-pad) + 2px); max-width: 46%; pointer-events: auto; padding: 10px 14px 9px; border: 0; font-family: var(--font-display); font-size: clamp(11px, 3.1vmin, 13px); line-height: 1.25; text-align: left; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(234, 246, 255, 0.85); background: rgba(8, 18, 30, 0.92); box-shadow: inset 0 0 0 1.5px rgba(234, 246, 255, 0.35); cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
       .practice-done.ready { color: #02050b; background: var(--ll-you, #22e8ff); box-shadow: 0 0 22px rgba(34, 232, 255, 0.45); }
       .mo-intro-go { display: block; width: 100%; margin-top: 20px; padding: 14px 12px 12px; border: 0; font-family: var(--font-display); font-size: clamp(15px, 4.6vmin, 19px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #02050b; background: var(--ll-you, #22e8ff); box-shadow: 0 0 22px rgba(34, 232, 255, 0.45); cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
       .moments > .mo-intro-fly { position: absolute; inset: auto; margin: 0; z-index: 49; pointer-events: none; }
@@ -572,7 +572,17 @@
       @keyframes freeze-armed { 50% { box-shadow: inset 0 0 0 2px #bff4ff, 0 0 34px rgba(111, 227, 255, 0.95); } }
       /* a diamond a gain just filled */
       .freeze-row .frz.fresh { animation: frz-fresh 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
-      @keyframes frz-fresh { 0% { transform: rotate(45deg) scale(2.2); background: #fff; box-shadow: 0 0 20px #bff4ff; } 100% { transform: rotate(45deg) scale(1); } }
+      /* the new diamond pops like a sticker (from review, after Ultrapool) */
+      .freeze-row .frz.fresh { animation-duration: 0.62s; animation-timing-function: linear; }
+      @keyframes frz-fresh {
+        0% { transform: rotate(35deg) scale(0.05); background: #fff; box-shadow: 0 0 20px #bff4ff; }
+        18% { transform: rotate(53deg) scale(1.2); }
+        34% { transform: rotate(38deg) scale(1.9); background: #fff; box-shadow: 0 0 22px #bff4ff; }
+        50% { transform: rotate(50deg) scale(0.9); }
+        66% { transform: rotate(42deg) scale(1.15); }
+        82% { transform: rotate(46.5deg) scale(0.98); }
+        100% { transform: rotate(45deg) scale(1); }
+      }
       @media (prefers-reduced-motion: reduce) { .hud-freeze.armed, .freeze-row .frz.fresh { animation: none; } }
 
       .freeze-row { display: flex; gap: 5px; }
@@ -1351,7 +1361,8 @@
       .mo-skiphide { visibility: hidden !important; }
       .mo-skipfx { position: absolute; inset: auto; z-index: 46; font-family: var(--font-display); font-size: 120px; font-weight: 800; line-height: 1; color: var(--ll-you); text-shadow: 0 0 24px rgba(34, 232, 255, 0.9); pointer-events: none; }
       .mo-act.skip { color: var(--ll-you); background: rgba(2, 5, 11, 0.85); box-shadow: inset 0 0 0 2px var(--ll-you); font-size: 14px; padding: 10px 26px; }
-      .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 12px rgba(111, 227, 255, 0.9)); }
+      .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 16px rgba(111, 227, 255, 1)); overflow: hidden; }
+
       .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
       .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
 

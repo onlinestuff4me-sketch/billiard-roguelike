@@ -323,7 +323,15 @@ export const TRAJECTORY = {
   stickLength: 15,
   stickWidth: 0.34,
   stickHeight: 1.4,
-  /** The stick's return after a shot or a freeze (from review): a beam of light runs out along it, then it fills in. [beam, fill] seconds. */
+  /**
+   * When the stick is on the table (from review, after Ultrapool): 'drag' —
+   * only while a thumb is down, fading in as you press and out when you let
+   * go; 'rest' — always, beaming back in after every shot (round 31).
+   */
+  stickShow: 'drag',
+  /** 'drag': seconds to fade the stick in or out */
+  stickFade: 0.16,
+  /** 'rest': the stick's return after a shot or a freeze: a beam of light runs out along it, then it fills in. [beam, fill] seconds. */
   stickReveal: [0.22, 0.3],
   stickShaft: 0x335f7c,
   /** The shaft's lit centre streak, and the butt. */
@@ -889,9 +897,9 @@ export const BOONS = {
  * ------------------------------------------------------------------ */
 export const FEEL = {
   shake: {
-    /** Impulse = momentum * scale, clamped. */
-    scale: 0.0075,
-    max: 0.85,
+    /** Impulse = momentum * scale, clamped. Toned down a quarter in review. */
+    scale: 0.0056,
+    max: 0.65,
     /** Exponential decay per second. */
     decay: 7.5,
     frequency: 34
@@ -1466,8 +1474,9 @@ export const TEACH = {
     key: 'lightline-freeze-taught-v1',
     kicker: 'New control',
     name: 'Freeze frame',
-    rule: 'While the balls are still moving, tap FREEZE in the bottom corner. The table stops; drag to aim again from where the cue ball is, and let go to shoot. It costs a charge, not a shot.',
-    stats: ['Try it on a practice table first'],
+    // one line (from review: "the description needs to be MUCH shorter")
+    rule: 'Tap FREEZE while balls are still moving to re-aim and shoot again.',
+    stats: [],
     /** recorded on the practice table with a real drag and tap, a finger drawn on */
     demo: { sheet: './teach/freeze-sheet.webp', cols: 15, rows: 10, frames: 150, fps: 25 },
     demoAlt: 'A finger drags to aim and shoots; while the balls roll it taps FREEZE in the corner; the table freezes; the finger drags again to re-aim the cue ball and lets go.',
@@ -1476,11 +1485,11 @@ export const TEACH = {
       id: 'practice-freeze',
       name: 'Practice',
       spawn: { x: 0, z: 11 },
+      // three balls: sink them all and the practice is over (from review)
       rack: [
         { number: 1, x: -4.5, z: 2 },
         { number: 2, x: 4.5, z: -1.5 },
-        { number: 3, x: -2, z: -9 },
-        { number: 4, x: 5, z: -12 }
+        { number: 3, x: -2, z: -9 }
       ],
       strokes: 99,
       target: 0,
@@ -1490,12 +1499,12 @@ export const TEACH = {
     charges: 3,
     title: 'Practice · Freeze frame',
     lines: {
-      start: 'Shoot, then tap FREEZE (bottom right) while the balls are still moving.',
-      frozen: 'Frozen. Drag to aim again from here, then let go to shoot.',
-      missed: 'Tap FREEZE sooner, while the balls are still moving.',
-      again: 'Nice. Freeze as often as you like, then tap Done.'
+      start: 'Shoot, then tap FREEZE while the balls move.',
+      frozen: 'Frozen. Drag to re-aim, let go to shoot.',
+      missed: 'Tap FREEZE sooner, while they still move.',
+      again: 'Sink all three, or carry on when you’re ready.'
     },
-    done: 'Done · next table',
+    done: 'Continue to next table',
     count: (n) => (n === 1 ? '1 freeze' : `${n} freezes`)
   }
 };

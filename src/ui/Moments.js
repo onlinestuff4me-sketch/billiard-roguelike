@@ -48,6 +48,25 @@ function absorb(node, onTap) {
   }
 }
 
+/**
+ * The sticker pop (from review, after Ultrapool's "Win!" label): out of a
+ * point a little below where it lands, rising, overshooting, with its tilt
+ * wobbling side to side as it settles. Keyframes for a node positioned by
+ * transform at `p`.
+ */
+function STICKER(p, rise = 26) {
+  const at = (dy, s, r) => ({ transform: `translate(${p.x}px, ${p.y + dy}px) translate(-50%, -50%) scale(${s}) rotate(${r}deg)` });
+  return [
+    { ...at(rise, 0.05, -10), opacity: 0, offset: 0 },
+    { ...at(rise * 0.4, 0.8, 8), opacity: 1, offset: 0.18 },
+    { ...at(-4, 1.18, -7), offset: 0.34 },
+    { ...at(0, 0.94, 5), offset: 0.5 },
+    { ...at(0, 1.05, -3), offset: 0.66 },
+    { ...at(0, 0.99, 1.5), offset: 0.82 },
+    { ...at(0, 1, 0), opacity: 1, offset: 1 }
+  ];
+}
+
 export class Moments {
   /**
    * @param {object} o
@@ -812,11 +831,11 @@ export class Moments {
         plate.style.top = '0px';
         const at = `translate(${p0.x}px, ${p0.y}px) translate(-50%, -50%)`;
         this.audio.scoreNote?.(10, 'points');
-        await this.anim(plate, [
-          { transform: `${at} scale(0.2) rotate(-10deg)`, opacity: 0 },
-          { transform: `${at} scale(1.3) rotate(4deg)`, opacity: 1, offset: 0.6 },
-          { transform: `${at} scale(1) rotate(0deg)`, opacity: 1 }
-        ], { duration: 320, easing: OUT });
+        // IT POPS LIKE A STICKER (from review, after Ultrapool's "Win!"): it
+        // grows out of a point, rising as it goes, and its tilt wobbles a few
+        // times before it settles.
+        await this.anim(plate, STICKER(p0), { duration: 620, easing: 'linear' });
+        this.audio.boonPick?.();
         await this.wait(560);
         const m = this._freezeMeter();
         this.audio.slingshot?.(0.2);

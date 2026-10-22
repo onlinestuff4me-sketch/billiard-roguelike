@@ -860,8 +860,10 @@ class AimRenderer {
     if (!this.strike) {
       this.cue.hide();
       this.cueState = null;
-      // the next time it is drawn, it comes back in light
+      // the next time it is drawn, it comes back in light (or fades in under
+      // the thumb)
       this.revealT = 0;
+      this.heldFade = 0;
     }
     this.beamIn.hide();
   }
@@ -1119,7 +1121,18 @@ class AimRenderer {
         this.stick.hide();
         this.stickTip.hide();
         if (!this.strike) {
-          const R = this._reveal(frameDt);
+          let R;
+          if ((TRAJECTORY.stickShow || 'rest') === 'drag') {
+            // THE STICK IS UNDER THE THUMB (from review, after Ultrapool): it
+            // fades in as you press and out when you let go without shooting.
+            const step = Math.min(frameDt, 1 / 30) / (TRAJECTORY.stickFade || 0.16);
+            const want = context.held ? 1 : 0;
+            const f = this.heldFade ?? 0;
+            this.heldFade = want > f ? Math.min(1, f + step) : Math.max(0, f - step);
+            R = { beam: 0, glow: 0, stick: this.heldFade * this.heldFade * (3 - 2 * this.heldFade) };
+          } else {
+            R = this._reveal(frameDt);
+          }
           const tx = player.x - ux * gap;
           const tz = player.z - uz * gap;
           if (R.stick > 0) {

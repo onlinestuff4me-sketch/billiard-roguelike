@@ -2617,8 +2617,9 @@ function practiceFroze() {
 }
 
 /**
- * A practice shot is over. Nothing is spent or scored: the charges refill,
- * the rack comes back once it's nearly gone, and the line says how it went.
+ * A practice shot is over. Nothing is spent or scored and the charges
+ * refill. Sinking all three ends the practice (from review: "finish the
+ * table, or continue to the next table").
  */
 function practiceShotOver() {
   const p = game.practice;
@@ -2627,14 +2628,9 @@ function practiceShotOver() {
   rooms.table.rearmForStroke();
   rules.strokesLeft = rules.mission.strokes;
   rules.freezeCharges = t.charges;
-  const standing = game.enemies.filter((b) => b.alive).length;
-  if (standing < 2) {
-    rooms.teardown();
-    rooms.loadAuthored(t.practice, game.level);
-    rules.beginRoom(game.level, { ...rooms.mission, strictOrder: false });
-    rules.freezeCharges = t.charges;
-    player.placeAt(rooms.layout.spawn.x, spawnZ());
-    input.setHeading(0, -1);
+  if (!game.enemies.some((b) => b.alive)) {
+    finishPractice();
+    return;
   }
   showPractice(p.thisShot ? 'again' : p.freezes ? 'again' : 'missed');
   p.thisShot = 0;
@@ -2648,6 +2644,10 @@ function finishPractice() {
   const then = p.then;
   // the practice layout stays until the next table is built under the cover
   endPractice({ keepLayout: true });
+  // ONE CARD, NOT TWO (from review): the new-control card already said what
+  // the next table is about, so it opens without its own card; its name
+  // still flies to the corner.
+  game.skipIntroCard = true;
   then?.();
 }
 
@@ -2683,6 +2683,11 @@ function showRoomBanner() {
   // Not behind the title screen: the boot racks Table 1 under the menu, and a
   // card there would sit under it with a Play button of its own.
   if (t?.intro && menuOpen) return;
+  if (t?.intro && game.skipIntroCard) {
+    game.skipIntroCard = false;
+    hud.setRule(t.name, true);
+    return;
+  }
   if (t?.intro) {
     hud.setRule(null);
     game.introUp = true;
@@ -2718,6 +2723,7 @@ function showRoomBanner() {
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
   endPractice();
+  game.skipIntroCard = false;
   boons.reset();
   boons.recompute();
   hud.setBuild(boons.owned);
@@ -3996,7 +4002,9 @@ function refreshPrediction() {
     // mission would refuse, which travels in red. The line is the promise, so
     // the line is where a refusal has to appear.
     legInks: objectPath.map((leg, i) => (fouls.has(i) ? PALETTE.bad : inkOf(leg.ball))),
-    ghosts: game.aimTags
+    ghosts: game.aimTags,
+    // a thumb is down: the stick shows only then (TRAJECTORY.stickShow)
+    held: input.isAiming
   });
 }
 

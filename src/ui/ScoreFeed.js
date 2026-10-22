@@ -592,7 +592,7 @@ export class ScoreFeed {
         run: () => {
           this.root.classList.add('slam');
           this.audio.scoreSlam?.();
-          this.engine.shake(140);
+          // no shake here (from review): the slam is in the boxes, not the table
         }
       });
       steps.push({
