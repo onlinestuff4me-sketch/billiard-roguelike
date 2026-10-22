@@ -295,6 +295,31 @@ export class HUD {
     if (p.onDone) this.practiceDone.onclick = p.onDone;
   }
 
+  /** A −1 lifts off the pip that just went out, and the count flashes. */
+  _shotSpent(pip) {
+    if (!pip?.animate) return;
+    const block = this.strokeRow.parentNode;
+    const a = pip.getBoundingClientRect();
+    const b = block.getBoundingClientRect();
+    const chip = el('div', 'shot-minus', block);
+    chip.textContent = '−1';
+    chip.style.left = `${a.left - b.left + a.width / 2}px`;
+    chip.style.top = `${a.top - b.top}px`;
+    chip.animate(
+      [
+        { transform: 'translate(-50%, 0) scale(0.4)', opacity: 0 },
+        { transform: 'translate(-50%, -14px) scale(1.25)', opacity: 1, offset: 0.25 },
+        { transform: 'translate(-50%, -22px) scale(1)', opacity: 1, offset: 0.6 },
+        { transform: 'translate(-50%, -34px) scale(0.9)', opacity: 0 }
+      ],
+      { duration: 900, easing: 'ease-out', fill: 'forwards' }
+    ).onfinish = () => chip.remove();
+    this.strokeText.animate?.(
+      [{ color: '#fff', transform: 'scale(1.2)' }, { color: '#fff', transform: 'scale(1)', offset: 0.5 }, { color: '' }],
+      { duration: 700, easing: 'ease-out' }
+    );
+  }
+
   /** Is a hold-until-tapped banner up? */
   get bannerWaiting() {
     return this.bannerHolds && this.banner.classList.contains('visible');
@@ -566,13 +591,21 @@ export class HUD {
     // --- the stroke budget ---
     const strokeKey = `${s.strokesLeft}/${s.strokesTotal}`;
     if (strokeKey !== cache.strokes) {
+      // A SHOT SPENT IS SHOWN GOING OUT (from review): one fewer of the same
+      // total is the pip at the new count, and it flashes, sheds a −1 and
+      // drains to the spent look.
+      const spending = cache.strokesTotal === s.strokesTotal && cache.strokesLeft === s.strokesLeft + 1 ? s.strokesLeft : -1;
       cache.strokes = strokeKey;
+      cache.strokesLeft = s.strokesLeft;
+      cache.strokesTotal = s.strokesTotal;
       this.strokeRow.textContent = '';
       for (let i = 0; i < (s.strokesTotal || 0); i++) {
         const fresh = i === this.freshShot ? ' fresh' : '';
-        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}${fresh}`, this.strokeRow);
+        const spend = i === spending ? ' spend' : '';
+        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}${fresh}${spend}`, this.strokeRow);
       }
       this.freshShot = null;
+      if (spending >= 0) this._shotSpent(this.strokeRow.children[spending]);
       this.strokeText.textContent = `${s.strokesLeft} of ${s.strokesTotal} left`;
       this.strokeRow.classList.toggle('last', s.strokesLeft === 1);
       this.strokeRow.classList.toggle('out', s.strokesLeft === 0);

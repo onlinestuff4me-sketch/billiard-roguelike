@@ -533,7 +533,16 @@
         75% { background: #ffc266; box-shadow: 0 0 14px rgba(255, 179, 64, 0.8); }
         100% { max-width: 8px; background: var(--amber); box-shadow: 0 0 10px rgba(255, 179, 64, 0.55); }
       }
-      @media (prefers-reduced-motion: reduce) { .stroke-row .cue.fresh { animation: none; } }
+      /* A shot spent: the pip flashes white, swells, then drains to spent. */
+      .stroke-row .cue.spend { animation: cue-spend 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+      @keyframes cue-spend {
+        0% { transform: scaleY(1); background: #fff; box-shadow: 0 0 22px #ffb340, 0 0 8px #fff; }
+        25% { transform: scaleY(1.5); background: #fff; box-shadow: 0 0 26px #ffb340, 0 0 10px #fff; }
+        55% { transform: scaleY(0.7); background: var(--amber); box-shadow: 0 0 12px rgba(255, 179, 64, 0.7); }
+        100% { transform: scaleY(1); background: rgba(255, 179, 64, 0.16); box-shadow: none; }
+      }
+      .shot-minus { position: absolute; z-index: 2; pointer-events: none; font-family: var(--font-display); font-size: clamp(12px, 3.4vmin, 15px); font-weight: 700; color: #fff; text-shadow: 0 0 8px #ffb340, 0 0 2px #000; white-space: nowrap; }
+      @media (prefers-reduced-motion: reduce) { .stroke-row .cue.fresh, .stroke-row .cue.spend { animation: none; } }
       .stroke-row.last .cue:not(.spent) {
         background: var(--magenta);
         box-shadow: 0 0 14px rgba(255, 61, 139, 0.8);

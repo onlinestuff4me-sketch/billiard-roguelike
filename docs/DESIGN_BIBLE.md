@@ -233,7 +233,12 @@ floating copy over the pocket.
 **Messages that wait for a tap** ("Tap anywhere to continue"): the table
 card and LAST SHOT. They sit on a dark band so the resting aim line never runs
 through the words. (The first freeze pickup used to wait too; a new control is
-now taught before play, §8.3a.) **+1 SHOT** flies an amber "+1" from the ring
+now taught before play, §8.3a.) **A shot spent** goes out the moment you shoot (from review), not when the
+table stops: its pip flashes white, swells, sheds a "−1" that floats up, and
+drains to the spent look while the count flashes ("5 of 5" becomes "4 of 5").
+The rules still count it at the end of the stroke; the counter just shows it
+as it happens (`shotsShown`). A lesson rep and the exit shot never spend one.
+**+1 SHOT** flies an amber "+1" from the ring
 to where the new mark will open (after the shots left, before any spent),
 with the table slowed as for a plate while it flies (`ScoreFeed.aside`). The
 chip sits there while the mark opens its own gap, lands white-hot and settles

@@ -1587,6 +1587,16 @@ function markFreezeTaught() {
  * counter"). A cue mark flies from the ring to the shot counter, the counter
  * grows by one mark as it lands, and it pulses.
  */
+/**
+ * The shots the counter shows. A shot is spent the moment it is taken (from
+ * review: its pip goes out as you shoot), though the rules only count it once
+ * the table stops; a lesson rep and the exit shot never cost one.
+ */
+function shotsShown() {
+  const inFlight = game.midStroke && !game.tutorialGuard && game.state === 'playing';
+  return Math.max(0, rules.strokesLeft - (inFlight ? 1 : 0));
+}
+
 function flyShotToCounter(object, before) {
   // the table slows while the shot flies in, as it does for a plate (from review)
   if (feed.enabled) return feed.aside(() => new Promise((done) => shotFlight(object, before, done)));
@@ -1953,7 +1963,8 @@ game.on = {
       }
       case 'shot': {
         // the extra shot is seen arriving in the counter (from review)
-        const before = rules.strokesLeft;
+        // what the counter shows before it (the shot in flight already spent)
+        const before = shotsShown();
         rules.grantStroke();
         audio.boonPick?.();
         fx.floatText(object.x, object.z, '+1 SHOT', 'crit');
@@ -5110,6 +5121,8 @@ function frame(now) {
         // Held through the end-of-table moment, so each figure in the corner
         // changes only when the moment shows it change.
         ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {}),
+        // a shot is spent the moment it is taken (shotsShown)
+        strokesLeft: shotsShown(),
         ...(game.strokesHold ? { strokesLeft: game.strokesHold.left, strokesTotal: game.strokesHold.total } : {}),
         ...(game.cashHold != null ? { cash: game.cashHold } : {}),
         ...(game.livesHold != null ? { lives: game.livesHold } : {}),
