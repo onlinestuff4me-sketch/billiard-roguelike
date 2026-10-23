@@ -286,9 +286,10 @@ cleared.
 device: finish the lessons, clear Tables 1, 6 and 12, a bank, an assist, two
 in one, the ×2 ring then a pot, a purchase, a freeze (not in practice), 300 in
 one shot, a table in order. **Each shows at the moment that earns it, on the
-table that earned it** (from review): the pot (`shotAchievements`, as each
-pot locks the shot in), the clear, the buy, the freeze, the last lesson's
-finished board. A plate drops in under the top band with the name and what it
+table that earned it** (from review): the pot (`shotAchievements`: worked out
+as each pot locks the shot in, shown when the feed puts that pot's plate up,
+never before), the clear (when the table's total lands as Beaten, after the
+moment's title), the buy, the freeze, the last lesson's finished board. A plate drops in just under the top band (the score and target stay in view) with the name and what it
 was for, stays about six seconds, and has **See all** (the list, over the
 table, which waits until Done) and **×** to dismiss. Two at once queue. The
 trophy screen lists them all, done or not yet.

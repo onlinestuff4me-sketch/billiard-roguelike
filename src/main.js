@@ -2137,10 +2137,12 @@ function completeRoom() {
   // promise to do something harder, and a promise you have never kept once is
   // not a difficulty setting, it is a trap with a menu entry.
   saveBest(game.level, rules.runScore);
-  if (game.level === 1) achievements.unlock('table1');
-  if (game.level === 6) achievements.unlock('table6');
-  if (game.level === 12) achievements.unlock('table12');
-  if (result.swept) achievements.unlock('order');
+  // shown when the table's total lands, after the moment's title has been
+  // read (see showRoomResult)
+  if (game.level === 1) pendingAch.add('table1');
+  if (game.level === 6) pendingAch.add('table6');
+  if (game.level === 12) pendingAch.add('table12');
+  if (result.swept) pendingAch.add('order');
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
     hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
@@ -2182,6 +2184,7 @@ function showRoomResult(data, shownRun) {
   // a replayed table is on its own: no shop, no run to end
   if (game.replay) data = { ...data, lives: Math.max(1, data.lives), choices: replayChoices(game.replay), nextLabel: 'Replay' };
   if (!momentsOn()) {
+    flushAchievements();
     hud.showScorecard(data);
     if (data.lives <= 0) game.on.playerDeath();
     return;
@@ -2196,7 +2199,10 @@ function showRoomResult(data, shownRun) {
     // The exits are replaced by the shop: the next table is a button in it.
     choices: game.replay ? data.choices : [],
     shownRun,
-    onTotal: () => (game.scoreHold = null),
+    onTotal: () => {
+      game.scoreHold = null;
+      flushAchievements();
+    },
     onCashLanded: () => (game.cashHold = null),
     onLifeLost: () => (game.livesHold = null),
     // no lives left: the moment ends on the last life breaking, not the shop
