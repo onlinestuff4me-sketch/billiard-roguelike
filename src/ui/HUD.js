@@ -52,6 +52,7 @@ export class HUD {
 
     /* ---------------- top bar ---------------- */
     const top = el('div', 'hud-top', this.root);
+    this.topBand = top;
 
     // LIVES and CASH: what you carry from table to table. Missing a table's
     // target costs a life; cash is spent in the shop between tables.
@@ -352,6 +353,9 @@ export class HUD {
     // its buttons are not a shot or a freeze
     for (const type of ['pointerdown', 'pointerup']) t.addEventListener(type, (e) => e.stopPropagation());
     this._achUp = t;
+    // just under the top band, so the score and target stay in view
+    const band = this.topBand.getBoundingClientRect();
+    t.style.top = `${Math.round(band.bottom - this.root.getBoundingClientRect().top + 6)}px`;
     let gone = false;
     const leave = () => {
       if (gone) return;

@@ -1526,6 +1526,7 @@ function finishStroke() {
     return;
   }
 
+  flushAchievements();
   const summary = rules.endStroke();
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
   // ice plate flying into the meter, and the meter holds its old value until
@@ -1865,7 +1866,7 @@ game.on = {
       : rules.pot(ball.number);
     if (game.midStroke) {
       for (const event of paid.events) scored(() => event);
-      shotAchievements();
+      shotAchievements(paid.events[paid.events.length - 1]);
     }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
     gridPulse(pocket.x, pocket.z, 1);
@@ -2224,18 +2225,28 @@ achievements.onUnlock = (a) => {
 
 /**
  * THE POT THAT EARNS ONE SHOWS IT (from review: "it should pop up when you
- * take the action that earns you the achievement"). Called as each pot locks
- * the shot in, so the plate arrives with the ball, on the table that earned
- * it. Not in the lessons or a practice table: those are rehearsals.
+ * take the action that earns you the achievement"). Worked out as each pot
+ * locks the shot in, and shown when the feed puts that pot's plate up, so it
+ * arrives with the ball on the table that earned it and never before the
+ * player has seen why (law 8). Anything the feed did not get to is shown when
+ * the shot ends. Not in the lessons or a practice table: those are rehearsals.
  */
-function shotAchievements() {
+const pendingAch = new Set();
+function shotAchievements(last) {
   if (game.practice || game.tutorialGuard || tutorial.running) return;
   const kinds = new Set(rules.events.slice(0, rules.lockedCount).map((e) => e.kind));
-  if (kinds.has('bankPot')) achievements.unlock('bank');
-  if (kinds.has('kiss')) achievements.unlock('assist');
-  if (kinds.has('multiPot')) achievements.unlock('inone');
-  if (kinds.has('zone')) achievements.unlock('zone');
-  if (rules.strokeScore >= 300) achievements.unlock('big');
+  if (kinds.has('bankPot')) pendingAch.add('bank');
+  if (kinds.has('kiss')) pendingAch.add('assist');
+  if (kinds.has('multiPot')) pendingAch.add('inone');
+  if (kinds.has('zone')) pendingAch.add('zone');
+  if (rules.strokeScore >= 300) pendingAch.add('big');
+  if (last && feed.enabled) last.onShown = flushAchievements;
+  else flushAchievements();
+}
+
+function flushAchievements() {
+  for (const id of pendingAch) achievements.unlock(id);
+  pendingAch.clear();
 }
 
 function openShop() {
@@ -4989,6 +5000,8 @@ if (typeof window !== 'undefined') {
     intro: () => showRoomBanner(),
     /** Leave this table for the next, the way the shop's Next table does. */
     advance: () => advanceRoom(),
+    /** Earn an achievement now, as play would. */
+    unlock: (id) => achievements.unlock(id),
     /** Point the resting cue along `deg` (0 is up the table, clockwise). */
     aim(deg) {
       const th = (deg * Math.PI) / 180;

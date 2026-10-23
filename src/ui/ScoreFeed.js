@@ -480,6 +480,8 @@ export class ScoreFeed {
    * ---------------------------------------------------------------- */
 
   _start(event) {
+    // whatever was waiting on this plate being seen (an achievement)
+    event.onShown?.();
     const colour = this._colour(event);
     const cls = event.bucket === 'points' ? 'pts' : event.op === 'x' ? `xmult x-${SCORE_FEED.xStyle}` : 'mult';
     const node = this._plate(event, cls);
