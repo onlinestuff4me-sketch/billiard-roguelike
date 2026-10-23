@@ -2130,6 +2130,7 @@ function completeRoom() {
   // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
   // promise to do something harder, and a promise you have never kept once is
   // not a difficulty setting, it is a trap with a menu entry.
+  saveBest(game.level, rules.runScore);
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
     hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
@@ -4403,10 +4404,72 @@ function applyMute() {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * First visit, or back again (from review)
+ * ------------------------------------------------------------------ */
+
+const BEST_KEY = 'lightline-best-v1';
+
+/** The furthest table cleared and the best run score, on this device. */
+function loadBest() {
+  try {
+    return JSON.parse(localStorage.getItem(BEST_KEY) || 'null') || { table: 0, score: 0 };
+  } catch {
+    return { table: 0, score: 0 };
+  }
+}
+
+function saveBest(table, score) {
+  const best = loadBest();
+  const next = { table: Math.max(best.table, table), score: Math.max(best.score, score) };
+  try {
+    localStorage.setItem(BEST_KEY, JSON.stringify(next));
+  } catch {
+    /* private mode */
+  }
+}
+
+/**
+ * THE HOME SCREEN KNOWS WHO IS LOOKING. A first visit gets Play and one line
+ * saying it starts with a short lesson; Modes waits, since there is nothing
+ * to choose between yet. A returning player gets Play, their best run, and
+ * Modes.
+ */
+function showHome() {
+  const first = !Tutorial.completed;
+  $('btn-modes').hidden = first;
+  $('btn-modes').parentNode.classList.toggle('two', first);
+  const hello = $('menu-hello');
+  hello.classList.remove('reset');
+  if (first) {
+    hello.textContent = 'New here? Play starts with a one-minute lesson.';
+    return;
+  }
+  const best = loadBest();
+  hello.innerHTML = best.table
+    ? `Best run: <b>Table ${best.table}</b> · <b>${best.score.toLocaleString()}</b> points`
+    : 'Welcome back.';
+}
+
+/**
+ * PLAY IT AS A NEW PLAYER (Settings → Replay tutorial). Everything that makes
+ * the game treat you as someone who has been here before is forgotten: the
+ * lessons, and the new-control teaching (the freeze card and practice). Your
+ * settings, your best run and anything you have unlocked are kept.
+ */
+function resetFirstTime() {
+  Tutorial.reset();
+  try {
+    for (const t of Object.values(TEACH)) localStorage.removeItem(t.key);
+  } catch {
+    /* private mode */
+  }
+}
+
 function showTutorialState() {
   $('set-tutorial-state').textContent = Tutorial.completed
-    ? 'Tutorial finished — it will not show again'
-    : 'Tutorial will play on your next run';
+    ? 'Replay tutorial plays as a new player: the lessons and new-control cards come back'
+    : 'You’re a new player: Play starts with the lessons';
 }
 
 function openMenu() {
@@ -4420,6 +4483,7 @@ function openMenu() {
   menuModes.hidden = true;
   showTutorialState();
   showModesState();
+  showHome();
 }
 
 function play() {
@@ -4784,13 +4848,17 @@ if (typeof window !== 'undefined') {
 }
 if (typeof window !== 'undefined') window.__setAimStyle = (id) => { TRAJECTORY.aimStyle = id; applyAimStyle(); };
 
+// Back to the home screen as a first-time player would see it, so the next
+// Play is exactly what a new player gets.
 $('set-tutorial').addEventListener('click', () => {
-  Tutorial.reset();
+  resetFirstTime();
   showTutorialState();
-  $('set-tutorial').textContent = 'Tutorial reset';
-  setTimeout(() => {
-    $('set-tutorial').textContent = 'Replay tutorial';
-  }, 1400);
+  menuSettings.hidden = true;
+  menuMain.hidden = false;
+  showHome();
+  const hello = $('menu-hello');
+  hello.textContent = 'You’re a new player again: Play starts with the lessons.';
+  hello.classList.add('reset');
 });
 
 /**

@@ -1816,6 +1816,19 @@
         justify-content: center;
         text-align: center;
       }
+      /* Two buttons when Modes is not offered yet (a first visit). */
+      .menu-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .menu-row .menu-btn[hidden] { display: none; }
+      .menu-hello {
+        margin: -2px 0 2px;
+        min-height: 1.3em;
+        font-size: clamp(10px, 2.7vmin, 13px);
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        text-align: center;
+      }
+      .menu-hello b { color: var(--bone); font-weight: 700; }
+      .menu-hello.reset { color: var(--cyan); }
       .menu-foot {
         margin: 4px 0 0;
         font-size: clamp(9px, 2.3vmin, 11px);
@@ -2331,6 +2344,9 @@
             </h1>
             <p class="menu-eyebrow">Billiard Roguelike</p>
             <button id="btn-play" class="menu-btn primary" type="button">Play</button>
+            <!-- FIRST VISIT OR BACK AGAIN (from review): one line under Play
+                 that says what Play will do for this player. -->
+            <p class="menu-hello" id="menu-hello"></p>
             <div class="menu-row">
               <button id="btn-modes" class="menu-btn" type="button">Modes</button>
               <button id="btn-settings" class="menu-btn" type="button">Settings</button>

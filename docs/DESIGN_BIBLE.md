@@ -252,6 +252,27 @@ Every beat of the game, what it must say, and how. Where two treatments are on
 trial, both are built and switchable (Settings, or `window.__moment(kind, v)`)
 until one is picked; the pick is then recorded here and the other deleted.
 
+### 8.0 The home screen and a first run
+
+**The home screen knows who is looking** (`showHome` in main.js). A first
+visit (the lessons not yet done) gets **Play** and one line under it, "New
+here? Play starts with a one-minute lesson."; Modes is held back until the
+lessons are done, so Settings and Sound sit beside it. A returning player
+gets Play, their **best run** on this device ("Best run: Table 9 · 3,120
+points": the furthest table cleared and the best run score, saved each time a
+table is cleared, `lightline-best-v1`), or "Welcome back." before any table
+is cleared, and Modes.
+
+**A first run**: Play → Lesson 1 (the cut) → Lesson 2 (a combination) →
+Table 1's card → the game. Skip leaves the lessons at any time and counts as
+done. Before Table 7, the one-time new-control card and practice (§8.3a).
+
+**Settings → Replay tutorial** makes the game treat you as a new player again:
+it forgets the lessons and every new-control teaching (`resetFirstTime`), and
+goes straight back to the home screen as a first visit sees it ("You're a new
+player again: Play starts with the lessons."). It keeps your settings, your
+best run and Strict Order if unlocked.
+
 ### 8.1 Aiming and the strike
 
 | Beat | Treatment | Code |
