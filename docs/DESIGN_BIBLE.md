@@ -252,26 +252,46 @@ Every beat of the game, what it must say, and how. Where two treatments are on
 trial, both are built and switchable (Settings, or `window.__moment(kind, v)`)
 until one is picked; the pick is then recorded here and the other deleted.
 
-### 8.0 The home screen and a first run
+### 8.0 The home screen, the play screen and a first run
 
-**The home screen knows who is looking** (`showHome` in main.js). A first
-visit (the lessons not yet done) gets **Play** and one line under it, "New
-here? Play starts with a one-minute lesson."; Modes is held back until the
-lessons are done, so Settings and Sound sit beside it. A returning player
-gets Play, their **best run** on this device ("Best run: Table 9 · 3,120
-points": the furthest table cleared and the best run score, saved each time a
-table is cleared, `lightline-best-v1`), or "Welcome back." before any table
-is cleared, and Modes.
+**The home screen** (from review): the name and one big **Play**. Settings is
+an icon (a gear) in the top-left corner; the **achievements** trophy is in the
+top-right with a badge of how many are earned ("5/12"). Sound lives in
+Settings. Nothing else, for a first visit or a returning player alike.
+
+**Play** takes a first visit (the lessons not yet done) straight into the
+lessons. Anyone else gets **the play screen**: a big **Continue · Table N**
+(the table's name, run score, lives and cash) for the run they left, or a big
+**New run** when there is none (with their best run under it); **New run** as
+a second button when a run is saved, which asks once ("Tap again to start
+over"); **the tables**, the twelve of a run as a grid, cleared ones lit with a
+tick and the saved run's table highlighted; and **Modes**.
+
+**Continue** (`saveRun`/`resumeRun` in main.js): the run is saved as each
+table begins (`lightline-run-v1`: the table, run score, cash, lives, freeze
+charges, upgrades owned, a held card, boons), so Continue starts that table
+again with everything the run had walking in. The save is cleared when the run
+ends. The best run (`lightline-best-v1`) is saved each time a table is
+cleared.
+
+**Achievements** (`src/systems/Achievements.js`): twelve, earned once per
+device the moment they happen: finish the lessons, clear Tables 1, 6 and 12,
+a bank, an assist, two in one, the ×2 ring on a shot that pays, a purchase, a
+freeze (not in practice), 300 in one shot, a table in order. Earned mid-run, a
+plate drops in under the top band ("Achievement · Bank Job"). The trophy
+screen lists them all, done or not yet.
 
 **A first run**: Play → Lesson 1 (the cut) → Lesson 2 (a combination) →
-Table 1's card → the game. Skip leaves the lessons at any time and counts as
-done. Before Table 7, the one-time new-control card and practice (§8.3a).
+Table 1's card → the game. In the lessons the hand shows the gesture until the
+player first touches the table, then stops for good; nothing is drawn at rest
+there either. Skip leaves the lessons at any time and counts as done (but only
+playing them through earns the achievement). Before Table 7, the one-time
+new-control card and practice (§8.3a).
 
 **Settings → Replay tutorial** makes the game treat you as a new player again:
-it forgets the lessons and every new-control teaching (`resetFirstTime`), and
-goes straight back to the home screen as a first visit sees it ("You're a new
-player again: Play starts with the lessons."). It keeps your settings, your
-best run and Strict Order if unlocked.
+it forgets the lessons and every new-control teaching (`resetFirstTime`) and
+goes back to the home screen. It keeps your settings, your best run, your
+achievements, a saved run and Strict Order if unlocked.
 
 ### 8.1 Aiming and the strike
 

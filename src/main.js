@@ -49,6 +49,7 @@ import { Player, PLAYER_STATE } from './entities/Player.js';
 import { PhysicsSystem, carryDistance, speedAfterDistance } from './systems/PhysicsSystem.js';
 import { BoonSystem } from './systems/BoonSystem.js';
 import { RoomManager, TABLES } from './systems/RoomManager.js';
+import { Achievements, ACHIEVEMENTS } from './systems/Achievements.js';
 import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
@@ -1525,7 +1526,16 @@ function finishStroke() {
     return;
   }
 
+  // what the shot locked in, for the achievements it may have earned
+  const lockedKinds = new Set(rules.events.slice(0, rules.lockedCount).map((e) => e.kind));
   const summary = rules.endStroke();
+  if (!summary.voided && summary.paid > 0) {
+    if (lockedKinds.has('bankPot')) achievements.unlock('bank');
+    if (lockedKinds.has('kiss')) achievements.unlock('assist');
+    if (lockedKinds.has('multiPot')) achievements.unlock('inone');
+    if (lockedKinds.has('zone')) achievements.unlock('zone');
+    if (summary.paid >= 300) achievements.unlock('big');
+  }
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
   // ice plate flying into the meter, and the meter holds its old value until
   // the plate lands (from review: every change is telegraphed).
@@ -1654,6 +1664,7 @@ function tryFreeze() {
   }
   game.phase = 'aim';
   if (game.practice) practiceFroze();
+  else achievements.unlock('freeze');
   // The cue ball stops where it is; it is about to be re-aimed from here.
   player.vx = 0;
   player.vz = 0;
@@ -2066,6 +2077,8 @@ game.on = {
   },
 
   playerDeath() {
+    // the run is over: nothing to continue
+    clearRun();
     audio.playerDeath();
     engine.shake(24);
     engine.zoomPunch(FEEL.zoomPunch * 2);
@@ -2131,6 +2144,10 @@ function completeRoom() {
   // promise to do something harder, and a promise you have never kept once is
   // not a difficulty setting, it is a trap with a menu entry.
   saveBest(game.level, rules.runScore);
+  if (game.level === 1) achievements.unlock('table1');
+  if (game.level === 6) achievements.unlock('table6');
+  if (game.level === 12) achievements.unlock('table12');
+  if (result.swept) achievements.unlock('order');
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
     hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
@@ -2203,6 +2220,14 @@ function showRoomResult(data, shownRun) {
  * ------------------------------------------------------------------ */
 const shopRun = { owned: [], bought: [], held: null };
 
+/** Achievements earned on this device; each one shows as it is earned. */
+const achievements = new Achievements();
+achievements.onUnlock = (a) => {
+  if (game.headless) return;
+  hud.achievement(a);
+  audio.boonPick?.();
+};
+
 function openShop() {
   const S = RULES.shop;
   let rerolls = 0;
@@ -2248,6 +2273,7 @@ function openShop() {
         shopRun.held = null;
       }
       applyUpgrade(item.u, ctx());
+      achievements.unlock('buy');
       if (!item.u.consumable) shopRun.owned.push(item.u);
       shopRun.bought.push(item.name);
       audio.boonPick?.();
@@ -2540,6 +2566,7 @@ function advanceRoom() {
     game.phase = 'aim';
     game.midStroke = false;
     input.setHeading(0, -1);
+    saveRun();
   };
   // THE WALK TO THE NEXT TABLE. The new one is built while the screen is
   // covered, and its mission is stated once it is fully in view.
@@ -2777,6 +2804,7 @@ function startRun() {
   beginMission();
   player.respawn(rooms.layout.spawn.x, spawnZ());
   input.setHeading(0, -1);
+  saveRun();
   showRoomBanner();
 }
 
@@ -4369,7 +4397,10 @@ const tutorial = new Tutorial({
   roadAlong,
   drawCoachRoute,
   resetRun: resetRunState,
-  finish: () => startRun()
+  finish: () => {
+    if (tutorial.finishedAll) achievements.unlock('lessons');
+    startRun();
+  }
 });
 if (typeof window !== 'undefined') game.tutorial = tutorial;
 const menuMain = document.getElementById('menu-main');
@@ -4394,8 +4425,6 @@ try {
 
 function applyMute() {
   audio.setMuted(muted);
-  $('btn-mute').textContent = muted ? 'Sound off' : 'Sound on';
-  $('btn-mute').setAttribute('aria-pressed', String(muted));
   $('set-mute').textContent = muted ? 'Sound: Off' : 'Sound: On';
   try {
     localStorage.setItem('billiard-muted', muted ? '1' : '0');
@@ -4430,25 +4459,153 @@ function saveBest(table, score) {
 }
 
 /**
- * THE HOME SCREEN KNOWS WHO IS LOOKING. A first visit gets Play and one line
- * saying it starts with a short lesson; Modes waits, since there is nothing
- * to choose between yet. A returning player gets Play, their best run, and
- * Modes.
+ * THE HOME SCREEN (from review): the name and one big Play; Settings as an
+ * icon in one corner, the achievements trophy with its progress in the other.
+ * Play takes a first visit into the lessons and anyone else to the play
+ * screen.
  */
 function showHome() {
-  const first = !Tutorial.completed;
-  $('btn-modes').hidden = first;
-  $('btn-modes').parentNode.classList.toggle('two', first);
-  const hello = $('menu-hello');
-  hello.classList.remove('reset');
-  if (first) {
-    hello.textContent = 'New here? Play starts with a one-minute lesson.';
+  $('trophy-badge').textContent = `${achievements.count}/${achievements.total}`;
+}
+
+/** One menu panel at a time; the corner icons belong to the home screen. */
+function showPanel(name) {
+  for (const [key, el] of Object.entries({ main: menuMain, settings: menuSettings, modes: menuModes, play: $('menu-play'), ach: $('menu-ach') })) {
+    el.hidden = key !== name;
+  }
+  $('btn-settings').hidden = name !== 'main';
+  $('btn-trophy').hidden = name !== 'main';
+  if (name === 'main') showHome();
+}
+
+/* ------------------------------------------------------------------ *
+ * The run you left (from review: "a big continue button for where you
+ * left off"). Saved as each table begins, so Continue starts that table
+ * again with everything the run had walking in. Cleared when the run ends.
+ * ------------------------------------------------------------------ */
+
+const RUN_KEY = 'lightline-run-v1';
+
+function saveRun() {
+  // not the table racked behind the menu at boot: that would overwrite the
+  // run a player is coming back to
+  if (menuOpen || game.headless || tutorial.running || game.practice) return;
+  const data = {
+    v: 1,
+    level: game.level,
+    seed: rooms.runSeed,
+    runScore: rules.runScore,
+    cash: rules.cash,
+    lives: rules.lives,
+    freeze: rules.freezeCharges,
+    paidStreak: rules.paidStreak || 0,
+    owned: shopRun.owned.map((u) => u.id),
+    held: shopRun.held?.id || null,
+    boons: boons.owned.map((o) => ({ id: o.def.id, rank: o.rank, rarity: o.rarity }))
+  };
+  try {
+    localStorage.setItem(RUN_KEY, JSON.stringify(data));
+  } catch {
+    /* private mode: nothing to continue */
+  }
+}
+
+function loadRun() {
+  try {
+    const d = JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
+    return d && d.v === 1 && d.level >= 1 ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearRun() {
+  try {
+    localStorage.removeItem(RUN_KEY);
+  } catch {
+    /* no-op */
+  }
+}
+
+/** Back to the start of the table the saved run had reached. */
+function resumeRun() {
+  const d = loadRun();
+  if (!d) {
+    startRun();
     return;
   }
+  resetRunState();
+  game.graceTimer = TUTORIAL.graceSeconds;
+  game.tutorialGuard = null;
+  rooms.runSeed = d.seed >>> 0;
+  const ctx = { rules, game, player, boons };
+  for (const id of d.owned || []) {
+    const u = UPGRADES.find((x) => x.id === id);
+    if (!u) continue;
+    applyUpgrade(u, ctx);
+    shopRun.owned.push(u);
+  }
+  for (const b of d.boons || []) for (let i = 0; i < (b.rank || 1); i++) boons.grant({ def: b.id, rarity: b.rarity });
+  hud.setBuild(boons.owned);
+  shopRun.held = UPGRADES.find((x) => x.id === d.held) || null;
+  game.level = d.level;
+  rules.runScore = d.runScore || 0;
+  rules.cash = d.cash ?? rules.cash;
+  rules.lives = d.lives ?? rules.lives;
+  rules.paidStreak = d.paidStreak || 0;
+  rooms.generate(game.level);
+  callPocket(null);
+  beginMission();
+  rules.freezeCharges = d.freeze ?? rules.freezeCharges;
+  player.respawn(rooms.layout.spawn.x, spawnZ());
+  input.setHeading(0, -1);
+  showRoomBanner();
+}
+
+/** The play screen: Continue (or New run), the tables, Modes. */
+function showPlayPanel() {
+  const run = loadRun();
   const best = loadBest();
-  hello.innerHTML = best.table
-    ? `Best run: <b>Table ${best.table}</b> · <b>${best.score.toLocaleString()}</b> points`
-    : 'Welcome back.';
+  const t = run ? TABLES[run.level - 1] : null;
+  $('play-continue-main').textContent = run ? `Continue · Table ${run.level}` : 'New run';
+  $('play-continue-sub').textContent = run
+    ? `${t ? t.name + ' · ' : ''}${run.runScore.toLocaleString()} points · ${run.lives} ${run.lives === 1 ? 'life' : 'lives'} · $${run.cash}`
+    : best.table
+      ? `Best run: Table ${best.table} · ${best.score.toLocaleString()} points`
+      : 'Twelve tables, one rule each';
+  $('play-new').hidden = !run;
+  $('play-new').textContent = 'New run';
+  $('play-new').classList.remove('confirm');
+  const path = $('table-path');
+  path.textContent = '';
+  TABLES.forEach((tb, i) => {
+    const n = i + 1;
+    const li = document.createElement('li');
+    li.className = n === run?.level ? 'here' : n <= best.table ? 'cleared' : '';
+    li.innerHTML = `<b>${n}</b><span></span>`;
+    li.querySelector('span').textContent = tb.name;
+    li.title = `Table ${n} · ${tb.name}`;
+    path.appendChild(li);
+  });
+  showPanel('play');
+}
+
+/** The achievements screen: each one, what it asks, done or not yet. */
+function showAchievements() {
+  $('ach-count').textContent = `${achievements.count} of ${achievements.total} earned`;
+  const list = $('ach-list');
+  list.textContent = '';
+  for (const a of ACHIEVEMENTS) {
+    const li = document.createElement('li');
+    const done = achievements.has(a.id);
+    li.className = done ? 'done' : '';
+    li.innerHTML = '<span class="ach-mark"></span><span><b></b><small></small></span>';
+    li.querySelector('.ach-mark').textContent = done ? '★' : '☆';
+    li.querySelector('b').textContent = a.name;
+    li.querySelector('small').textContent = a.text;
+    list.appendChild(li);
+  }
+  showPanel('ach');
 }
 
 /**
@@ -4478,15 +4635,12 @@ function openMenu() {
   tutorial.stop();
   bootVeil.classList.remove('hidden');
   uiLayer.classList.add('attract');
-  menuMain.hidden = false;
-  menuSettings.hidden = true;
-  menuModes.hidden = true;
   showTutorialState();
   showModesState();
-  showHome();
+  showPanel('main');
 }
 
-function play() {
+function play(start) {
   menuOpen = false;
   bootVeil.classList.add('hidden');
   uiLayer.classList.remove('attract');
@@ -4495,21 +4649,35 @@ function play() {
   input.cancel();
   moments.closeIntro();
   game.introUp = false;
-  // A first-time player gets the lesson rooms; everyone else gets the game.
-  if (Tutorial.completed) startRun();
-  else tutorial.start();
+  start();
 }
 
-$('btn-play').addEventListener('click', play);
+// A first visit goes straight into the lessons; anyone else gets the play
+// screen, with Continue for the run they left.
+$('btn-play').addEventListener('click', () => {
+  if (!Tutorial.completed) play(() => tutorial.start());
+  else showPlayPanel();
+});
+$('play-continue').addEventListener('click', () => play(loadRun() ? resumeRun : startRun));
+// Starting over throws the saved run away, so it asks once.
+$('play-new').addEventListener('click', () => {
+  const btn = $('play-new');
+  if (!btn.classList.contains('confirm')) {
+    btn.classList.add('confirm');
+    btn.textContent = 'Tap again to start over';
+    return;
+  }
+  clearRun();
+  play(startRun);
+});
+$('play-back').addEventListener('click', () => showPanel('main'));
+$('btn-trophy').addEventListener('click', showAchievements);
+$('ach-back').addEventListener('click', () => showPanel('main'));
 $('btn-settings').addEventListener('click', () => {
-  menuMain.hidden = true;
-  menuSettings.hidden = false;
+  showPanel('settings');
   showTutorialState();
 });
-$('set-back').addEventListener('click', () => {
-  menuSettings.hidden = true;
-  menuMain.hidden = false;
-});
+$('set-back').addEventListener('click', () => showPanel('main'));
 // MODES. Each mode is its own built page, so choosing one is a navigation and
 // not a state change — `#mode-classic` is a plain link and needs no handler.
 // The card for the mode already running is inert; it is there to say what you
@@ -4532,8 +4700,7 @@ if (typeof __SINGLE_FILE__ !== 'undefined' && __SINGLE_FILE__) {
   $('mode-classic').hidden = true;
 }
 $('btn-modes').addEventListener('click', () => {
-  menuMain.hidden = true;
-  menuModes.hidden = false;
+  showPanel('modes');
   showModesState();
 });
 
@@ -4559,15 +4726,8 @@ $('mode-strict').addEventListener('click', () => {
   audio.unlock();
   showModesState();
 });
-$('mode-back').addEventListener('click', () => {
-  menuModes.hidden = true;
-  menuMain.hidden = false;
-});
-$('btn-mute').addEventListener('click', () => {
-  muted = !muted;
-  audio.unlock();
-  applyMute();
-});
+// Modes lives on the play screen now (from review), so Done goes back there.
+$('mode-back').addEventListener('click', showPlayPanel);
 $('set-mute').addEventListener('click', () => {
   muted = !muted;
   audio.unlock();
@@ -4853,12 +5013,7 @@ if (typeof window !== 'undefined') window.__setAimStyle = (id) => { TRAJECTORY.a
 $('set-tutorial').addEventListener('click', () => {
   resetFirstTime();
   showTutorialState();
-  menuSettings.hidden = true;
-  menuMain.hidden = false;
-  showHome();
-  const hello = $('menu-hello');
-  hello.textContent = 'You’re a new player again: Play starts with the lessons.';
-  hello.classList.add('reset');
+  showPanel('main');
 });
 
 /**
@@ -5151,9 +5306,10 @@ function frame(now) {
       //
       // UNDER THE THUMB (from review, after Ultrapool): with the stick shown
       // only while a thumb is down, the lines wait for the thumb too, so a
-      // table at rest shows nothing but the balls. The lessons keep the
-      // resting line, because the coaching points along it.
-      if ((TRAJECTORY.stickShow || 'rest') === 'drag' && !tutorial.running) {
+      // table at rest shows nothing but the balls. The lessons too (from
+      // review: a bright line from the resting aim, before any thumb was
+      // down, read as an instruction it was not).
+      if ((TRAJECTORY.stickShow || 'rest') === 'drag') {
         player.hideTrajectory();
         game.aimFoul = null;
       } else {

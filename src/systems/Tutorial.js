@@ -588,6 +588,7 @@ export class Tutorial {
    * ---------------------------------------------------------------- */
 
   start() {
+    this.finishedAll = false;
     this.resetRun();
     // Not a room. The HUD renders level 0 as dashes, so "01" appearing later is
     // the visible moment the tutorial ends and the run begins.
@@ -676,6 +677,7 @@ export class Tutorial {
   /** Move to a lesson: show it now, build its table when the table is free. */
   _enter(index) {
     this.index = index;
+    this._handDone = false;
     this.done = 0;
     this._strokes = 0;
     this._before = null;
@@ -1344,8 +1346,13 @@ export class Tutorial {
   _updateHand() {
     const lesson = this.lesson;
     const cam = this.engine?.camera;
+    // ONCE THE PLAYER HAS TOUCHED THE TABLE, THE HAND IS DONE (from review: it
+    // kept playing during and after the shot). It has shown the gesture; from
+    // here on the table is theirs.
+    if (this.input.isAiming || this._launched) this._handDone = true;
     const off =
       !lesson?.hand ||
+      this._handDone ||
       this._awaitingNext ||
       this._launched ||
       this.input.isAiming ||
@@ -1354,6 +1361,9 @@ export class Tutorial {
     if (off) {
       this.handEl.classList.remove('show');
       this.trackEl.classList.remove('show');
+      // and stop it outright: an animation a script has touched (a paused one,
+      // say) can outlive the class that started it
+      for (const node of [this.handEl, this.trackEl]) node.getAnimations?.().forEach((a) => a.cancel());
       return;
     }
 
@@ -2167,6 +2177,9 @@ export class Tutorial {
   /** The lesson is done. Celebrate, and hand the player the trigger. */
   _complete() {
     this._awaitingNext = true;
+    this._handDone = true;
+    this.handEl?.classList.remove('show');
+    this.trackEl?.classList.remove('show');
     this._launched = false;
     this.el.classList.add('done');
     // Nothing is left to aim at. The last preview stayed on the felt through
@@ -2205,6 +2218,8 @@ export class Tutorial {
     this.nextEl.hidden = true;
     const next = this._nextIndex();
     if (next < 0) {
+      // played to the end, not skipped
+      this.finishedAll = true;
       this._finish();
       return;
     }

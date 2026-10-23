@@ -1819,16 +1819,127 @@
       /* Two buttons when Modes is not offered yet (a first visit). */
       .menu-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .menu-row .menu-btn[hidden] { display: none; }
-      .menu-hello {
-        margin: -2px 0 2px;
-        min-height: 1.3em;
-        font-size: clamp(10px, 2.7vmin, 13px);
-        letter-spacing: 0.06em;
-        color: var(--muted);
-        text-align: center;
+      /* ---- home corners, the play screen, achievements (from review) ---- */
+      .menu-corner {
+        position: absolute;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1.5px solid rgba(34, 232, 255, 0.45);
+        border-radius: 12px;
+        background: rgba(8, 18, 30, 0.82);
+        color: var(--cyan);
+        cursor: pointer;
       }
-      .menu-hello b { color: var(--bone); font-weight: 700; }
-      .menu-hello.reset { color: var(--cyan); }
+      .menu-corner[hidden] { display: none; }
+      .menu-corner.left { left: calc(14px + env(safe-area-inset-left, 0px)); }
+      .menu-corner.right { right: calc(14px + env(safe-area-inset-right, 0px)); color: var(--amber); border-color: rgba(255, 179, 64, 0.5); }
+      .menu-corner svg { width: 24px; height: 24px; }
+      .menu-corner:hover { background: rgba(34, 232, 255, 0.14); }
+      .menu-corner:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+      .corner-badge {
+        position: absolute;
+        right: -8px;
+        bottom: -8px;
+        min-width: 30px;
+        padding: 2px 5px 1px;
+        border-radius: 9px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: #02050b;
+        background: var(--amber);
+        box-shadow: 0 0 10px rgba(255, 179, 64, 0.6);
+      }
+      .menu-btn.play-big { display: grid; gap: 2px; padding-block: 14px 12px; }
+      .play-big .pb-main { font-size: clamp(16px, 4.8vmin, 20px); }
+      .play-big .pb-sub { font-size: clamp(9px, 2.4vmin, 11px); letter-spacing: 0.1em; opacity: 0.8; }
+      .menu-btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+      .menu-label {
+        margin: 6px 0 -2px;
+        font-size: clamp(9px, 2.3vmin, 11px);
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .table-path {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .table-path li {
+        display: grid;
+        gap: 1px;
+        padding: 6px 4px 5px;
+        border-radius: 8px;
+        border: 1px solid rgba(34, 232, 255, 0.16);
+        background: rgba(8, 18, 30, 0.6);
+        color: rgba(234, 246, 255, 0.4);
+        font-size: 9px;
+        line-height: 1.15;
+        letter-spacing: 0.04em;
+        min-width: 0;
+      }
+      .table-path li b { font-size: 13px; font-weight: 700; }
+      .table-path li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .table-path li.cleared { color: var(--bone); border-color: rgba(34, 232, 255, 0.45); }
+      .table-path li.cleared b::after { content: ' ✓'; color: var(--cyan); }
+      .table-path li.here { color: #02050b; background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 16px rgba(34, 232, 255, 0.5); }
+      .ach-list {
+        list-style: none;
+        margin: 0;
+        padding: 0 2px 0 0;
+        width: 100%;
+        max-height: min(56vh, 460px);
+        overflow-y: auto;
+        display: grid;
+        gap: 6px;
+        text-align: left;
+      }
+      .ach-list li {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(34, 232, 255, 0.14);
+        background: rgba(8, 18, 30, 0.7);
+        color: rgba(234, 246, 255, 0.45);
+      }
+      .ach-list li .ach-mark { font-size: 16px; text-align: center; color: rgba(255, 179, 64, 0.35); }
+      .ach-list li.done { color: var(--bone); border-color: rgba(255, 179, 64, 0.45); }
+      .ach-list li.done .ach-mark { color: var(--amber); text-shadow: 0 0 8px rgba(255, 179, 64, 0.7); }
+      .ach-list li b { display: block; font-size: 13px; letter-spacing: 0.04em; }
+      .ach-list li small { display: block; font-size: 11px; opacity: 0.85; }
+      /* an achievement earned mid-run: a plate drops in at the top and leaves */
+      .ach-toast {
+        position: absolute;
+        left: 50%;
+        top: calc(var(--hud-pad) + 54px);
+        z-index: 45;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 14px 6px 10px;
+        border-radius: 10px;
+        background: rgba(8, 18, 30, 0.95);
+        border: 1.5px solid var(--amber);
+        box-shadow: 0 0 22px rgba(255, 179, 64, 0.45);
+        color: var(--bone);
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      .ach-toast svg { width: 20px; height: 20px; color: var(--amber); }
+      .ach-toast small { display: block; font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--amber); }
+      .ach-toast b { display: block; font-size: 14px; letter-spacing: 0.04em; }
       .menu-foot {
         margin: 4px 0 0;
         font-size: clamp(9px, 2.3vmin, 11px);
@@ -2338,20 +2449,38 @@
         <canvas id="stage-canvas"></canvas>
         <div id="ui-layer"></div>
         <div id="boot-veil">
+          <!-- THE CORNERS (from review): Settings as an icon in one, the
+               achievements trophy with its progress badge in the other. Shown
+               on the home screen only. -->
+          <button id="btn-settings" class="menu-corner left" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.6 4.6-.1-2.4 2-1.6-2-3.5-2.4.9a8 8 0 0 0-2-1.2L15.7 3h-4l-.5 2.4a8 8 0 0 0-2 1.2l-2.3-.9-2 3.5 1.9 1.6v2.4l-1.9 1.6 2 3.5 2.3-.9a8 8 0 0 0 2 1.2l.5 2.4h4l.4-2.4a8 8 0 0 0 2-1.2l2.4.9 2-3.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
+          <button id="btn-trophy" class="menu-corner right" type="button" aria-label="Achievements"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="corner-badge" id="trophy-badge">0/0</span></button>
           <div class="menu-inner" id="menu-main">
             <h1 class="menu-title" aria-label="Lightline: Billiard Roguelike">
               <span class="ln">Lightline</span>
             </h1>
             <p class="menu-eyebrow">Billiard Roguelike</p>
             <button id="btn-play" class="menu-btn primary" type="button">Play</button>
-            <!-- FIRST VISIT OR BACK AGAIN (from review): one line under Play
-                 that says what Play will do for this player. -->
-            <p class="menu-hello" id="menu-hello"></p>
-            <div class="menu-row">
-              <button id="btn-modes" class="menu-btn" type="button">Modes</button>
-              <button id="btn-settings" class="menu-btn" type="button">Settings</button>
-              <button id="btn-mute" class="menu-btn" type="button" aria-pressed="false">Sound&nbsp;on</button>
-            </div>
+          </div>
+
+          <!-- THE PLAY SCREEN (from review): for a returning player, a big
+               Continue for where they left off, the tables of the first run,
+               and Modes. A first visit skips it and goes into the lessons. -->
+          <div class="menu-inner" id="menu-play" hidden>
+            <h2 class="menu-sub">Play</h2>
+            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></button>
+            <button id="play-new" class="menu-btn" type="button">New run</button>
+            <p class="menu-label">The tables</p>
+            <ol class="table-path" id="table-path" aria-label="The twelve tables of a run"></ol>
+            <button id="btn-modes" class="menu-btn" type="button">Modes</button>
+            <button id="play-back" class="menu-btn quiet" type="button">Back</button>
+          </div>
+
+          <!-- ACHIEVEMENTS (from review): what each one asks, and which are done. -->
+          <div class="menu-inner" id="menu-ach" hidden>
+            <h2 class="menu-sub">Achievements</h2>
+            <p class="menu-foot" id="ach-count"></p>
+            <ul class="ach-list" id="ach-list"></ul>
+            <button id="ach-back" class="menu-btn primary" type="button">Done</button>
           </div>
 
           <!-- MODES. A previous design is a previous VERSION, not a variant, so

@@ -320,6 +320,29 @@ export class HUD {
     );
   }
 
+  /**
+   * An achievement earned mid-run: a plate drops in under the top band, says
+   * which, and leaves (from review: the trophy's badge on the home screen
+   * counts them).
+   */
+  achievement(a) {
+    const t = el('div', 'ach-toast', this.root);
+    t.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg><span><small>Achievement</small><b></b></span>';
+    t.querySelector('b').textContent = a.name;
+    const anim = t.animate?.(
+      [
+        { transform: 'translate(-50%, -24px) scale(0.6)', opacity: 0 },
+        { transform: 'translate(-50%, 4px) scale(1.08)', opacity: 1, offset: 0.08 },
+        { transform: 'translate(-50%, 0) scale(1)', opacity: 1, offset: 0.14 },
+        { transform: 'translate(-50%, 0) scale(1)', opacity: 1, offset: 0.86 },
+        { transform: 'translate(-50%, -18px) scale(0.9)', opacity: 0 }
+      ],
+      { duration: 2800, easing: 'ease-out', fill: 'forwards' }
+    );
+    if (anim) anim.onfinish = () => t.remove();
+    else setTimeout(() => t.remove(), 2800);
+  }
+
   /** Is a hold-until-tapped banner up? */
   get bannerWaiting() {
     return this.bannerHolds && this.banner.classList.contains('visible');
