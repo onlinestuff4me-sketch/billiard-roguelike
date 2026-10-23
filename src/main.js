@@ -4609,8 +4609,15 @@ const input = new InputManager(stage, {
     engine.setBulletTime(false);
     // THE SHOT THE LINE PLAYED, to the last bit: the drawn preview is a record
     // of this exact heading and power, so that is what is struck.
-    const shown = drawnShot();
+    // ...when it is the shot being released: a line drawn for some other aim
+    // (an old one, or none since) is no promise about this release
+    let shown = drawnShot();
     game.drawnShot = null;
+    if (shown) {
+      const dl = Math.hypot(aim.dirX, aim.dirZ) || 1;
+      const turn = Math.acos(clamp((shown.dir.x * aim.dirX + shown.dir.z * aim.dirZ) / dl, -1, 1));
+      if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
+    }
     player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : aim, game);
     // THE STICK GETS THERE FIRST. The table holds still for the few frames the
     // cue takes to snap into the ball, so the ball leaves when it is hit, not
