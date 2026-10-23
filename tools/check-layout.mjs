@@ -65,7 +65,8 @@ for (const size of SIZES) {
         inner: box('.menu-inner#menu-main'),
         play: box('#btn-play'),
         row: box('.menu-row'),
-        buttons: ['#btn-modes', '#btn-settings', '#btn-mute'].map(box),
+        // a first visit holds Modes back, so only the buttons on show count
+        buttons: ['#btn-modes', '#btn-settings', '#btn-mute'].map((s) => (document.querySelector(s)?.hidden ? null : box(s))),
         title: box('.menu-title'),
         eyebrow: box('.menu-eyebrow')
       };
@@ -93,14 +94,15 @@ for (const size of SIZES) {
         );
       }
     }
-    const widths = menu.buttons.filter(Boolean).map((b) => b.w);
+    const shown = menu.buttons.filter(Boolean);
+    const widths = shown.map((b) => b.w);
     check(
-      widths.length === 3 && Math.max(...widths) - Math.min(...widths) < 0.5,
-      'the three buttons are one width',
+      widths.length >= 2 && Math.max(...widths) - Math.min(...widths) < 0.5,
+      'the row’s buttons are one width',
       widths.join(' / ')
     );
     check(
-      menu.buttons.every((b) => b && b.l >= menu.row.l - 0.5 && b.r <= menu.row.r + 0.5),
+      shown.every((b) => b.l >= menu.row.l - 0.5 && b.r <= menu.row.r + 0.5),
       'and none of them escapes the row'
     );
 
