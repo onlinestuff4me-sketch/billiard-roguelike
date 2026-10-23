@@ -376,6 +376,7 @@ export class Tutorial {
    * @param {object} deps.audio
    * @param {() => void} deps.resetRun  wipe build/score state for a fresh start
    * @param {() => void} deps.finish    hand control back to the real game
+   * @param {() => void} [deps.allDone] the last lesson has just been passed
    */
   constructor(deps) {
     Object.assign(this, deps);
@@ -2205,6 +2206,8 @@ export class Tutorial {
     // another" tells the player what they have just learned to do, which
     // "complete" does not.
     this._say(last ? 'You know enough to play' : this.lesson?.cheer || 'Nicely done', 'good');
+    // earned here, on the board that earned it (from review), not on Table 1
+    if (last) this.allDone?.();
     this.skipEl.hidden = true;
     // The CTA takes the progress chip's place rather than being added beside
     // it: exactly one control on screen, and it moves forward.

@@ -254,18 +254,26 @@ until one is picked; the pick is then recorded here and the other deleted.
 
 ### 8.0 The home screen, the play screen and a first run
 
-**The home screen** (from review): the name and one big **Play**. Settings is
-an icon (a gear) in the top-left corner; the **achievements** trophy is in the
-top-right with a badge of how many are earned ("5/12"). Sound lives in
-Settings. Nothing else, for a first visit or a returning player alike.
+**The home screen** (from review): the name and one big **Play**. The
+**achievements** trophy is in the top-left corner with a badge of how many are
+earned ("5/12"); Settings is an icon (a gear) in the top-right. Both are 56 px
+squares with 30 px icons, the badge 13 px type. Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
 
 **Play** takes a first visit (the lessons not yet done) straight into the
 lessons. Anyone else gets **the play screen**: a big **Continue · Table N**
 (the table's name, run score, lives and cash) for the run they left, or a big
 **New run** when there is none (with their best run under it); **New run** as
 a second button when a run is saved, which asks once ("Tap again to start
-over"); **the tables**, the twelve of a run as a grid, cleared ones lit with a
-tick and the saved run's table highlighted; and **Modes**.
+over"); **the tables**, the twelve of a run as a grid; and **Modes**.
+
+**The tables say their state by look, not words** (from review): a
+**cleared** table is a lit, raised button with a tick and a replay arrow, and
+tapping it **replays** that table; the saved run's table is solid cyan with a
+play arrow and tapping it is Continue; a **locked** one is flat, dashed and
+dim with a padlock and does nothing. A replay (`startReplay`) is one table on
+its own from a fresh start: no shop after it, the saved run untouched, a
+missed target costs nothing, and it ends on **Play again** or **Back to
+tables**.
 
 **Continue** (`saveRun`/`resumeRun` in main.js): the run is saved as each
 table begins (`lightline-run-v1`: the table, run score, cash, lives, freeze
@@ -275,11 +283,15 @@ ends. The best run (`lightline-best-v1`) is saved each time a table is
 cleared.
 
 **Achievements** (`src/systems/Achievements.js`): twelve, earned once per
-device the moment they happen: finish the lessons, clear Tables 1, 6 and 12,
-a bank, an assist, two in one, the ×2 ring on a shot that pays, a purchase, a
-freeze (not in practice), 300 in one shot, a table in order. Earned mid-run, a
-plate drops in under the top band ("Achievement · Bank Job"). The trophy
-screen lists them all, done or not yet.
+device: finish the lessons, clear Tables 1, 6 and 12, a bank, an assist, two
+in one, the ×2 ring then a pot, a purchase, a freeze (not in practice), 300 in
+one shot, a table in order. **Each shows at the moment that earns it, on the
+table that earned it** (from review): the pot (`shotAchievements`, as each
+pot locks the shot in), the clear, the buy, the freeze, the last lesson's
+finished board. A plate drops in under the top band with the name and what it
+was for, stays about six seconds, and has **See all** (the list, over the
+table, which waits until Done) and **×** to dismiss. Two at once queue. The
+trophy screen lists them all, done or not yet.
 
 **A first run**: Play → Lesson 1 (the cut) → Lesson 2 (a combination) →
 Table 1's card → the game. In the lessons the hand shows the gesture until the

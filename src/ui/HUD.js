@@ -321,26 +321,69 @@ export class HUD {
   }
 
   /**
-   * An achievement earned mid-run: a plate drops in under the top band, says
-   * which, and leaves (from review: the trophy's badge on the home screen
-   * counts them).
+   * AN ACHIEVEMENT, THE MOMENT IT IS EARNED (from review: "pop up when you
+   * take the action that earns you the achievement, and linger long enough
+   * for you to read it, with a way to see all achievements and to dismiss
+   * it"). A plate drops in under the top band with the name and what it was
+   * for, stays about six seconds, and has two controls: See all opens the
+   * whole list, × puts it away. Two earned at once queue, one after another.
    */
-  achievement(a) {
+  achievement(a, { all } = {}) {
+    this._achQueue = this._achQueue || [];
+    this._achQueue.push({ a, all });
+    if (!this._achUp) this._achNext();
+  }
+
+  _achNext() {
+    const next = this._achQueue.shift();
+    if (!next) {
+      this._achUp = null;
+      return;
+    }
+    const { a, all } = next;
     const t = el('div', 'ach-toast', this.root);
-    t.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg><span><small>Achievement</small><b></b></span>';
+    t.innerHTML =
+      '<span class="ach-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></span>' +
+      '<span class="ach-words"><small>Achievement</small><b></b><em></em></span>' +
+      '<button class="ach-all" type="button">See all</button>' +
+      '<button class="ach-x" type="button" aria-label="Dismiss">×</button>';
     t.querySelector('b').textContent = a.name;
-    const anim = t.animate?.(
+    t.querySelector('em').textContent = a.text;
+    // its buttons are not a shot or a freeze
+    for (const type of ['pointerdown', 'pointerup']) t.addEventListener(type, (e) => e.stopPropagation());
+    this._achUp = t;
+    let gone = false;
+    const leave = () => {
+      if (gone) return;
+      gone = true;
+      clearTimeout(timer);
+      stay?.cancel();
+      const out = t.animate?.([{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -16px) scale(0.92)', opacity: 0 }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+      const done = () => {
+        t.remove();
+        this._achNext();
+      };
+      if (out) out.onfinish = done;
+      else done();
+    };
+    t.querySelector('.ach-x').addEventListener('click', leave);
+    t.querySelector('.ach-all').addEventListener('click', () => {
+      leave();
+      all?.();
+    });
+    // in, then held long enough to read the name and what it was for
+    const HOLD = 6500;
+    const stay = t.animate?.(
       [
         { transform: 'translate(-50%, -24px) scale(0.6)', opacity: 0 },
-        { transform: 'translate(-50%, 4px) scale(1.08)', opacity: 1, offset: 0.08 },
-        { transform: 'translate(-50%, 0) scale(1)', opacity: 1, offset: 0.14 },
-        { transform: 'translate(-50%, 0) scale(1)', opacity: 1, offset: 0.86 },
-        { transform: 'translate(-50%, -18px) scale(0.9)', opacity: 0 }
+        { transform: 'translate(-50%, 4px) scale(1.06)', opacity: 1, offset: 230 / HOLD },
+        { transform: 'translate(-50%, 0) scale(1)', opacity: 1, offset: 380 / HOLD },
+        { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }
       ],
-      { duration: 2800, easing: 'ease-out', fill: 'forwards' }
+      { duration: HOLD, easing: 'ease-out' }
     );
-    if (anim) anim.onfinish = () => t.remove();
-    else setTimeout(() => t.remove(), 2800);
+    if (stay) stay.onfinish = leave;
+    const timer = stay ? 0 : setTimeout(leave, HOLD);
   }
 
   /** Is a hold-until-tapped banner up? */

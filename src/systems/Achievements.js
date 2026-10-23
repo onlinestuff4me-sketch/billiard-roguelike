@@ -17,7 +17,7 @@ export const ACHIEVEMENTS = [
   { id: 'bank', name: 'Bank Job', text: 'Sink a ball that came off a rail.' },
   { id: 'assist', name: 'Assist', text: 'Knock one ball in with another.' },
   { id: 'inone', name: 'Two in One', text: 'Sink two balls in one shot.' },
-  { id: 'zone', name: 'Double Up', text: 'Roll through the ×2 ring on a shot that pays.' },
+  { id: 'zone', name: 'Double Up', text: 'Roll through the ×2 ring, then sink a ball.' },
   { id: 'buy', name: 'Shopper', text: 'Buy an upgrade in the shop.' },
   { id: 'freeze', name: 'Freeze Frame', text: 'Freeze the table mid-shot.' },
   { id: 'big', name: 'Big Shot', text: 'Score 300 or more in one shot.' },

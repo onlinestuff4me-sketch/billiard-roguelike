@@ -1823,31 +1823,31 @@
       .menu-corner {
         position: absolute;
         top: calc(14px + env(safe-area-inset-top, 0px));
-        width: 46px;
-        height: 46px;
+        width: 56px;
+        height: 56px;
         display: grid;
         place-items: center;
         padding: 0;
         border: 1.5px solid rgba(34, 232, 255, 0.45);
-        border-radius: 12px;
+        border-radius: 14px;
         background: rgba(8, 18, 30, 0.82);
         color: var(--cyan);
         cursor: pointer;
       }
       .menu-corner[hidden] { display: none; }
-      .menu-corner.left { left: calc(14px + env(safe-area-inset-left, 0px)); }
-      .menu-corner.right { right: calc(14px + env(safe-area-inset-right, 0px)); color: var(--amber); border-color: rgba(255, 179, 64, 0.5); }
-      .menu-corner svg { width: 24px; height: 24px; }
+      .menu-corner.left { left: calc(14px + env(safe-area-inset-left, 0px)); color: var(--amber); border-color: rgba(255, 179, 64, 0.5); }
+      .menu-corner.right { right: calc(14px + env(safe-area-inset-right, 0px)); }
+      .menu-corner svg { width: 30px; height: 30px; }
       .menu-corner:hover { background: rgba(34, 232, 255, 0.14); }
       .menu-corner:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
       .corner-badge {
         position: absolute;
-        right: -8px;
-        bottom: -8px;
-        min-width: 30px;
-        padding: 2px 5px 1px;
-        border-radius: 9px;
-        font-size: 10px;
+        right: -10px;
+        bottom: -10px;
+        min-width: 38px;
+        padding: 3px 6px 2px;
+        border-radius: 11px;
+        font-size: 13px;
         font-weight: 700;
         letter-spacing: 0.04em;
         color: #02050b;
@@ -1874,24 +1874,41 @@
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 6px;
       }
-      .table-path li {
+      .table-path li { min-width: 0; display: grid; }
+      .tp-tile {
+        position: relative;
         display: grid;
         gap: 1px;
-        padding: 6px 4px 5px;
-        border-radius: 8px;
-        border: 1px solid rgba(34, 232, 255, 0.16);
-        background: rgba(8, 18, 30, 0.6);
-        color: rgba(234, 246, 255, 0.4);
+        padding: 7px 4px 6px;
+        border-radius: 9px;
+        font: inherit;
         font-size: 9px;
         line-height: 1.15;
         letter-spacing: 0.04em;
+        text-align: center;
         min-width: 0;
       }
-      .table-path li b { font-size: 13px; font-weight: 700; }
-      .table-path li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .table-path li.cleared { color: var(--bone); border-color: rgba(34, 232, 255, 0.45); }
-      .table-path li.cleared b::after { content: ' ✓'; color: var(--cyan); }
-      .table-path li.here { color: #02050b; background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 16px rgba(34, 232, 255, 0.5); }
+      .tp-tile b { font-size: 15px; font-weight: 700; }
+      .tp-tile .tp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tp-tile .tp-icon { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
+      .tp-tile .tp-icon svg { display: block; width: 100%; height: 100%; }
+      /* locked: flat, dim, a padlock, nothing to press */
+      .tp-tile.locked { border: 1px dashed rgba(234, 246, 255, 0.14); background: transparent; color: rgba(234, 246, 255, 0.28); }
+      /* cleared: a lit, raised button with a tick and the replay arrow */
+      .tp-tile.cleared {
+        cursor: pointer;
+        color: var(--bone);
+        border: 1.5px solid rgba(34, 232, 255, 0.6);
+        background: linear-gradient(180deg, rgba(34, 232, 255, 0.16), rgba(8, 18, 30, 0.9));
+        box-shadow: 0 3px 0 rgba(34, 232, 255, 0.28), 0 0 10px rgba(34, 232, 255, 0.18);
+      }
+      .tp-tile.cleared b::after { content: ' ✓'; color: var(--cyan); }
+      .tp-tile.cleared .tp-icon { color: var(--cyan); }
+      .tp-tile.cleared:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(34, 232, 255, 0.28); }
+      /* where the run you left is: solid, with the play arrow */
+      .tp-tile.here { cursor: pointer; color: #02050b; border: 1.5px solid var(--cyan); background: var(--cyan); box-shadow: 0 3px 0 rgba(10, 110, 130, 0.9), 0 0 16px rgba(34, 232, 255, 0.5); }
+      .tp-tile.here:active { transform: translateY(2px); }
+      .tp-tile:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
       .ach-list {
         list-style: none;
         margin: 0;
@@ -1919,27 +1936,35 @@
       .ach-list li.done .ach-mark { color: var(--amber); text-shadow: 0 0 8px rgba(255, 179, 64, 0.7); }
       .ach-list li b { display: block; font-size: 13px; letter-spacing: 0.04em; }
       .ach-list li small { display: block; font-size: 11px; opacity: 0.85; }
-      /* an achievement earned mid-run: a plate drops in at the top and leaves */
+      /* an achievement, the moment it is earned: name, what for, See all, × */
       .ach-toast {
         position: absolute;
         left: 50%;
         top: calc(var(--hud-pad) + 54px);
-        z-index: 45;
-        display: flex;
+        z-index: 46;
+        width: min(92%, 360px);
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) auto auto;
         align-items: center;
         gap: 8px;
-        padding: 7px 14px 6px 10px;
-        border-radius: 10px;
-        background: rgba(8, 18, 30, 0.95);
+        padding: 8px 6px 8px 10px;
+        border-radius: 12px;
+        background: rgba(8, 18, 30, 0.96);
         border: 1.5px solid var(--amber);
         box-shadow: 0 0 22px rgba(255, 179, 64, 0.45);
         color: var(--bone);
-        pointer-events: none;
-        white-space: nowrap;
+        pointer-events: auto;
+        transform: translate(-50%, 0);
       }
-      .ach-toast svg { width: 20px; height: 20px; color: var(--amber); }
+      .ach-toast .ach-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 179, 64, 0.16); color: var(--amber); }
+      .ach-toast svg { width: 22px; height: 22px; }
+      .ach-toast .ach-words { min-width: 0; }
       .ach-toast small { display: block; font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--amber); }
-      .ach-toast b { display: block; font-size: 14px; letter-spacing: 0.04em; }
+      .ach-toast b { display: block; font-size: 15px; letter-spacing: 0.04em; }
+      .ach-toast em { display: block; font-style: normal; font-size: 11px; line-height: 1.25; opacity: 0.82; }
+      .ach-toast button { font: inherit; cursor: pointer; border-radius: 8px; color: var(--bone); }
+      .ach-toast .ach-all { padding: 8px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; border: 1px solid rgba(255, 179, 64, 0.6); background: rgba(255, 179, 64, 0.12); white-space: nowrap; }
+      .ach-toast .ach-x { width: 34px; height: 34px; padding: 0; font-size: 20px; line-height: 1; border: 0; background: transparent; opacity: 0.75; }
       .menu-foot {
         margin: 4px 0 0;
         font-size: clamp(9px, 2.3vmin, 11px);
@@ -2449,11 +2474,11 @@
         <canvas id="stage-canvas"></canvas>
         <div id="ui-layer"></div>
         <div id="boot-veil">
-          <!-- THE CORNERS (from review): Settings as an icon in one, the
-               achievements trophy with its progress badge in the other. Shown
-               on the home screen only. -->
-          <button id="btn-settings" class="menu-corner left" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Zm8.6 4.6-.1-2.4 2-1.6-2-3.5-2.4.9a8 8 0 0 0-2-1.2L15.7 3h-4l-.5 2.4a8 8 0 0 0-2 1.2l-2.3-.9-2 3.5 1.9 1.6v2.4l-1.9 1.6 2 3.5 2.3-.9a8 8 0 0 0 2 1.2l.5 2.4h4l.4-2.4a8 8 0 0 0 2-1.2l2.4.9 2-3.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></button>
-          <button id="btn-trophy" class="menu-corner right" type="button" aria-label="Achievements"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="corner-badge" id="trophy-badge">0/0</span></button>
+          <!-- THE CORNERS (from review): the achievements trophy with its
+               progress badge top-left, Settings top-right. Shown on the home
+               screen only. -->
+          <button id="btn-trophy" class="menu-corner left" type="button" aria-label="Achievements"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="corner-badge" id="trophy-badge">0/0</span></button>
+          <button id="btn-settings" class="menu-corner right" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.15 10.08L21.90 10.61L21.90 13.39L19.15 13.92L18.41 15.70L19.99 18.02L18.02 19.99L15.70 18.41L13.92 19.15L13.39 21.90L10.61 21.90L10.08 19.15L8.30 18.41L5.98 19.99L4.01 18.02L5.59 15.70L4.85 13.92L2.10 13.39L2.10 10.61L4.85 10.08L5.59 8.30L4.01 5.98L5.98 4.01L8.30 5.59L10.08 4.85L10.61 2.10L13.39 2.10L13.92 4.85L15.70 5.59L18.02 4.01L19.99 5.98L18.41 8.30Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button>
           <div class="menu-inner" id="menu-main">
             <h1 class="menu-title" aria-label="Lightline: Billiard Roguelike">
               <span class="ln">Lightline</span>

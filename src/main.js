@@ -1526,16 +1526,7 @@ function finishStroke() {
     return;
   }
 
-  // what the shot locked in, for the achievements it may have earned
-  const lockedKinds = new Set(rules.events.slice(0, rules.lockedCount).map((e) => e.kind));
   const summary = rules.endStroke();
-  if (!summary.voided && summary.paid > 0) {
-    if (lockedKinds.has('bankPot')) achievements.unlock('bank');
-    if (lockedKinds.has('kiss')) achievements.unlock('assist');
-    if (lockedKinds.has('multiPot')) achievements.unlock('inone');
-    if (lockedKinds.has('zone')) achievements.unlock('zone');
-    if (summary.paid >= 300) achievements.unlock('big');
-  }
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
   // ice plate flying into the meter, and the meter holds its old value until
   // the plate lands (from review: every change is telegraphed).
@@ -1874,6 +1865,7 @@ game.on = {
       : rules.pot(ball.number);
     if (game.midStroke) {
       for (const event of paid.events) scored(() => event);
+      shotAchievements();
     }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
     gridPulse(pocket.x, pocket.z, 1);
@@ -2186,6 +2178,8 @@ function runOver() {
  * HUD's run total is held at what it showed until the table total lands in it.
  */
 function showRoomResult(data, shownRun) {
+  // a replayed table is on its own: no shop, no run to end
+  if (game.replay) data = { ...data, lives: Math.max(1, data.lives), choices: replayChoices(game.replay) };
   if (!momentsOn()) {
     hud.showScorecard(data);
     if (data.lives <= 0) game.on.playerDeath();
@@ -2199,13 +2193,13 @@ function showRoomResult(data, shownRun) {
   moments.clear({
     ...data,
     // The exits are replaced by the shop: the next table is a button in it.
-    choices: [],
+    choices: game.replay ? data.choices : [],
     shownRun,
     onTotal: () => (game.scoreHold = null),
     onCashLanded: () => (game.cashHold = null),
     onLifeLost: () => (game.livesHold = null),
     // no lives left: the moment ends on the last life breaking, not the shop
-    shop: data.lives > 0 ? openShop() : null,
+    shop: data.lives > 0 && !game.replay ? openShop() : null,
     onRunOver: data.lives > 0 ? null : runOver
   });
 }
@@ -2224,9 +2218,25 @@ const shopRun = { owned: [], bought: [], held: null };
 const achievements = new Achievements();
 achievements.onUnlock = (a) => {
   if (game.headless) return;
-  hud.achievement(a);
+  hud.achievement(a, { all: openAchievementsInRun });
   audio.boonPick?.();
 };
+
+/**
+ * THE POT THAT EARNS ONE SHOWS IT (from review: "it should pop up when you
+ * take the action that earns you the achievement"). Called as each pot locks
+ * the shot in, so the plate arrives with the ball, on the table that earned
+ * it. Not in the lessons or a practice table: those are rehearsals.
+ */
+function shotAchievements() {
+  if (game.practice || game.tutorialGuard || tutorial.running) return;
+  const kinds = new Set(rules.events.slice(0, rules.lockedCount).map((e) => e.kind));
+  if (kinds.has('bankPot')) achievements.unlock('bank');
+  if (kinds.has('kiss')) achievements.unlock('assist');
+  if (kinds.has('multiPot')) achievements.unlock('inone');
+  if (kinds.has('zone')) achievements.unlock('zone');
+  if (rules.strokeScore >= 300) achievements.unlock('big');
+}
 
 function openShop() {
   const S = RULES.shop;
@@ -2762,6 +2772,7 @@ function showRoomBanner() {
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
   endPractice();
+  game.replay = null;
   game.skipIntroCard = false;
   boons.reset();
   boons.recompute();
@@ -2806,6 +2817,55 @@ function startRun() {
   input.setHeading(0, -1);
   saveRun();
   showRoomBanner();
+}
+
+/**
+ * REPLAY A CLEARED TABLE (from review: "you should be able to tap on any of
+ * the completed tables and replay them"). One table, from a fresh start, on
+ * its own: no shop after it, and the run you left is not touched. It ends on
+ * Play again or Back to tables.
+ */
+function startReplay(n) {
+  resetRunState();
+  game.graceTimer = TUTORIAL.graceSeconds;
+  game.tutorialGuard = null;
+  game.replay = n;
+  game.level = n;
+  rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
+  rooms.generate(game.level);
+  callPocket(null);
+  beginMission();
+  player.respawn(rooms.layout.spawn.x, spawnZ());
+  input.setHeading(0, -1);
+  showRoomBanner();
+}
+
+/** How a replayed table ends: again, or back to the tables. */
+function replayChoices(n) {
+  return [
+    {
+      name: 'Play again',
+      detail: `Table ${n}`,
+      color: '#22e8ff',
+      pick: () => {
+        moments.closeClear();
+        hud.hideScorecard();
+        startReplay(n);
+      }
+    },
+    {
+      name: 'Back to tables',
+      detail: '',
+      color: '#ffb340',
+      pick: () => {
+        moments.closeClear();
+        hud.hideScorecard();
+        openMenu();
+        startRun();
+        showPlayPanel();
+      }
+    }
+  ];
 }
 
 /* ------------------------------------------------------------------ *
@@ -4083,6 +4143,7 @@ const input = new InputManager(stage, {
     // cue ball somewhere confusing.
     game.state !== 'cleared' &&
     !menuOpen &&
+    !achFromRun &&
     // A finished lesson is FINISHED: the table stops taking shots so the
     // completion card is not competing with a live cue.
     !tutorial?.awaitingNext &&
@@ -4397,10 +4458,8 @@ const tutorial = new Tutorial({
   roadAlong,
   drawCoachRoute,
   resetRun: resetRunState,
-  finish: () => {
-    if (tutorial.finishedAll) achievements.unlock('lessons');
-    startRun();
-  }
+  allDone: () => achievements.unlock('lessons'),
+  finish: startRun
 });
 if (typeof window !== 'undefined') game.tutorial = tutorial;
 const menuMain = document.getElementById('menu-main');
@@ -4489,7 +4548,7 @@ const RUN_KEY = 'lightline-run-v1';
 function saveRun() {
   // not the table racked behind the menu at boot: that would overwrite the
   // run a player is coming back to
-  if (menuOpen || game.headless || tutorial.running || game.practice) return;
+  if (menuOpen || game.headless || tutorial.running || game.practice || game.replay) return;
   const data = {
     v: 1,
     level: game.level,
@@ -4562,6 +4621,12 @@ function resumeRun() {
   showRoomBanner();
 }
 
+const TP_ICON = {
+  again: '<svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  play: '<svg viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.6 8Z" fill="currentColor"/></svg>',
+  lock: '<svg viewBox="0 0 16 16"><path d="M4.5 7.5h7v5.5h-7Zm1.5 0V5.5a2 2 0 0 1 4 0v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+};
+
 /** The play screen: Continue (or New run), the tables, Modes. */
 function showPlayPanel() {
   const run = loadRun();
@@ -4576,18 +4641,44 @@ function showPlayPanel() {
   $('play-new').hidden = !run;
   $('play-new').textContent = 'New run';
   $('play-new').classList.remove('confirm');
+  // Three looks, no words (from review): a cleared table is a lit button
+  // with a tick and the replay arrow, the table you are on is solid with the
+  // play arrow, and a locked one is dim with a padlock and does nothing.
   const path = $('table-path');
   path.textContent = '';
   TABLES.forEach((tb, i) => {
     const n = i + 1;
+    const here = n === run?.level;
+    const cleared = !here && n <= best.table;
     const li = document.createElement('li');
-    li.className = n === run?.level ? 'here' : n <= best.table ? 'cleared' : '';
-    li.innerHTML = `<b>${n}</b><span></span>`;
-    li.querySelector('span').textContent = tb.name;
-    li.title = `Table ${n} · ${tb.name}`;
+    const tile = document.createElement(here || cleared ? 'button' : 'div');
+    tile.className = `tp-tile ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
+    if (tile.tagName === 'BUTTON') tile.type = 'button';
+    tile.innerHTML = `<span class="tp-icon" aria-hidden="true">${here ? TP_ICON.play : cleared ? TP_ICON.again : TP_ICON.lock}</span><b>${n}</b><span class="tp-name"></span>`;
+    tile.querySelector('.tp-name').textContent = tb.name;
+    tile.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · cleared, replay' : ' · locked'}`);
+    if (here) tile.addEventListener('click', () => play(resumeRun));
+    else if (cleared) tile.addEventListener('click', () => play(() => startReplay(n)));
+    li.appendChild(tile);
     path.appendChild(li);
   });
   showPanel('play');
+}
+
+/**
+ * See all, from an achievement's plate mid-run: the same list over the table,
+ * which waits until Done.
+ */
+let achFromRun = false;
+let achWasPaused = false;
+function openAchievementsInRun() {
+  if (menuOpen || achFromRun) return;
+  achFromRun = true;
+  achWasPaused = engine.paused;
+  engine.pause();
+  input.cancel();
+  bootVeil.classList.remove('hidden');
+  showAchievements();
 }
 
 /** The achievements screen: each one, what it asks, done or not yet. */
@@ -4672,7 +4763,16 @@ $('play-new').addEventListener('click', () => {
 });
 $('play-back').addEventListener('click', () => showPanel('main'));
 $('btn-trophy').addEventListener('click', showAchievements);
-$('ach-back').addEventListener('click', () => showPanel('main'));
+$('ach-back').addEventListener('click', () => {
+  if (!achFromRun) {
+    showPanel('main');
+    return;
+  }
+  // back to the table, as it was
+  achFromRun = false;
+  bootVeil.classList.add('hidden');
+  if (!achWasPaused) engine.resume();
+});
 $('btn-settings').addEventListener('click', () => {
   showPanel('settings');
   showTutorialState();
