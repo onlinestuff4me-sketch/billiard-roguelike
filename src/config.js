@@ -277,6 +277,85 @@ export const TRAJECTORY = {
   beamSlices: 48,
   beamWidth: 0.45,
   beamWidthMax: 1.25,
+  /**
+   * HOW THE FIRST LEG OF THE AIM IS DRAWN, and where power is shown.
+   *   'cue'   — the default, picked in review: a line; power is the cue stick
+   *             drawn back behind the ball one for one with the thumb, plus
+   *             the power ring around the ball, which flashes at full power
+   *   'slim'  — a line like the others; power is a ring around the cue ball
+   *   'pulse' — a line, with a spark running it as fast as the draw is hard
+   *   'beam'  — the original: a ribbon of light that swells with power
+   * The player picks in Settings; this is the default.
+   */
+  aimStyle: 'cue',
+  /** The first leg in the quiet styles: a touch heavier than the other lines. */
+  leadWidth: 0.17,
+  /** The power ring: its stroke, and its clearance from the cue ball's edge. */
+  gaugeWidth: 0.16,
+  gaugeGap: 0.95,
+  /**
+   * The cue style's stick, in world units. Longer than the table is wide, so it
+   * runs out past the rail the way a real cue does; drawn above the rails, at
+   * `stickHeight`, so nothing on the table cuts it off.
+   */
+  /**
+   * THE CUE, ON TRIAL: three looks for the stick, three ways to say full
+   * power, three strikes. Settings → Cue, or window.__cue(kind, value).
+   *   stickLook    'rod' dark steel and cyan edges · 'classic' maple and
+   *                ebony, a real cue · 'hardlight' a construct of light
+   *   maxStyle     'flash' ring flash, burst, MAX POWER badge · 'ignite' the
+   *                stick heats from the butt and burns at full · 'lock' the
+   *                stick kicks and catches, a reticle closes on the ball
+   *   strikeStyle  'snap' follow through and fade · 'impact' the table
+   *                freezes on contact and the stick bounces off · 'pierce'
+   *                the stick carries on through as a bolt of light
+   */
+  stickLook: 'rod', // picked in review
+  maxStyle: 'lock', // picked in review
+  strikeStyle: 'snap', // picked in review
+  /** Snap's freeze on contact, in seconds: base + extra × power. */
+  strikeFreeze: [0.03, 0.05],
+  cueOptions: {
+    stickLook: ['rod', 'classic', 'hardlight'],
+    maxStyle: ['flash', 'ignite', 'lock'],
+    strikeStyle: ['snap', 'impact', 'pierce']
+  },
+  stickLength: 15,
+  stickWidth: 0.34,
+  stickHeight: 1.4,
+  /**
+   * When the stick is on the table (from review, after Ultrapool): 'drag' —
+   * only while a thumb is down, fading in as you press and out when you let
+   * go; 'rest' — always, beaming back in after every shot (round 31).
+   */
+  stickShow: 'drag',
+  /** 'drag': seconds to fade the stick in or out */
+  stickFade: 0.16,
+  /** 'rest': the stick's return after a shot or a freeze: a beam of light runs out along it, then it fills in. [beam, fill] seconds. */
+  stickReveal: [0.22, 0.3],
+  stickShaft: 0x335f7c,
+  /** The shaft's lit centre streak, and the butt. */
+  stickShine: 0x9fe8ff,
+  stickButt: 0x0e2232,
+  /** The stylised shadow's offset (x, z), as if lit from the top left. */
+  stickShadow: [0.7, 1.0],
+  /** How long the stick takes to snap forward into the ball on release (s). */
+  stickStrike: 0.06,
+  /**
+   * How far the stick slides back over a full draw, in world units. The pad's
+   * full travel is INPUT.padRadiusPx (104 CSS px), and the table is drawn at
+   * about 20 px a unit on a phone, so 5.2 units keeps the stick moving one
+   * for one with the thumb.
+   */
+  stickTravel: 5.2,
+  /**
+   * FULL POWER, as a fraction of the thumb's travel across the pad. One number
+   * for every way the game says it — the ring closing and flashing, the stick's
+   * tip lighting, the MAX POWER badge, the sound — so they land together.
+   */
+  fullDraw: 0.97,
+  /** The beam that fires down the line on release, in the quiet styles (seconds). */
+  releaseFlash: 0.32,
   dashLength: 0.42,
   dashGap: 0.3
 };
@@ -478,7 +557,7 @@ export const RULES = {
      * saved stroke, deliberately — it should be worth routing for and never
      * worth more than playing well.
      */
-    cleanSweep: 500,
+    cleanSweep: 50,
     /**
      * STRICT: out of order is a foul, the way an early 8 is. Never on by
      * default and never rolled — it is a mode the player turns on, and it is
@@ -490,34 +569,112 @@ export const RULES = {
     storageKey: 'billiard-strict-order-v1'
   },
 
+  /**
+   * POINTS × MULT.
+   *
+   * A shot builds two numbers as it happens and pays their product. Nothing
+   * counts until a ball drops: a pot locks in everything up to it, and
+   * whatever the shot does after its last pot is taken back. See Rules.js
+   * and specs/product.md.
+   */
   score: {
-    /**
-     * A ball pays its number times this, at the multiplier standing when it
-     * drops. Every pocket pays the same — the variable rates went with the
-     * pocket types, onto the felt where colour is allowed to mean something.
-     */
-    perPip: 100,
+    /** A ball dropping adds its number times this to POINTS. */
+    perPip: 10,
+    /** A ball the cue ball touched pays this much more POINTS when it drops. */
+    perHit: 5,
     /** Every shot left in the budget at room end pays this times the room. */
-    savedStroke: 500
+    savedStroke: 50
+  },
+
+  /** Words on the table's score plates that are a choice, not a rule (in review). */
+  labels: {
+    /** One ball driving another (was KISS; ASSIST picked in review, round 27). */
+    kiss: 'ASSIST'
   },
 
   multiplier: {
     /** Every stroke opens here. */
     base: 1,
+    /** The cue ball off a wall. */
     perBank: 1,
-    perBallTouched: 1,
-    perBallDown: 1,
-    /** A gold ring or gold pocket doubles whatever has been built. */
+    /** One object ball driving another (once per struck ball, per shot). */
+    perKiss: 1,
+    /** An object ball that took a wall on its way in... */
+    bankPot: 2,
+    /** ...at least this far from the pocket it drops in (a brush of the jaw is not a bank). */
+    bankMinRun: 4,
+    /** Every pot after the first in one shot. */
+    extraPot: 2,
+    /** The bonus zone doubles whatever has been built. */
     goldFactor: 2,
     max: 99
   },
 
-  /** Freeze: stop the table mid-stroke and re-aim from where the cue ball got to. */
+  /**
+   * FREEZE FRAME: stop the table mid-stroke and re-aim from where the cue
+   * ball got to. Charges come in halves and are capped at three (picked in
+   * review). They are earned by shots that pay, never by shots that do not.
+   */
   freeze: {
     /** Charges granted by shooting the cue ball into a freeze cell. */
     cellCharges: 3,
-    maxCharges: 6
+    maxCharges: 3,
+    earn: {
+      /** A ball you hit knocks another one in. */
+      combination: 0.5,
+      /** Each ball after the first, down in the same shot. */
+      extraPot: 0.5,
+      /** A shot that pays at this mult or more. */
+      bigShotMult: 5,
+      bigShot: 0.5
+    }
   },
+
+  /**
+   * THE SHOP, between every table (decided in review, after Balatro and
+   * Gambonanza). Money is CASH, the one thing that carries from table to
+   * table; points are only this table's test (RULES.target). Cash is scarce
+   * on purpose: most shops you can afford one thing, or skip it to save.
+   */
+  shop: {
+    /** Random upgrades on offer each visit. */
+    slots: 4,
+    /** Reroll the shelf; the price climbs $1 each time within one visit. */
+    reroll: 3,
+    rerollStep: 1,
+    /** Hold one card for the next shop, at its normal price. */
+    hold: 2,
+    /** Prices stay flat: scarcity comes from the rising targets. */
+    priceGrowth: 0
+  },
+
+  /**
+   * THE TARGET. Every table has a points target to beat; points start fresh
+   * each table. A plain clear (one ball a shot, in order) scores about 785 on
+   * the first table and 1,400 by the eighth, so the target starts easy and
+   * outgrows plain play around table 8: from there you need upgrades.
+   */
+  target: { base: 500, growth: 1.18, round: 50 },
+
+  /** What a table pays, in $, and what saving earns (RULES.shop prices it). */
+  cash: {
+    start: 0,
+    /** Beating the target. Missing it pays nothing but interest. */
+    beaten: 4,
+    /** Per shot left unspent. */
+    perShotLeft: 1,
+    /** $1 for every this-much you beat the target by (0.25 = 25%)... */
+    overStep: 0.25,
+    /** ...up to this many dollars. */
+    overCap: 5,
+    /** Interest: $1 for every `interestPer` held at the end of a table, up to the cap. */
+    interestPer: 5,
+    interestCap: 5
+  },
+
+  /** LIVES replace hull. Missing a table's target costs one; none left ends the run. */
+  lives: { start: 3, max: 3 },
+
 
   /** Hull damage. Nothing hurts you between strokes — only during resolution. */
   damage: {
@@ -614,14 +771,16 @@ export const TABLE = {
     /** Pick-ups, and the room each first appears in. */
     pickups: {
       double: { chance: 0.8, minLevel: 2, label: 'Double' },
-      freeze: { chance: 0.5, minLevel: 4, label: 'Freeze' },
+      freeze: { chance: 0.5, minLevel: 4, label: 'Freeze frame' },
       upgrade: { chance: 0.45, minLevel: 6, label: 'Upgrade' },
       shot: { chance: 0.4, minLevel: 8, label: 'Extra shot' }
     },
     /** Hazards, likewise. */
     hazards: {
       mine: { chance: 0.55, minLevel: 3, label: 'Mine' },
-      kicker: { chance: 0.4, minLevel: 7, label: 'Kicker' }
+      // retired from the rolled tables in review ("a bit strange"); set a
+      // chance above 0 to bring it back
+      kicker: { chance: 0, minLevel: 7, label: 'Kicker' }
     },
     /** At most this many felt objects in one room. */
     maxPerRoom: 3
@@ -738,9 +897,9 @@ export const BOONS = {
  * ------------------------------------------------------------------ */
 export const FEEL = {
   shake: {
-    /** Impulse = momentum * scale, clamped. */
-    scale: 0.0075,
-    max: 0.85,
+    /** Impulse = momentum * scale, clamped. Toned down a quarter in review. */
+    scale: 0.0056,
+    max: 0.65,
     /** Exponential decay per second. */
     decay: 7.5,
     frequency: 34
@@ -758,6 +917,116 @@ export const FEEL = {
   /** Zoom punch on big hits (fraction of ortho height). */
   zoomPunch: 0.028,
   zoomDecay: 6
+};
+
+/* ------------------------------------------------------------------ *
+ * SCORE_FEED — how each scoring number is presented (src/ui/ScoreFeed.js)
+ *
+ * Mirrors the Lightline design system's duration and timescale tokens.
+ * Seconds of real time, at 1x presentation speed.
+ * ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ *
+ * MOMENTS — the beats between shots (src/ui/Moments.js)
+ *
+ * Two treatments of each, to be compared in the real game and then cut to
+ * one. Change them in Settings, or with window.__moment(kind, variant).
+ * ------------------------------------------------------------------ */
+/**
+ * HOW BALL NUMBERS ARE DRAWN (medium picked in review, round 19; the numbers were hard to
+ * read on a phone).
+ *   inset  a light disc in the inner half of the ball, the ball's colour all
+ *          round it (passes npm run palette as it stands)
+ *   medium between the two: the disc about half the ball, as a real pool
+ *          ball prints it, with a bigger digit
+ *   face   a light face across the whole ball with a digit about twice the
+ *          size; the ball's colour is carried by its glow ring
+ */
+export const BALL_NUMERALS = { style: 'medium', options: ['inset', 'medium', 'face'] };
+
+export const MOMENTS = {
+  /**
+   * A plate for each half freeze charge earned, risen where the shot's tally
+   * was and flown into the meter, which holds its old value until it lands
+   * (from review: "anytime something changes on the screen we need to
+   * telegraph it"). Off, the meter just pulses.
+   */
+  chargePlates: true,
+  /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
+  clear: 'ledger',
+  /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */
+  scratch: 'glitch',
+  /** Freeze frame: a flash, then an ice wave stops the table (picked in review) */
+  freeze: 'frame',
+  /** Boot: strips close, the room number rolls over and holds, the rails trace in (picked in review) */
+  transition: 'boot',
+  /** Coin rain: every cash line pays out as coins into the wallet, one ding each (picked in review, after Gambonanza) */
+  wallet: 'coins',
+  options: {
+    wallet: ['coins'],
+    clear: ['ledger'],
+    scratch: ['glitch'],
+    freeze: ['frame'],
+    transition: ['boot']
+  }
+};
+
+export const SCORE_FEED = {
+  /** The table freezes outright when a number arrives (Lightline event-hitstop). */
+  hitStop: 0.09,
+  /** A plate popping in beside its cause, and a box jumping as one lands (event-pop). */
+  pop: 0.42,
+  /** How long the first plate of a shot holds beside its cause (event-hold)... */
+  hold: 0.8,
+  /** ...each later one this much shorter... */
+  holdStep: 0.9,
+  /** ...and never shorter than this (event-hold-min). */
+  holdMin: 0.4,
+  /** A plate flying from its cause into its box (event-flight). */
+  flight: 0.34,
+  /** World speed while a number presents (timescale-slow). Balls crawl, never stop. */
+  slow: 0.12,
+  /** A tap runs everything still to come this much faster (timescale-fast). */
+  fastSpeed: 2.5,
+  /**
+   * When numbers show (in review, round 20): 'cash' shows them as each ball
+   * drops, cashing in what came before it; 'count' counts the shot once the
+   * table stops. Either way the boxes show only what counts.
+   */
+  style: 'cash',
+  /** cash: world speed while a ball waits at the lip (all but a freeze)... */
+  brink: 0.02,
+  /** ...the beat it holds there once its numbers are in... */
+  brinkHold: 0.3,
+  /** ...and the time it is given to drop before its own number shows. */
+  drop: 0.28,
+  /**
+   * How a ×-Mult plate (the ×2 ring's) is coloured against the +-Mult
+   * plates (in review: gold beside orange was too close to tell apart):
+   * 'gold' (as it was), 'orange' (one colour, the sign tells them apart),
+   * 'mint' (the ring's own colour).
+   */
+  xStyle: 'orange',
+  /**
+   * cash: how far short (table units, not seconds: a hard shot would be
+   * frozen far off) the cue ball is stopped before a contact that sinks a
+   * ball, and a rolling ball before the pocket it is about to drop in...
+   */
+  leadDist: 4,
+  leadBallDist: 3.5,
+  /** ...then the table runs slow enough that the travel and the drop take about this long (real seconds)... */
+  travel: 0.85,
+  /** ...and never slower than this, or faster than full speed. */
+  travelMin: 0.15,
+  /** How long a foreseen pot is waited for (real seconds) before it is given up on. */
+  expectWait: 4,
+  /** The shot's tally flying from the boxes to YOUR SCORE, then counting into it. */
+  tallyFly: 0.55,
+  tallyCount: 0.45,
+  /** count: the first plate's hold on the stopped table, and the shortest. */
+  count: 0.5,
+  countMin: 0.2,
+  /** The pause before POINTS and MULT slam together (slam-breath). */
+  breath: 0.4
 };
 
 /* ------------------------------------------------------------------ *
@@ -794,25 +1063,40 @@ export const PALETTE = {
    * ---------------------------------------------------------------- */
 
   /* -- YOU: the cue ball, the aim line, and nothing else -------------- */
-  player: 0x35f2ff,
+  player: 0x22e8ff,
   playerCore: 0xd9feff,
   trail: 0x1fd7ff,
   aim: 0x8ffcff,
-  aimGhost: 0x4a8fa5,
+  aimGhost: 0x0b8fa6,
 
   /* -- THE TABLE: architecture. Never on anything you can collect ----- */
-  obsidian: 0x05070a,
-  feltDeep: 0x06231d,
-  felt: 0x0b3a2e,
-  feltLine: 0x14624c,
-  frame: 0x0a1a24,
-  cushion: 0x123040,
-  rail: 0x0a1a24,
-  railGlow: 0x1d6f7a,
-  /** The lit ring on a pocket mouth. The one glow that means neither good nor bad. */
-  lip: 0x1d6f7a,
+  /*
+   * THE GRID (Lightline). The bed is a black floor, not felt; its lines are
+   * hair-thin and answer impacts; rails are dark bodies with lit edges; a
+   * pocket is a void with a lit mouth, never brighter than the cue ball.
+   */
+  obsidian: 0x02050b,
+  /** The floor at its edge, and the void beyond the table. */
+  feltDeep: 0x02050b,
+  /** The floor at its centre. */
+  felt: 0x061222,
+  /** The minor grid line. */
+  feltLine: 0x10304a,
+  /** Every third grid line. */
+  gridMajor: 0x1a4a68,
+  /** A grid line as a ripple passes. */
+  gridLit: 0x4fb8dc,
+  frame: 0x08131f,
+  cushion: 0x0d1d2d,
+  rail: 0x08131f,
+  /** The lit edge of every rail. */
+  railGlow: 0x3a87a8,
+  /** Architecture's own glow: rail bodies, pocket halos. Means neither good nor bad. */
+  lip: 0x1e4f6b,
+  /** The lit mouth of a pocket. */
+  pocketRing: 0x5fb4d4,
   /** What is inside a pocket. */
-  void: 0x04060a,
+  void: 0x010204,
 
   /* -- THE RACK: which ball, and nothing more ------------------------- */
   solid: 0xffb340,
@@ -878,20 +1162,32 @@ export const PALETTE = {
   /* -- GOOD: every pick-up ------------------------------------------- */
   good: 0x2ef2c4,
 
+  /* -- PICK-UPS wear the colour of the counter they fill (from review) -- */
+  /** +1 SHOT: the shot counter's amber. */
+  shots: 0xffb340,
+  /** Freeze charges: the freeze meter's ice. */
+  ice: 0xbff4ff,
+
   /* -- BAD: every hazard --------------------------------------------- */
   bad: 0xff5a3d,
+
+  /* -- SCORE: what each scoring number feeds (Lightline pts / mult) ---- */
+  scorePoints: 0xe9f8ff,
+  scoreMult: 0xff8a1e,
+  scoreMultHot: 0xffc266,
+  scoreVoid: 0xff2e7e,
 
   /* -- neutral ------------------------------------------------------- */
   spark: 0xfff6d8,
   bone: 0xeaf6ff,
   /** Exit doors sit outside the table and use the two ends of the run. */
-  door: 0x35f2ff,
+  door: 0x22e8ff,
   doorAlt: 0xeaf6ff
 };
 
 /* CSS-side mirror so DOM UI can share the exact same hues. */
 export const CSS_PALETTE = {
-  cyan: '#35f2ff',
+  cyan: '#22e8ff',
   good: '#2ef2c4',
   bad: '#ff5a3d',
   amber: '#ffb340',
@@ -908,8 +1204,8 @@ export const CSS_PALETTE = {
     7: '#e085c2'
   },
   bone: '#eaf6ff',
-  obsidian: '#05070a',
-  felt: '#0b3a2e'
+  obsidian: '#02050b',
+  felt: '#061222'
 };
 
 /**
@@ -1057,6 +1353,12 @@ export const INPUT = {
  * ------------------------------------------------------------------ */
 export const TUTORIAL = {
   /**
+   * The lessons a new player walks, in order (from review): one shot, then a
+   * combo. The score, the target and the shop are taught from table 1, on the
+   * authored tables in src/data/tables.json.
+   */
+  sequence: ['angle', 'combo'],
+  /**
    * Room banners. These run AFTER the tutorial (see docs/TUTORIAL.md), so each
    * one may only introduce something the tutorial did not.
    *
@@ -1068,9 +1370,9 @@ export const TUTORIAL = {
    */
   lessons: {
     1: { title: 'The Mission', sub: 'Sink every ball · in order pays more, and the shots you save are points' },
-    2: { title: 'The Double', sub: 'Green is good · hit it and the shot is worth twice as much' },
+    2: { title: 'The Double', sub: 'Orange is Mult · roll through it and the shot is worth twice as much' },
     3: { title: 'Mines', sub: 'Red is bad · they only bite your ball, so go around' },
-    4: { title: 'The Freeze', sub: 'Three charges · tap while the table is still moving' },
+    4: { title: 'The Freeze', sub: 'Three charges · tap FREEZE while the table is still moving' },
     5: { title: 'The 8 Goes Last', sub: 'Knock it in early and it comes straight back' },
     6: { title: 'The Upgrade', sub: 'Buys you a free pick at the door' },
     7: { title: 'The Kicker', sub: 'Hit it and the nearest ball comes back at you' },
@@ -1147,10 +1449,62 @@ export default {
   AUDIO,
   PALETTE,
   CSS_PALETTE,
+  SCORE_FEED,
   RULES,
   TABLE,
   RACK,
   RENDER,
   INPUT,
   PROGRESSION
+};
+
+/**
+ * TEACHING A NEW CONTROL (from review: "a card that introduces it, tap to
+ * continue, then a table where you try it as many times as you want").
+ *
+ * Before the first table that needs it (or once you've bought it), the game
+ * shows a card with the control working, then a practice table: unlimited
+ * shots, charges that refill, nothing scored, and a Done button that goes on
+ * to the real table. Shown once per device. Freeze is the only control so far;
+ * every other upgrade pays more, and its plate shows it the first time.
+ */
+export const TEACH = {
+  freeze: {
+    /** the same key the old first-freeze banner used, so neither shows twice */
+    key: 'lightline-freeze-taught-v1',
+    kicker: 'New control',
+    name: 'Freeze frame',
+    // one line (from review: "the description needs to be MUCH shorter")
+    rule: 'Tap FREEZE while balls are still moving to re-aim and shoot again.',
+    stats: [],
+    /** recorded on the practice table with a real drag and tap, a finger drawn on */
+    demo: { sheet: './teach/freeze-sheet.webp', cols: 15, rows: 10, frames: 150, fps: 25 },
+    demoAlt: 'A finger drags to aim and shoots; while the balls roll it taps FREEZE in the corner; the table freezes; the finger drags again to re-aim the cue ball and lets go.',
+    go: 'Tap to practise',
+    practice: {
+      id: 'practice-freeze',
+      name: 'Practice',
+      spawn: { x: 0, z: 11 },
+      // three balls: sink them all and the practice is over (from review)
+      rack: [
+        { number: 1, x: -4.5, z: 2 },
+        { number: 2, x: 4.5, z: -1.5 },
+        { number: 3, x: -2, z: -9 }
+      ],
+      strokes: 99,
+      target: 0,
+      objects: []
+    },
+    /** charges in hand while practising, refilled after every shot */
+    charges: 3,
+    title: 'Practice · Freeze frame',
+    lines: {
+      start: 'Shoot, then tap FREEZE while the balls move.',
+      frozen: 'Frozen. Drag to re-aim, let go to shoot.',
+      missed: 'Tap FREEZE sooner, while they still move.',
+      again: 'Sink all three, or carry on when you’re ready.'
+    },
+    done: 'Continue to next table',
+    count: (n) => (n === 1 ? '1 freeze' : `${n} freezes`)
+  }
 };

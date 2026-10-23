@@ -40,18 +40,22 @@ import {
   TABLE,
   TUTORIAL,
   PROGRESSION,
-  LAYER
-} from './config.js';
+  LAYER,
+  MOMENTS, BALL_NUMERALS, SCORE_FEED, TEACH } from './config.js';
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { AudioManager } from './core/AudioManager.js';
 import { Player, PLAYER_STATE } from './entities/Player.js';
 import { PhysicsSystem, carryDistance, speedAfterDistance } from './systems/PhysicsSystem.js';
 import { BoonSystem } from './systems/BoonSystem.js';
-import { RoomManager } from './systems/RoomManager.js';
+import { RoomManager, TABLES } from './systems/RoomManager.js';
+import { Achievements, ACHIEVEMENTS } from './systems/Achievements.js';
 import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
+import { ScoreFeed } from './ui/ScoreFeed.js';
+import { Moments } from './ui/Moments.js';
+import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
 import { Tutorial } from './systems/Tutorial.js';
@@ -277,13 +281,147 @@ function pulseCalledPocket(rawDt) {
 }
 let calledPulse = 0;
 
+/**
+ * THE GRID, which answers.
+ *
+ * Hair lines at one ball and a half, every third one a shade brighter, built
+ * from short segments so a ripple can bend them. Up to eight impulses at a
+ * time (a pot, a slam, a hard strike) push the lines out from where they
+ * happened and light the wavefront as it passes: Geometry Wars' spring grid,
+ * done as a shader so it costs the phone nothing between impulses.
+ */
+const GRID = { minor: 1.5, majorEvery: 3, seg: 0.5, impulses: 8 };
+const gridUniforms = {
+  uTime: { value: 0 },
+  uImp: { value: Array.from({ length: GRID.impulses }, () => new THREE.Vector4(0, 0, -99, 0)) },
+  uMinor: { value: new THREE.Color(PALETTE.feltLine) },
+  uMajor: { value: new THREE.Color(PALETTE.gridMajor) },
+  uLit: { value: new THREE.Color(PALETTE.gridLit) }
+};
+let gridNext = 0;
+
+function buildGrid() {
+  const pos = [];
+  const major = [];
+  const line = (ax, az, bx, bz, isMajor) => {
+    const len = Math.hypot(bx - ax, bz - az);
+    const n = Math.max(1, Math.ceil(len / GRID.seg));
+    for (let i = 0; i < n; i++) {
+      const t0 = i / n;
+      const t1 = (i + 1) / n;
+      pos.push(ax + (bx - ax) * t0, 0.01, az + (bz - az) * t0, ax + (bx - ax) * t1, 0.01, az + (bz - az) * t1);
+      major.push(isMajor ? 1 : 0, isMajor ? 1 : 0);
+    }
+  };
+  const cols = Math.round(ARENA.width / GRID.minor);
+  const rows = Math.round(ARENA.height / GRID.minor);
+  for (let i = 1; i < cols; i++) {
+    const x = -ARENA.halfW + (ARENA.width * i) / cols;
+    line(x, -ARENA.halfH, x, ARENA.halfH, i % GRID.majorEvery === 0);
+  }
+  for (let j = 1; j < rows; j++) {
+    const z = -ARENA.halfH + (ARENA.height * j) / rows;
+    line(-ARENA.halfW, z, ARENA.halfW, z, j % GRID.majorEvery === 0);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('major', new THREE.Float32BufferAttribute(major, 1));
+  const mat = new THREE.ShaderMaterial({
+    uniforms: gridUniforms,
+    transparent: true,
+    depthWrite: false,
+    vertexShader: `
+      uniform float uTime;
+      uniform vec4 uImp[${GRID.impulses}];
+      attribute float major;
+      varying float vMajor;
+      varying float vLit;
+      void main() {
+        vec3 p = position;
+        float lit = 0.0;
+        for (int i = 0; i < ${GRID.impulses}; i++) {
+          vec4 im = uImp[i];
+          float age = uTime - im.z;
+          if (age < 0.0 || age > 1.6 || im.w <= 0.0) continue;
+          vec2 d = p.xz - im.xy;
+          float r = length(d) + 1e-4;
+          float front = age * 14.0;
+          float band = exp(-abs(r - front) * 0.7);
+          float fade = exp(-2.4 * age) * im.w;
+          float wave = sin((r - front) * 1.6) * band * fade;
+          p.xz += (d / r) * wave * 0.32;
+          lit += band * fade;
+        }
+        vMajor = major;
+        vLit = clamp(lit, 0.0, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uMinor;
+      uniform vec3 uMajor;
+      uniform vec3 uLit;
+      varying float vMajor;
+      varying float vLit;
+      void main() {
+        vec3 base = mix(uMinor, uMajor, vMajor);
+        gl_FragColor = vec4(mix(base, uLit * 2.2, vLit), mix(0.85, 1.0, vLit));
+        #include <colorspace_fragment>
+      }`
+  });
+  const lines = new THREE.LineSegments(geo, mat);
+  lines.frustumCulled = false;
+  return lines;
+}
+
+/**
+ * THE GRID GOES ON PAST THE TABLE, fainter: the margins the bands open up are
+ * the same floor of light, not a letterbox.
+ */
+function buildVoidGrid() {
+  const pos = [];
+  const step = GRID.minor * GRID.majorEvery;
+  const R = 40;
+  for (let x = -R; x <= R; x += step) pos.push(x, -0.1, -R, x, -0.1, R);
+  for (let z = -R; z <= R; z += step) pos.push(-R, -0.1, z, R, -0.1, z);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  const lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: PALETTE.feltLine, transparent: true, opacity: 0.45 }));
+  lines.frustumCulled = false;
+  lines.renderOrder = -1;
+  return lines;
+}
+
+/** Send a ripple through the grid from (x, z). Strength 0..1. */
+function gridPulse(x, z, strength = 1) {
+  const slot = gridUniforms.uImp.value[gridNext];
+  gridNext = (gridNext + 1) % GRID.impulses;
+  slot.set(x, z, gridUniforms.uTime.value, strength);
+}
+
 function buildTable(target) {
   const table = new THREE.Group();
   table.name = 'table';
 
+  // THE FLOOR. Not cloth: a black bed, a shade lighter in the middle, lit by
+  // nothing. Light belongs to the things on it.
+  const floorTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 456;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(128, 228, 20, 128, 228, 300);
+    const hex = (v) => `#${v.toString(16).padStart(6, '0')}`;
+    grad.addColorStop(0, hex(PALETTE.felt));
+    grad.addColorStop(1, hex(PALETTE.feltDeep));
+    g.fillStyle = grad;
+    g.fillRect(0, 0, c.width, c.height);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
   const felt = new THREE.Mesh(
     new THREE.PlaneGeometry(ARENA.width, ARENA.height),
-    new THREE.MeshStandardMaterial({ color: PALETTE.felt, roughness: 0.95, metalness: 0.0 })
+    new THREE.MeshBasicMaterial({ map: floorTex })
   );
   felt.rotation.x = -Math.PI / 2;
   felt.position.y = -0.02;
@@ -297,26 +435,8 @@ function buildTable(target) {
   vignette.position.y = -0.06;
   table.add(vignette);
 
-  const gridPoints = [];
-  const cols = 6;
-  const rows = 10;
-  for (let i = 1; i < cols; i++) {
-    const x = -ARENA.halfW + (ARENA.width * i) / cols;
-    gridPoints.push(x, 0.01, -ARENA.halfH, x, 0.01, ARENA.halfH);
-  }
-  for (let j = 1; j < rows; j++) {
-    const z = -ARENA.halfH + (ARENA.height * j) / rows;
-    gridPoints.push(-ARENA.halfW, 0.01, z, ARENA.halfW, 0.01, z);
-  }
-  const gridGeo = new THREE.BufferGeometry();
-  gridGeo.setAttribute('position', new THREE.Float32BufferAttribute(gridPoints, 3));
-  table.add(
-    new THREE.LineSegments(
-      gridGeo,
-      new THREE.LineBasicMaterial({ color: PALETTE.feltLine, transparent: true, opacity: 0.28 })
-    )
-  );
-
+  table.add(buildGrid());
+  table.add(buildVoidGrid());
   const slots = pocketSlots();
   const frameT = ARENA.railThickness * 2.1;
   const cushT = ARENA.railThickness;
@@ -327,7 +447,7 @@ function buildTable(target) {
     roughness: 0.65,
     metalness: 0.3,
     emissive: new THREE.Color(PALETTE.lip),
-    emissiveIntensity: 0.1
+    emissiveIntensity: 0.12
   });
   const frameSpecs = [
     { w: ARENA.width + frameT * 2, d: frameT, x: 0, z: -ARENA.halfH - frameT / 2 },
@@ -347,8 +467,10 @@ function buildTable(target) {
     roughness: 0.5,
     metalness: 0.25,
     emissive: new THREE.Color(PALETTE.lip),
-    emissiveIntensity: 0.62
+    emissiveIntensity: 0.45
   });
+  // RAILS ARE EDGES OF LIGHT: every cushion is outlined in lit structure.
+  const railEdgeMat = new THREE.LineBasicMaterial({ color: PALETTE.railGlow, transparent: true, opacity: 0.95 });
 
   /**
    * A cushion run as an extruded trapezoid. `quad` is four world-space
@@ -386,7 +508,13 @@ function buildTable(target) {
     [[W, -H + gapX(tr)], [W, mr.z - gapX(mr)], [W - cushT, mr.z - gapX(mr) - jawOf(mr)], [W - cushT, -H + gapX(tr) + jawOf(tr)]],
     [[W, mr.z + gapX(mr)], [W, H - gapX(br)], [W - cushT, H - gapX(br) - jawOf(br)], [W - cushT, mr.z + gapX(mr) + jawOf(mr)]]
   ];
-  for (const quad of runs) table.add(cushion(quad));
+  for (const quad of runs) {
+    const run = cushion(quad);
+    table.add(run);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(run.geometry, 30), railEdgeMat);
+    edges.position.y = 0.01;
+    table.add(edges);
+  }
 
   /* -- the pockets themselves ----------------------------------------- *
    *
@@ -405,7 +533,9 @@ function buildTable(target) {
    * read comes from the void and the arc, not from depth.
    */
   const lip = new THREE.Color(PALETTE.lip);
-  const bright = new THREE.Color(PALETTE.aim);
+  // A pocket's mouth is lit structure: it must pull the eye, and must never
+  // be brighter than the cue ball.
+  const bright = new THREE.Color(PALETTE.pocketRing);
   const GAP = Math.PI / 3;           // 60 degrees of opening
   const SWEEP = Math.PI * 2 - GAP;   // 300 degrees of rim
 
@@ -816,7 +946,62 @@ const audio = new AudioManager();
 const player = new Player(scene);
 const fx = createFX();
 const hud = new HUD(uiLayer, { camera, stage });
+/**
+ * THE SCORE PRESENTER. Every number a stroke earns is shown one at a time,
+ * beside its cause, and flown into the POINTS or MULT box. See ScoreFeed.js.
+ */
+const feed = new ScoreFeed({
+  layer: uiLayer,
+  camera,
+  engine,
+  audio,
+  fx,
+  colors: {
+    points: PALETTE.scorePoints,
+    mult: PALETTE.scoreMult,
+    multHot: PALETTE.scoreMultHot,
+    multX: PALETTE.good,
+    void: PALETTE.scoreVoid
+  },
+  reducedMotion
+});
 const modal = new BoonModal(uiLayer);
+/**
+ * THE MOMENTS between shots: the table clearing, a scratch, a freeze, and the
+ * walk to the next table. See Moments.js; the treatment of each is MOMENTS.
+ */
+const moments = new Moments({ layer: uiLayer, canvas, camera, audio, engine, hud });
+/** Moments play in the real game, not in lessons or headless checks. */
+const momentsOn = () => !game.headless && !tutorial.running;
+
+/**
+ * THE STICK MEETS THE BALL. What happens there is the strike style; the
+ * snap has nothing more to say than its own follow-through.
+ */
+player.aimRenderer.onContact = ({ x, z, ux, uz, power, full, style }) => {
+  if (full || style === 'impact') gridPulse(x, z, 0.35 + 0.4 * power);
+  if (style === 'impact') {
+    fx.shockwave(x, z, PALETTE.playerCore, 1.6 + 1.6 * power, 0.2);
+    fx.shockwave(x, z, PALETTE.player, 3 + 3 * power, 0.42);
+    fx.burst(x - ux * 0.6, z - uz * 0.6, 10 + Math.round(16 * power), PALETTE.playerCore, 10 + 8 * power, 0.5);
+    engine.shake(3 + 8 * power);
+    audio.strikeImpact?.(power);
+    try {
+      navigator.vibrate?.(full ? 24 : 12);
+    } catch {
+      /* no-op */
+    }
+  } else if (style === 'pierce') {
+    const reach = 4 + 6 * power;
+    fx.zap(x, z, x + ux * reach, z + uz * reach, PALETTE.playerCore, 0.28);
+    fx.zap(x, z, x + ux * reach * 0.6, z + uz * reach * 0.6, PALETTE.player, 0.36);
+    fx.burst(x, z, 16 + Math.round(12 * power), PALETTE.player, 12, 0.6);
+    engine.shake(2 + 4 * power);
+    audio.strikePierce?.(power);
+  }
+};
+/** A spark off a burning stick (the ignite max-power style). */
+player.aimRenderer.onSpark = (x, z) => fx.burst(x, z, 2, Math.random() < 0.5 ? PALETTE.scoreMult : PALETTE.scoreMultHot, 4, 0.45);
 
 /** The shared context every system reads from. */
 const game = {
@@ -902,24 +1087,44 @@ const ENEMY_COLOR = {
   heavy: PALETTE.bone
 };
 
-/** Step the cascade multiplier and play its pentatonic note. */
 /**
- * One step of the multiplier ladder, with the note that goes with it.
+ * ONE SCORING EVENT, from Rules, into the presenter.
  *
- * Every rung — a bank, a ball touched, a ball down — routes through here, so
- * the escalating pentatonic run and the number on screen can never disagree
- * about how deep the stroke is.
+ * Only a live stroke scores: the menu's attract shots and a door shot run the
+ * same physics and must not. With the presenter off (a lesson, a headless
+ * measurement) the old pentatonic run still plays, so a lesson still sounds
+ * like it is building.
  */
-function ladder(kind) {
-  if (!game.midStroke) return rules.multiplier;
-  let value;
-  if (kind === 'bank') value = rules.bank();
-  else if (kind === 'gold') value = rules.gold();
-  else value = rules.touch();
+function scored(make) {
+  if (!game.midStroke) return null;
+  const event = make();
+  if (!event) return null;
   game.chain.count += 1;
   game.chain.best = Math.max(game.chain.best, game.chain.count);
-  audio.chainNote(game.chain.count - 1);
-  return value;
+  // whether a pot has already locked it in: a pot's own events (SUNK, BANK,
+  // IN ORDER...) are locked together, so the presenter needn't guess
+  event.counts = Number.isFinite(event.index) && event.index < rules.lockedCount;
+  if (feed.enabled) feed.push(event);
+  else audio.chainNote(game.chain.count - 1);
+  return event;
+}
+
+/**
+ * Which way a rail faces, from where on it a ball touched it. Object-ball
+ * rebounds do not carry a normal, and the presenter needs one to light the
+ * cushion along its length and put the plate inboard of it.
+ */
+function railNormal(x, z) {
+  const dx = ARENA.halfW - Math.abs(x);
+  const dz = ARENA.halfH - Math.abs(z);
+  return dx < dz ? { nx: -Math.sign(x) || 1, nz: 0 } : { nx: 0, nz: -Math.sign(z) || 1 };
+}
+
+/** An object ball meeting a rail: remembered, because a pot after it is a bank pot. */
+function noteObjectRail(ball, x, z, kind) {
+  if (!game.midStroke || !ball || kind !== 'rail') return;
+  ball.railsThisStroke = (ball.railsThisStroke || 0) + 1;
+  ball.lastRail = { x, z, kind: 'wall', ...railNormal(x, z) };
 }
 
 /**
@@ -943,16 +1148,121 @@ function multCallout() {
 let wasMaxed = false;
 
 function noteAimPower(aim) {
-  const maxed = (aim?.power ?? 0) >= 0.97;
+  // The same threshold the ring and the stick use, so everything lands at once.
+  const maxed = (aim?.charge ?? 0) >= TRAJECTORY.fullDraw;
   if (maxed && !wasMaxed) {
     const p = player;
-    fx.shockwave(p.aimCue.x, p.aimCue.z, PALETTE.bone, 3.4, 0.3);
-    fx.burst(p.aimCue.x, p.aimCue.z, 14, PALETTE.bone, 13, 0.6);
-    fx.floatText(p.x, p.z + 1.9, 'MAX POWER', 'crit');
-    engine.shake(5);
-    audio.bumper?.();
+    const style = TRAJECTORY.maxStyle || 'flash';
+    player.aimRenderer.maxed();
+    if (style === 'ignite') {
+      // The stick does the talking: it is already burning. The ball flares
+      // in heat and the cue roars.
+      fx.shockwave(p.x, p.z, PALETTE.scoreMult, 3.2, 0.34);
+      fx.burst(p.x, p.z, 22, PALETTE.scoreMultHot, 10, 0.7);
+      engine.shake(4);
+      audio.ignite?.();
+      audio.maxPower?.();
+    } else if (style === 'lock') {
+      // A reticle closes on the ball and the stick catches.
+      lockReticle();
+      fx.shockwave(p.x, p.z, PALETTE.playerCore, 2.2, 0.2);
+      engine.zoomPunch();
+      engine.shake(3);
+      audio.lockOn?.();
+    } else {
+      // A ring of light bursting out of the power ring, and sparks with it.
+      fx.shockwave(p.x, p.z, PALETTE.playerCore, 3.8, 0.38);
+      fx.shockwave(p.x, p.z, PALETTE.aim, 2.6, 0.28);
+      fx.burst(p.x, p.z, 18, PALETTE.playerCore, 12, 0.6);
+      maxPowerBadge();
+      engine.shake(5);
+      audio.maxPower?.();
+    }
+    // A short buzz on phones that allow it. Never required, never an error.
+    try {
+      navigator.vibrate?.(style === 'lock' ? [10, 40, 14] : 18);
+    } catch {
+      /* no-op */
+    }
   }
   wasMaxed = maxed;
+}
+
+/**
+ * THE MAX POWER BADGE.
+ *
+ * A Lightline plate that pops out of the power ring with a wiggle and flies
+ * away from the aim line, so it celebrates the moment without ever sitting on
+ * the shot being lined up. Real time, DOM, gone in under a second.
+ */
+function lockReticle() {
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  const v = new THREE.Vector3(player.x, 0.7, player.z).project(camera);
+  const x = (v.x * 0.5 + 0.5) * w;
+  const y = (-v.y * 0.5 + 0.5) * h;
+  const node = document.createElement('div');
+  node.className = 'lock-reticle';
+  node.style.left = `${x}px`;
+  node.style.top = `${y}px`;
+  for (const k of ['n', 'e', 's', 'w']) {
+    const c = document.createElement('i');
+    c.className = k;
+    node.appendChild(c);
+  }
+  const tag = document.createElement('b');
+  tag.textContent = 'MAX';
+  node.appendChild(tag);
+  uiLayer.appendChild(node);
+  if (reducedMotion || !node.animate) {
+    setTimeout(() => node.remove(), 700);
+    return;
+  }
+  const a = node.animate(
+    [
+      { transform: 'translate(-50%, -50%) scale(2.4) rotate(45deg)', opacity: 0 },
+      { transform: 'translate(-50%, -50%) scale(0.92) rotate(0deg)', opacity: 1, offset: 0.24 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.34 },
+      { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 1, offset: 0.78 },
+      { transform: 'translate(-50%, -50%) scale(1.15) rotate(0deg)', opacity: 0 }
+    ],
+    { duration: 900, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+  );
+  a.onfinish = () => node.remove();
+}
+
+/**
+ * MAX POWER, in the bottom band: the empty middle of the bottom row, between
+ * the shots and the Freeze frame meter. It used to burst off the ball onto the
+ * felt, where it sat on top of the very preview it was announcing.
+ */
+function maxPowerBadge() {
+  const L = uiLayer.getBoundingClientRect();
+  const row = hud.root.querySelector('.hud-strokes')?.getBoundingClientRect();
+  const x = L.width / 2;
+  const y = row && row.height ? row.top - L.top + row.height / 2 : L.height - 40;
+  const node = document.createElement('div');
+  node.className = 'max-badge';
+  node.innerHTML = '<b>MAX</b><small>POWER</small>';
+  uiLayer.appendChild(node);
+  const at = (extra = '') => `translate(${x}px, ${y}px) translate(-50%, -50%)${extra}`;
+  node.style.transform = at();
+  if (reducedMotion || !node.animate) {
+    setTimeout(() => node.remove(), 800);
+    return;
+  }
+  const anim = node.animate(
+    [
+      { transform: at(' translateY(14px) scale(0.3) rotate(-8deg)'), opacity: 0 },
+      { transform: at(' scale(1.3) rotate(4deg)'), opacity: 1, offset: 0.2 },
+      { transform: at(' scale(0.94) rotate(-2deg)'), opacity: 1, offset: 0.36 },
+      { transform: at(' scale(1)'), opacity: 1, offset: 0.5 },
+      { transform: at(' scale(1)'), opacity: 1, offset: 0.82 },
+      { transform: at(' translateY(-8px) scale(0.9)'), opacity: 0 }
+    ],
+    { duration: 1000, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+  );
+  anim.onfinish = () => node.remove();
 }
 
 function speedRatio(speed, lo = 0.35, hi = 2.2) {
@@ -998,6 +1308,8 @@ function sinkBall(ball, pocket) {
 }
 
 function pumpSinking(rawDt) {
+  // a ball the score feed is holding at the lip waits there (see ScoreFeed: cash)
+  if (feed.brinking) return;
   for (let i = sinking.length - 1; i >= 0; i--) {
     const s = sinking[i];
     s.t += rawDt;
@@ -1029,6 +1341,21 @@ function removeBall(ball, pocket) {
     fx.burst(ball.x, ball.z, 20, ENEMY_COLOR[ball.type], 11, 1.5);
     fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], ball.radius * 4.5, 0.36);
   }
+}
+
+/**
+ * A HAZARD VOIDS THE SHOT. With lives in place of hull, nothing chips away
+ * at you mid-table: a mine, a kickback or a hit costs this shot's points, the
+ * way a scratch does, and only a missed target costs a life.
+ */
+function voidShot(label) {
+  if (!game.midStroke || rules.scratched) return;
+  rules.scratch();
+    feed.voidShot();
+  audio.playerHurt?.();
+  engine.shake(10);
+  hud.flashDamage();
+  fx.floatText(player.x, player.z, `${label.toUpperCase()} · SHOT VOID`, 'splat');
 }
 
 /**
@@ -1090,6 +1417,14 @@ function beginStroke() {
   game.strokeTookGreen = false;
   rules.beginStroke();
   rooms.table.rearmForStroke();
+  for (const ball of game.enemies) {
+    ball.railsThisStroke = 0;
+    ball.lastRail = null;
+    ball.knockedByBall = false;
+  }
+  game.strokeCombos = 0;
+  game.feedSettling = false;
+  feed.beginStroke();
 }
 
 /** Resume a frozen stroke. Same stroke, same ladder — no reset, no cost. */
@@ -1102,6 +1437,75 @@ function resumeStroke() {
  * The table has stopped. Bank what the stroke paid, spend one from the budget,
  * and ask the mission whether the room is over.
  */
+/**
+ * THE TALLY GOES TO THE SCORE (from review: "have the 240 fly up to the top
+ * and animate getting added to the top score"). The feed hands over the
+ * shot's tally and where it sits; it flies to YOUR SCORE, lands with a pulse,
+ * and the score counts up to include it. The shot itself banks it a moment
+ * later (endStroke), by which time the count has already arrived there.
+ */
+feed.onTally = (paid, from) => {
+  const to = hud.scoreValue.getBoundingClientRect();
+  const L = uiLayer.getBoundingClientRect();
+  const start = rules.snapshot().displayScore;
+  game.scoreHold = start;
+  const fly = document.createElement('div');
+  fly.className = 'sf-tallyfly';
+  fly.textContent = `+${paid.toLocaleString()}`;
+  uiLayer.appendChild(fly);
+  const a = [from.left - L.left + from.width / 2, from.top - L.top + from.height / 2];
+  const b = [to.left - L.left + to.width / 2, to.top - L.top + to.height / 2];
+  const at = (p, s) => `translate(${p[0]}px, ${p[1]}px) translate(-50%, -50%) scale(${s})`;
+  const mid = [(a[0] + b[0]) / 2 + 30, (a[1] + b[1]) / 2];
+  const ms = SCORE_FEED.tallyFly * 1000;
+  const flight = reducedMotion || !fly.animate ? null : fly.animate(
+    [
+      { transform: at(a, 1) },
+      { transform: at(mid, 0.9), offset: 0.5 },
+      { transform: at(b, 0.55), opacity: 0.9 }
+    ],
+    { duration: ms, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' }
+  );
+  const land = () => {
+    fly.remove();
+    hud.scoreValue.animate?.(
+      [
+        { transform: 'scale(1)', filter: 'brightness(1)' },
+        { transform: 'scale(1.35)', filter: 'brightness(1.8) drop-shadow(0 0 12px #ffc266)', offset: 0.35 },
+        { transform: 'scale(1)', filter: 'brightness(1)' }
+      ],
+      { duration: 520, easing: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }
+    );
+    audio.scoreSlam?.();
+    // count up, on real time, and done before the shot banks the points
+    const t0 = performance.now();
+    let mine = game.scoreHold;
+    const step = (now) => {
+      // stop the moment anything else takes the score over (the table's end)
+      if (game.scoreHold !== mine) return;
+      const k = Math.min(1, (now - t0) / (SCORE_FEED.tallyCount * 1000));
+      mine = Math.round(start + paid * (1 - (1 - k) * (1 - k)));
+      game.scoreHold = mine;
+      if (k < 1) requestAnimationFrame(step);
+      else hold(performance.now());
+    };
+    // ...and it keeps showing the counted figure until the shot has banked
+    // it (it used to let go first, and the score dropped back for a frame).
+    const end = start + paid;
+    const hold = (t1) => {
+      const wait = (now) => {
+        if (game.scoreHold !== mine) return;
+        if (rules.snapshot().displayScore >= end || now - t1 > 3000) game.scoreHold = null;
+        else requestAnimationFrame(wait);
+      };
+      requestAnimationFrame(wait);
+    };
+    requestAnimationFrame(step);
+  };
+  if (flight) flight.onfinish = land;
+  else land();
+};
+
 function finishStroke() {
   game.midStroke = false;
   game.phase = 'aim';
@@ -1110,6 +1514,10 @@ function finishStroke() {
   // Shooting into a door is not a shot off the budget. The room is already decided; the
   // exit shot must not be able to bankrupt you.
   if (game.state === 'cleared') return;
+  if (game.practice) {
+    practiceShotOver();
+    return;
+  }
   // Neither is a lesson rep. A tutorial with a budget is a tutorial you can
   // fail, and every board here is meant to be repeatable until it lands.
   if (game.tutorialGuard) {
@@ -1118,11 +1526,33 @@ function finishStroke() {
     return;
   }
 
+  flushAchievements();
   const summary = rules.endStroke();
-  if (summary.voided) {
-    fx.floatText(player.x, player.z - 2.4, `VOID −${summary.lost.toLocaleString()}`, 'splat');
-  } else if (summary.paid > 0) {
-    fx.floatText(player.x, player.z - 2.4, `+${summary.paid.toLocaleString()}`, 'crit');
+  // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
+  // ice plate flying into the meter, and the meter holds its old value until
+  // the plate lands (from review: every change is telegraphed).
+  const chargesBefore = rules.freezeCharges;
+  const awards = rules.earnCharges(summary, game.strokeCombos || 0);
+  game.strokeCombos = 0;
+  if (awards.length) {
+    if (momentsOn()) {
+      game.freezeHold = chargesBefore;
+      moments
+        .charges(awards, (amount) => {
+          if (game.freezeHold != null) game.freezeHold = Math.min(rules.freezeCharges, game.freezeHold + amount);
+        })
+        .then(() => {
+          game.freezeHold = null;
+        });
+    }
+    else fx.floatText(player.x, player.z - 3.2, `+${awards.reduce((n, a) => n + a.amount, 0)} FREEZE FRAME`, 'combo');
+  }
+  if (!feed.enabled) {
+    if (summary.voided) {
+      fx.floatText(player.x, player.z - 2.4, `VOID −${summary.lost.toLocaleString()}`, 'splat');
+    } else if (summary.paid > 0) {
+      fx.floatText(player.x, player.z - 2.4, `+${summary.paid.toLocaleString()}`, 'crit');
+    }
   }
 
   if (rules.filled) {
@@ -1130,8 +1560,86 @@ function finishStroke() {
   } else if (rules.strokesLeft <= 0) {
     failRoom();
   } else if (rules.strokesLeft === 1) {
-    hud.showBanner('Last shot', `${rules.mission.rack - rules.ballsDown} still on the table`, 1.8);
+    // it waits to be read (from review): this is the one that changes the shot
+    hud.showBanner('Last shot', `${rules.mission.rack - rules.ballsDown} still on the table`, HOLD);
   }
+  if (game.teachFreeze && game.state === 'playing') {
+    game.teachFreeze = false;
+    markFreezeTaught();
+    hud.showBanner('Freeze frame', 'While the table is still moving, tap FREEZE (bottom right) to stop it and aim again. It costs a charge, not a shot.', HOLD);
+  }
+}
+
+const FREEZE_TAUGHT = TEACH.freeze.key;
+function freezeTaught() {
+  try {
+    return localStorage.getItem(FREEZE_TAUGHT) === '1';
+  } catch {
+    return false;
+  }
+}
+function markFreezeTaught() {
+  try {
+    localStorage.setItem(FREEZE_TAUGHT, '1');
+  } catch {}
+}
+
+/**
+ * +1 SHOT, SEEN ARRIVING (from review: "show how it's reflected in their shot
+ * counter"). A cue mark flies from the ring to the shot counter, the counter
+ * grows by one mark as it lands, and it pulses.
+ */
+/**
+ * The shots the counter shows. A shot is spent the moment it is taken (from
+ * review: its pip goes out as you shoot), though the rules only count it once
+ * the table stops; a lesson rep and the exit shot never cost one.
+ */
+function shotsShown() {
+  const inFlight = game.midStroke && !game.tutorialGuard && game.state === 'playing';
+  return Math.max(0, rules.strokesLeft - (inFlight ? 1 : 0));
+}
+
+function flyShotToCounter(object, before) {
+  // the table slows while the shot flies in, as it does for a plate (from review)
+  if (feed.enabled) return feed.aside(() => new Promise((done) => shotFlight(object, before, done)));
+  return new Promise((done) => shotFlight(object, before, done));
+}
+
+function shotFlight(object, before, done) {
+  game.strokesHold = { left: before, total: rules.snapshot().strokesTotal - 1 };
+  const v = new THREE.Vector3(object.x, 0.7, object.z).project(camera);
+  const L = uiLayer.getBoundingClientRect();
+  const a = [(v.x * 0.5 + 0.5) * uiLayer.clientWidth, (-v.y * 0.5 + 0.5) * uiLayer.clientHeight];
+  // It lands where the new mark will open: after the shots you still have,
+  // before any you've spent.
+  const r = hud.strokeRow.getBoundingClientRect();
+  const spent = hud.strokeRow.children[before]?.getBoundingClientRect();
+  const b = [(spent ? spent.left - 3 : r.right + 4) - L.left, r.top - L.top - 14];
+  const pip = document.createElement('div');
+  pip.className = 'shot-fly';
+  pip.textContent = '+1';
+  uiLayer.appendChild(pip);
+  const at = (p, s) => `translate(${p[0]}px, ${p[1]}px) translate(-50%, -50%) scale(${s})`;
+  const land = () => {
+    // the chip sits on the new mark while it opens, then lifts away
+    const off = pip.animate?.(
+      [{ transform: at(b, 0.8), opacity: 1 }, { transform: at(b, 0.8), opacity: 1, offset: 0.55 }, { transform: at([b[0], b[1] - 26], 0.7), opacity: 0 }],
+      { duration: 1100, easing: 'ease-out', fill: 'forwards' }
+    );
+    if (off) off.onfinish = () => pip.remove();
+    else pip.remove();
+    game.strokesHold = null;
+    hud.shotAdded(before);
+    audio.scoreLock?.();
+    // the slow-down holds while the new mark opens, then lets go
+    setTimeout(done, 700);
+  };
+  const fly = reducedMotion || !pip.animate ? null : pip.animate(
+    [{ transform: at(a, 1.4) }, { transform: at([(a[0] + b[0]) / 2 - 40, (a[1] + b[1]) / 2], 1.1), offset: 0.5 }, { transform: at(b, 0.8) }],
+    { duration: 700, easing: 'cubic-bezier(0.5, 0, 0.75, 0)', fill: 'forwards' }
+  );
+  if (fly) fly.onfinish = land;
+  else land();
 }
 
 /**
@@ -1143,10 +1651,12 @@ function tryFreeze() {
   if (game.phase !== 'resolve' || !game.midStroke) return false;
   if (game.state === 'modal' || !player.alive) return false;
   if (!rules.spendFreeze()) {
-    fx.floatText(player.x, player.z - 2.2, 'NO FREEZE', 'block');
+    fx.floatText(player.x, player.z - 2.2, 'NO FREEZE FRAME', 'block');
     return false;
   }
   game.phase = 'aim';
+  if (game.practice) practiceFroze();
+  else achievements.unlock('freeze');
   // The cue ball stops where it is; it is about to be re-aimed from here.
   player.vx = 0;
   player.vz = 0;
@@ -1154,10 +1664,18 @@ function tryFreeze() {
   input.setHeading(0, -1);
   engine.zoomPunch();
   engine.shake(4);
-  audio.focusEnter?.();
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
-  fx.floatText(player.x, player.z - 2.2, 'FREEZE', 'crit');
-  hud.showBanner('Freeze', 'Re-aim — this does not cost a shot', 1.6);
+  if (momentsOn()) {
+    moments.freeze({
+      cue: { x: player.x, z: player.z },
+      balls: game.enemies.filter((b) => b.alive && Math.hypot(b.vx, b.vz) > 0.3).map((b) => ({ x: b.x, z: b.z, vx: b.vx, vz: b.vz })),
+      left: rules.freezeCharges
+    });
+  } else {
+    audio.focusEnter?.();
+    fx.floatText(player.x, player.z - 2.2, 'FREEZE FRAME', 'crit');
+    hud.showBanner('Freeze frame', 'Re-aim — this does not cost a shot', 1.6);
+  }
   return true;
 }
 game.tryFreeze = tryFreeze;
@@ -1216,10 +1734,10 @@ game.on = {
     // A ball fired back out of a live pocket is the one thing on a static
     // table that can still hurt you.
     if (enemy.hostile) {
-      if (!game.tutorialGuard && speed > 8) p.takeDamage(RULES.damage.kickback, game, enemy);
+      if (!game.tutorialGuard && speed > 8) voidShot('Kickback');
       enemy.hostile = false;
     } else {
-      ladder('touch');
+      scored(() => rules.hit(enemy.number, { x: enemy.x, z: enemy.z, kind: 'ball', ref: enemy }));
     }
 
     tutorial.notify('hit', {
@@ -1230,20 +1748,10 @@ game.on = {
       killed: false
     });
 
-    // A CONTACT IS NOT A POT.
-    //
-    // This drew a ring that grew with every hit — 4.4 units and up, against
-    // the 5.5 a pocket gets — plus a full-size callout, so a three-ball stroke
-    // put four rings the size of the celebration on the felt before anything
-    // had gone down. What a contact needs to say is "that counted, and the
-    // shot is now worth this much", which is a small ring at the point of
-    // impact and a small number beside it.
-    if (rules.multiplier > 1 && game.midStroke) {
-      fx.floatText(x, z - 1.6, `×${rules.multiplier}`, 'tick');
-      fx.shockwave(x, z, PALETTE.good, 1.7, 0.2);
-    }
-
-    engine.hitStop(TIME.hitStop);
+    // A CONTACT IS NOT A POT. Its number (+5 HIT) is shown by the presenter,
+    // beside the ball, one at a time; the presenter also does the freeze, so
+    // the contact only takes its own hit-stop when the presenter is off.
+    if (!feed.enabled) engine.hitStop(TIME.hitStop);
     engine.shake(speed * enemy.mass * 0.9);
     audio.impact(clamp(speed / PLAYER.launchSpeed, 0, 1));
     fx.burst(x, z, 10, ENEMY_COLOR[enemy.type], speed * 0.45);
@@ -1255,17 +1763,17 @@ game.on = {
   /* --- ball into ball ------------------------------------------------- */
   carom({ striker, target, x, z, speed }) {
     tutorial.notify('pass', { striker, target, x, z, speed });
-    ladder('touch');
+    // A ball driven by another ball: if it drops, that is a combination.
+    if (target) target.knockedByBall = true;
+    scored(() => rules.kiss(target.number, { x: target.x, z: target.z, kind: 'ball', ref: target }));
 
     // A carom is a contact, not an arrival: it gets the contact's weight. The
     // zoom punch and the long hit-stop went with the ring — they belong to the
     // pocket, which is the moment the shot is actually about.
-    engine.hitStop(TIME.hitStop);
+    if (!feed.enabled) engine.hitStop(TIME.hitStop);
     engine.shake(speed * 1.6);
     audio.carom();
-    fx.floatText(x, z - 1.6, `×${rules.multiplier}`, 'tick');
-    fx.burst(x, z, 12, PALETTE.good, speed * 0.6, 1.1);
-    fx.shockwave(x, z, PALETTE.good, 1.9, 0.22);
+    fx.burst(x, z, 12, PALETTE.spark, speed * 0.6, 1.1);
 
     boons.onImpact({ player, enemy: target, x, z, speed, banked: true, result: null });
   },
@@ -1276,7 +1784,8 @@ game.on = {
    * destroy anything — so what is left is the sound and the shove, which is
    * exactly what a ball slamming a cushion should be.
    */
-  wallSplat({ enemy, x, z, speed }) {
+  wallSplat({ enemy, x, z, speed, kind }) {
+    noteObjectRail(enemy, x, z, kind);
     audio.wallSplat();
     engine.hitStop(TIME.hitStop);
     engine.shake(speed * 1.4);
@@ -1290,7 +1799,8 @@ game.on = {
     engine.shake(1.6);
   },
 
-  enemyRebound({ enemy, x, z, speed }) {
+  enemyRebound({ enemy, x, z, speed, kind }) {
+    noteObjectRail(enemy, x, z, kind);
     if (speed < 6) return;
     fx.burst(x, z, 3, ENEMY_COLOR[enemy.type], speed * 0.25, 0.6);
   },
@@ -1319,12 +1829,13 @@ game.on = {
     // board unpassable for anyone who had turned the mode on.
     const foul = tutorial.running ? null : rules.foulReason(ball.number);
     if (foul) {
-      rules.scratch();
+      rules.scratch('foul');
+      feed.voidShot();
       audio.playerHurt();
       engine.shake(9);
       fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 6, 0.5);
       const next = rules.nextInOrder;
-      fx.floatText(ball.x, ball.z, foul === 'eight' ? 'THE 8 GOES LAST' : 'OUT OF ORDER', 'splat');
+      // the banner says why; a floating copy over the pocket said it twice
       hud.showBanner(
         foul === 'eight' ? 'Too early' : 'Out of order',
         foul === 'eight'
@@ -1336,79 +1847,41 @@ game.on = {
       return;
     }
 
-    // WHAT THIS BALL EARNED, not what the stroke has done since it began.
-    //
-    // The ladder is cumulative and stays that way — every rail taken before a
-    // pot is in the figure it pays at. But the beats underneath the score are a
-    // sentence about THIS ball, and counting rails the previous ball already
-    // celebrated reads as the same banks being paid twice. Since the last time
-    // the stroke paid, then: on the first pot that is every rail of the stroke,
-    // and on the second it is the rails taken between the two.
-    const banks = rules.banks - rules.paidBanks;
-    const touched = rules.ballsTouched - rules.paidTouched;
-    const tookGreen = game.strokeTookGreen;
-    const paid = rules.pot(ball.number);
+    // THE POT. It adds its own events — the ball's value, a bank pot if it
+    // took a rail on the way, a second-pot bonus, the order bonus — and locks
+    // in everything the stroke has done up to now. The presenter shows each
+    // one beside its cause: the value at the pocket, the bank at the rail.
+    // A BANK IS A RUN OFF A RAIL INTO THE POCKET (from review: a ball that
+    // brushed the jaw on its way in was paid as a bank). The last rail it took
+    // has to be at least RULES.multiplier.bankMinRun from the pocket it drops in.
+    const run = ball.lastRail ? Math.hypot(ball.lastRail.x - pocket.x, ball.lastRail.z - pocket.z) : 0;
+    const banked = (ball.railsThisStroke || 0) > 0 && run >= RULES.multiplier.bankMinRun;
+    if (game.midStroke && ball.knockedByBall) game.strokeCombos = (game.strokeCombos || 0) + 1;
+    const paid = game.midStroke
+      ? rules.pot(ball.number, {
+          banked,
+          at: { x: pocket.x, z: pocket.z, kind: 'pocket', ref: pocket },
+          bankAt: banked ? ball.lastRail : null
+        })
+      : rules.pot(ball.number);
+    if (game.midStroke) {
+      for (const event of paid.events) scored(() => event);
+      shotAchievements(paid.events[paid.events.length - 1]);
+    }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
+    gridPulse(pocket.x, pocket.z, 1);
 
-    // THE TEXT GOES WHERE THE BALL IS NOT.
-    //
-    // Every pocket is in a corner or against a rail, so a label centred on one
-    // sits directly over the ball dropping into it — the score covered the very
-    // event it was reporting. Each beat is thrown back toward the middle of the
-    // table, along the line from the pocket to the centre, and stacked further
-    // in as the run climbs.
-    const inward = (() => {
-      const len = Math.hypot(pocket.x, pocket.z) || 1;
-      return { x: -pocket.x / len, z: -pocket.z / len };
-    })();
-    const away = (n) => ({
-      x: pocket.x + inward.x * (2.6 + n * 1.5),
-      z: pocket.z + inward.z * (2.6 + n * 1.5)
-    });
-
-    audio.chainNote(game.chain.count + 2);
-    engine.hitStop(TIME.hitStopCrit);
     engine.zoomPunch();
     engine.shake(10);
-    fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
-    const head = away(0);
-    fx.floatText(head.x, head.z, `+${paid.value.toLocaleString()}`, 'crit');
-
-    // THE BREAKDOWN IS WORDS, AND ONLY WORDS.
-    //
-    // Each beat used to bring its own ring and its own zoom punch, so a pot
-    // that earned three things fired four rings and four punches over a
-    // second — the echoes that made it "hard to see the most important
-    // actions". The pot's own ring above is the event; these are the receipt,
-    // and a receipt does not need a drum roll. The note and the stagger stay:
-    // they are what makes a long run feel long.
-    const steps = [];
-    let note = game.chain.count + 3;
-    let at = 0.26;
-    const beat = (text, colour) => {
-      const when = at;
-      const tone = note;
-      const spot = away(steps.length + 1);
-      steps.push({
-        at: when,
-        run: () => {
-          audio.chainNote(tone);
-          fx.floatText(spot.x, spot.z, text, 'tally');
-        }
-      });
-      at += 0.26;
-      note += 1;
-    };
-    if (banks > 0) beat(`${banks} BANK${banks > 1 ? 'S' : ''} ×${1 + banks}`, PALETTE.player);
-    if (tookGreen) beat('GREEN ×2', PALETTE.good);
-    if (touched > 1) beat(`${touched} BALLS ×${touched}`, PALETTE.solid);
-    // THE ORDER PAYS, SO THE ORDER IS SAID OUT LOUD. A bonus nobody can see
-    // land is a bonus that teaches nothing, and this one has to teach: it is
-    // the only thing telling a player the rack has an order at all.
-    if (paid.inOrder && paid.rungs > 0) {
-      beat(paid.streak > 1 ? `IN ORDER ×${paid.streak} +${paid.rungs}` : `IN ORDER +${paid.rungs}`, PALETTE.lip);
+    if (!feed.enabled && !game.practice) {
+      // Lessons and headless runs keep the short version: one figure, thrown
+      // clear of the pocket toward the middle of the table.
+      const len = Math.hypot(pocket.x, pocket.z) || 1;
+      audio.chainNote(game.chain.count + 2);
+      engine.hitStop(TIME.hitStopCrit);
+      fx.shockwave(pocket.x, pocket.z, PALETTE.lip, 5.5, 0.5);
+      fx.floatText(pocket.x - (pocket.x / len) * 2.6, pocket.z - (pocket.z / len) * 2.6, `+${paid.value.toLocaleString()}`, 'crit');
     }
-    if (steps.length) celebrate(steps);
 
     removeBall(ball, pocket);
   },
@@ -1419,12 +1892,28 @@ game.on = {
     if (p.scratchGuard > 0) return;
     p.scratchGuard = 0.6;
     rules.scratch();
-    audio.playerHurt();
+    feed.voidShot();
     engine.shake(14);
     engine.zoomPunch();
+    gridPulse(pocket.x, pocket.z, 0.8);
     fx.shockwave(pocket.x, pocket.z, PALETTE.bad, 7, 0.55);
-    fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
-    hud.showBanner('Scratch', 'Your own ball went in — this shot pays nothing', 1.9);
+    if (momentsOn()) {
+      moments.scratch({
+        pocket,
+        spawn: { x: rooms.layout.spawn.x, z: spawnZ() },
+        setCueVisible: (on) => {
+          p.group.visible = on && p.alive;
+        },
+        cueShown: () => p.aimRenderer.cue.group.visible
+      });
+      // The next shot starts pointing straight up the table, where the cue
+      // takes form.
+      input.setHeading(0, -1);
+    } else {
+      audio.playerHurt();
+      fx.floatText(pocket.x, pocket.z, 'SCRATCH', 'splat');
+      hud.showBanner('Scratch', 'Your own ball went in — this shot pays nothing', 1.9);
+    }
     // Back to the spot, at rest. The stroke ends here.
     p.vx = 0;
     p.vz = 0;
@@ -1441,18 +1930,21 @@ game.on = {
    */
   objectHit({ object, body, isCue }) {
     if (!object.armed || !isCue) return;
+    // a void shot cannot be doubled: the ring stays dark, and armed for the next
+    // shot (from review: it lit up after a foul, which counted for nothing)
+    if (rules.scratched && object.kind === 'double') return;
     rooms.table.consume(object);
-    const colour = object.good ? PALETTE.good : PALETTE.bad;
+    const colour = object.color;
     fx.shockwave(object.x, object.z, colour, 5, 0.42);
     fx.burst(object.x, object.z, 18, colour, 12, 0.9);
     tutorial.notify('object', { object });
 
     switch (object.kind) {
       case 'double': {
-        const value = ladder('gold');
+        const event = scored(() => rules.gold({ x: object.x, z: object.z, kind: 'zone', ref: object }));
         game.strokeTookGreen = true;
         audio.pyre?.();
-        fx.floatText(object.x, object.z, `×${value}`, 'crit');
+        if (!feed.enabled) fx.floatText(object.x, object.z, `×${event ? event.mult : rules.multiplier}`, 'crit');
         return;
       }
       case 'freeze': {
@@ -1460,7 +1952,11 @@ game.on = {
         audio.boonPick?.();
         engine.zoomPunch();
         fx.floatText(object.x, object.z, `FREEZE ×${charges}`, 'crit');
-        hud.showBanner('Freeze', 'Tap while the table is still moving', 2);
+        // THE FIRST TIME, it waits to be read (from review). Not now: mid-shot
+        // a tap IS a freeze, so a banner waiting for a tap would spend the
+        // charge just picked up. It waits for the table to stop instead.
+        if (!freezeTaught()) game.teachFreeze = true;
+        else hud.showBanner('Freeze frame', 'Tap FREEZE, bottom right, while the table is still moving', 2);
         return;
       }
       case 'upgrade': {
@@ -1470,9 +1966,13 @@ game.on = {
         return;
       }
       case 'shot': {
-        rules.strokesLeft += 1;
+        // the extra shot is seen arriving in the counter (from review)
+        // what the counter shows before it (the shot in flight already spent)
+        const before = shotsShown();
+        rules.grantStroke();
         audio.boonPick?.();
         fx.floatText(object.x, object.z, '+1 SHOT', 'crit');
+        flyShotToCounter(object, before);
         return;
       }
       case 'kicker': {
@@ -1488,8 +1988,7 @@ game.on = {
         audio.wallSplat();
         engine.shake(14);
         engine.zoomPunch();
-        if (!game.tutorialGuard) player.takeDamage(RULES.damage.mine, game, 'mine');
-        fx.floatText(object.x, object.z, 'MINE', 'splat');
+        if (!game.tutorialGuard) voidShot('Mine');
       }
     }
   },
@@ -1507,7 +2006,9 @@ game.on = {
     // does not count — but the bar sits just under the creep threshold, since
     // below that a ball is already being dragged to a stop and cannot ladder
     // its way up on cushions for free.
-    if (speed > RULES.creepSpeed - 1) ladder('bank');
+    if (speed > RULES.creepSpeed - 1) {
+      scored(() => rules.bank({ x, z, nx: event.nx, nz: event.nz, kind: 'wall' }));
+    }
 
     if (kind === 'bumper') {
       const current = Math.hypot(p.vx, p.vz) || 1;
@@ -1557,9 +2058,8 @@ game.on = {
     if (p.touchTimer > 0) return;
     if (!enemy.hostile) return;
     enemy.hostile = false;
-    if (p.takeDamage(RULES.damage.kickback, game, enemy)) {
-      p.touchTimer = PLAYER.touchInterval;
-    }
+    voidShot('Kickback');
+    p.touchTimer = PLAYER.touchInterval;
   },
 
   playerDamaged({ player: p, amount }) {
@@ -1570,13 +2070,15 @@ game.on = {
   },
 
   playerDeath() {
+    // the run is over: nothing to continue
+    clearRun();
     audio.playerDeath();
     engine.shake(24);
     engine.zoomPunch(FEEL.zoomPunch * 2);
     fx.burst(player.x, player.z, 40, PALETTE.player, 16, 2);
     game.state = 'dead';
     game.deathTimer = 2.4;
-    hud.showBanner('Run Over', `Room ${game.level} · ${rules.runScore.toLocaleString()} points`, 2.4);
+    hud.showBanner('Run Over', `Out of lives on table ${game.level}`, 2.4);
   },
 
   projectileHit({ projectile, player: p }) {
@@ -1586,7 +2088,7 @@ game.on = {
       engine.shake(6);
       return;
     }
-    p.takeDamage(projectile.damage, game, projectile);
+    voidShot('Hit');
   },
 
   projectileExpired({ projectile }) {
@@ -1605,7 +2107,7 @@ function doorLabelText(door) {
     case 'boon':
       return `${door.phase} boon`;
     case 'repair':
-      return `+${PROGRESSION.healAmount} hull`;
+      return '+1 life';
     case 'stroke':
       return `+${PROGRESSION.statRewards.stroke} shot every room`;
     case 'freeze':
@@ -1626,37 +2128,237 @@ const cssHex = (value) => `#${value.toString(16).padStart(6, '0')}`;
 function completeRoom() {
   if (game.state === 'cleared') return;
   game.state = 'cleared';
+  const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
-  audio.roomClear();
+  gridPulse(0, 0, 1);
+  if (!momentsOn()) audio.roomClear();
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
   // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
   // promise to do something harder, and a promise you have never kept once is
   // not a difficulty setting, it is a trap with a menu entry.
+  saveBest(game.level, rules.runScore);
+  // shown when the table's total lands, after the moment's title has been
+  // read (see showRoomResult)
+  if (game.level === 1) pendingAch.add('table1');
+  if (game.level === 6) pendingAch.add('table6');
+  if (game.level === 12) pendingAch.add('table12');
+  if (result.swept) pendingAch.add('order');
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
-    hud.showBanner('Swept in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
+    hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
   openExits();
-  hud.showScorecard({
+  showRoomResult({ ...tableResult(result), filled: true }, shownRun);
+}
+
+/** What the end-of-table moment and card show: the ledger, the target, the payout. */
+function tableResult(result) {
+  return {
     level: game.level,
-    filled: true,
     ledger: rules.ledger,
     roomScore: result.roomScore,
     runScore: result.runScore,
+    target: result.target,
+    beaten: result.beaten,
+    payout: result.payout,
+    earned: result.earned,
+    cashFrom: result.cashFrom,
+    cash: result.cash,
+    livesFrom: result.livesFrom,
+    lives: result.lives,
     choices: exitChoices()
-  });
+  };
+}
+
+/** No lives left: the run is over once the table's moment has shown why. */
+function runOver() {
+  moments.closeClear();
+  game.on.playerDeath();
 }
 
 /**
- * Out of strokes with balls still standing. The rack breaks loose and every
- * ball left takes a bite out of the hull — then the exits open anyway. A bad
- * room costs you the next few rooms, not the run on the spot.
+ * The end of a table: the moment if it can play, the plain card if not. The
+ * HUD's run total is held at what it showed until the table total lands in it.
+ */
+function showRoomResult(data, shownRun) {
+  // a replayed table is on its own: no shop, no run to end
+  if (game.replay) data = { ...data, lives: Math.max(1, data.lives), choices: replayChoices(game.replay), nextLabel: 'Replay' };
+  if (!momentsOn()) {
+    flushAchievements();
+    hud.showScorecard(data);
+    if (data.lives <= 0) game.on.playerDeath();
+    return;
+  }
+  hud.hideBanner();
+  game.scoreHold = shownRun;
+  // The corner's cash and lives change only when the moment shows them change.
+  game.cashHold = data.cashFrom;
+  game.livesHold = data.livesFrom;
+  moments.clear({
+    ...data,
+    // The exits are replaced by the shop: the next table is a button in it.
+    choices: game.replay ? data.choices : [],
+    shownRun,
+    onTotal: () => {
+      game.scoreHold = null;
+      flushAchievements();
+    },
+    onCashLanded: () => (game.cashHold = null),
+    onLifeLost: () => (game.livesHold = null),
+    // no lives left: the moment ends on the last life breaking, not the shop
+    shop: data.lives > 0 && !game.replay ? openShop() : null,
+    onRunOver: data.lives > 0 ? null : runOver
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * THE SHOP — between every table, in CASH.
+ *
+ * Cash is the one thing that carries over (points are each table's test), and
+ * it is scarce: most shops you can afford one thing, or skip it to save and
+ * earn interest. Three actions, decided in review: BUY a card, HOLD a card
+ * (it waits in the next shop; cards you don't hold are gone), or REROLL.
+ * ------------------------------------------------------------------ */
+const shopRun = { owned: [], bought: [], held: null };
+
+/** Achievements earned on this device; each one shows as it is earned. */
+const achievements = new Achievements();
+achievements.onUnlock = (a) => {
+  if (game.headless) return;
+  hud.achievement(a, { all: openAchievementsInRun });
+  audio.boonPick?.();
+};
+
+/**
+ * THE POT THAT EARNS ONE SHOWS IT (from review: "it should pop up when you
+ * take the action that earns you the achievement"). Worked out as each pot
+ * locks the shot in, and shown when the feed puts that pot's plate up, so it
+ * arrives with the ball on the table that earned it and never before the
+ * player has seen why (law 8). Anything the feed did not get to is shown when
+ * the shot ends. Not in the lessons or a practice table: those are rehearsals.
+ */
+const pendingAch = new Set();
+function shotAchievements(last) {
+  if (game.practice || game.tutorialGuard || tutorial.running) return;
+  const kinds = new Set(rules.events.slice(0, rules.lockedCount).map((e) => e.kind));
+  if (kinds.has('bankPot')) pendingAch.add('bank');
+  if (kinds.has('kiss')) pendingAch.add('assist');
+  if (kinds.has('multiPot')) pendingAch.add('inone');
+  if (kinds.has('zone')) pendingAch.add('zone');
+  if (rules.strokeScore >= 300) pendingAch.add('big');
+  if (last && feed.enabled) last.onShown = flushAchievements;
+  else flushAchievements();
+}
+
+function flushAchievements() {
+  for (const id of pendingAch) achievements.unlock(id);
+  pendingAch.clear();
+}
+
+function openShop() {
+  const S = RULES.shop;
+  let rerolls = 0;
+  const card = (u, held = false) => ({ id: u.id, name: u.name, text: u.text, rarity: u.rarity, price: u.price, sold: false, held, u });
+  const ownedIds = () => new Set(shopRun.owned.filter((u) => !u.stack).map((u) => u.id));
+  // An authored table can set the shelf its shop opens with (a new player's
+  // first shops are chosen, not rolled); rerolls are random as ever.
+  let curated = rooms.authored?.shop || null;
+  const shelf = (keepHeld) => {
+    const held = keepHeld && shopRun.held ? [card(shopRun.held, true)] : [];
+    const skip = ownedIds();
+    if (shopRun.held) skip.add(shopRun.held.id);
+    const chosen = (curated || []).map((id) => UPGRADES.find((u) => u.id === id)).filter((u) => u && !skip.has(u.id)).slice(0, S.slots - held.length);
+    curated = null;
+    for (const u of chosen) skip.add(u.id);
+    return held.concat(chosen.map((u) => card(u)), rollShelf(skip, S.slots - held.length - chosen.length).map((u) => card(u)));
+  };
+  const ctx = () => ({ rules, game, player, boons });
+  const api = {
+    cash: () => rules.cash,
+    items: shelf(true),
+    rerollPrice: () => S.reroll + S.rerollStep * rerolls,
+    reroll() {
+      if (!rules.spend(api.rerollPrice())) return false;
+      rerolls += 1;
+      // a held card stays put through a reroll
+      const keep = api.items.filter((it) => it.held && !it.sold);
+      api.items = keep.concat(shelf(false).filter((it) => !keep.some((k) => k.id === it.id)).slice(0, S.slots - keep.length));
+      audio.doorOpen?.();
+      return true;
+    },
+    // a card that would do nothing right now (a full meter, full lives) can't be bought
+    usable: (item) => !item.u.available || item.u.available(ctx()),
+    canBuy: (item) => !item.sold && rules.cash >= item.price && api.usable(item),
+    buy(item) {
+      if (!api.canBuy(item) || !rules.spend(item.price)) return false;
+      item.sold = true;
+      item.boughtHere = true;
+      // buying the card you held this visit gives the hold fee back
+      if (item.held) {
+        if (item.heldHere) rules.cash += S.hold;
+        item.held = item.heldHere = false;
+        shopRun.held = null;
+      }
+      applyUpgrade(item.u, ctx());
+      achievements.unlock('buy');
+      if (!item.u.consumable) shopRun.owned.push(item.u);
+      shopRun.bought.push(item.name);
+      audio.boonPick?.();
+      return true;
+    },
+    /** Take a purchase back, before leaving the shop: the money comes back. */
+    unbuy(item) {
+      if (!item.sold || !item.boughtHere) return false;
+      item.sold = item.boughtHere = false;
+      removeUpgrade(item.u, ctx());
+      const at = shopRun.owned.lastIndexOf(item.u);
+      if (at >= 0) shopRun.owned.splice(at, 1);
+      const b = shopRun.bought.lastIndexOf(item.name);
+      if (b >= 0) shopRun.bought.splice(b, 1);
+      rules.cash += item.price;
+      audio.doorOpen?.();
+      return true;
+    },
+    holdPrice: S.hold,
+    canHold: (item) => !item.sold && !item.held && !shopRun.held && rules.cash >= S.hold,
+    hold(item) {
+      if (!api.canHold(item) || !rules.spend(S.hold)) return false;
+      item.held = item.heldHere = true;
+      shopRun.held = item.u;
+      audio.boonPick?.();
+      return true;
+    },
+    /** Let go of a hold made this visit: the fee comes back. */
+    unhold(item) {
+      if (!item.held || !item.heldHere) return false;
+      item.held = item.heldHere = false;
+      shopRun.held = null;
+      rules.cash += S.hold;
+      audio.doorOpen?.();
+      return true;
+    },
+    next() {
+      const held = shopRun.held ? `Held · ${shopRun.held.name}` : '';
+      const bought = shopRun.bought.length ? `Bought · ${shopRun.bought.join(' · ')}` : '';
+      game.rewardNote = [bought, held].filter(Boolean).join('   ');
+      shopRun.bought = [];
+      moments.closeClear();
+      game.scoreHold = null;
+      advanceRoom();
+    }
+  };
+  return api;
+}
+
+/**
+ * Out of shots with balls still standing. The table ends here all the same:
+ * what decides it is the TARGET, so a strong table can still be beaten with
+ * balls left, and a weak one costs a life.
  */
 function failRoom() {
   if (game.state === 'cleared') return;
   game.state = 'cleared';
-  const standing = rooms.ballsRemaining;
-  const damage = standing * RULES.damage.looseBall;
+  const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
 
   audio.playerDeath?.();
@@ -1666,18 +2368,9 @@ function failRoom() {
     if (!ball.alive || ball.number <= 0) continue;
     fx.shockwave(ball.x, ball.z, ENEMY_COLOR[ball.type], 4.5, 0.5);
   }
-  if (damage > 0 && !game.tutorialGuard) player.takeDamage(damage, game, 'loose');
 
   openExits();
-  hud.showScorecard({
-    level: game.level,
-    filled: false,
-    ledger: rules.ledger,
-    roomScore: result.roomScore,
-    runScore: result.runScore,
-    penalty: { standing, damage },
-    choices: exitChoices()
-  });
+  showRoomResult({ ...tableResult(result), filled: false }, shownRun);
 }
 
 function openExits(title, sub) {
@@ -1694,7 +2387,7 @@ function doorName(door) {
     case 'stroke':
       return 'More shots';
     case 'freeze':
-      return 'Freeze';
+      return 'Freeze frame';
     case 'ricochet':
       return 'Bounce';
     default:
@@ -1721,13 +2414,29 @@ function exitChoices() {
 
 function handleRoomClear() {
   // Kept for the RoomManager handler contract; the mission decides clears now.
+  if (game.practice) return;
   completeRoom();
+}
+
+/**
+ * What the exit just gave you. With the moments on it is carried onto the
+ * transition's cover, under the next room's number, instead of a banner that
+ * would sit on top of the table changing.
+ */
+function announceReward(title, sub, duration) {
+  if (momentsOn()) {
+    game.rewardNote = `${title} · ${sub}`;
+    return;
+  }
+  hud.showBanner(title, sub, duration);
 }
 
 function handleDoorEntered(door) {
   audio.doorOpen();
   hud.setDoors([]);
   hud.hideScorecard();
+  moments.closeClear();
+  game.scoreHold = null;
   fx.shockwave(door.x, door.z, door.color, 6, 0.5);
   fx.burst(door.x, door.z, 22, door.color, 12, 1.2);
 
@@ -1738,20 +2447,20 @@ function handleDoorEntered(door) {
 
   switch (door.reward.id) {
     case 'repair':
-      player.heal(PROGRESSION.healAmount);
-      hud.showBanner('Repaired', `+${PROGRESSION.healAmount} hull`, 1.6);
+      rules.gainLife(1);
+      announceReward('Extra life', '+1 life', 1.6);
       break;
     case 'stroke':
       game.strokeBonus += PROGRESSION.statRewards.stroke;
-      hud.showBanner('More Shots', `+${PROGRESSION.statRewards.stroke} shot every room`, 1.8);
+      announceReward('More Shots', `+${PROGRESSION.statRewards.stroke} shot every room`, 1.8);
       break;
     case 'freeze':
       rules.grantFreeze(PROGRESSION.statRewards.freeze);
-      hud.showBanner('Freeze', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
+      announceReward('Freeze frame', `+${PROGRESSION.statRewards.freeze} charges`, 1.6);
       break;
     case 'ricochet':
       boons.addRunBonus({ maxBounces: PROGRESSION.statRewards.bounce });
-      hud.showBanner('Bounce', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
+      announceReward('Bounce', `+${PROGRESSION.statRewards.bounce} wall bounce`, 1.6);
       break;
     default:
       break;
@@ -1812,9 +2521,12 @@ const strictOrder = {
  * first meet it.
  */
 function beginMission() {
+  // The room's own mission (an authored table's rack, shots and target, or
+  // the ramp's), with the run's extra shots and the strict-order mode on top.
   rules.beginRoom(game.level, {
+    ...rooms.mission,
     strictOrder: strictOrder.on,
-    ...(game.strokeBonus ? { strokes: rooms.mission.strokes + game.strokeBonus } : {})
+    strokes: rooms.mission.strokes + (game.strokeBonus || 0)
   });
 }
 
@@ -1851,25 +2563,169 @@ function advanceRoom() {
     openBoonModal(null);
     return;
   }
+  // A NEW CONTROL IS TAUGHT BEFORE THE TABLE THAT NEEDS IT (from review).
+  const teach = teachDue(game.level + 1);
+  if (teach) {
+    startPractice(teach, advanceRoom);
+    return;
+  }
 
-  game.level += 1;
-  game.chain.count = 0;
-  game.launchHits = 0;
-  game.pendingBoons = 0;
-  boons.clearFields();
-  fx.clearTexts();
-  hud.setDoors([]);
+  const swap = () => {
+    hud.root.classList.remove('practicing');
+    game.level += 1;
+    game.introUp = false;
+    moments.closeIntro();
+    game.chain.count = 0;
+    game.launchHits = 0;
+    game.pendingBoons = 0;
+    boons.clearFields();
+    fx.clearTexts();
+    hud.setDoors([]);
+    hud.hideScorecard();
+    moments.closeClear();
+    game.scoreHold = null;
+
+    rooms.generate(game.level);
+    callPocket(null);
+    beginMission();
+    player.placeAt(rooms.layout.spawn.x, spawnZ());
+    game.state = 'playing';
+    game.phase = 'aim';
+    game.midStroke = false;
+    input.setHeading(0, -1);
+    saveRun();
+  };
+  // THE WALK TO THE NEXT TABLE. The new one is built while the screen is
+  // covered, and its mission is stated once it is fully in view.
+  if (momentsOn()) {
+    game.state = 'transition';
+    const note = game.rewardNote;
+    game.rewardNote = null;
+    moments.transition({ from: game.level, to: game.level + 1, note, swap }).then(showRoomBanner);
+    return;
+  }
+  swap();
+  showRoomBanner();
+}
+
+/* ------------------------------------------------------------------ *
+ * Practice: a new control, tried before the table that needs it
+ * ------------------------------------------------------------------ */
+
+/**
+ * Which control, if any, wants teaching before table `next` (from review: a
+ * card that introduces it, then a table to try it on as often as you like).
+ * Freeze is due before the first table with ice on it, or as soon as the run
+ * has freeze in hand some other way (bought in the shop, Ice Box, Frostbite).
+ */
+function teachDue(next) {
+  if (game.headless || game.practice || freezeTaught()) return null;
+  const ice = TABLES[next - 1]?.objects?.some((o) => o.kind === 'freeze');
+  const owned = rules.freezeCharges > 0 || rules.perks.icebox || rules.perks.frostbite;
+  return ice || owned ? 'freeze' : null;
+}
+
+/** The card, then the practice table; `then` carries on to the real one. */
+function startPractice(kind, then) {
+  const t = TEACH[kind];
+  // the table is set up behind the card, so it is there when the card lifts
+  moments.closeIntro();
+  moments.closeClear();
   hud.hideScorecard();
-
-  rooms.generate(game.level);
+  hud.setDoors([]);
+  hud.setRule(null);
+  fx.clearTexts();
+  boons.clearFields();
+  game.scoreHold = null;
+  game.practice = { kind, then, freezes: 0, thisShot: 0, savedCharges: rules.freezeCharges };
+  game.tutorialGuard = () => false;
+  rooms.teardown();
+  rooms.loadAuthored(t.practice, game.level);
   callPocket(null);
-  beginMission();
+  rules.beginRoom(game.level, { ...rooms.mission, strictOrder: false });
+  rules.freezeCharges = t.charges;
   player.placeAt(rooms.layout.spawn.x, spawnZ());
   game.state = 'playing';
   game.phase = 'aim';
   game.midStroke = false;
   input.setHeading(0, -1);
-  showRoomBanner();
+  // the score, mission and shots step aside already, behind the card
+  hud.root.classList.add('practicing');
+  game.introUp = true;
+  moments
+    .tableIntro({ kicker: t.kicker, name: t.name, rule: t.rule, stats: t.stats, media: t.demo, mediaAlt: t.demoAlt, go: t.go })
+    .then(() => {
+      game.introUp = false;
+      showPractice('start');
+    });
+}
+
+function showPractice(line) {
+  const p = game.practice;
+  if (!p) return;
+  const t = TEACH[p.kind];
+  hud.setPractice({
+    title: t.title,
+    line: t.lines[line],
+    count: p.freezes ? t.count(p.freezes) : '',
+    done: t.done,
+    ready: p.freezes > 0,
+    onDone: finishPractice
+  });
+}
+
+/** A freeze landed: count it, and say what to do with it. */
+function practiceFroze() {
+  const p = game.practice;
+  p.freezes += 1;
+  p.thisShot += 1;
+  showPractice('frozen');
+}
+
+/**
+ * A practice shot is over. Nothing is spent or scored and the charges
+ * refill. Sinking all three ends the practice (from review: "finish the
+ * table, or continue to the next table").
+ */
+function practiceShotOver() {
+  const p = game.practice;
+  const t = TEACH[p.kind];
+  rules.resetStroke();
+  rooms.table.rearmForStroke();
+  rules.strokesLeft = rules.mission.strokes;
+  rules.freezeCharges = t.charges;
+  if (!game.enemies.some((b) => b.alive)) {
+    finishPractice();
+    return;
+  }
+  showPractice(p.thisShot ? 'again' : p.freezes ? 'again' : 'missed');
+  p.thisShot = 0;
+}
+
+/** Done: the control is taught, and the run goes on to its real table. */
+function finishPractice() {
+  const p = game.practice;
+  if (!p || game.midStroke) return;
+  markFreezeTaught();
+  const then = p.then;
+  // the practice layout stays until the next table is built under the cover
+  endPractice({ keepLayout: true });
+  // ONE CARD, NOT TWO (from review): the new-control card already said what
+  // the next table is about, so it opens without its own card; its name
+  // still flies to the corner.
+  game.skipIntroCard = true;
+  then?.();
+}
+
+/** Put the run back the way it was (also when a run is abandoned mid-practice). */
+function endPractice({ keepLayout = false } = {}) {
+  const p = game.practice;
+  if (!p) return;
+  rules.freezeCharges = p.savedCharges;
+  game.practice = null;
+  game.tutorialGuard = null;
+  hud.setPractice(null);
+  if (keepLayout) hud.root.classList.add('practicing');
 }
 
 /** Spawn height: PLAYER.spawnFromBottom of the table, measured up from the bottom. */
@@ -1886,6 +2742,39 @@ function showRoomBanner() {
   // read. They are not reports on something the player just watched; they are
   // the terms of the room, and a rule that scrolled past unread is a rule the
   // player does not have.
+  // AN AUTHORED TABLE OPENS ON ITS OWN CARD (from review): the table, its
+  // name (which is its rule, short), the rule in a sentence, balls and shots.
+  // Tapping it away sends the name to the top-right corner, where it stays.
+  const t = rooms.authored;
+  // Not behind the title screen: the boot racks Table 1 under the menu, and a
+  // card there would sit under it with a Play button of its own.
+  if (t?.intro && menuOpen) return;
+  if (t?.intro && game.skipIntroCard) {
+    game.skipIntroCard = false;
+    hud.setRule(t.name, true);
+    return;
+  }
+  if (t?.intro) {
+    hud.setRule(null);
+    game.introUp = true;
+    moments
+      .tableIntro({
+        kicker: `Table ${game.level}`,
+        name: t.name,
+        rule: t.intro.sub,
+        // the same facts on every card (from review): number, name, rule, balls, shots.
+        // The target lives on the score bar, where it reads as points.
+        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`],
+        // the name IS the rule, so the card and the corner chip say the same thing
+        chip: t.name,
+        chipTo: () => hud.ruleChip
+      })
+      .then(() => {
+        game.introUp = false;
+        hud.setRule(t.name, true);
+      });
+    return;
+  }
   const lesson = TUTORIAL.lessons[game.level];
   if (lesson) {
     hud.showBanner(lesson.title, lesson.sub, HOLD);
@@ -1899,6 +2788,9 @@ function showRoomBanner() {
 
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
+  endPractice();
+  game.replay = null;
+  game.skipIntroCard = false;
   boons.reset();
   boons.recompute();
   hud.setBuild(boons.owned);
@@ -1908,6 +2800,8 @@ function resetRunState() {
   game.launchHits = 0;
   game.pendingBoons = 0;
   game.strokeBonus = 0;
+  game.introUp = false;
+  moments.closeIntro();
   game.state = 'playing';
   game.phase = 'aim';
   game.midStroke = false;
@@ -1916,6 +2810,16 @@ function resetRunState() {
   hud.hideScorecard();
   rules.runScore = 0;
   rules.freezeCharges = 0;
+  rules.perks = {};
+  rules.paidStreak = 0;
+  rules.cash = RULES.cash.start;
+  rules.lives = RULES.lives.start;
+  game.cashHold = null;
+  game.livesHold = null;
+  game.freezeHold = null;
+  shopRun.owned = [];
+  shopRun.bought = [];
+  shopRun.held = null;
 }
 
 function startRun() {
@@ -1928,7 +2832,57 @@ function startRun() {
   beginMission();
   player.respawn(rooms.layout.spawn.x, spawnZ());
   input.setHeading(0, -1);
+  saveRun();
   showRoomBanner();
+}
+
+/**
+ * REPLAY A CLEARED TABLE (from review: "you should be able to tap on any of
+ * the completed tables and replay them"). One table, from a fresh start, on
+ * its own: no shop after it, and the run you left is not touched. It ends on
+ * Play again or Back to tables.
+ */
+function startReplay(n) {
+  resetRunState();
+  game.graceTimer = TUTORIAL.graceSeconds;
+  game.tutorialGuard = null;
+  game.replay = n;
+  game.level = n;
+  rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
+  rooms.generate(game.level);
+  callPocket(null);
+  beginMission();
+  player.respawn(rooms.layout.spawn.x, spawnZ());
+  input.setHeading(0, -1);
+  showRoomBanner();
+}
+
+/** How a replayed table ends: again, or back to the tables. */
+function replayChoices(n) {
+  return [
+    {
+      name: 'Play again',
+      detail: `Table ${n}`,
+      color: '#22e8ff',
+      pick: () => {
+        moments.closeClear();
+        hud.hideScorecard();
+        startReplay(n);
+      }
+    },
+    {
+      name: 'Back to tables',
+      detail: '',
+      color: '#ffb340',
+      pick: () => {
+        moments.closeClear();
+        hud.hideScorecard();
+        openMenu();
+        startRun();
+        showPlayPanel();
+      }
+    }
+  ];
 }
 
 /* ------------------------------------------------------------------ *
@@ -3165,7 +4119,9 @@ function refreshPrediction() {
     // mission would refuse, which travels in red. The line is the promise, so
     // the line is where a refusal has to appear.
     legInks: objectPath.map((leg, i) => (fouls.has(i) ? PALETTE.bad : inkOf(leg.ball))),
-    ghosts: game.aimTags
+    ghosts: game.aimTags,
+    // a thumb is down: the stick shows only then (TRAJECTORY.stickShow)
+    held: input.isAiming
   });
 }
 
@@ -3197,11 +4153,14 @@ const input = new InputManager(stage, {
     game.running &&
     player.alive &&
     game.state !== 'modal' &&
+    // a table's intro card is up: the first tap starts the table, not a shot
+    !game.introUp &&
     // A cleared room is decided. The exits are buttons on the scorecard now,
     // so there is nothing left to shoot at and a stray drag can only take the
     // cue ball somewhere confusing.
     game.state !== 'cleared' &&
     !menuOpen &&
+    !achFromRun &&
     // A finished lesson is FINISHED: the table stops taking shots so the
     // completion card is not competing with a live cue.
     !tutorial?.awaitingNext &&
@@ -3251,10 +4210,22 @@ const input = new InputManager(stage, {
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.launch(aim, game);
+    // THE STICK GETS THERE FIRST. The table holds still for the few frames the
+    // cue takes to snap into the ball, so the ball leaves when it is hit, not
+    // when the thumb lets go.
+    if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
+      // The table also holds the frame of contact, longer the harder: briefly
+      // on the snap (picked in review, with this freeze), longer on impact.
+      const power = aim.power ?? 1;
+      const [f0, f1] = TRAJECTORY.strikeFreeze;
+      const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : f0 + f1 * power;
+      engine.hitStop(TRAJECTORY.stickStrike + hold);
+    }
     // A release either opens a stroke or resumes the one a freeze interrupted.
     // Resuming keeps the ladder, the budget and every other ball's velocity.
     if (game.midStroke) resumeStroke();
     else beginStroke();
+    moments.unfreeze();
   },
   onFlick: (aim) => {
     uiLayer.classList.remove('aiming');
@@ -3270,6 +4241,7 @@ const input = new InputManager(stage, {
     player.launch({ ...aim, power: PLAYER.minPower }, game);
     if (game.midStroke) resumeStroke();
     else beginStroke();
+    moments.unfreeze();
   }
 });
 
@@ -3287,10 +4259,15 @@ stage.addEventListener(
     if (!game.running || menuOpen || game.state === 'modal') return;
     if (game.phase !== 'resolve') return;
     event.preventDefault();
-    tryFreeze();
+    // A tap with a freeze in hand still freezes, while the balls are moving.
+    // Otherwise it hurries the numbers along.
+    // The FREEZE button freezes (from review); anywhere else, a tap hurries
+    // the numbers along.
+    if (feed.busy) feed.speedUp();
   },
   { passive: false }
 );
+hud.onFreeze = () => tryFreeze();
 
 /* ------------------------------------------------------------------ *
  * Resize handling
@@ -3407,8 +4384,13 @@ function applyReserve() {
   if (!h || !w) return;
   // A cap, so a band that somehow measured huge cannot squeeze the felt into
   // a letterbox. Past this the band overlaps again, which is the lesser fault.
-  const reserve = Math.min(bandReserve, h * 0.42);
-  const perPixel = viewHeight / Math.max(1, h - reserve);
+  // THE PLAY BANDS: the HUD's top bar and bottom row get screen of their own,
+  // so nothing the player reads sits on the felt. A lesson's band reserve
+  // replaces the top band when it is taller.
+  const top = Math.max(Math.min(bandReserve, h * 0.42), playBands.top);
+  const bottom = playBands.bottom;
+  const reserve = top - bottom;
+  const perPixel = viewHeight / Math.max(1, h - top - bottom);
   camera.top = (perPixel * h) / 2;
   camera.bottom = -camera.top;
   camera.right = (perPixel * w) / 2;
@@ -3430,8 +4412,30 @@ function applyReserve() {
   layoutBand();
 }
 
+/**
+ * Measure the bands from the HUD itself, so they fit whatever the type and
+ * the phone make of them: the top bar's bottom edge, and the top of the
+ * bottom row (shots and Freeze frame; the score boxes are sized to that row).
+ */
+const playBands = { top: 0, bottom: 0 };
+function measurePlayBands() {
+  const L = uiLayer.getBoundingClientRect();
+  if (!L.height) return;
+  const topBar = hud.root.querySelector('.hud-top');
+  const rows = ['.hud-strokes', '.hud-freeze'].map((q) => hud.root.querySelector(q)).filter(Boolean);
+  const t = topBar ? topBar.getBoundingClientRect() : null;
+  playBands.top = t && t.height ? Math.round(t.bottom - L.top) - 6 : 0;
+  let rowTop = L.bottom;
+  for (const r of rows) {
+    const b = r.getBoundingClientRect();
+    if (b.height) rowTop = Math.min(rowTop, b.top);
+  }
+  playBands.bottom = Math.max(0, Math.round(L.bottom - rowTop) + 6);
+}
+
 function resize() {
   const { width, height } = layoutStage();
+  measurePlayBands();
   const pr = Math.min(window.devicePixelRatio || 1, RENDER.maxPixelRatio);
   renderer.setPixelRatio(pr);
   renderer.setSize(width, height, false);
@@ -3447,6 +4451,8 @@ buildComposer(initial.width, initial.height);
 resize();
 
 window.addEventListener('resize', resize);
+// The faces change the bands' heights once they load.
+document.fonts?.ready?.then(() => resize());
 window.addEventListener('orientationchange', () => setTimeout(resize, 120));
 if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 
@@ -3469,7 +4475,8 @@ const tutorial = new Tutorial({
   roadAlong,
   drawCoachRoute,
   resetRun: resetRunState,
-  finish: () => startRun()
+  allDone: () => achievements.unlock('lessons'),
+  finish: startRun
 });
 if (typeof window !== 'undefined') game.tutorial = tutorial;
 const menuMain = document.getElementById('menu-main');
@@ -3494,8 +4501,6 @@ try {
 
 function applyMute() {
   audio.setMuted(muted);
-  $('btn-mute').textContent = muted ? 'Sound off' : 'Sound on';
-  $('btn-mute').setAttribute('aria-pressed', String(muted));
   $('set-mute').textContent = muted ? 'Sound: Off' : 'Sound: On';
   try {
     localStorage.setItem('billiard-muted', muted ? '1' : '0');
@@ -3504,10 +4509,232 @@ function applyMute() {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * First visit, or back again (from review)
+ * ------------------------------------------------------------------ */
+
+const BEST_KEY = 'lightline-best-v1';
+
+/** The furthest table cleared and the best run score, on this device. */
+function loadBest() {
+  try {
+    return JSON.parse(localStorage.getItem(BEST_KEY) || 'null') || { table: 0, score: 0 };
+  } catch {
+    return { table: 0, score: 0 };
+  }
+}
+
+function saveBest(table, score) {
+  const best = loadBest();
+  const next = { table: Math.max(best.table, table), score: Math.max(best.score, score) };
+  try {
+    localStorage.setItem(BEST_KEY, JSON.stringify(next));
+  } catch {
+    /* private mode */
+  }
+}
+
+/**
+ * THE HOME SCREEN (from review): the name and one big Play; Settings as an
+ * icon in one corner, the achievements trophy with its progress in the other.
+ * Play takes a first visit into the lessons and anyone else to the play
+ * screen.
+ */
+function showHome() {
+  $('trophy-badge').textContent = `${achievements.count}/${achievements.total}`;
+}
+
+/** One menu panel at a time; the corner icons belong to the home screen. */
+function showPanel(name) {
+  for (const [key, el] of Object.entries({ main: menuMain, settings: menuSettings, modes: menuModes, play: $('menu-play'), ach: $('menu-ach') })) {
+    el.hidden = key !== name;
+  }
+  $('btn-settings').hidden = name !== 'main';
+  $('btn-trophy').hidden = name !== 'main';
+  if (name === 'main') showHome();
+}
+
+/* ------------------------------------------------------------------ *
+ * The run you left (from review: "a big continue button for where you
+ * left off"). Saved as each table begins, so Continue starts that table
+ * again with everything the run had walking in. Cleared when the run ends.
+ * ------------------------------------------------------------------ */
+
+const RUN_KEY = 'lightline-run-v1';
+
+function saveRun() {
+  // not the table racked behind the menu at boot: that would overwrite the
+  // run a player is coming back to
+  if (menuOpen || game.headless || tutorial.running || game.practice || game.replay) return;
+  const data = {
+    v: 1,
+    level: game.level,
+    seed: rooms.runSeed,
+    runScore: rules.runScore,
+    cash: rules.cash,
+    lives: rules.lives,
+    freeze: rules.freezeCharges,
+    paidStreak: rules.paidStreak || 0,
+    owned: shopRun.owned.map((u) => u.id),
+    held: shopRun.held?.id || null,
+    boons: boons.owned.map((o) => ({ id: o.def.id, rank: o.rank, rarity: o.rarity }))
+  };
+  try {
+    localStorage.setItem(RUN_KEY, JSON.stringify(data));
+  } catch {
+    /* private mode: nothing to continue */
+  }
+}
+
+function loadRun() {
+  try {
+    const d = JSON.parse(localStorage.getItem(RUN_KEY) || 'null');
+    return d && d.v === 1 && d.level >= 1 ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearRun() {
+  try {
+    localStorage.removeItem(RUN_KEY);
+  } catch {
+    /* no-op */
+  }
+}
+
+/** Back to the start of the table the saved run had reached. */
+function resumeRun() {
+  const d = loadRun();
+  if (!d) {
+    startRun();
+    return;
+  }
+  resetRunState();
+  game.graceTimer = TUTORIAL.graceSeconds;
+  game.tutorialGuard = null;
+  rooms.runSeed = d.seed >>> 0;
+  const ctx = { rules, game, player, boons };
+  for (const id of d.owned || []) {
+    const u = UPGRADES.find((x) => x.id === id);
+    if (!u) continue;
+    applyUpgrade(u, ctx);
+    shopRun.owned.push(u);
+  }
+  for (const b of d.boons || []) for (let i = 0; i < (b.rank || 1); i++) boons.grant({ def: b.id, rarity: b.rarity });
+  hud.setBuild(boons.owned);
+  shopRun.held = UPGRADES.find((x) => x.id === d.held) || null;
+  game.level = d.level;
+  rules.runScore = d.runScore || 0;
+  rules.cash = d.cash ?? rules.cash;
+  rules.lives = d.lives ?? rules.lives;
+  rules.paidStreak = d.paidStreak || 0;
+  rooms.generate(game.level);
+  callPocket(null);
+  beginMission();
+  rules.freezeCharges = d.freeze ?? rules.freezeCharges;
+  player.respawn(rooms.layout.spawn.x, spawnZ());
+  input.setHeading(0, -1);
+  showRoomBanner();
+}
+
+const TP_ICON = {
+  again: '<svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  play: '<svg viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.6 8Z" fill="currentColor"/></svg>',
+  lock: '<svg viewBox="0 0 16 16"><path d="M4.5 7.5h7v5.5h-7Zm1.5 0V5.5a2 2 0 0 1 4 0v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
+};
+
+/** The play screen: Continue (or New run), the tables, Modes. */
+function showPlayPanel() {
+  const run = loadRun();
+  const best = loadBest();
+  const t = run ? TABLES[run.level - 1] : null;
+  $('play-continue-main').textContent = run ? `Continue · Table ${run.level}` : 'New run';
+  $('play-continue-sub').textContent = run
+    ? `${t ? t.name + ' · ' : ''}${run.runScore.toLocaleString()} points · ${run.lives} ${run.lives === 1 ? 'life' : 'lives'} · $${run.cash}`
+    : best.table
+      ? `Best run: Table ${best.table} · ${best.score.toLocaleString()} points`
+      : 'Twelve tables, one rule each';
+  $('play-new').hidden = !run;
+  $('play-new').textContent = 'New run';
+  $('play-new').classList.remove('confirm');
+  // Three looks, no words (from review): a cleared table is a lit button
+  // with a tick and the replay arrow, the table you are on is solid with the
+  // play arrow, and a locked one is dim with a padlock and does nothing.
+  const path = $('table-path');
+  path.textContent = '';
+  TABLES.forEach((tb, i) => {
+    const n = i + 1;
+    const here = n === run?.level;
+    const cleared = !here && n <= best.table;
+    const li = document.createElement('li');
+    const tile = document.createElement(here || cleared ? 'button' : 'div');
+    tile.className = `tp-tile ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
+    if (tile.tagName === 'BUTTON') tile.type = 'button';
+    tile.innerHTML = `<span class="tp-icon" aria-hidden="true">${here ? TP_ICON.play : cleared ? TP_ICON.again : TP_ICON.lock}</span><b>${n}</b><span class="tp-name"></span>`;
+    tile.querySelector('.tp-name').textContent = tb.name;
+    tile.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · cleared, replay' : ' · locked'}`);
+    if (here) tile.addEventListener('click', () => play(resumeRun));
+    else if (cleared) tile.addEventListener('click', () => play(() => startReplay(n)));
+    li.appendChild(tile);
+    path.appendChild(li);
+  });
+  showPanel('play');
+}
+
+/**
+ * See all, from an achievement's plate mid-run: the same list over the table,
+ * which waits until Done.
+ */
+let achFromRun = false;
+let achWasPaused = false;
+function openAchievementsInRun() {
+  if (menuOpen || achFromRun) return;
+  achFromRun = true;
+  achWasPaused = engine.paused;
+  engine.pause();
+  input.cancel();
+  bootVeil.classList.remove('hidden');
+  showAchievements();
+}
+
+/** The achievements screen: each one, what it asks, done or not yet. */
+function showAchievements() {
+  $('ach-count').textContent = `${achievements.count} of ${achievements.total} earned`;
+  const list = $('ach-list');
+  list.textContent = '';
+  for (const a of ACHIEVEMENTS) {
+    const li = document.createElement('li');
+    const done = achievements.has(a.id);
+    li.className = done ? 'done' : '';
+    li.innerHTML = '<span class="ach-mark"></span><span><b></b><small></small></span>';
+    li.querySelector('.ach-mark').textContent = done ? '★' : '☆';
+    li.querySelector('b').textContent = a.name;
+    li.querySelector('small').textContent = a.text;
+    list.appendChild(li);
+  }
+  showPanel('ach');
+}
+
+/**
+ * PLAY IT AS A NEW PLAYER (Settings → Replay tutorial). Everything that makes
+ * the game treat you as someone who has been here before is forgotten: the
+ * lessons, and the new-control teaching (the freeze card and practice). Your
+ * settings, your best run and anything you have unlocked are kept.
+ */
+function resetFirstTime() {
+  Tutorial.reset();
+  try {
+    for (const t of Object.values(TEACH)) localStorage.removeItem(t.key);
+  } catch {
+    /* private mode */
+  }
+}
+
 function showTutorialState() {
   $('set-tutorial-state').textContent = Tutorial.completed
-    ? 'Tutorial finished — it will not show again'
-    : 'Tutorial will play on your next run';
+    ? 'Replay tutorial plays as a new player: the lessons and new-control cards come back'
+    : 'You’re a new player: Play starts with the lessons';
 }
 
 function openMenu() {
@@ -3516,35 +4743,58 @@ function openMenu() {
   tutorial.stop();
   bootVeil.classList.remove('hidden');
   uiLayer.classList.add('attract');
-  menuMain.hidden = false;
-  menuSettings.hidden = true;
-  menuModes.hidden = true;
   showTutorialState();
   showModesState();
+  showPanel('main');
 }
 
-function play() {
+function play(start) {
   menuOpen = false;
   bootVeil.classList.add('hidden');
   uiLayer.classList.remove('attract');
   audio.unlock();
   applyMute();
   input.cancel();
-  // A first-time player gets the lesson rooms; everyone else gets the game.
-  if (Tutorial.completed) startRun();
-  else tutorial.start();
+  moments.closeIntro();
+  game.introUp = false;
+  start();
 }
 
-$('btn-play').addEventListener('click', play);
+// A first visit goes straight into the lessons; anyone else gets the play
+// screen, with Continue for the run they left.
+$('btn-play').addEventListener('click', () => {
+  if (!Tutorial.completed) play(() => tutorial.start());
+  else showPlayPanel();
+});
+$('play-continue').addEventListener('click', () => play(loadRun() ? resumeRun : startRun));
+// Starting over throws the saved run away, so it asks once.
+$('play-new').addEventListener('click', () => {
+  const btn = $('play-new');
+  if (!btn.classList.contains('confirm')) {
+    btn.classList.add('confirm');
+    btn.textContent = 'Tap again to start over';
+    return;
+  }
+  clearRun();
+  play(startRun);
+});
+$('play-back').addEventListener('click', () => showPanel('main'));
+$('btn-trophy').addEventListener('click', showAchievements);
+$('ach-back').addEventListener('click', () => {
+  if (!achFromRun) {
+    showPanel('main');
+    return;
+  }
+  // back to the table, as it was
+  achFromRun = false;
+  bootVeil.classList.add('hidden');
+  if (!achWasPaused) engine.resume();
+});
 $('btn-settings').addEventListener('click', () => {
-  menuMain.hidden = true;
-  menuSettings.hidden = false;
+  showPanel('settings');
   showTutorialState();
 });
-$('set-back').addEventListener('click', () => {
-  menuSettings.hidden = true;
-  menuMain.hidden = false;
-});
+$('set-back').addEventListener('click', () => showPanel('main'));
 // MODES. Each mode is its own built page, so choosing one is a navigation and
 // not a state change — `#mode-classic` is a plain link and needs no handler.
 // The card for the mode already running is inert; it is there to say what you
@@ -3567,8 +4817,7 @@ if (typeof __SINGLE_FILE__ !== 'undefined' && __SINGLE_FILE__) {
   $('mode-classic').hidden = true;
 }
 $('btn-modes').addEventListener('click', () => {
-  menuMain.hidden = true;
-  menuModes.hidden = false;
+  showPanel('modes');
   showModesState();
 });
 
@@ -3594,27 +4843,296 @@ $('mode-strict').addEventListener('click', () => {
   audio.unlock();
   showModesState();
 });
-$('mode-back').addEventListener('click', () => {
-  menuModes.hidden = true;
-  menuMain.hidden = false;
-});
-$('btn-mute').addEventListener('click', () => {
-  muted = !muted;
-  audio.unlock();
-  applyMute();
-});
+// Modes lives on the play screen now (from review), so Done goes back there.
+$('mode-back').addEventListener('click', showPlayPanel);
 $('set-mute').addEventListener('click', () => {
   muted = !muted;
   audio.unlock();
   applyMute();
 });
+/**
+ * THE AIM LINE'S STYLE, the player's choice. Slim and Pulse draw the first leg
+ * as a line and show power off the felt; Beam is the original swelling ribbon.
+ * See TRAJECTORY.aimStyle.
+ */
+const AIM_STYLES = [
+  { id: 'cue', label: 'Cue' },
+  { id: 'slim', label: 'Slim' },
+  { id: 'pulse', label: 'Pulse' },
+  { id: 'beam', label: 'Beam' }
+];
+try {
+  const saved = localStorage.getItem('lightline-aim-style-v2');
+  if (AIM_STYLES.some((st) => st.id === saved)) TRAJECTORY.aimStyle = saved;
+} catch {
+  /* private mode */
+}
+function applyAimStyle() {
+  const style = AIM_STYLES.find((st) => st.id === TRAJECTORY.aimStyle) || AIM_STYLES[0];
+  $('set-aim').textContent = `Aim line: ${style.label}`;
+  try {
+    localStorage.setItem('lightline-aim-style-v2', style.id);
+  } catch {
+    /* no-op */
+  }
+}
+$('set-aim').addEventListener('click', () => {
+  const at = AIM_STYLES.findIndex((st) => st.id === TRAJECTORY.aimStyle);
+  TRAJECTORY.aimStyle = AIM_STYLES[(at + 1) % AIM_STYLES.length].id;
+  applyAimStyle();
+});
+applyAimStyle();
+
+/* THE CUE OPTIONS, on trial: the stick's look, full power, the strike. */
+const CUE_NAMES = { stickLook: 'Stick', maxStyle: 'Full power', strikeStyle: 'Strike' };
+try {
+  const saved = JSON.parse(localStorage.getItem('lightline-cue-v1') || '{}');
+  for (const kind of Object.keys(CUE_NAMES)) {
+    if (TRAJECTORY.cueOptions[kind].includes(saved[kind])) TRAJECTORY[kind] = saved[kind];
+  }
+} catch {
+  /* private mode, or nothing saved yet */
+}
+function applyCueOptions() {
+  const keep = {};
+  for (const kind of Object.keys(CUE_NAMES)) {
+    const v = TRAJECTORY[kind];
+    keep[kind] = v;
+    $(`set-cue-${kind}`).textContent = `${CUE_NAMES[kind]}: ${v[0].toUpperCase()}${v.slice(1)}`;
+  }
+  try {
+    localStorage.setItem('lightline-cue-v1', JSON.stringify(keep));
+  } catch {
+    /* private mode */
+  }
+}
+for (const kind of Object.keys(CUE_NAMES)) {
+  $(`set-cue-${kind}`).addEventListener('click', () => {
+    const list = TRAJECTORY.cueOptions[kind];
+    TRAJECTORY[kind] = list[(list.indexOf(TRAJECTORY[kind]) + 1) % list.length];
+    applyCueOptions();
+  });
+}
+applyCueOptions();
+if (typeof window !== 'undefined') {
+  window.__cue = (kind, value) => {
+    if (TRAJECTORY.cueOptions[kind]?.includes(value)) TRAJECTORY[kind] = value;
+    applyCueOptions();
+    return TRAJECTORY[kind];
+  };
+}
+
+/* THE MOMENT TREATMENTS, picked here while two of each are on trial. */
+/* Every moment has been picked; new trials add their names here. */
+const MOMENT_NAMES = {};
+try {
+  const saved = JSON.parse(localStorage.getItem('lightline-moments-v1') || '{}');
+  for (const kind of Object.keys(MOMENT_NAMES)) {
+    if (MOMENTS.options[kind].includes(saved[kind])) MOMENTS[kind] = saved[kind];
+  }
+} catch {
+  /* private mode, or nothing saved yet */
+}
+function applyMoments() {
+  const keep = {};
+  for (const kind of Object.keys(MOMENT_NAMES)) {
+    const v = MOMENTS[kind];
+    keep[kind] = v;
+    $(`set-mo-${kind}`).textContent = `${MOMENT_NAMES[kind]}: ${v[0].toUpperCase()}${v.slice(1)}`;
+  }
+  try {
+    localStorage.setItem('lightline-moments-v1', JSON.stringify(keep));
+  } catch {
+    /* private mode */
+  }
+}
+for (const kind of Object.keys(MOMENT_NAMES)) {
+  $(`set-mo-${kind}`).addEventListener('click', () => {
+    const list = MOMENTS.options[kind];
+    MOMENTS[kind] = list[(list.indexOf(MOMENTS[kind]) + 1) % list.length];
+    applyMoments();
+  });
+}
+applyMoments();
+if (typeof window !== 'undefined') {
+  /** Review: switch how ball numbers are drawn (takes effect on the next rack). */
+  /** The score feed's look-ahead state, for capture tools (read only). */
+  window.__feedState = () => ({ enabled: feed.enabled, brinking: feed.brinking, expecting: !!feed.expecting, can: feed.canAnticipate, presentScale: engine.presentTarget });
+  window.__feedX = (style) => {
+    if (['gold', 'orange', 'mint'].includes(style)) SCORE_FEED.xStyle = style;
+    return SCORE_FEED.xStyle;
+  };
+  window.__feedStyle = (style) => {
+    if (style === 'cash' || style === 'count') SCORE_FEED.style = style;
+    return SCORE_FEED.style;
+  };
+  window.__ballNumerals = (style) => {
+    if (BALL_NUMERALS.options.includes(style)) BALL_NUMERALS.style = style;
+    return BALL_NUMERALS.style;
+  };
+  window.__moment = (kind, variant) => {
+    if (MOMENTS.options[kind]?.includes(variant)) MOMENTS[kind] = variant;
+    applyMoments();
+    return MOMENTS[kind];
+  };
+  /**
+   * DEMO HOOKS, for recording the moments: each one drives the real code path
+   * (the real clear, a real scratch shot, a real freeze) from a staged state.
+   */
+  /**
+   * FOR THE TABLE TOOLS (tools/tune-tables.mjs): load run table `level` as a
+   * live room, and open and close strokes the way play does, without the
+   * result screens. Nothing in the game calls these.
+   */
+  window.__run = {
+    tables: TABLES.map((t) => ({ id: t.id, name: t.name })),
+    load(level) {
+      if (tutorial.active) tutorial.stop();
+      game.tutorialGuard = null;
+      moments.closeIntro();
+      game.introUp = false;
+      game.level = level;
+      rooms.generate(level);
+      callPocket(null);
+      beginMission();
+      player.placeAt(rooms.layout.spawn.x, spawnZ());
+      game.state = 'playing';
+      game.phase = 'aim';
+      game.midStroke = false;
+      input.setHeading(0, -1);
+      return { mission: rooms.mission, target: rules.target, name: rooms.authored?.name || rooms.layout.name };
+    },
+    /** Open the table the way a run does: its intro card, then play. */
+    intro: () => showRoomBanner(),
+    /** Leave this table for the next, the way the shop's Next table does. */
+    advance: () => advanceRoom(),
+    /** Earn an achievement now, as play would. */
+    unlock: (id) => achievements.unlock(id),
+    /** Point the resting cue along `deg` (0 is up the table, clockwise). */
+    aim(deg) {
+      const th = (deg * Math.PI) / 180;
+      input.setHeading(Math.sin(th), -Math.cos(th));
+    },
+    /** Play a shot the way a released thumb does: the stick, the strike, the stroke. */
+    fire(deg, power) {
+      const th = (deg * Math.PI) / 180;
+      const aim = { dirX: Math.sin(th), dirZ: -Math.cos(th), power, valid: true };
+      input.setHeading(aim.dirX, aim.dirZ);
+      player.launch(aim, game);
+      if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
+        const [f0, f1] = TRAJECTORY.strikeFreeze;
+        engine.hitStop(TRAJECTORY.stickStrike + f0 + f1 * power);
+      }
+      beginStroke();
+    },
+    /** Load an arbitrary table spec (tables.json shape) as table `level`, for searches. */
+    loadSpec(spec, level = 1) {
+      if (tutorial.active) tutorial.stop();
+      game.tutorialGuard = null;
+      moments.closeIntro();
+      game.introUp = false;
+      game.level = level;
+      rooms.teardown();
+      rooms.loadAuthored(spec, level);
+      callPocket(null);
+      beginMission();
+      player.placeAt(rooms.layout.spawn.x, spawnZ());
+      game.state = 'playing';
+      game.phase = 'aim';
+      game.midStroke = false;
+      return { mission: rooms.mission };
+    },
+    beginStroke,
+    /** Close the stroke the way finishStroke does, minus the screens. */
+    endStroke() {
+      game.midStroke = false;
+      game.phase = 'aim';
+      return rules.endStroke();
+    }
+  };
+
+  window.__demo = {
+    /** End the room as if it went well (or, with `fail`, ran out of shots). */
+    clear(fail = false) {
+      // A failed table is a weak one: short of its target, with no shots left.
+      const shots = fail
+        ? [{ pts: 35, mult: 2 }, { pts: 45, mult: 2 }]
+        : [
+            { pts: 35, mult: 3 },
+            { pts: 60, mult: 4 },
+            { pts: 85, mult: 6 }
+          ];
+      rules.ledger.length = 0;
+      rules.roomScore = 0;
+      shots.forEach((shot, i) => {
+        const amount = shot.pts * shot.mult;
+        rules.ledger.push({ id: 'stroke', label: `Shot ${i + 1}`, detail: `${shot.pts} × ${shot.mult}`, amount });
+        rules.roomScore += amount;
+      });
+      if (fail) {
+        rules.strokesLeft = 0;
+        failRoom();
+      } else {
+        rules.ballsDown = rules.mission.rack;
+        rules.strokesUsed = 3;
+        rules.strokesLeft = 2;
+        completeRoom();
+      }
+    },
+    /** Send the cue ball at the nearest pocket. */
+    scratch() {
+      const pockets = rooms.table.pockets;
+      let best = null;
+      for (const pk of pockets) {
+        const d = Math.hypot(pk.x - player.x, pk.z - player.z);
+        if (!best || d < best.d) best = { pk, d };
+      }
+      const pk = best.pk;
+      const len = Math.hypot(pk.x, pk.z) || 1;
+      player.placeAt(pk.x - (pk.x / len) * 4, pk.z - (pk.z / len) * 4);
+      const dx = pk.x - player.x;
+      const dz = pk.z - player.z;
+      const d = Math.hypot(dx, dz);
+      input.setHeading(dx / d, dz / d);
+      player.launch({ dirX: dx / d, dirZ: dz / d, power: 0.45 }, game);
+      beginStroke();
+    },
+    /** Freeze the stroke in progress (granting a charge if there is none). */
+    freeze() {
+      if (rules.freezeCharges <= 0) rules.grantFreeze(1);
+      return tryFreeze();
+    },
+    /** Let the frozen stroke go again, along the current heading. */
+    unfreeze(dirX = 0, dirZ = -1, power = 0.6) {
+      player.launch({ dirX, dirZ, power }, game);
+      resumeStroke();
+      moments.unfreeze();
+    },
+    /** Send a ripple through the grid, as a pot would. */
+    pulse(x = 0, z = 0, strength = 1) {
+      gridPulse(x, z, strength);
+    },
+    /** Earn charges as a big shot would: a combination, two in one, ×6. */
+    earn() {
+      const awards = rules.earnCharges({ paid: 360, voided: false, pots: 2, multiplier: 6 }, 1);
+      return moments.charges(awards);
+    },
+    /** Pick the first exit on the open scorecard. */
+    next() {
+      const door = rooms.doors.find((dr) => dr.reward.id !== 'boon') || rooms.doors[0];
+      if (door) handleDoorEntered(door);
+      else advanceRoom();
+    }
+  };
+}
+if (typeof window !== 'undefined') window.__setAimStyle = (id) => { TRAJECTORY.aimStyle = id; applyAimStyle(); };
+
+// Back to the home screen as a first-time player would see it, so the next
+// Play is exactly what a new player gets.
 $('set-tutorial').addEventListener('click', () => {
-  Tutorial.reset();
+  resetFirstTime();
   showTutorialState();
-  $('set-tutorial').textContent = 'Tutorial reset';
-  setTimeout(() => {
-    $('set-tutorial').textContent = 'Replay tutorial';
-  }, 1400);
+  showPanel('main');
 });
 
 /**
@@ -3630,7 +5148,9 @@ function attract(rawDt) {
   if (alive.length <= 1) {
     if (attractTimer > 0) return;
     game.level = 2 + Math.floor(Math.random() * 6);
-    rooms.generate(game.level);
+    // the menu's demo table is always a rolled one: the authored tables are
+    // puzzles, and the menu should not play their answers
+    rooms.generate(game.level, { rolled: true });
     player.placeAt(rooms.layout.spawn.x, spawnZ());
     player.hp = player.maxHp;
     hud.setDoors([]);
@@ -3679,6 +5199,76 @@ function sweepEntities() {
   }
 }
 
+/**
+ * THE FREEZE BEFORE THE HIT (from review). While the cue ball rolls, project
+ * its path with the aim preview's own predictor: if it is about to strike a
+ * ball, and that contact sinks the ball (and the mission allows it), tell the
+ * score feed now, so the table stops just BEFORE the hit, the numbers play,
+ * and then the hit and the drop are watched at full speed.
+ */
+function anticipatePot() {
+  if (!game.midStroke || !feed.canAnticipate) return;
+  if (anticipateBallPot()) return;
+  const speed = Math.hypot(player.vx, player.vz);
+  if (speed < 1) return;
+  const pred = physics.predictTrajectory({ x: player.x, z: player.z }, { x: player.vx / speed, z: player.vz / speed }, {
+    radius: player.radius,
+    maxBounces: 1,
+    speed,
+    drag: PLAYER.dragLaunched,
+    pockets: rooms.table.pockets,
+    portals: rooms.table.portalRings,
+    bodies: game.enemies
+  });
+  const ball = pred?.hit?.body;
+  if (!ball || !ball.alive || !(ball.number > 0)) return;
+  if (pred.totalDistance > SCORE_FEED.leadDist) return;
+  const leg = chainFrom(pred, player.mass, [])[0];
+  if (!leg || leg.ball !== ball || !(leg.pocket || leg.tailPocket)) return;
+  if (foulPreview([leg]).size) return;
+  // the rest of the way: to the contact, then the struck ball to its pocket
+  const legLength = (leg.segs || []).reduce((n, s) => n + Math.hypot(s.bx - s.ax, s.bz - s.az), 0);
+  feed.anticipate(ball.number, travelScale(pred.totalDistance + legLength, speed));
+}
+
+/** The world speed at which `dist` at `speed` takes SCORE_FEED.travel real seconds. */
+function travelScale(dist, speed) {
+  const s = dist / Math.max(speed, 0.1) / SCORE_FEED.travel;
+  return Math.max(SCORE_FEED.travelMin, Math.min(1, s));
+}
+
+/**
+ * THE BALL HELD AT A DISTANCE (from review: "hold the ball at a distance
+ * before it sinks, show all the score messages, then show the ball travel and
+ * sink"). Any numbered ball already rolling into a pocket, however it got
+ * there (the cue ball, another ball, a rail), is projected along its own path;
+ * a beat before it would drop (SCORE_FEED.leadBall), the table all but stops
+ * with the ball still short of the pocket, its numbers play, and then it
+ * rolls in.
+ */
+function anticipateBallPot() {
+  for (const ball of game.enemies) {
+    if (!ball.alive || !(ball.number > 0) || ball.sinking) continue;
+    const speed = Math.hypot(ball.vx, ball.vz);
+    if (speed < 0.8) continue;
+    const pred = physics.predictTrajectory({ x: ball.x, z: ball.z }, { x: ball.vx / speed, z: ball.vz / speed }, {
+      radius: ball.radius,
+      maxBounces: 1,
+      speed,
+      drag: ball.drag,
+      pockets: rooms.table.pockets,
+      portals: rooms.table.portalRings,
+      bodies: game.enemies.filter((b) => b !== ball && b.alive)
+    });
+    if (!pred?.pocket || pred.hit) continue;
+    if (pred.totalDistance > SCORE_FEED.leadBallDist) continue;
+    if (rules.foulsAhead([ball.number])[0]) continue;
+    feed.anticipate(ball.number, travelScale(pred.totalDistance, speed));
+    return true;
+  }
+  return false;
+}
+
 function simulate(dt, rawDt, aiming) {
   player.update(dt, rawDt, game, aiming);
 
@@ -3690,6 +5280,7 @@ function simulate(dt, rawDt, aiming) {
   for (const projectile of game.projectiles) projectile.update(dt);
 
   physics.update(dt, game);
+  anticipatePot();
   boons.update(dt, game);
   sweepEntities();
 
@@ -3703,13 +5294,31 @@ function simulate(dt, rawDt, aiming) {
     game.strokeTimer += dt;
     if (tableSettled()) {
       game.settleTimer += dt;
-      if (game.settleTimer >= RULES.settleGrace) finishStroke();
+      if (game.settleTimer >= RULES.settleGrace) endStroke();
     } else {
       game.settleTimer = 0;
     }
     // A ball trapped in a bumper loop must not be able to hang the room.
-    if (game.midStroke && game.strokeTimer > RULES.strokeTimeout) finishStroke();
+    if (game.midStroke && game.strokeTimer > RULES.strokeTimeout) endStroke();
   }
+}
+
+/**
+ * THE TABLE HAS STOPPED. With the presenter on, the stroke is not over until
+ * every number has landed and the take-back and slam have played — only then
+ * does the budget step and the next aim open.
+ */
+function endStroke() {
+  if (!feed.enabled) {
+    finishStroke();
+    return;
+  }
+  if (game.feedSettling) return;
+  game.feedSettling = true;
+  feed.settle(rules.strokeResult(), () => {
+    game.feedSettling = false;
+    if (game.midStroke) finishStroke();
+  });
 }
 
 let last = performance.now();
@@ -3720,6 +5329,7 @@ function frame(now) {
   last = now;
 
   const { dt, rawDt } = engine.update(rawFrame);
+  gridUniforms.uTime.value += rawDt;
   input.update(rawDt);
   audio.setTimeDilation(engine.timeScale);
 
@@ -3730,8 +5340,13 @@ function frame(now) {
   pulseCalledPocket(rawDt);
   pumpCelebrations(rawDt);
   pumpSinking(rawDt);
+  feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.practice && !game.headless && game.state !== 'dead');
+  feed.update(rawDt);
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
+  // The boxes cover the bottom of the felt, where the preview draws where a
+  // ball finishes: they only show while a stroke is playing out.
+  feed.setTucked(!game.midStroke || aiming);
 
   if (game.running) {
     // Pockets shimmer and doors pulse whether or not the table is moving —
@@ -3789,6 +5404,12 @@ function frame(now) {
       // settles first, and a line drawn in that gap is the flash reported at
       // the end of every board. See Tutorial.resolving.
       !tutorial?.resolving &&
+      // Nor while the stroke's numbers are still being presented: the cue
+      // ball can be at rest long before the shot is over, and a line drawn
+      // across the count invites a shot the table will not take yet. A FROZEN
+      // table is the exception (from review): the stick beams back in at the
+      // stopped cue ball at once, so re-aiming is what it plainly asks for.
+      (!game.midStroke || game.phase === 'aim') &&
       player.state === PLAYER_STATE.IDLE
     ) {
       // THE CUE AT REST.
@@ -3801,14 +5422,25 @@ function frame(now) {
       //
       // Showing the resting cue fixes both. The default is now something you
       // can see and nudge rather than something you discover by firing.
-      const h = input.heading;
-      player.aimDir.x = h.x;
-      player.aimDir.z = h.z;
-      player.aimPower = 0;
-      player.aimCharge = 0;
-      player.aimCue.x = player.x - h.x * 3.4;
-      player.aimCue.z = player.z - h.z * 3.4;
-      refreshPrediction();
+      //
+      // UNDER THE THUMB (from review, after Ultrapool): with the stick shown
+      // only while a thumb is down, the lines wait for the thumb too, so a
+      // table at rest shows nothing but the balls. The lessons too (from
+      // review: a bright line from the resting aim, before any thumb was
+      // down, read as an instruction it was not).
+      if ((TRAJECTORY.stickShow || 'rest') === 'drag') {
+        player.hideTrajectory();
+        game.aimFoul = null;
+      } else {
+        const h = input.heading;
+        player.aimDir.x = h.x;
+        player.aimDir.z = h.z;
+        player.aimPower = 0;
+        player.aimCharge = 0;
+        player.aimCue.x = player.x - h.x * 3.4;
+        player.aimCue.z = player.z - h.z * 3.4;
+        refreshPrediction();
+      }
     } else {
       player.hideTrajectory();
       // NOTHING DRAWN, NOTHING WARNED. The refusal belongs to a line; with no
@@ -3819,8 +5451,6 @@ function frame(now) {
     const snapshot = rules.snapshot();
     hud.update(
       {
-        hp: player.hp,
-        maxHp: player.maxHp,
         level: game.level,
         layout: rooms.layout ? rooms.layout.name : '',
         phase: game.phase,
@@ -3828,7 +5458,20 @@ function frame(now) {
         cleared: game.state === 'cleared',
         // What the drawn line would be refused for, if anything.
         aimFoul: game.aimFoul,
-        ...snapshot
+        // a table about the order shows "NEXT n" all table long
+        orderHint: !!rooms.authored?.showOrder,
+        ...snapshot,
+        // Held through the end-of-table moment, so each figure in the corner
+        // changes only when the moment shows it change.
+        ...(game.scoreHold != null ? { displayScore: game.scoreHold } : {}),
+        // a shot is spent the moment it is taken (shotsShown)
+        strokesLeft: shotsShown(),
+        ...(game.strokesHold ? { strokesLeft: game.strokesHold.left, strokesTotal: game.strokesHold.total } : {}),
+        ...(game.cashHold != null ? { cash: game.cashHold } : {}),
+        ...(game.livesHold != null ? { lives: game.livesHold } : {}),
+        ...(game.freezeHold != null ? { freezeCharges: game.freezeHold } : {}),
+        // the FREEZE button is live while the balls roll and a charge is in hand
+        canFreeze: game.phase === 'resolve' && game.midStroke && rules.freezeCharges >= 1 && game.state === 'playing'
       },
       rawDt
     );

@@ -6,37 +6,55 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#05070a" />
+    <meta name="theme-color" content="#02050b" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2305070a'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%2335f2ff'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23d9feff'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2302050b'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%2322e8ff'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23d9feff'/%3E%3C/svg%3E"
     />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
-      content="Billiard Roguelike — real-time kinetic billiards meets boon-stacking action roguelike."
+      content="Lightline: Billiard Roguelike — trick-shot billiards on a grid of light, with a boon-stacking roguelike on top."
     />
-    <title>Billiard Roguelike</title>
+    <title>Lightline: Billiard Roguelike</title>
+    <!-- Lightline's three faces are served from ./fonts (SIL OFL 1.1, see
+         public/fonts/README.md). Every use has a fallback. -->
     <style>
+      @font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 700; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 800; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Orbitron'; font-style: normal; font-weight: 900; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Oxanium'; font-style: normal; font-weight: 600; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Oxanium'; font-style: normal; font-weight: 700; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Oxanium'; font-style: normal; font-weight: 800; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Rajdhani'; font-style: normal; font-weight: 500; font-display: swap; src: url('./fonts/rajdhani-500.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Rajdhani'; font-style: normal; font-weight: 600; font-display: swap; src: url('./fonts/rajdhani-600.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+      @font-face { font-family: 'Rajdhani'; font-style: normal; font-weight: 700; font-display: swap; src: url('./fonts/rajdhani-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
       /* ---------------------------------------------------------------
          Dark Velvet Cyber-Billiards — shell styling.
          The game itself renders into #stage-canvas; every readable UI
          element is DOM so text stays crisp on high-DPI phones.
          --------------------------------------------------------------- */
       :root {
-        --obsidian: #05070a;
-        --felt-deep: #06231d;
-        --felt: #0b3a2e;
-        --cyan: #35f2ff;
-        --magenta: #ff3d8b;
+        /* Lightline tokens (docs/DESIGN_BIBLE.md §3). */
+        --obsidian: #02050b;
+        --felt-deep: #02050b;
+        --felt: #061222;
+        --cyan: #22e8ff;
+        --magenta: #ff2e7e;
+        --ice: #bff4ff;
         --amber: #ffb340;
         --violet: #a05cff;
         --bone: #eaf6ff;
         --muted: rgba(234, 246, 255, 0.55);
         --hud-pad: clamp(10px, 3.2vmin, 20px);
-        --font: 'Rajdhani', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        --font: 'Rajdhani', 'Bahnschrift', 'Chakra Petch', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        /* Display: titles, banners, moment names. Wide, so used with restraint. */
+        --font-display: 'Orbitron', 'Eurostile', 'Rajdhani', 'Arial Black', sans-serif;
+        /* Numbers: every figure, with tabular digits. */
+        --font-num: 'Oxanium', 'Bahnschrift', 'Rajdhani', ui-monospace, monospace;
       }
 
       * {
@@ -85,8 +103,8 @@
         overflow: hidden;
         border-radius: clamp(0px, 1.6vmin, 14px);
         box-shadow:
-          0 0 0 1px rgba(53, 242, 255, 0.16),
-          0 0 60px rgba(53, 242, 255, 0.07),
+          0 0 0 1px rgba(34, 232, 255, 0.16),
+          0 0 60px rgba(34, 232, 255, 0.07),
           0 24px 80px rgba(0, 0, 0, 0.85);
         background: var(--obsidian);
         touch-action: none;
@@ -140,8 +158,10 @@
         background: linear-gradient(to bottom, rgba(5, 7, 10, 0.82) 0%, rgba(5, 7, 10, 0.55) 60%, transparent 100%);
       }
 
+      /* Fixed side columns, so the mission stays centred however wide the
+         RUN number grows. Nothing in the top bar moves when a score lands. */
       .hud-hp {
-        flex: 1 1 42%;
+        flex: 0 0 28%;
         min-width: 0;
       }
 
@@ -150,7 +170,7 @@
         height: clamp(7px, 1.8vmin, 11px);
         border-radius: 999px;
         background: rgba(234, 246, 255, 0.1);
-        box-shadow: inset 0 0 0 1px rgba(53, 242, 255, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(34, 232, 255, 0.18);
         overflow: hidden;
       }
 
@@ -167,8 +187,8 @@
       }
 
       .hp-fill {
-        background: linear-gradient(90deg, #35f2ff 0%, #7dfbe0 100%);
-        box-shadow: 0 0 12px rgba(53, 242, 255, 0.65);
+        background: linear-gradient(90deg, #22e8ff 0%, #7dfbe0 100%);
+        box-shadow: 0 0 12px rgba(34, 232, 255, 0.65);
         transition: width 0.12s linear;
       }
 
@@ -184,13 +204,39 @@
         color: var(--muted);
       }
 
+      /* LIVES: three pips, lit while you have them. CASH under them, in heat. */
+      .lives-row { display: flex; gap: 6px; margin-top: 4px; min-height: 14px; }
+      .lives-row .life {
+        width: clamp(10px, 2.8vmin, 14px);
+        height: clamp(10px, 2.8vmin, 14px);
+        border-radius: 50%;
+        border: 1.5px solid rgba(34, 232, 255, 0.35);
+      }
+      .lives-row .life.on {
+        background: radial-gradient(circle at 35% 35%, #e9f8ff 0%, #22e8ff 55%, #0b8fa6 100%);
+        border-color: #22e8ff;
+        box-shadow: 0 0 8px rgba(34, 232, 255, 0.7);
+      }
+      .cash-value {
+        margin-top: 5px;
+        font-family: var(--font-num);
+        font-size: clamp(14px, 4vmin, 20px);
+        font-weight: 700;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        color: #ffc266;
+        text-shadow: 0 0 10px rgba(255, 138, 30, 0.5);
+      }
+
       /* THE MISSION.
          The one thing on screen that says what winning means, written as a
          sentence. It sits dead centre of the top band because that is where
          the eye lands between strokes. */
+      /* YOUR SCORE takes the centre (from review); the mission sits right. */
       .hud-mission {
-        flex: 1 1 44%;
-        text-align: center;
+        order: 3;
+        flex: 0 0 28%;
+        text-align: right;
         min-width: 0;
       }
 
@@ -200,7 +246,7 @@
         line-height: 1.1;
         letter-spacing: 0.1em;
         color: var(--bone);
-        text-shadow: 0 0 16px rgba(53, 242, 255, 0.45);
+        text-shadow: 0 0 16px rgba(34, 232, 255, 0.45);
       }
       .mission-text.done {
         color: #2ef2c4;
@@ -211,18 +257,18 @@
         margin-top: 0.45em;
         display: flex;
         gap: 3px;
-        justify-content: center;
+        justify-content: flex-end;
       }
       .mission-pips .pip {
         width: clamp(9px, 2.6vmin, 14px);
         height: 3px;
         border-radius: 2px;
-        background: rgba(53, 242, 255, 0.22);
+        background: rgba(34, 232, 255, 0.22);
         transition: background 0.18s ease;
       }
       .mission-pips .pip.on {
         background: var(--cyan);
-        box-shadow: 0 0 8px rgba(53, 242, 255, 0.8);
+        box-shadow: 0 0 8px rgba(34, 232, 255, 0.8);
       }
 
       /* WHICH BALL THE ORDER WANTS NEXT.
@@ -237,6 +283,28 @@
         color: rgba(234, 246, 255, 0.42);
         transition: color 0.2s ease, text-shadow 0.2s ease;
       }
+      /* THE TABLE'S RULE, flown here from the intro card */
+      .rule-chip { display: inline-block; margin-top: 0.45em; padding: 3px 7px 2px; font-size: clamp(8px, 2.1vmin, 11px); font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: #02050b; background: #2ef2c4; box-shadow: 0 0 12px rgba(46, 242, 196, 0.5); clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+      .rule-chip[hidden] { display: none; }
+      .mo-intro { position: absolute; inset: 0; z-index: 44; pointer-events: auto; }
+      .mo-intro-shade { position: absolute; inset: 0; background: rgba(2, 5, 11, 0.72); }
+      .mo-intro-card { position: absolute; left: 50%; top: 46%; width: min(86%, 340px); padding: 22px 20px 18px; text-align: center; background: rgba(8, 18, 30, 0.96); box-shadow: inset 0 0 0 1.5px var(--ll-you, #22e8ff), 0 0 28px rgba(34, 232, 255, 0.3); clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); }
+      .mo-intro-name { margin-top: 6px; font-family: var(--font-display); font-size: clamp(22px, 7vmin, 30px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--bone); text-shadow: 0 0 18px rgba(34, 232, 255, 0.6); }
+      .mo-intro-rule { margin: 14px auto 0; max-width: 92%; font-size: clamp(14px, 4.2vmin, 17px); font-weight: 600; line-height: 1.35; color: #2ef2c4; }
+      .mo-intro-stats { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+      .mo-intro-stats span { padding: 4px 8px; font-family: var(--font-num); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: var(--bone); background: rgba(2, 5, 11, 0.7); box-shadow: inset 0 0 0 1px rgba(233, 248, 255, 0.3); }
+      .mo-intro-demo { display: block; width: min(52%, 170px); aspect-ratio: 160 / 251; margin: 14px auto 0; background-color: #02050b; background-repeat: no-repeat; box-shadow: inset 0 0 0 1px rgba(191, 244, 255, 0.35); }
+      /* PRACTICE (from review): the score, the mission and the shots step
+         aside; the line says what to try, and Done goes on to the real table. */
+      .hud.practicing .hud-score, .hud.practicing .hud-mission, .hud.practicing .hud-strokes, .hud.practicing .hud-combo { visibility: hidden; }
+      .hud-practice { position: absolute; left: 50%; top: calc(var(--hud-pad) + 2px); transform: translateX(-50%); width: min(56%, 280px); text-align: center; pointer-events: none; }
+      .practice-title { font-family: var(--font-display); font-size: clamp(10px, 2.8vmin, 13px); font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #bff4ff; }
+      .practice-line { margin-top: 6px; font-size: clamp(13px, 3.9vmin, 16px); font-weight: 600; line-height: 1.3; color: var(--bone); text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8); }
+      .practice-count { margin-top: 4px; min-height: 1.2em; font-size: clamp(9px, 2.4vmin, 11px); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(191, 244, 255, 0.75); }
+      .practice-done { position: absolute; left: var(--hud-pad); bottom: calc(var(--hud-pad) + 2px); max-width: 46%; pointer-events: auto; padding: 10px 14px 9px; border: 0; font-family: var(--font-display); font-size: clamp(11px, 3.1vmin, 13px); line-height: 1.25; text-align: left; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(234, 246, 255, 0.85); background: rgba(8, 18, 30, 0.92); box-shadow: inset 0 0 0 1.5px rgba(234, 246, 255, 0.35); cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+      .practice-done.ready { color: #02050b; background: var(--ll-you, #22e8ff); box-shadow: 0 0 22px rgba(34, 232, 255, 0.45); }
+      .mo-intro-go { display: block; width: 100%; margin-top: 20px; padding: 14px 12px 12px; border: 0; font-family: var(--font-display); font-size: clamp(15px, 4.6vmin, 19px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #02050b; background: var(--ll-you, #22e8ff); box-shadow: 0 0 22px rgba(34, 232, 255, 0.45); cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+      .moments > .mo-intro-fly { position: absolute; inset: auto; margin: 0; z-index: 49; pointer-events: none; }
       .mission-order.on {
         color: #2ef2c4;
         text-shadow: 0 0 10px rgba(46, 242, 196, 0.5);
@@ -247,17 +315,40 @@
       }
 
       .hud-score {
-        flex: 0 0 auto;
-        text-align: right;
+        order: 2;
+        flex: 1 1 0;
+        text-align: center;
         min-width: 0;
       }
       .score-value {
+        display: inline-block;
+        transform-origin: 50% 50%;
         font-size: clamp(17px, 5vmin, 28px);
         font-weight: 700;
         line-height: 1;
         letter-spacing: 0.02em;
+        font-variant-numeric: tabular-nums;
         color: var(--bone);
       }
+      .score-table {
+        display: block;
+        min-height: 13px;
+        margin-top: 3px;
+        transform-origin: 50% 50%;
+        font-family: var(--font-num);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--muted);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .score-bar { position: relative; width: clamp(90px, 30vw, 140px); height: 5px; margin: 5px auto 0; background: rgba(30, 79, 107, 0.7); }
+      .score-bar .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--bone); transition: width 0.3s ease-out; }
+      .score-bar.beaten .fill { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+      .score-table.on { opacity: 1; }
+      .score-table.beaten { color: var(--cyan); }
+      .score-table small { font-family: var(--font); font-size: 8px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin-right: 3px; }
 
       /* Owned-boon chips */
       .hud-build {
@@ -287,8 +378,8 @@
       }
 
       .build-chip.rare {
-        border-color: rgba(53, 242, 255, 0.75);
-        box-shadow: 0 0 10px rgba(53, 242, 255, 0.25);
+        border-color: rgba(34, 232, 255, 0.75);
+        box-shadow: 0 0 10px rgba(34, 232, 255, 0.25);
       }
 
       .build-chip.epic {
@@ -324,8 +415,8 @@
         padding: 7px 12px 9px;
         border-radius: 12px;
         background: rgba(5, 7, 10, 0.62);
-        border: 1px solid rgba(53, 242, 255, 0.35);
-        box-shadow: 0 0 24px rgba(53, 242, 255, 0.18);
+        border: 1px solid rgba(34, 232, 255, 0.35);
+        box-shadow: 0 0 24px rgba(34, 232, 255, 0.18);
         opacity: 0;
         transition: opacity 0.18s ease;
       }
@@ -339,7 +430,7 @@
         font-weight: 700;
         line-height: 0.95;
         color: var(--cyan);
-        text-shadow: 0 0 20px rgba(53, 242, 255, 0.75);
+        text-shadow: 0 0 20px rgba(34, 232, 255, 0.75);
       }
 
       .combo-count {
@@ -365,7 +456,7 @@
         background: var(--cyan);
         transform-origin: right center;
         transform: scaleX(1);
-        box-shadow: 0 0 10px rgba(53, 242, 255, 0.8);
+        box-shadow: 0 0 10px rgba(34, 232, 255, 0.8);
       }
 
       .hud-combo.pop .combo-mult {
@@ -401,11 +492,12 @@
       /* THE BUDGET, AS COUNTABLE MARKS.
          A number you have to read is a number that does not get read mid-shot.
          Lit cues are strokes you still have; dark ones are strokes you spent. */
+      /* THE BOTTOM ROW: shots on the left, the score boxes in the middle,
+         Freeze frame on the right. The camera keeps the table above it. */
       .hud-strokes {
         position: absolute;
         bottom: calc(var(--hud-pad) + 2px);
-        left: 50%;
-        transform: translateX(-50%);
+        left: var(--hud-pad);
         padding: 6px 14px;
         border-radius: 10px;
         background: rgba(5, 7, 10, 0.6);
@@ -432,6 +524,25 @@
         background: rgba(255, 179, 64, 0.16);
         box-shadow: none;
       }
+      /* +1 SHOT: the new mark opens its own gap, lands white-hot, settles amber. */
+      .stroke-row .cue.fresh { animation: cue-fresh 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+      @keyframes cue-fresh {
+        0% { max-width: 0; opacity: 0; transform: scaleY(1.6); background: #fff4dc; box-shadow: 0 0 18px #ffb340; }
+        22% { max-width: 8px; opacity: 1; transform: scaleY(1.4); background: #fffaf0; box-shadow: 0 0 24px #ffb340, 0 0 8px #fff; }
+        45% { transform: scaleY(1); background: #ffd48a; box-shadow: 0 0 18px rgba(255, 179, 64, 0.95); }
+        75% { background: #ffc266; box-shadow: 0 0 14px rgba(255, 179, 64, 0.8); }
+        100% { max-width: 8px; background: var(--amber); box-shadow: 0 0 10px rgba(255, 179, 64, 0.55); }
+      }
+      /* A shot spent: the pip flashes white, swells, then drains to spent. */
+      .stroke-row .cue.spend { animation: cue-spend 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+      @keyframes cue-spend {
+        0% { transform: scaleY(1); background: #fff; box-shadow: 0 0 22px #ffb340, 0 0 8px #fff; }
+        25% { transform: scaleY(1.5); background: #fff; box-shadow: 0 0 26px #ffb340, 0 0 10px #fff; }
+        55% { transform: scaleY(0.7); background: var(--amber); box-shadow: 0 0 12px rgba(255, 179, 64, 0.7); }
+        100% { transform: scaleY(1); background: rgba(255, 179, 64, 0.16); box-shadow: none; }
+      }
+      .shot-minus { position: absolute; z-index: 2; pointer-events: none; font-family: var(--font-display); font-size: clamp(12px, 3.4vmin, 15px); font-weight: 700; color: #fff; text-shadow: 0 0 8px #ffb340, 0 0 2px #000; white-space: nowrap; }
+      @media (prefers-reduced-motion: reduce) { .stroke-row .cue.fresh, .stroke-row .cue.spend { animation: none; } }
       .stroke-row.last .cue:not(.spent) {
         background: var(--magenta);
         box-shadow: 0 0 14px rgba(255, 61, 139, 0.8);
@@ -458,22 +569,47 @@
         flex-direction: column;
         align-items: flex-end;
         gap: 5px;
-        opacity: 0.4;
+        opacity: 0.85;
         transition: opacity 0.3s ease;
       }
-      .hud.has-freeze .hud-freeze { opacity: 1; }
+      .hud.has-freeze .hud-freeze, .hud.freeze-lit .hud-freeze { opacity: 1; }
+      /* THE FREEZE BUTTON: lit, and pressable, only while a freeze is possible. */
+      .freeze-call { display: none; font-family: var(--font-display); font-size: clamp(10px, 2.8vmin, 13px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #02050b; background: #bff4ff; padding: 5px 9px 4px; clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+      .hud-freeze.armed { pointer-events: auto; cursor: pointer; min-width: 84px; min-height: 64px; box-shadow: inset 0 0 0 2px #bff4ff, 0 0 22px rgba(111, 227, 255, 0.7); animation: freeze-armed 0.9s ease-in-out infinite; }
+      .hud-freeze.armed .freeze-call { display: block; }
+      .hud-freeze.armed:active { transform: scale(0.94); }
+      @keyframes freeze-armed { 50% { box-shadow: inset 0 0 0 2px #bff4ff, 0 0 34px rgba(111, 227, 255, 0.95); } }
+      /* a diamond a gain just filled */
+      .freeze-row .frz.fresh { animation: frz-fresh 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
+      /* the new diamond pops like a sticker (from review, after Ultrapool) */
+      .freeze-row .frz.fresh { animation-duration: 0.62s; animation-timing-function: linear; }
+      @keyframes frz-fresh {
+        0% { transform: rotate(35deg) scale(0.05); background: #fff; box-shadow: 0 0 20px #bff4ff; }
+        18% { transform: rotate(53deg) scale(1.2); }
+        34% { transform: rotate(38deg) scale(1.9); background: #fff; box-shadow: 0 0 22px #bff4ff; }
+        50% { transform: rotate(50deg) scale(0.9); }
+        66% { transform: rotate(42deg) scale(1.15); }
+        82% { transform: rotate(46.5deg) scale(0.98); }
+        100% { transform: rotate(45deg) scale(1); }
+      }
+      @media (prefers-reduced-motion: reduce) { .hud-freeze.armed, .freeze-row .frz.fresh { animation: none; } }
 
       .freeze-row { display: flex; gap: 5px; }
       .freeze-row .frz {
         width: clamp(8px, 2.2vmin, 11px);
         height: clamp(8px, 2.2vmin, 11px);
         transform: rotate(45deg);
-        border: 1.5px solid rgba(53, 242, 255, 0.32);
+        border: 1.5px solid rgba(191, 244, 255, 0.6);
       }
+      /* Ice: Freeze frame's own colour. A half charge fills half the diamond. */
       .freeze-row .frz.on {
-        background: var(--cyan);
-        border-color: var(--cyan);
-        box-shadow: 0 0 10px rgba(53, 242, 255, 0.8);
+        background: #bff4ff;
+        border-color: #bff4ff;
+        box-shadow: 0 0 10px rgba(111, 227, 255, 0.85);
+      }
+      .freeze-row .frz.half {
+        background: linear-gradient(225deg, transparent 50%, #bff4ff 50%);
+        border-color: rgba(191, 244, 255, 0.8);
       }
 
       /* THE SCORECARD. The moment the economy becomes legible: what the pots
@@ -487,7 +623,7 @@
         padding: 14px 16px 15px;
         border-radius: 8px;
         background: rgba(5, 7, 10, 0.93);
-        border: 1px solid rgba(53, 242, 255, 0.34);
+        border: 1px solid rgba(34, 232, 255, 0.34);
         box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
         opacity: 0;
         pointer-events: none;
@@ -648,7 +784,7 @@
       }
       .pad-ring {
         border: 1.5px solid rgba(234, 246, 255, 0.22);
-        box-shadow: inset 0 0 24px rgba(53, 242, 255, 0.06);
+        box-shadow: inset 0 0 24px rgba(34, 232, 255, 0.06);
       }
       /* The power read, as a disc that grows to fill the ring. Radius, not
          colour: the palette's channels are all spoken for. */
@@ -656,11 +792,11 @@
         transform: scale(var(--pad-power, 0));
         background: radial-gradient(
           circle,
-          rgba(53, 242, 255, 0.14) 0%,
-          rgba(53, 242, 255, 0.05) 70%,
+          rgba(34, 232, 255, 0.14) 0%,
+          rgba(34, 232, 255, 0.05) 70%,
           transparent 100%
         );
-        border: 1px solid rgba(53, 242, 255, 0.3);
+        border: 1px solid rgba(34, 232, 255, 0.3);
       }
       .pad-line {
         position: absolute;
@@ -673,8 +809,8 @@
         transform: rotate(var(--line-rot, 0deg));
         background: linear-gradient(
           90deg,
-          rgba(53, 242, 255, 0.75),
-          rgba(53, 242, 255, 0.25)
+          rgba(34, 232, 255, 0.75),
+          rgba(34, 232, 255, 0.25)
         );
       }
       .pad-knob {
@@ -688,7 +824,7 @@
         transform: translate(var(--knob-x, 0px), var(--knob-y, 0px));
         border: 2px solid rgba(234, 246, 255, 0.65);
         background: rgba(5, 7, 10, 0.35);
-        box-shadow: 0 0 16px rgba(53, 242, 255, 0.35);
+        box-shadow: 0 0 16px rgba(34, 232, 255, 0.35);
       }
 
       /* Banner */
@@ -721,13 +857,19 @@
         transform: translateY(0);
       }
 
+      .hud-banner.holds {
+        padding-block: 18px;
+        background: linear-gradient(90deg, rgba(5, 7, 10, 0), rgba(5, 7, 10, 0.86) 12%, rgba(5, 7, 10, 0.86) 88%, rgba(5, 7, 10, 0));
+        box-shadow: inset 0 1px 0 rgba(34, 232, 255, 0.18), inset 0 -1px 0 rgba(34, 232, 255, 0.18);
+      }
+
       .banner-title {
         font-size: clamp(19px, 6.4vmin, 38px);
         font-weight: 700;
         letter-spacing: 0.2em;
         text-transform: uppercase;
         color: var(--bone);
-        text-shadow: 0 0 22px rgba(53, 242, 255, 0.7);
+        text-shadow: 0 0 22px rgba(34, 232, 255, 0.7);
       }
 
       .banner-sub {
@@ -809,7 +951,7 @@
         letter-spacing: 0.2em;
         text-transform: uppercase;
         color: var(--bone);
-        text-shadow: 0 0 18px rgba(53, 242, 255, 0.55);
+        text-shadow: 0 0 18px rgba(34, 232, 255, 0.55);
       }
 
       .boon-subtitle {
@@ -835,7 +977,7 @@
         padding: clamp(10px, 2.8vmin, 16px);
         border-radius: 12px;
         border: 1px solid rgba(234, 246, 255, 0.28);
-        background: linear-gradient(160deg, rgba(11, 58, 46, 0.7) 0%, rgba(5, 7, 10, 0.9) 70%);
+        background: linear-gradient(160deg, rgba(13, 29, 45, 0.85) 0%, rgba(2, 5, 11, 0.92) 70%);
         color: var(--bone);
         font-family: var(--font);
         cursor: pointer;
@@ -848,8 +990,8 @@
       }
 
       .boon-card.rare {
-        border-color: rgba(53, 242, 255, 0.7);
-        box-shadow: 0 0 18px rgba(53, 242, 255, 0.2);
+        border-color: rgba(34, 232, 255, 0.7);
+        box-shadow: 0 0 18px rgba(34, 232, 255, 0.2);
       }
 
       .boon-card.epic {
@@ -940,6 +1082,396 @@
       }
 
       /* World-space floating combat text, projected from the scene each frame. */
+      /* THE MAX POWER BADGE. A white Lightline plate (cut corners, dark ink)
+         with a cyan halo: it is YOUR moment, so it wears your colour. */
+      .max-badge {
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: 8;
+        display: grid;
+        justify-items: center;
+        padding: 4px 12px 5px;
+        color: #02050b;
+        font-family: var(--font);
+        pointer-events: none;
+        white-space: nowrap;
+        isolation: isolate;
+        /* The glow sits on the element and the cut corners on its backing, so
+           the clip never cuts the glow off. */
+        filter: drop-shadow(0 0 12px rgba(34, 232, 255, 0.95)) drop-shadow(0 0 3px #22e8ff);
+      }
+      .max-badge::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: #e9f8ff;
+        clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+      }
+      .max-badge b { font-size: 22px; font-weight: 800; line-height: 1; letter-spacing: 0.08em; }
+      .max-badge small { font-size: 9px; font-weight: 700; letter-spacing: 0.32em; margin-top: 1px; }
+
+      /* ---------------- THE SCORE FEED (src/ui/ScoreFeed.js) ----------------
+         Lightline: white plates add POINTS, orange plates add MULT, gold plates
+         multiply it, pink-red plates are taken back. Corners are cut, not
+         rounded. Every number is presented beside its cause, then flown here. */
+      #ui-layer.feed-on .hud-combo { display: none !important; }
+      .score-feed {
+        --ll-pts: #e9f8ff; --ll-mult: #ff8a1e; --ll-hot: #ffc266; --ll-void: #ff2e7e; --ll-you: #22e8ff;
+        position: absolute;
+        left: 50%;
+        bottom: calc(var(--hud-pad) + 2px);
+        transform: translateX(-50%);
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+        pointer-events: none;
+        z-index: 6;
+      }
+      .score-feed[hidden] { display: none; }
+      .score-feed { transition: opacity 0.18s ease; }
+      .score-feed.tucked { opacity: 0; }
+      .sf-state {
+        min-height: 11px;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-shadow: 0 1px 3px rgba(2, 5, 11, 0.9);
+      }
+      .sf-state.lock { color: var(--ll-you); }
+      .sf-state.hazard { color: var(--ll-void); }
+      .sf-boxes { position: relative; display: flex; align-items: center; gap: 8px; transition: gap 0.18s cubic-bezier(0.7, 0, 0.84, 0); }
+      .sf-box {
+        min-width: 60px;
+        padding: 4px 9px 5px;
+        text-align: center;
+        font-family: var(--font);
+        font-weight: 700;
+        font-size: 21px;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+        color: #02050b;
+        transition: opacity 0.2s ease;
+        clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+      }
+      .sf-box small { display: block; font-size: 8px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.75; margin-bottom: 1px; }
+      .sf-box.pts { background: var(--ll-pts); }
+      .sf-box.mult { background: var(--ll-mult); }
+      .sf-times { font-weight: 700; font-size: 17px; color: var(--muted); }
+      /* count: out of the way while the table rolls; it is counted once it stops */
+      .score-feed.waiting { opacity: 0; }
+      .score-feed.void .sf-box { background: var(--ll-void); opacity: 1; }
+      .score-feed.slam .sf-boxes { gap: 0; }
+      .score-feed.slam .sf-times { color: var(--ll-hot); text-shadow: 0 0 14px var(--ll-mult); }
+      .sf-product { display: none; font-weight: 700; font-size: 30px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult); font-variant-numeric: tabular-nums; }
+      .score-feed.paid .sf-box, .score-feed.paid .sf-times { display: none; }
+      .score-feed.paid .sf-product { display: block; animation: sf-tally 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+      /* the tally leaves the boxes for YOUR SCORE (main.js feed.onTally) */
+      .score-feed.flown .sf-product { visibility: hidden; }
+      .sf-tallyfly { position: absolute; left: 0; top: 0; z-index: 30; pointer-events: none; font-family: var(--font); font-weight: 700; font-size: 30px; line-height: 1; color: var(--ll-pts); text-shadow: 0 0 16px var(--ll-mult), 0 0 4px #ffc266; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      /* the final tally is celebrated (from review): it pops, glows gold and rings out */
+      @keyframes sf-tally {
+        0% { transform: scale(0.4); filter: brightness(2.2); }
+        45% { transform: scale(1.45) rotate(-3deg); filter: brightness(1.6) drop-shadow(0 0 22px #ffc266); }
+        70% { transform: scale(0.94) rotate(2deg); }
+        100% { transform: scale(1); filter: none; }
+      }
+      .score-feed.paid .sf-boxes::after {
+        content: '';
+        position: absolute;
+        inset: -8px -14px;
+        border: 2px solid #ffc266;
+        box-shadow: 0 0 20px #ff8a1e;
+        animation: sf-ring 0.7s ease-out forwards;
+        pointer-events: none;
+      }
+      @keyframes sf-ring { from { opacity: 1; transform: scale(0.8); } to { opacity: 0; transform: scale(1.7, 2.2); } }
+      @media (prefers-reduced-motion: reduce) { .score-feed.paid .sf-product, .score-feed.paid .sf-boxes::after { animation: none; } .score-feed.paid .sf-boxes::after { opacity: 0; } }
+      .score-feed.locking .sf-boxes::after {
+        content: '';
+        position: absolute;
+        inset: -6px -10px;
+        border: 2px solid var(--ll-you);
+        box-shadow: 0 0 16px var(--ll-you);
+        animation: sf-lock 0.5s ease-out forwards;
+        pointer-events: none;
+      }
+      @keyframes sf-lock { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.45, 1.8); } }
+      .sf-plates { position: absolute; inset: 0; pointer-events: none; z-index: 7; overflow: hidden; }
+      .sf-plate {
+        position: absolute;
+        left: 0;
+        top: 0;
+        display: grid;
+        justify-items: center;
+        padding: 4px 11px 5px;
+        color: #02050b;
+        white-space: nowrap;
+        font-family: var(--font);
+        will-change: transform;
+        isolation: isolate;
+      }
+      /* Cut corners on the backing, glow on the plate: a clip on the plate itself
+         would cut its own glow off. */
+      .sf-plate::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: var(--plate-bg, #e9f8ff);
+        clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+      }
+      .sf-plate b { font-size: 26px; font-weight: 700; line-height: 1; }
+      .sf-plate small { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; margin-top: 2px; text-transform: uppercase; }
+      .sf-plate.pts { --plate-bg: #e9f8ff; filter: drop-shadow(0 0 10px rgba(233, 248, 255, 0.75)); }
+      .sf-plate.mult { --plate-bg: #ff8a1e; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.9)); }
+      .sf-plate.xmult { --plate-bg: #ffc266; filter: drop-shadow(0 0 12px rgba(255, 138, 30, 0.9)); }
+      /* ×-Mult against +-Mult (in review): one colour, or the ring's own mint */
+      .sf-plate.xmult.x-orange { --plate-bg: #ff8a1e; }
+      .sf-plate.xmult.x-mint { --plate-bg: #2ef2c4; filter: drop-shadow(0 0 12px rgba(46, 242, 196, 0.9)); }
+      .shot-fly { position: absolute; left: 0; top: 0; z-index: 30; pointer-events: none; padding: 4px 8px 3px; font-family: var(--font); font-weight: 700; font-size: 18px; line-height: 1; color: #02050b; background: #ffb340; box-shadow: 0 0 16px rgba(255, 179, 64, 0.85); clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+      .sf-plate.void { --plate-bg: #ff2e7e; filter: drop-shadow(0 0 10px rgba(255, 46, 126, 0.85)); }
+      .sf-plate.void b { text-decoration: line-through; }
+
+      .sf-streak { position: absolute; left: 0; top: 0; height: 3px; margin-top: -1.5px; transform-origin: 0 50%; border-radius: 2px; pointer-events: none; }
+      @media (prefers-reduced-motion: reduce) { .sf-boxes { transition: none; } .score-feed.locking .sf-boxes::after { animation: none; opacity: 0; } }
+
+      /* The 'lock' full-power moment: four chevrons close on the cue ball. */
+      .lock-reticle { position: absolute; width: 64px; height: 64px; pointer-events: none; z-index: 8; filter: drop-shadow(0 0 6px #22e8ff) drop-shadow(0 0 14px rgba(34, 232, 255, 0.6)); }
+      .lock-reticle i { position: absolute; width: 16px; height: 16px; border: 0 solid #e9fbff; }
+      .lock-reticle i.n { left: 50%; top: -4px; margin-left: -8px; border-right-width: 3px; border-bottom-width: 3px; transform: rotate(45deg); }
+      .lock-reticle i.s { left: 50%; bottom: -4px; margin-left: -8px; border-left-width: 3px; border-top-width: 3px; transform: rotate(45deg); }
+      .lock-reticle i.w { top: 50%; left: -4px; margin-top: -8px; border-right-width: 3px; border-top-width: 3px; transform: rotate(45deg); }
+      .lock-reticle i.e { top: 50%; right: -4px; margin-top: -8px; border-left-width: 3px; border-bottom-width: 3px; transform: rotate(45deg); }
+      .lock-reticle b { position: absolute; left: 50%; top: calc(100% + 10px); transform: translateX(-50%); font: 700 12px/1 var(--font); letter-spacing: 0.3em; color: #02050b; background: #e9fbff; padding: 3px 6px 3px 9px; clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px); }
+
+      /* ---------------- MOMENTS (src/ui/Moments.js) ----------------
+         The four beats between shots. Same language as the score feed:
+         cut-corner plates, ink on light, one colour per meaning —
+         cyan is you, white is points, orange is mult, pink is void. */
+      .moments { position: absolute; inset: 0; pointer-events: none; z-index: 12; --ll-pts: #e9f8ff; --ll-mult: #ff8a1e; --ll-hot: #ffc266; --ll-void: #ff2e7e; --ll-you: #22e8ff; --ll-ice: #bff4ff; --ll-ink: #02050b; }
+      .moments > * { position: absolute; inset: 0; }
+      .mo-shade, .mo-scan, .mo-beam, .mo-rez, .mo-glitch, .mo-glitch-sub,
+      .mo-freeze-label, .mo-stasis, .mo-arrow, .mo-strip, .mo-roomnum { position: absolute; }
+      .mo-alarm, .mo-tear, .mo-flash, .mo-boot, .mo-shards, .mo-form { position: absolute; inset: 0; }
+      .mo-fly { position: absolute; inset: auto; z-index: 30; font-weight: 700; color: var(--ll-pts); text-shadow: 0 0 18px var(--ll-you); white-space: nowrap; font-variant-numeric: tabular-nums; will-change: transform; }
+      .mo-ring { position: absolute; inset: auto; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--ll-you); box-shadow: 0 0 18px var(--ll-you), inset 0 0 12px var(--ll-you); pointer-events: none; }
+      /* THE BANK PLATE: a score plate, bigger, carrying the table total to RUN. */
+      .mo-bankplate { inset: auto; z-index: 31; }
+      .mo-bankplate b { font-size: 34px; }
+      .mo-bankstreak { inset: auto; left: 0; top: 0; z-index: 30; background: linear-gradient(90deg, transparent, #e9f8ff); box-shadow: 0 0 12px #22e8ff; }
+
+      /* THE SHOP */
+      .mo-shop { position: absolute; inset: auto; left: 50%; top: calc(9% + 16px); width: min(92%, 370px); padding: 16px 16px 12px; isolation: isolate; filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.3)); display: grid; gap: 10px; }
+      .mo-shop::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(6, 18, 28, 0.97), rgba(2, 5, 11, 0.97)); border: 2px solid rgba(34, 232, 255, 0.75); clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px); }
+      .mo-shop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .mo-shop .mo-kicker { font-size: 24px; }
+      .mo-shop-points { display: grid; justify-items: end; }
+      .mo-shop-points .k { font-size: 10px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+      .mo-shop-points .v { font-family: var(--font-num); font-size: 26px; font-weight: 800; color: var(--ll-pts); font-variant-numeric: tabular-nums; line-height: 1; }
+      .mo-shop-note { font-size: 12px; color: rgba(233, 248, 255, 0.6); line-height: 1.3; }
+      .mo-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; perspective: 700px; }
+      .mo-card { position: relative; display: grid; grid-template-rows: auto auto 1fr auto auto; gap: 3px; min-height: 124px; padding: 10px 10px 9px; border: 0; text-align: left; font-family: var(--font); color: var(--bone); pointer-events: auto; background: rgba(13, 29, 45, 0.95); box-shadow: inset 0 0 0 1.5px var(--edge, #1e4f6b); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); }
+      /* Rarity is the diamonds in the tag, never a colour: every card shares one edge. */
+      .mo-card { --edge: #3a87a8; }
+      .mo-card .r { font-size: 9px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(233, 248, 255, 0.7); }
+      .mo-card .name { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* ONE CARD SIZE (from review): the rule always takes exactly two lines and the note line is always there, so nothing on the shelf moves when the cards change. */
+      .mo-card .text { font-size: 12px; line-height: 1.25; height: 2.5em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: rgba(233, 248, 255, 0.78); }
+      .mo-card .why { height: 12px; line-height: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ll-void); }
+      .mo-card.poor .act.buy .p { color: var(--ll-void); }
+      .mo-card.bought { box-shadow: inset 0 0 0 2px var(--ll-you); }
+      .mo-shop-tools { display: grid; grid-template-columns: 1fr; gap: 8px; }
+      .mo-tool { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 9px 12px; border: 0; font-family: var(--font); cursor: pointer; pointer-events: auto; color: var(--bone); background: rgba(13, 29, 45, 0.95); box-shadow: inset 0 0 0 1.5px var(--tc, #3a87a8); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+      .mo-tool .n { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--tc, #3a87a8); }
+      .mo-tool .p { font-family: var(--font-num); font-size: 15px; font-weight: 800; color: #ffc266; }
+      .mo-tool.charge { --tc: #bff4ff; }
+      .mo-tool[disabled] { opacity: 0.45; cursor: default; }
+      .mo-owned { font-size: 11px; color: rgba(233, 248, 255, 0.55); }
+      .mo-shop-points .v { color: #ffc266; }
+      .mo-card .foot { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+      .mo-card .act { display: grid; justify-items: center; align-content: center; height: 38px; box-sizing: border-box; overflow: hidden; gap: 1px; padding: 4px 4px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font); color: var(--bone); background: rgba(2, 5, 11, 0.6); box-shadow: inset 0 0 0 1px rgba(233, 248, 255, 0.45); }
+      .mo-card .act b { font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+      .mo-card .act .p { font-family: var(--font-num); font-size: 15px; font-weight: 800; color: #ffc266; line-height: 1; }
+      .mo-card .act small { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8; }
+      .mo-card .act[disabled] { opacity: 0.4; cursor: default; }
+      .mo-card .act.buy[aria-pressed="true"] { background: var(--ll-you); color: #02050b; box-shadow: none; opacity: 1; }
+      .mo-card .act.hold[aria-pressed="true"] { background: var(--bone); color: #02050b; box-shadow: none; opacity: 1; }
+      .mo-card .act:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+      .mo-card.held { box-shadow: inset 0 0 0 2px var(--bone); }
+
+      /* YOUR SCORE AGAINST THE TARGET, under the ledger total: one bar, the
+         tick is the target and the fill is what you scored. */
+      .mo-target { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 6px 10px; padding: 8px 8px 0; opacity: 0; }
+      .mo-target .k { font-size: 12px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+      .mo-target .d { font-family: var(--font-num); font-size: 18px; font-weight: 700; color: var(--bone); font-variant-numeric: tabular-nums; }
+      .mo-target .stamp { padding: 4px 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; opacity: 0; }
+      .mo-target.beaten .stamp { background: var(--ll-you); }
+      .mo-target.missed .stamp { background: var(--ll-void); }
+      .mo-vs { grid-column: 1 / -1; position: relative; height: 10px; background: rgba(30, 79, 107, 0.55); }
+      .mo-vs .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ll-you); box-shadow: 0 0 10px rgba(34, 232, 255, 0.6); }
+      .mo-target.missed .mo-vs .fill { background: var(--ll-void); box-shadow: 0 0 10px rgba(255, 46, 126, 0.6); }
+      .mo-vs .tick { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--bone); box-shadow: 0 0 6px rgba(233, 248, 255, 0.9); }
+
+      /* CASH EARNED, inside the ledger under the verdict: every line with its reason. */
+      .mo-pay2 { display: grid; gap: 3px; margin: 10px 8px 0; padding-top: 8px; border-top: 1px solid rgba(255, 194, 102, 0.45); opacity: 0; }
+      .mo-pay-k { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #ffc266; margin-bottom: 2px; }
+      .mo-cash-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: baseline; }
+      .mo-cash-row .k { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--bone); white-space: nowrap; }
+      .mo-cash-row .d { font-size: 11px; color: rgba(233, 248, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mo-cash-row .v { font-family: var(--font-num); font-size: 16px; font-weight: 800; color: #ffc266; font-variant-numeric: tabular-nums; }
+      .mo-cash-total { display: flex; justify-content: space-between; align-items: baseline; padding-top: 4px; }
+      .mo-cash-total .k { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+      .mo-cash-total .v { display: inline-block; font-family: var(--font-num); font-size: 24px; font-weight: 800; color: #ffc266; font-variant-numeric: tabular-nums; }
+      .sf-plate.cash { --plate-bg: #ffc266; }
+      .mo-nexttable { position: absolute; inset: auto; left: 50%; bottom: calc(var(--hud-pad) + 74px); padding: 13px 34px; border: 0; cursor: pointer; pointer-events: auto; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-you); box-shadow: 0 0 22px rgba(34, 232, 255, 0.6); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); white-space: nowrap; }
+      /* One button under the ledger: SKIP ▸▸ (outlined) while the result plays,
+         then SHOP ▸ (filled), in the same place. */
+      /* THE WALLET: one gold box in the top-left corner, always. From the
+         table's result through the shop it is lifted above the dimmed table
+         (wallet-lit), so it stays in focus while you collect and spend. */
+      .cash-value { display: inline-block; transform-origin: 0 50%; padding: 4px 9px 3px; border: 1.5px solid rgba(255, 194, 102, 0.75); border-radius: 3px; background: rgba(20, 13, 3, 0.88); box-shadow: 0 0 12px rgba(255, 138, 30, 0.28), inset 0 0 8px rgba(255, 138, 30, 0.12); font-size: clamp(16px, 4.6vmin, 22px); }
+      .hud .cash-value { transition: opacity 0.2s ease; }
+      .hud.wallet-away .cash-value { opacity: 0; }
+      .hud.wallet-lit .hud-top { z-index: 47; background: none; }
+      .hud.wallet-lit .hud-mission, .hud.wallet-lit .hud-score, .hud.wallet-lit .hud-hp .hud-label { opacity: 0.3; }
+      /* ONE ROW OF BUTTONS under the panel, where Skip was (from review):
+         result [ · | GO TO SHOP | Next table ▸ ], shop [ ◂ Summary | NEXT TABLE | · ].
+         The middle slot holds both main buttons in one cell, so they swap in place. */
+      .mo-actrow { position: absolute; inset: auto; left: 50%; transform: translateX(-50%); width: min(96%, 390px); z-index: 40; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; pointer-events: none; }
+      .mo-actrow .slot { display: grid; align-items: center; }
+      .mo-actrow .slot.l { justify-items: start; }
+      .mo-actrow .slot.r { justify-items: end; }
+      .mo-actrow .slot.m { justify-items: center; }
+      .mo-actrow .slot.m > * { grid-area: 1 / 1; }
+      .mo-act.in-row { position: relative; left: auto; top: auto; bottom: auto; transform: none; pointer-events: auto; padding: 13px 20px; }
+      .mo-act.in-row { font-size: 15px; }
+      .mo-act.in-row.small { display: grid; justify-items: center; gap: 3px; min-width: 72px; font-size: 9px; letter-spacing: 0.1em; line-height: 1; padding: 7px 8px 8px; color: var(--ll-you); background: rgba(2, 5, 11, 0.85); box-shadow: inset 0 0 0 1.5px var(--ll-you); }
+      .mo-act.in-row.small i { font-style: normal; font-size: 15px; line-height: 1; }
+      .mo-act.in-row.small.pressed { color: #02050b; background: var(--ll-you); box-shadow: 0 0 18px rgba(34, 232, 255, 0.7); }
+      .mo-act.in-row.pressed:not(.small) { box-shadow: 0 0 30px rgba(255, 255, 255, 0.8); }
+      /* GO TO SHOP is gold: the shop is where the money goes */
+      .mo-act.collect { color: #1a0f00; background: #ffc266; box-shadow: 0 0 24px rgba(255, 170, 60, 0.75); }
+      .mo-act.collect:disabled { filter: brightness(0.75); }
+      /* coins: one per dollar, and the burst behind the results */
+      .mo-coin { position: absolute; inset: auto; z-index: 49; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-num); font-size: 11px; font-weight: 900; color: #3a2200; background: radial-gradient(circle at 35% 30%, #fff1c9 0%, #ffc266 45%, #d98a1e 100%); box-shadow: 0 0 10px rgba(255, 170, 60, 0.9); pointer-events: none; }
+      .mo-burst { position: absolute; inset: auto; z-index: 13; width: 440px; height: 440px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, rgba(255, 210, 120, 0.85) 0%, rgba(255, 170, 60, 0.35) 22%, rgba(2, 5, 11, 0) 50%, rgba(2, 5, 11, 1) 70%), repeating-conic-gradient(from 0deg, rgba(255, 194, 102, 0.45) 0deg 6deg, transparent 6deg 22deg); mix-blend-mode: screen; }
+      .mo-coinpop { position: absolute; inset: auto; z-index: 49; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ffc266; box-shadow: 0 0 12px rgba(255, 170, 60, 0.9); pointer-events: none; }
+      .mo-coinplate { position: absolute; inset: auto; z-index: 49; padding: 4px 10px; font-family: var(--font-num); font-size: 22px; font-weight: 800; color: #1a0f00; background: #ffc266; border-radius: 3px; box-shadow: 0 0 18px rgba(255, 170, 60, 0.9); pointer-events: none; white-space: nowrap; }
+      .mo-ring.gold { border-color: #ffc266; box-shadow: 0 0 18px #ffaa3c, inset 0 0 12px #ffaa3c; }
+      /* coins: the results read like Gambonanza's — a count, the reason with its rule, the dollars */
+      .mo-cash-row .n { font-family: var(--font-num); font-size: 18px; font-weight: 800; color: #ffc266; min-width: 1.1em; text-align: center; }
+      .mo-cash-row.counted { grid-template-columns: auto auto 1fr auto; }
+      .mo-act { z-index: 40; transform: translateX(-50%); }
+      .mo-act.skip.pressed { color: #02050b; background: var(--ll-you); box-shadow: 0 0 22px rgba(34, 232, 255, 0.7); }
+      .mo-skiphide { visibility: hidden !important; }
+      .mo-skipfx { position: absolute; inset: auto; z-index: 46; font-family: var(--font-display); font-size: 120px; font-weight: 800; line-height: 1; color: var(--ll-you); text-shadow: 0 0 24px rgba(34, 232, 255, 0.9); pointer-events: none; }
+      .mo-act.skip { color: var(--ll-you); background: rgba(2, 5, 11, 0.85); box-shadow: inset 0 0 0 2px var(--ll-you); font-size: 14px; padding: 10px 26px; }
+      .mo-charge { inset: auto; z-index: 31; --plate-bg: #bff4ff; filter: drop-shadow(0 0 16px rgba(111, 227, 255, 1)); overflow: hidden; }
+
+      .mo-ring.ice { border-color: #bff4ff; box-shadow: 0 0 18px #6fe3ff, inset 0 0 12px #6fe3ff; }
+      .mo-ring.big { width: 140px; height: 140px; border-color: var(--ll-pts); }
+
+      /* CLEAR */
+      .mo-clear { pointer-events: auto; }
+      .mo-ledger {
+        position: absolute; left: 50%; top: calc(9% + 16px); width: min(90%, 360px);
+        padding: 14px 18px 12px; isolation: isolate;
+        filter: drop-shadow(0 0 18px rgba(34, 232, 255, 0.35));
+      }
+      .mo-ledger::before {
+        content: ''; position: absolute; inset: 0; z-index: -1;
+        background: linear-gradient(180deg, rgba(6, 18, 28, 0.97), rgba(2, 5, 11, 0.97));
+        border: 2px solid rgba(34, 232, 255, 0.75);
+        clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+      }
+      .mo-head { text-align: center; margin-bottom: 8px; }
+      .mo-kicker { white-space: nowrap; font-size: 30px; font-weight: 800; letter-spacing: 0.16em; line-height: 1; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 14px var(--ll-you); }
+      .mo-title { margin-top: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
+      .mo-rows { display: grid; gap: 4px; }
+      .mo-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: baseline; padding: 2px 8px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+      .mo-row .k { white-space: nowrap; font-size: 14px; font-weight: 800; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(233, 248, 255, 0.78); }
+      .mo-row .d { font-size: 13px; font-weight: 600; color: rgba(233, 248, 255, 0.42); }
+      .mo-row .v { font-size: 21px; font-weight: 800; color: var(--ll-pts); min-width: 4ch; text-align: right; }
+      /* Bonus rows are POINTS, so they are points white; gold is money only. */
+      .mo-row.bonus .k, .mo-row.bonus .v { color: var(--ll-pts); text-shadow: 0 0 10px rgba(233, 248, 255, 0.45); }
+      .mo-row.bad .k, .mo-row.bad .v { color: var(--ll-void); }
+      .mo-rule { height: 2px; margin: 8px 0 6px; background: linear-gradient(90deg, transparent, var(--ll-you), transparent); transform-origin: 50% 50%; }
+      .mo-total { display: flex; align-items: baseline; justify-content: space-between; padding: 0 8px; opacity: 0; }
+      .mo-total .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+      .mo-total .v { font-size: 40px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
+      .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
+
+      .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 60px) 0; display: grid; justify-items: center; gap: 6px; padding: 0 9%; }
+      .mo-next-label { font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 10px var(--ll-you); }
+      .mo-choices { display: grid; gap: 6px; width: 100%; max-width: 330px; }
+      .mo-choice {
+        position: relative; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
+        padding: 10px 14px; border: 0; color: var(--bone); font-family: var(--font); text-align: left; cursor: pointer; pointer-events: auto;
+        background: color-mix(in srgb, var(--c, #22e8ff) 16%, rgba(2, 5, 11, 0.92));
+        box-shadow: inset 0 0 0 1px var(--c, #22e8ff), 0 0 16px color-mix(in srgb, var(--c, #22e8ff) 35%, transparent);
+        clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        overflow: hidden;
+      }
+      .mo-choice::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%); transform: translateX(-120%); animation: mo-sheen 2.4s ease-in-out infinite; }
+      .mo-choice:nth-child(2)::after { animation-delay: 0.3s; }
+      .mo-choice:nth-child(3)::after { animation-delay: 0.6s; }
+      @keyframes mo-sheen { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+      .mo-choice-name { font-size: 16px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c, #22e8ff); }
+      .mo-choice-detail { font-size: 12px; font-weight: 600; color: rgba(233, 248, 255, 0.72); text-align: right; }
+      .mo-choice-go { font-size: 16px; color: var(--c, #22e8ff); }
+      .mo-choice.picked { background: var(--c, #22e8ff); }
+      .mo-choice.picked * { color: var(--ll-ink); }
+
+      .mo-shade { inset: auto 0 0 0; height: 0; background: rgba(2, 5, 11, 0.55); }
+      .mo-scan { inset: auto 0 auto 0; height: 3px; margin-top: -1.5px; background: var(--ll-you); box-shadow: 0 0 16px 3px var(--ll-you), 0 0 60px 8px rgba(34, 232, 255, 0.4); }
+
+      /* SCRATCH */
+      .mo-beam { inset: auto; top: 0; width: 16px; transform-origin: 50% 0; background: linear-gradient(180deg, rgba(34, 232, 255, 0), rgba(34, 232, 255, 0.8) 70%, #fff); box-shadow: 0 0 24px 6px rgba(34, 232, 255, 0.5); border-radius: 0 0 8px 8px; }
+      .mo-rez { inset: auto; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 18px var(--ll-you), inset 0 0 10px var(--ll-you); }
+      .mo-form { position: absolute; inset: 0; overflow: visible; filter: drop-shadow(0 0 5px #22e8ff) drop-shadow(0 0 16px rgba(34, 232, 255, 0.6)); }
+      .mo-form .line { fill: none; stroke: #e9fbff; stroke-width: 2.5; stroke-dasharray: 100; stroke-dashoffset: 100; stroke-linejoin: round; }
+      .mo-form .fill { fill: rgba(34, 232, 255, 0.35); opacity: 0; }
+      .mo-alarm { box-shadow: inset 0 0 90px 26px rgba(255, 46, 126, 0.8); opacity: 0; }
+      .mo-tear { inset: auto 0 auto 0; background: rgba(255, 46, 126, 0.16); backdrop-filter: saturate(0) brightness(1.5) contrast(1.3); -webkit-backdrop-filter: saturate(0) brightness(1.5) contrast(1.3); border-top: 1px solid rgba(255, 46, 126, 0.8); border-bottom: 1px solid rgba(34, 232, 255, 0.5); }
+      .mo-glitch { inset: auto; left: 50%; top: 40%; font-size: 54px; font-weight: 700; letter-spacing: 0.12em; color: var(--ll-void); text-shadow: 0 0 20px rgba(255, 46, 126, 0.85); white-space: nowrap; }
+      .mo-glitch::before, .mo-glitch::after { content: attr(data-text); position: absolute; inset: 0; mix-blend-mode: screen; }
+      .mo-glitch::before { color: #22e8ff; animation: mo-jit 0.18s steps(2) infinite; }
+      .mo-glitch::after { color: #ff2e2e; animation: mo-jit 0.22s steps(2) infinite reverse; }
+      @keyframes mo-jit { 0% { transform: translate(-3px, 1px); clip-path: inset(0 0 55% 0); } 50% { transform: translate(3px, -1px); clip-path: inset(45% 0 0 0); } 100% { transform: translate(-1px, 0); clip-path: inset(20% 0 30% 0); } }
+      .mo-glitch-sub { inset: auto 0 auto 0; top: calc(40% + 40px); text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; color: var(--bone); text-shadow: 0 0 8px rgba(255, 46, 126, 0.9); }
+
+      /* FREEZE */
+      .mo-freeze-label { inset: auto; left: 50%; top: 13%; transform: translateX(-50%); display: grid; justify-items: center; white-space: nowrap; }
+      .mo-freeze-label b { font-size: 25px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ll-ice); text-shadow: 0 0 16px #6fe3ff, 0 0 40px rgba(111, 227, 255, 0.5); }
+      .mo-freeze-label small { margin-top: 3px; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(233, 248, 255, 0.8); }
+      .mo-stasis { inset: auto; border-radius: 50%; background: rgba(120, 210, 255, 0.06); backdrop-filter: sepia(0.9) hue-rotate(155deg) saturate(1.6) brightness(0.8) contrast(1.15); -webkit-backdrop-filter: sepia(0.9) hue-rotate(155deg) saturate(1.6) brightness(0.8) contrast(1.15); }
+      .mo-stasis-rim { position: absolute; inset: auto; border-radius: 50%; border: 3px solid #e6fbff; box-shadow: 0 0 22px 4px #6fe3ff, inset 0 0 30px rgba(111, 227, 255, 0.5); }
+      .mo-hex { position: absolute; inset: auto; overflow: visible; filter: drop-shadow(0 0 6px #6fe3ff); }
+      .mo-hex polygon { fill: rgba(191, 244, 255, 0.14); stroke: var(--ll-ice); stroke-width: 2; }
+      .mo-arrow { inset: auto; height: 0; border-top: 2px dashed rgba(191, 244, 255, 0.85); transform-origin: 0 50%; }
+      .mo-arrow::after { content: ''; position: absolute; right: -2px; top: -6px; border: 5px solid transparent; border-left: 8px solid var(--ll-ice); }
+      .mo-shard { position: absolute; inset: auto; background: linear-gradient(135deg, #fff, rgba(191, 244, 255, 0.5)); clip-path: polygon(50% 0, 100% 100%, 0 70%); filter: drop-shadow(0 0 6px #6fe3ff); }
+      .mo-flash { background: #fff; }
+
+      /* TRANSITION */
+      .mo-trans { pointer-events: auto; z-index: 3; }
+      .mo-strip { inset: auto 0 auto 0; background: #02050b; }
+      .mo-strip.l { box-shadow: 3px 0 0 #22e8ff, 8px 0 18px rgba(34, 232, 255, 0.6); transform-origin: 0 50%; }
+      .mo-strip.r { box-shadow: -3px 0 0 #22e8ff, -8px 0 18px rgba(34, 232, 255, 0.6); transform-origin: 100% 50%; }
+      .mo-trans.covered .mo-strip { box-shadow: none; }
+      .mo-roomnum { inset: auto; left: 50%; top: 46%; display: grid; justify-items: center; }
+      .mo-roomnum small { font-size: 16px; font-weight: 700; letter-spacing: 0.5em; margin-bottom: 6px; text-transform: uppercase; color: var(--muted); }
+      .mo-digits { position: relative; height: 128px; width: 3.2ch; overflow: hidden; font-size: 128px; }
+      .mo-digits b { position: absolute; inset: 0; text-align: center; font-size: 128px; font-weight: 800; line-height: 1; color: #e9fbff; text-shadow: 0 0 14px rgba(34, 232, 255, 0.6); font-variant-numeric: tabular-nums; }
+      .mo-digits b.new { opacity: 0; }
+      .mo-roomnum em { display: block; margin-top: 16px; font-style: normal; font-size: 16px; font-weight: 700; letter-spacing: 0.18em; line-height: 1.55; text-transform: uppercase; width: min(84vw, 320px); text-align: center; text-wrap: balance; color: var(--ll-hot); text-shadow: 0 0 10px rgba(255, 138, 30, 0.7); }
+      .mo-boot { overflow: visible; filter: drop-shadow(0 0 4px #22e8ff) drop-shadow(0 0 14px #22e8ff); }
+      .mo-boot path { fill: none; stroke: #bff4ff; stroke-width: 3; stroke-dasharray: 100; stroke-dashoffset: 100; stroke-linejoin: round; }
+
       .float-text {
         position: absolute;
         left: 0;
@@ -981,7 +1513,7 @@
         color: var(--cyan);
         font-size: clamp(10px, 2.7vmin, 15px);
         letter-spacing: 0.08em;
-        text-shadow: 0 0 10px rgba(53, 242, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.9);
+        text-shadow: 0 0 10px rgba(34, 232, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.9);
       }
 
       /* The pot's breakdown, stacked under the score it explains. Smaller than
@@ -1001,7 +1533,7 @@
       .float-text.combo {
         color: var(--cyan);
         font-size: clamp(14px, 4vmin, 24px);
-        text-shadow: 0 0 14px rgba(53, 242, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.9);
+        text-shadow: 0 0 14px rgba(34, 232, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.9);
       }
 
       /* Boot / tap-to-start veil. Also unlocks the Web Audio context. */
@@ -1017,7 +1549,7 @@
         text-align: center;
         padding: 8%;
         background:
-          radial-gradient(90% 60% at 50% 45%, rgba(11, 58, 46, 0.55) 0%, rgba(5, 7, 10, 0.94) 70%),
+          radial-gradient(90% 60% at 50% 45%, rgba(34, 232, 255, 0.08) 0%, rgba(2, 5, 11, 0.95) 70%),
           var(--obsidian);
         pointer-events: auto;
         transition: opacity 0.45s ease;
@@ -1036,8 +1568,8 @@
         text-transform: uppercase;
         color: var(--bone);
         text-shadow:
-          0 0 18px rgba(53, 242, 255, 0.65),
-          0 0 60px rgba(53, 242, 255, 0.25);
+          0 0 18px rgba(34, 232, 255, 0.65),
+          0 0 60px rgba(34, 232, 255, 0.25);
       }
 
       #boot-veil h2 {
@@ -1212,7 +1744,7 @@
         background-clip: text;
         color: transparent;
         animation: menu-sweep 5.5s linear infinite;
-        filter: drop-shadow(0 0 22px rgba(53, 242, 255, 0.35));
+        filter: drop-shadow(0 0 22px rgba(34, 232, 255, 0.35));
       }
       @supports (container-type: inline-size) {
         .menu-title .ln { font-size: min(13.5cqw, 68px); }
@@ -1234,8 +1766,8 @@
         width: 100%;
         padding: clamp(11px, 2.8vmin, 15px) 18px;
         border-radius: 10px;
-        border: 1px solid rgba(53, 242, 255, 0.4);
-        background: rgba(11, 58, 46, 0.5);
+        border: 1px solid rgba(34, 232, 255, 0.4);
+        background: rgba(13, 29, 45, 0.7);
         color: var(--bone);
         font-family: var(--font);
         font-size: clamp(12px, 3vmin, 15px);
@@ -1246,14 +1778,14 @@
         pointer-events: auto;
         transition: transform 0.12s ease, background 0.14s ease, border-color 0.14s ease;
       }
-      .menu-btn:hover { background: rgba(53, 242, 255, 0.14); border-color: var(--cyan); }
+      .menu-btn:hover { background: rgba(34, 232, 255, 0.14); border-color: var(--cyan); }
       .menu-btn:active { transform: scale(0.98); }
       .menu-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
       .menu-btn.primary {
         background: var(--cyan);
         border-color: var(--cyan);
         color: #04231f;
-        box-shadow: 0 0 26px rgba(53, 242, 255, 0.4);
+        box-shadow: 0 0 26px rgba(34, 232, 255, 0.4);
       }
       .menu-btn.primary:hover { background: #7ff8ff; }
       /* THREE EQUAL COLUMNS, AND NONE OF THEM CAN PUSH THE ROW WIDER.
@@ -1284,6 +1816,155 @@
         justify-content: center;
         text-align: center;
       }
+      /* Two buttons when Modes is not offered yet (a first visit). */
+      .menu-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .menu-row .menu-btn[hidden] { display: none; }
+      /* ---- home corners, the play screen, achievements (from review) ---- */
+      .menu-corner {
+        position: absolute;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        width: 56px;
+        height: 56px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 1.5px solid rgba(34, 232, 255, 0.45);
+        border-radius: 14px;
+        background: rgba(8, 18, 30, 0.82);
+        color: var(--cyan);
+        cursor: pointer;
+      }
+      .menu-corner[hidden] { display: none; }
+      .menu-corner.left { left: calc(14px + env(safe-area-inset-left, 0px)); color: var(--amber); border-color: rgba(255, 179, 64, 0.5); }
+      .menu-corner.right { right: calc(14px + env(safe-area-inset-right, 0px)); }
+      .menu-corner svg { width: 30px; height: 30px; }
+      .menu-corner:hover { background: rgba(34, 232, 255, 0.14); }
+      .menu-corner:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+      .corner-badge {
+        position: absolute;
+        right: -10px;
+        bottom: -10px;
+        min-width: 38px;
+        padding: 3px 6px 2px;
+        border-radius: 11px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: #02050b;
+        background: var(--amber);
+        box-shadow: 0 0 10px rgba(255, 179, 64, 0.6);
+      }
+      .menu-btn.play-big { display: grid; gap: 2px; padding-block: 14px 12px; }
+      .play-big .pb-main { font-size: clamp(16px, 4.8vmin, 20px); }
+      .play-big .pb-sub { font-size: clamp(9px, 2.4vmin, 11px); letter-spacing: 0.1em; opacity: 0.8; }
+      .menu-btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
+      .menu-label {
+        margin: 6px 0 -2px;
+        font-size: clamp(9px, 2.3vmin, 11px);
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .table-path {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .table-path li { min-width: 0; display: grid; }
+      .tp-tile {
+        position: relative;
+        display: grid;
+        gap: 1px;
+        padding: 7px 4px 6px;
+        border-radius: 9px;
+        font: inherit;
+        font-size: 9px;
+        line-height: 1.15;
+        letter-spacing: 0.04em;
+        text-align: center;
+        min-width: 0;
+      }
+      .tp-tile b { font-size: 15px; font-weight: 700; }
+      .tp-tile .tp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tp-tile .tp-icon { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
+      .tp-tile .tp-icon svg { display: block; width: 100%; height: 100%; }
+      /* locked: flat, dim, a padlock, nothing to press */
+      .tp-tile.locked { border: 1px dashed rgba(234, 246, 255, 0.14); background: transparent; color: rgba(234, 246, 255, 0.28); }
+      /* cleared: a lit, raised button with a tick and the replay arrow */
+      .tp-tile.cleared {
+        cursor: pointer;
+        color: var(--bone);
+        border: 1.5px solid rgba(34, 232, 255, 0.6);
+        background: linear-gradient(180deg, rgba(34, 232, 255, 0.16), rgba(8, 18, 30, 0.9));
+        box-shadow: 0 3px 0 rgba(34, 232, 255, 0.28), 0 0 10px rgba(34, 232, 255, 0.18);
+      }
+      .tp-tile.cleared b::after { content: ' ✓'; color: var(--cyan); }
+      .tp-tile.cleared .tp-icon { color: var(--cyan); }
+      .tp-tile.cleared:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(34, 232, 255, 0.28); }
+      /* where the run you left is: solid, with the play arrow */
+      .tp-tile.here { cursor: pointer; color: #02050b; border: 1.5px solid var(--cyan); background: var(--cyan); box-shadow: 0 3px 0 rgba(10, 110, 130, 0.9), 0 0 16px rgba(34, 232, 255, 0.5); }
+      .tp-tile.here:active { transform: translateY(2px); }
+      .tp-tile:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+      .ach-list {
+        list-style: none;
+        margin: 0;
+        padding: 0 2px 0 0;
+        width: 100%;
+        max-height: min(56vh, 460px);
+        overflow-y: auto;
+        display: grid;
+        gap: 6px;
+        text-align: left;
+      }
+      .ach-list li {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(34, 232, 255, 0.14);
+        background: rgba(8, 18, 30, 0.7);
+        color: rgba(234, 246, 255, 0.45);
+      }
+      .ach-list li .ach-mark { font-size: 16px; text-align: center; color: rgba(255, 179, 64, 0.35); }
+      .ach-list li.done { color: var(--bone); border-color: rgba(255, 179, 64, 0.45); }
+      .ach-list li.done .ach-mark { color: var(--amber); text-shadow: 0 0 8px rgba(255, 179, 64, 0.7); }
+      .ach-list li b { display: block; font-size: 13px; letter-spacing: 0.04em; }
+      .ach-list li small { display: block; font-size: 11px; opacity: 0.85; }
+      /* an achievement, the moment it is earned: name, what for, See all, × */
+      .ach-toast {
+        position: absolute;
+        left: 50%;
+        top: calc(var(--hud-pad) + 54px);
+        z-index: 46;
+        width: min(92%, 360px);
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 6px 8px 10px;
+        border-radius: 12px;
+        background: rgba(8, 18, 30, 0.96);
+        border: 1.5px solid var(--amber);
+        box-shadow: 0 0 22px rgba(255, 179, 64, 0.45);
+        color: var(--bone);
+        pointer-events: auto;
+        transform: translate(-50%, 0);
+      }
+      .ach-toast .ach-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 179, 64, 0.16); color: var(--amber); }
+      .ach-toast svg { width: 22px; height: 22px; }
+      .ach-toast .ach-words { min-width: 0; }
+      .ach-toast small { display: block; font-size: 9px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--amber); }
+      .ach-toast b { display: block; font-size: 15px; letter-spacing: 0.04em; }
+      .ach-toast em { display: block; font-style: normal; font-size: 11px; line-height: 1.25; opacity: 0.82; }
+      .ach-toast button { font: inherit; cursor: pointer; border-radius: 8px; color: var(--bone); }
+      .ach-toast .ach-all { padding: 8px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; border: 1px solid rgba(255, 179, 64, 0.6); background: rgba(255, 179, 64, 0.12); white-space: nowrap; }
+      .ach-toast .ach-x { width: 34px; height: 34px; padding: 0; font-size: 20px; line-height: 1; border: 0; background: transparent; opacity: 0.75; }
       .menu-foot {
         margin: 4px 0 0;
         font-size: clamp(9px, 2.3vmin, 11px);
@@ -1448,8 +2129,8 @@
       }
       .mode-card:active { background: rgba(234, 246, 255, 0.09); }
       .mode-card.is-current {
-        border-color: rgba(53, 242, 255, 0.5);
-        background: rgba(53, 242, 255, 0.08);
+        border-color: rgba(34, 232, 255, 0.5);
+        background: rgba(34, 232, 255, 0.08);
         cursor: default;
       }
       .mode-name {
@@ -1766,6 +2447,25 @@
       @media (prefers-reduced-motion: reduce) {
         .menu-title .ln { animation: none; }
       }
+
+      /* ---------------- TYPE (Lightline) ----------------
+         Display face for names, number face for figures. Kept in one block so
+         the type system can be read, and tuned, in one place. */
+      .banner-title, #boot-veil h1, .mo-kicker, .mo-freeze-label b, .mo-glitch,
+      .card-title, .mo-roomnum small {
+        font-family: var(--font-display);
+      }
+      .score-value, .sf-box, .sf-product, .sf-plate b, .mo-row .v, .mo-total .v,
+      .mo-charge b {
+        font-family: var(--font-num);
+        font-variant-numeric: tabular-nums;
+      }
+      /* Orbitron runs wide: titles set in it come down a size and a step of tracking. */
+      .mo-kicker { font-size: 24px; letter-spacing: 0.1em; }
+      .mo-freeze-label b { font-size: 21px; letter-spacing: 0.1em; }
+      .mo-glitch { font-size: 40px; letter-spacing: 0.06em; }
+      .banner-title { letter-spacing: 0.08em; }
+      .mo-next-label { font-size: 11px; letter-spacing: 0.24em; }
     </style>
   </head>
   <body>
@@ -1774,17 +2474,38 @@
         <canvas id="stage-canvas"></canvas>
         <div id="ui-layer"></div>
         <div id="boot-veil">
+          <!-- THE CORNERS (from review): the achievements trophy with its
+               progress badge top-left, Settings top-right. Shown on the home
+               screen only. -->
+          <button id="btn-trophy" class="menu-corner left" type="button" aria-label="Achievements"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="corner-badge" id="trophy-badge">0/0</span></button>
+          <button id="btn-settings" class="menu-corner right" type="button" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.15 10.08L21.90 10.61L21.90 13.39L19.15 13.92L18.41 15.70L19.99 18.02L18.02 19.99L15.70 18.41L13.92 19.15L13.39 21.90L10.61 21.90L10.08 19.15L8.30 18.41L5.98 19.99L4.01 18.02L5.59 15.70L4.85 13.92L2.10 13.39L2.10 10.61L4.85 10.08L5.59 8.30L4.01 5.98L5.98 4.01L8.30 5.59L10.08 4.85L10.61 2.10L13.39 2.10L13.92 4.85L15.70 5.59L18.02 4.01L19.99 5.98L18.41 8.30Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></button>
           <div class="menu-inner" id="menu-main">
-            <h1 class="menu-title" aria-label="Billiard Roguelike">
-              <span class="ln">Billiard</span><span class="ln">Roguelike</span>
+            <h1 class="menu-title" aria-label="Lightline: Billiard Roguelike">
+              <span class="ln">Lightline</span>
             </h1>
-            <p class="menu-eyebrow">Dark Velvet Cyber-Billiards</p>
+            <p class="menu-eyebrow">Billiard Roguelike</p>
             <button id="btn-play" class="menu-btn primary" type="button">Play</button>
-            <div class="menu-row">
-              <button id="btn-modes" class="menu-btn" type="button">Modes</button>
-              <button id="btn-settings" class="menu-btn" type="button">Settings</button>
-              <button id="btn-mute" class="menu-btn" type="button" aria-pressed="false">Sound&nbsp;on</button>
-            </div>
+          </div>
+
+          <!-- THE PLAY SCREEN (from review): for a returning player, a big
+               Continue for where they left off, the tables of the first run,
+               and Modes. A first visit skips it and goes into the lessons. -->
+          <div class="menu-inner" id="menu-play" hidden>
+            <h2 class="menu-sub">Play</h2>
+            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></button>
+            <button id="play-new" class="menu-btn" type="button">New run</button>
+            <p class="menu-label">The tables</p>
+            <ol class="table-path" id="table-path" aria-label="The twelve tables of a run"></ol>
+            <button id="btn-modes" class="menu-btn" type="button">Modes</button>
+            <button id="play-back" class="menu-btn quiet" type="button">Back</button>
+          </div>
+
+          <!-- ACHIEVEMENTS (from review): what each one asks, and which are done. -->
+          <div class="menu-inner" id="menu-ach" hidden>
+            <h2 class="menu-sub">Achievements</h2>
+            <p class="menu-foot" id="ach-count"></p>
+            <ul class="ach-list" id="ach-list"></ul>
+            <button id="ach-back" class="menu-btn primary" type="button">Done</button>
           </div>
 
           <!-- MODES. A previous design is a previous VERSION, not a variant, so
@@ -1813,6 +2534,10 @@
           <div class="menu-inner" id="menu-settings" hidden>
             <h2 class="menu-sub">Settings</h2>
             <button id="set-mute" class="menu-btn" type="button">Sound: On</button>
+            <button id="set-aim" class="menu-btn" type="button">Aim line: Slim</button>
+            <button id="set-cue-stickLook" class="menu-btn" type="button">Stick: Rod</button>
+            <button id="set-cue-maxStyle" class="menu-btn" type="button">Full power: Flash</button>
+            <button id="set-cue-strikeStyle" class="menu-btn" type="button">Strike: Snap</button>
             <button id="set-tutorial" class="menu-btn" type="button">Replay tutorial</button>
             <button id="set-back" class="menu-btn primary" type="button">Done</button>
             <p class="menu-foot" id="set-tutorial-state"></p>

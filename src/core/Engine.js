@@ -26,6 +26,17 @@ export class Engine {
     /** Current and target simulation speed. */
     this.timeScale = TIME.normal;
     this.targetScale = TIME.normal;
+    /**
+     * PRESENTATION SPEED, on top of the time scale.
+     *
+     * The aim's bullet-time owns `timeScale`; this is a second, independent
+     * factor owned by the score presenter, which slows the table while a
+     * number has its moment. Keeping them apart means the presenter can never
+     * leave the aim stuck in slow motion, or the aim release a presenter's
+     * slow-mo early.
+     */
+    this.presentScale = 1;
+    this.presentTarget = 1;
 
     /** Real-time seconds left of hit-stop. */
     this.hitStopRemaining = 0;
@@ -57,6 +68,11 @@ export class Engine {
   /** Force a specific scale (used by the room-clear beat). */
   setTimeScale(scale) {
     this.targetScale = scale;
+  }
+
+  /** Set the presenter's target speed (1 = normal). Eased, never snapped, except into a stop. */
+  setPresentScale(scale) {
+    this.presentTarget = Math.max(0, scale);
   }
 
   get inBulletTime() {
@@ -116,6 +132,8 @@ export class Engine {
     this.shakeAmplitude = 0;
     this.zoom = 1;
     this.hitStopRemaining = 0;
+    this.presentScale = 1;
+    this.presentTarget = 1;
     this.camera.position.set(this.basePosition.x, this.basePosition.y, this.basePosition.z);
   }
 
@@ -192,7 +210,15 @@ export class Engine {
       }
     }
 
-    const dt = rawDt * this.timeScale;
+    if (this.presentScale !== this.presentTarget) {
+      // Into slow motion fast, back out a little slower, like the aim.
+      const tau = this.presentTarget < this.presentScale ? 0.03 : 0.12;
+      const k = 1 - Math.exp(-rawDt / tau);
+      this.presentScale += (this.presentTarget - this.presentScale) * k;
+      if (Math.abs(this.presentScale - this.presentTarget) < 0.003) this.presentScale = this.presentTarget;
+    }
+
+    const dt = rawDt * this.timeScale * this.presentScale;
     this.elapsed += dt;
     return { dt, rawDt, frozen: false };
   }

@@ -35,6 +35,10 @@
  * Sampling is an annulus at 0.8 of the ball's radius: outside the numeral and
  * its halo, inside the silhouette. That is where a ball wears its colour, and
  * choosing it carelessly is how the first measurement went wrong twice.
+ * A bigger numeral disc (BALL_NUMERALS) moves that band out, so the annulus
+ * follows it: the middle of the coloured band between the disc's edge and the
+ * rim (the medium disc reaches 0.72 of the radius, so its band is sampled at
+ * 0.87; the face disc reaches nearly the rim, so it is sampled at 0.95).
  *
  * TELLING TWO BALLS APART IS NOT THE SAME AS SEEING EITHER OF THEM.
  *
@@ -309,6 +313,8 @@ try {
   measured = await game.page.evaluate((reserved) => {
     const g = window.__game;
 
+    // where the ball wears its colour, for the numeral style in use
+    const RIM = { inset: 0.8, medium: 0.87, face: 0.95 }[window.__ballNumerals?.()] || 0.8;
     /** Read the framebuffer once and sample the balls' colour annulus. */
     // The projection constants, read once: the glyph pass needs them outside
     // the closure `shoot` builds its sampler in.
@@ -342,8 +348,8 @@ try {
             for (let a = 0; a < 12; a += 1) {
               const ang = (a / 12) * Math.PI * 2;
               const d = ctx.getImageData(
-                Math.round((px + Math.cos(ang) * rp * 0.8) * dpr),
-                Math.round((py + Math.sin(ang) * rp * 0.8) * dpr),
+                Math.round((px + Math.cos(ang) * rp * RIM) * dpr),
+                Math.round((py + Math.sin(ang) * rp * RIM) * dpr),
                 1,
                 1
               ).data;
@@ -506,7 +512,7 @@ async function pick(page) {
         }
         return [0, 1, 2].map((i) => pts.map((q) => q[i]).sort((a, b) => a - b)[6]);
       };
-      out.push({ colour, rim: ring(0.8), face: ring(0.62) });
+      out.push({ colour, rim: ring({ inset: 0.8, medium: 0.87, face: 0.95 }[window.__ballNumerals?.()] || 0.8), face: ring(0.62) });
     }
     return out;
   }, candidates);

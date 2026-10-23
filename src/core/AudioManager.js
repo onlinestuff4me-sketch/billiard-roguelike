@@ -302,6 +302,120 @@ export class AudioManager {
     });
   }
 
+  /* ---------------------------------------------------------------- *
+   * The score presenter's voices (see src/ui/ScoreFeed.js)
+   * ---------------------------------------------------------------- */
+
+  /**
+   * One number landing in its box: the next degree up the pentatonic scale.
+   * POINTS is a bright triangle; MULT sits a fifth above on a filtered saw, so
+   * the two boxes are told apart by ear. `falling` bends it down an octave,
+   * for a number being taken back.
+   */
+  scoreNote(index = 0, bucket = 'points', falling = false) {
+    const scale = AUDIO.scale;
+    index = Number.isFinite(index) ? Math.min(Math.max(0, Math.floor(index)), 24) : 0;
+    const semis = scale[index % scale.length] + 12 * Math.floor(index / scale.length);
+    const freq = AUDIO.rootHz * Math.pow(2, semis / 12) * (bucket === 'mult' ? 1.5 : 1);
+    if (bucket === 'mult') {
+      this._tone({ type: 'sawtooth', freq, freqEnd: falling ? freq * 0.5 : undefined, duration: 0.3, gain: AUDIO.chainNoteGain * 0.42, attack: 0.006 });
+      this._tone({ type: 'triangle', freq: freq * 0.5, duration: 0.3, gain: AUDIO.chainNoteGain * 0.5, attack: 0.006 });
+    } else {
+      this._tone({ type: 'triangle', freq, freqEnd: falling ? freq * 0.5 : undefined, duration: 0.34, gain: AUDIO.chainNoteGain, attack: 0.006 });
+      this._tone({ type: 'sine', freq: freq * 2, duration: 0.18, gain: AUDIO.chainNoteGain * 0.4, attack: 0.004 });
+    }
+  }
+
+  /** A coin: a bright two-tone ding that climbs with each coin (or falls as you spend). */
+  coin(index = 0, falling = false) {
+    const step = Math.min(Math.max(0, index), 16);
+    const freq = AUDIO.rootHz * 4 * Math.pow(2, (falling ? -step : step) / 24);
+    this._tone({ type: 'square', freq, duration: 0.05, gain: 0.035, attack: 0.002 });
+    this._tone({ type: 'sine', freq: freq * 1.5, duration: 0.16, gain: 0.07, attack: 0.002, delay: 0.035 });
+  }
+
+  /** Full power: a bright two-note riser over a soft thump, like a cue locking in. */
+  maxPower() {
+    const root = AUDIO.rootHz * 2;
+    this._tone({ type: 'sine', freq: 140, freqEnd: 90, duration: 0.12, gain: 0.18 });
+    this._tone({ type: 'triangle', freq: root * 1.5, duration: 0.16, gain: 0.13, attack: 0.004 });
+    this._tone({ type: 'triangle', freq: root * 2, duration: 0.3, gain: 0.14, attack: 0.004, delay: 0.07 });
+    this._tone({ type: 'sine', freq: root * 4, duration: 0.22, gain: 0.05, delay: 0.07 });
+  }
+
+  /** The table freezing as a number arrives: short, soft, felt more than heard. */
+  scoreThud() {
+    this._tone({ type: 'sine', freq: 180, freqEnd: 80, duration: 0.14, gain: 0.2 });
+  }
+
+  /** The first pot locking the boxes in. */
+  scoreLock() {
+    const root = AUDIO.rootHz * 2;
+    this._tone({ type: 'sine', freq: 150, freqEnd: 70, duration: 0.18, gain: 0.24 });
+    this._tone({ type: 'triangle', freq: root, duration: 0.32, gain: 0.12, delay: 0.02 });
+    this._tone({ type: 'triangle', freq: root * 1.5, duration: 0.4, gain: 0.11, delay: 0.08 });
+  }
+
+  /** POINTS and MULT colliding: the sub drop, under a crack. */
+  scoreSlam() {
+    this._tone({ type: 'sine', freq: 120, freqEnd: 38, duration: 0.5, gain: AUDIO.subGain });
+    this._noise({ duration: 0.16, gain: 0.26, filterType: 'bandpass', freq: 2400, freqEnd: 500, q: 0.8 });
+  }
+
+  /** Full power, ignite: a rising roar under the riser, like a burner catching. */
+  ignite() {
+    this._noise({ duration: 0.45, gain: 0.16, filterType: 'lowpass', freq: 300, freqEnd: 2400, q: 0.9 });
+    this._tone({ type: 'sawtooth', freq: 90, freqEnd: 180, duration: 0.4, gain: 0.07 });
+  }
+
+  /** Full power, lock: two hard clicks and a low catch. */
+  lockOn() {
+    this._tone({ type: 'square', freq: 2400, duration: 0.025, gain: 0.07 });
+    this._tone({ type: 'square', freq: 1800, duration: 0.03, gain: 0.07, delay: 0.06 });
+    this._tone({ type: 'sine', freq: 110, freqEnd: 70, duration: 0.18, gain: 0.22, delay: 0.06 });
+  }
+
+  /** The strike, impact: a crack with a sub under it, louder the harder. */
+  strikeImpact(power = 1) {
+    this._noise({ duration: 0.09, gain: 0.18 + 0.14 * power, filterType: 'highpass', freq: 1800, q: 0.7 });
+    this._tone({ type: 'sine', freq: 140, freqEnd: 45, duration: 0.3, gain: 0.16 + 0.12 * power });
+  }
+
+  /** The strike, pierce: a bright zip that falls away down the line. */
+  strikePierce(power = 1) {
+    this._tone({ type: 'sawtooth', freq: 1600, freqEnd: 300, duration: 0.18, gain: 0.05 + 0.05 * power });
+    this._noise({ duration: 0.16, gain: 0.1, filterType: 'bandpass', freq: 4000, freqEnd: 900, q: 1.4 });
+  }
+
+  /** Time stopping: a glassy chime falling a fifth, over a soft low hit. */
+  freezeOn() {
+    const root = AUDIO.rootHz * 4;
+    this._tone({ type: 'sine', freq: 160, freqEnd: 60, duration: 0.3, gain: 0.2 });
+    this._tone({ type: 'triangle', freq: root * 1.5, freqEnd: root, duration: 0.6, gain: 0.1, attack: 0.004 });
+    this._tone({ type: 'sine', freq: root * 3, freqEnd: root * 2, duration: 0.5, gain: 0.05, delay: 0.03 });
+    this._noise({ duration: 0.35, gain: 0.08, filterType: 'highpass', freq: 5000, freqEnd: 2000, q: 0.7 });
+  }
+
+  /** Time starting again: ice breaking. */
+  shatter() {
+    this._noise({ duration: 0.22, gain: 0.2, filterType: 'highpass', freq: 3000, freqEnd: 7000, q: 0.6 });
+    const root = AUDIO.rootHz * 4;
+    for (const [m, d] of [[2, 0], [2.5, 0.025], [3, 0.05]]) this._tone({ type: 'sine', freq: root * m, duration: 0.18, gain: 0.05, delay: d });
+  }
+
+  /** A table going out: a falling noise sweep. */
+  derez() {
+    this._noise({ duration: 0.4, gain: 0.16, filterType: 'bandpass', freq: 3000, freqEnd: 300, q: 1.2 });
+    this._tone({ type: 'sawtooth', freq: 400, freqEnd: 80, duration: 0.35, gain: 0.06 });
+  }
+
+  /** A table coming up: a rising sweep under three blips. */
+  boot() {
+    this._noise({ duration: 0.5, gain: 0.1, filterType: 'bandpass', freq: 300, freqEnd: 3200, q: 1.4 });
+    const root = AUDIO.rootHz * 2;
+    for (const [m, d] of [[1, 0.08], [1.5, 0.2], [2, 0.32]]) this._tone({ type: 'triangle', freq: root * m, duration: 0.16, gain: 0.08, delay: d });
+  }
+
   /** Weight of a cue strike; brightness scales with momentum. */
   impact(intensity = 0.5) {
     // Collapse simultaneous impacts so a six-body break does not clip.

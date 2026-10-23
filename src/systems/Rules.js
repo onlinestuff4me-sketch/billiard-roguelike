@@ -10,16 +10,21 @@
  * The shape of a room:
  *
  *   beginRoom(level)          mission + stroke budget from the ramp
- *     beginStroke()           multiplier resets to x1
- *       bank() / touch()      the ladder climbs while the table moves
- *       gold()                doubles what has been built
- *       pot(ball, kind)       steps the ladder, THEN pays at the new figure
+ *     beginStroke()           POINTS 0, MULT x1, nothing locked
+ *       hit() / bank() / kiss() / gold()   events build the two numbers
+ *       pot(number)           adds its own events, then LOCKS everything so far
+ *     strokeResult()          what the stroke pays, and what is taken back
  *     endStroke()             banks the stroke, spends one from the budget
  *   endRoom()                 pays for every stroke left unspent
  *
- * The one rule worth stating out loud: points are paid at the instant a ball
- * drops, at the multiplier standing then. Banking before you pot is worth real
- * money, and that is deliberate.
+ * The rule worth stating out loud: NOTHING COUNTS UNTIL A BALL DROPS. Every
+ * event adds to POINTS or MULT the moment it happens, but it is pending until
+ * a pot locks it in. Whatever the stroke does after its last pot is taken
+ * back, and a stroke that sinks nothing pays nothing. The stroke pays
+ * POINTS x MULT as they stood at its last pot.
+ *
+ * Because the bonus zone MULTIPLIES, order still matters: a wall taken before
+ * the zone is doubled, the same wall after it is not.
  *
  * THE MISSION, NOT THE CONTRACT. It is the sentence at the top of the screen
  * and it is addressed to the player: sink these, in this many shots, and the
@@ -61,6 +66,12 @@ export function missionFor(level, opts = {}) {
     /** Strokes minus balls: what the player can afford to waste. */
     spare: band.strokes - band.rack
   };
+}
+
+/** A table's points target: it starts easy and grows each table. */
+export function targetFor(level) {
+  const T = RULES.target;
+  return Math.round((T.base * Math.pow(T.growth, Math.max(0, level - 1))) / T.round) * T.round;
 }
 
 /** Plain-English mission line for the HUD. Never inferred, always on screen. */
@@ -105,7 +116,8 @@ export class Rules {
     this.level = 0;
     this.mission = missionFor(1);
     /** Numbers still on the felt, so the mission knows which one is next. */
-    this.standing = new Set(rackNumbers(this.mission.rack));
+    // an authored table names its own balls; a rolled one uses 1..n-1 and the 8
+    this.standing = new Set(this.mission.numbers || rackNumbers(this.mission.rack));
     /** Consecutive pots taken in order, this room. */
     this.orderStreak = 0;
     /** Set the first time a ball goes down out of order. */
@@ -120,16 +132,25 @@ export class Rules {
     /** Per-room ledger, rendered on the scorecard. */
     this.ledger = [];
 
-    /** Stroke-scoped state. */
-    this.multiplier = RULES.multiplier.base;
-    this.strokeScore = 0;
-    this.strokeEvents = [];
-    this.ballsTouched = 0;
-    this.banks = 0;
-    this.scratched = false;
+    /** Stroke-scoped state: see resetStroke. */
     this.bestMultiplier = 1;
+    this.resetStroke();
 
     this.freezeCharges = 0;
+    /**
+     * UPGRADES bought in the shop, as numbers added to the base rules
+     * (`perHit`, `perBank`, …) and flags (`corner`, `eight`, …). See
+     * src/systems/Upgrades.js. Reset with the run.
+     */
+    this.perks = {};
+    /** CASH: the one thing that carries over between tables. Spent in the shop. */
+    this.cash = RULES.cash.start;
+    /** LIVES: missing a table's target costs one; none left ends the run. */
+    this.lives = RULES.lives.start;
+    /** This table's points target (RULES.target). */
+    this.target = targetFor(1);
+    /** Consecutive shots this table that paid (the Hot Streak upgrade). */
+    this.paidStreak = 0;
     /** Set when the strokes run out with the mission unfilled. */
     this.failed = false;
   }
@@ -146,14 +167,36 @@ export class Rules {
     this.orderBroken = false;
     this.orderPots = 0;
     this.strokesLeft = this.mission.strokes;
+    /** shots added this table (the green ring with a +) */
+    this.bonusStrokes = 0;
     this.strokesUsed = 0;
     this.ballsDown = 0;
     this.roomScore = 0;
     this.ledger = [];
+    // an authored table carries its own tuned target
+    this.target = this.mission.target ?? targetFor(level);
+    this.paidStreak = 0;
+    // ICE BOX: every table starts with some Freeze frame already in hand.
+    if (this.perks.icebox) this.grantFreeze(this.perks.icebox);
     this.failed = false;
     this.roomClosed = false;
     this.bestMultiplier = 1;
     this.resetStroke();
+  }
+
+  /** A scoring value with the run's upgrades added to the base rule. */
+  val(key) {
+    const base = {
+      perHit: RULES.score.perHit,
+      perPip: RULES.score.perPip,
+      savedStroke: RULES.score.savedStroke,
+      perBank: RULES.multiplier.perBank,
+      perKiss: RULES.multiplier.perKiss,
+      bankPot: RULES.multiplier.bankPot,
+      extraPot: RULES.multiplier.extraPot,
+      goldFactor: RULES.multiplier.goldFactor
+    }[key];
+    return (base ?? 0) + (this.perks[key] || 0);
   }
 
   /** True once every ball the mission asked for is down. */
@@ -187,11 +230,11 @@ export class Rules {
    */
   endRoom() {
     const saved = Math.max(0, this.strokesLeft);
-    const rate = RULES.score.savedStroke * Math.max(1, this.level);
+    const rate = this.val('savedStroke') * Math.max(1, this.level);
     const bonus = saved * rate;
     if (bonus > 0) {
       this.roomScore += bonus;
-      this.ledger.push({ id: 'saved', label: 'Shots saved', detail: `${saved} × ${rate.toLocaleString()}`, amount: bonus });
+      this.ledger.push({ id: 'saved', label: 'Unused shots', detail: `${saved} left · ${rate.toLocaleString()} each`, amount: bonus });
     }
     // THE CLEAN SWEEP. Its own line, because a bonus folded into the stroke
     // totals is a bonus the player never learns they earned — and this one is
@@ -202,12 +245,32 @@ export class Rules {
       this.roomScore += sweepRate;
       this.ledger.push({
         id: 'sweep',
-        label: 'Swept in order',
-        detail: `all ${this.mission.rack} · ${RULES.order.cleanSweep.toLocaleString()} × ${this.level}`,
+        label: 'All in order',
+        detail: `${this.mission.rack} balls by number`,
         amount: sweepRate
       });
     }
     this.runScore += this.roomScore;
+
+    // THE TARGET, then the PAYOUT. Interest is on what you held coming in, so
+    // saving is what earns it; beating the target pays, and beating it by more
+    // pays more. Missing it pays only the interest, and costs a life.
+    const C = RULES.cash;
+    const beaten = this.roomScore >= this.target;
+    const payout = [];
+    if (beaten) {
+      payout.push({ id: 'beaten', label: 'Beat the target', detail: '', rule: '', count: 1, amount: C.beaten });
+      if (saved > 0) payout.push({ id: 'shots', label: 'Unused shots', detail: `${saved} × $${C.perShotLeft}`, rule: `$${C.perShotLeft} each`, count: saved, amount: saved * C.perShotLeft });
+      const over = Math.min(C.overCap, Math.floor((this.roomScore / Math.max(1, this.target) - 1) / C.overStep + 1e-9));
+      if (over > 0) payout.push({ id: 'over', label: 'Over the target', detail: `${Math.round((this.roomScore / this.target - 1) * 100)}% · $1 per ${Math.round(C.overStep * 100)}%`, rule: `$1 per ${Math.round(C.overStep * 100)}%, max $${C.overCap}`, count: over, amount: over });
+    }
+    const interest = Math.min(C.interestCap, Math.floor(this.cash / C.interestPer));
+    if (interest > 0) payout.push({ id: 'interest', label: 'Interest', detail: `on $${this.cash} · $1 per $${C.interestPer}`, rule: `$1 per $${C.interestPer}, max $${C.interestCap}`, count: interest, amount: interest });
+    const cashFrom = this.cash;
+    const earned = payout.reduce((n, p) => n + p.amount, 0);
+    this.cash += earned;
+    const livesFrom = this.lives;
+    if (!beaten) this.lives = Math.max(0, this.lives - 1);
     // Once the room is banked, `roomScore` is already inside `runScore`. The
     // HUD adds the two together while a room is live, so it has to be told to
     // stop — otherwise the running total doubles the instant a room ends.
@@ -219,7 +282,15 @@ export class Rules {
       swept,
       sweepBonus: swept ? sweepRate : 0,
       roomScore: this.roomScore,
-      runScore: this.runScore
+      runScore: this.runScore,
+      target: this.target,
+      beaten,
+      payout,
+      earned,
+      cashFrom,
+      cash: this.cash,
+      livesFrom,
+      lives: this.lives
     };
   }
 
@@ -228,107 +299,140 @@ export class Rules {
    * ---------------------------------------------------------------- */
 
   resetStroke() {
-    this.multiplier = RULES.multiplier.base;
-    this.strokeScore = 0;
-    this.strokeEvents = [];
-    this.ballsTouched = 0;
+    /** The two numbers, as they stand right now (pending included). */
+    this.points = 0;
+    this.mult = RULES.multiplier.base;
+    /**
+     * Every scoring event of this stroke, in the order it happened. Each one
+     * records what it added and the two numbers after it, so a presenter can
+     * show it and a take-back can step back over it.
+     */
+    this.events = [];
+    /** How many of `events` are locked in by a pot. */
+    this.lockedCount = 0;
+    this.lockedPoints = 0;
+    this.lockedMult = RULES.multiplier.base;
+    /** Pots this stroke, so the second one knows it is a second one. */
+    this.potsThisStroke = 0;
+    /** Balls the cue ball has already been paid for touching this stroke. */
+    this._hitBalls = new Set();
+    /** Balls already paid for being driven into by another ball. */
+    this._kissedBalls = new Set();
     this.banks = 0;
-    /** Banks that happened before the stroke last paid — the ones that earned. */
+    this.ballsTouched = 0;
+    /** Banks that were locked in — the ones that earned. */
     this.paidBanks = 0;
-    /** Likewise for balls touched, so a pot can report what IT earned. */
     this.paidTouched = 0;
-    /** The multiplier the stroke actually paid at, as opposed to reached. */
-    this.paidMultiplier = 0;
     this.scratched = false;
+    this.voidReason = null;
   }
 
   beginStroke() {
     this.resetStroke();
   }
 
-  /**
-   * End the stroke and spend one from the budget. A freeze does NOT come
-   * through here — the whole point of a freeze is that the stroke is still
-   * going.
-   */
-  endStroke() {
-    const paid = this.scratched && RULES.scratch.voidScore ? 0 : this.strokeScore;
-    this.roomScore += paid;
-    if (paid > 0) {
-      this.ledger.push({
-        id: 'stroke',
-        label: `Shot ${this.strokesUsed + 1}`,
-        // The figure it PAID at, not the one it reached afterwards.
-        detail: `×${this.paidMultiplier || this.multiplier}`,
-        amount: paid
-      });
-    }
-    this.strokesLeft = Math.max(0, this.strokesLeft - 1);
-    this.strokesUsed += 1;
-    const voided = this.scratched && this.strokeScore > 0;
-    const summary = {
-      paid,
-      voided,
-      lost: voided ? this.strokeScore : 0,
-      multiplier: this.paidMultiplier || this.multiplier,
-      banks: this.paidBanks,
-      scratched: this.scratched
-    };
-    if (this.strokesLeft <= 0 && !this.filled) this.failed = true;
-    this.resetStroke();
-    return summary;
-  }
-
   /* ---------------------------------------------------------------- *
-   * The multiplier ladder
+   * The two numbers
    * ---------------------------------------------------------------- */
 
-  /**
-   * A RUNG ON THE LADDER IS NOT MONEY UNTIL SOMETHING DROPS ON IT.
-   *
-   * `bestMultiplier` used to be recorded here, so a stroke that banked around
-   * the table after its last ball went down kept climbing a figure nothing was
-   * ever paid at — and the stroke's own ledger line then reported that figure
-   * as what it paid. Reported as banks after a pot counting as extra
-   * multipliers, which is exactly what the numbers said even though the score
-   * was right: points are paid at the instant a ball drops, at the multiplier
-   * standing THEN, and the ladder afterwards is a promise to a ball that never
-   * came.
-   *
-   * So the ladder still climbs on every bank, because the next pot might be
-   * about to happen — and what is REMEMBERED is only ever the figure something
-   * was actually paid at. See `_paid`.
-   */
-  _step(amount) {
-    this.multiplier = Math.min(RULES.multiplier.max, this.multiplier + amount);
-    return this.multiplier;
+  /** The multiplier as it stands, pending included. Kept for older readers. */
+  get multiplier() {
+    return this.mult;
   }
 
-  /** Called the instant the ladder pays out, and only then. */
-  _paid() {
-    this.paidMultiplier = this.multiplier;
+  /** What the stroke would pay if it ended now: only what a pot locked in. */
+  get strokeScore() {
+    return this.lockedCount > 0 ? Math.round(this.lockedPoints * this.lockedMult) : 0;
+  }
+
+  /** Has a pot locked anything in yet? */
+  get hasPaid() {
+    return this.lockedCount > 0;
+  }
+
+  /** The events a pot has not locked in yet. */
+  get pending() {
+    return this.events.slice(this.lockedCount);
+  }
+
+  /**
+   * Record one event. `bucket` is 'points' or 'mult'; `op` is '+' or 'x'.
+   * `at` is presentation data (where it happened, what caused it) that this
+   * file passes through untouched.
+   */
+  _add(kind, bucket, op, amount, label, at = null) {
+    if (bucket === 'points') this.points += amount;
+    else if (op === 'x') this.mult = Math.min(RULES.multiplier.max, this.mult * amount);
+    else this.mult = Math.min(RULES.multiplier.max, this.mult + amount);
+    const event = {
+      index: this.events.length,
+      kind,
+      bucket,
+      op,
+      amount,
+      label,
+      at,
+      points: this.points,
+      mult: this.mult
+    };
+    this.events.push(event);
+    return event;
+  }
+
+  /** A pot locks in everything up to and including itself. */
+  _lock() {
+    this.lockedCount = this.events.length;
+    this.lockedPoints = this.points;
+    this.lockedMult = this.mult;
     this.paidBanks = this.banks;
     this.paidTouched = this.ballsTouched;
-    this.bestMultiplier = Math.max(this.bestMultiplier, this.multiplier);
-    return this.multiplier;
+    this.bestMultiplier = Math.max(this.bestMultiplier, this.mult);
   }
 
-  /** The cue ball banked off a rail or an obstacle. */
-  bank() {
-    this.banks += 1;
-    return this._step(RULES.multiplier.perBank);
-  }
-
-  /** The cue ball touched a ball, or one object ball cannoned into another. */
-  touch() {
+  /**
+   * The cue ball's first contact with a ball this stroke, remembered for that
+   * ball's pot (see below). A second contact with the same ball adds nothing,
+   * so rattling two balls together cannot farm points. Returns null: a touch
+   * is never a number of its own.
+   */
+  hit(number, at = null) {
+    // A TOUCH PAYS WITH ITS BALL (from review: "one for hitting the ball and
+    // another for sinking it?"). The cue ball's first contact with a ball is
+    // remembered, not scored: if that ball drops this shot, its SUNK pays
+    // perHit more. So every ball sunk is one number, and a ball touched but
+    // never sunk pays nothing.
     this.ballsTouched += 1;
-    return this._step(RULES.multiplier.perBallTouched);
+    const key = number ?? `#${this.ballsTouched}`;
+    if (this._hitBalls.has(key)) return null;
+    this._hitBalls.add(key);
+    return null;
   }
 
-  /** The double: multiply whatever has been built. */
-  gold() {
-    this.multiplier = Math.min(RULES.multiplier.max, this.multiplier * RULES.multiplier.goldFactor);
-    return this.multiplier;
+  /** The cue ball banked off a wall or an obstacle: +MULT. */
+  bank(at = null) {
+    this.banks += 1;
+    return this._add('bank', 'mult', '+', this.val('perBank'), 'WALL', at);
+  }
+
+  /** One object ball driving into another: +MULT, once per struck ball. */
+  kiss(number, at = null) {
+    const key = number ?? `#${this._kissedBalls.size}`;
+    if (this._kissedBalls.has(key)) return null;
+    this._kissedBalls.add(key);
+    return this._add('kiss', 'mult', '+', this.val('perKiss'), RULES.labels?.kiss || 'KISS', at);
+  }
+
+  /** The bonus zone: multiply whatever MULT has been built. */
+  gold(at = null) {
+    return this._add('zone', 'mult', 'x', this.val('goldFactor'), 'ZONE', at);
+  }
+
+  /**
+   * Legacy name for a contact: the cue ball touching a ball. Boons and old
+   * callers that only know "touch" get the cue-contact rule.
+   */
+  touch(number = null, at = null) {
+    return this.hit(number, at);
   }
 
   /* ---------------------------------------------------------------- *
@@ -374,17 +478,10 @@ export class Rules {
    * WHAT THE MISSION WOULD SAY TO A STROKE THAT HAS NOT HAPPENED YET.
    *
    * Given the balls a drawn line claims to sink, in the order it sinks them,
-   * which of them the mission would refuse. This is what lets the preview go
-   * red while the player is still aiming, instead of the refusal arriving
-   * after the stroke is spent — and it walks a COPY of the table, because a
-   * pot that is a foul right now may be perfectly legal by the time the stroke
-   * gets to it: under strict order, sinking the 1 and then the 2 is two legal
-   * pots, and asking about the 2 against the table as it stands today would
-   * call the second one a foul.
-   *
-   * The order is the order the line hands them off in, which is the best a
-   * static projection has: two balls travelling at once can drop in either
-   * order, and nothing drawn before the stroke can know which.
+   * which of them the mission would refuse. It walks a COPY of the table,
+   * because a pot that is a foul right now may be legal by the time the
+   * stroke gets to it: under strict order, sinking the 1 and then the 2 is two
+   * legal pots.
    *
    * @param {number[]} numbers
    * @returns {Array<{reason: 'order'|'eight', next: number|null}|null>}
@@ -403,82 +500,171 @@ export class Rules {
   }
 
   /**
-   * A ball goes down. The ladder steps first, then the ball pays at the figure
-   * standing after the step — so the pot that completes a long route is worth
-   * more than the pot that opens one.
+   * A ball goes down. It adds its own events — the ball's value to POINTS,
+   * then a bank pot, a second-pot bonus and the order bonus to MULT — and
+   * then LOCKS everything the stroke has done so far.
    *
-   * Every pocket pays the same. There is nothing to pass in but the number.
+   * @param {number} number
+   * @param {{banked?: boolean, at?: object, bankAt?: object}} [opts]
+   *   `banked`: the ball took a wall on its way in. `at` is where it dropped;
+   *   `bankAt` is the wall it banked off, for the BANK event's presentation.
    */
-  pot(number) {
+  pot(number, opts = {}) {
     // Asked BEFORE the ball leaves the table, or the ball the mission was
     // hoping for is the ball we just removed and every pot reads as in order.
     const wanted = this.nextInOrder;
     const inOrder = wanted !== null && number === wanted;
+    const added = [];
 
-    this._step(RULES.multiplier.perBallDown);
-    // The order bonus is rungs rather than a separate pot of money, so it
-    // compounds with everything else the stroke has built and shows up in the
-    // one figure the player is already watching.
+    const at = opts.at ?? null;
+    const P = this.perks;
+    const touched = this._hitBalls.has(number) ? this.val('perHit') : 0;
+    added.push(this._add('pot', 'points', '+', number * this.val('perPip') + touched, `${number} SUNK`, at));
+    added[0].number = number;
+    if (opts.banked) {
+      added.push(this._add('bankPot', 'mult', '+', this.val('bankPot'), 'BANK', opts.bankAt ?? at));
+    }
+    if (this.potsThisStroke > 0) {
+      const n = this.potsThisStroke + 1;
+      // numerals, like "3 SUNK" (from review): 2 IN ONE, 3 IN ONE, 4 IN ONE...
+      added.push(this._add('multiPot', 'mult', '+', this.val('extraPot'), `${n} IN ONE`, at));
+    }
+    // UPGRADES that read the pot itself: which pocket, which ball, when.
+    const slot = at?.ref?.slot || '';
+    if (P.corner && slot && slot[0] !== 'm') added.push(this._add('perk', 'mult', '+', P.corner, 'CORNER OFFICE', at));
+    if (P.side && slot[0] === 'm') added.push(this._add('perk', 'mult', '+', P.side, 'SIDE HUSTLE', at));
+    if (P.odd && number % 2 === 1) added.push(this._add('perk', 'points', '+', P.odd, 'ODD ONES', at));
+    if (P.even && number % 2 === 0) added.push(this._add('perk', 'points', '+', P.even, 'EVEN MONEY', at));
+    if (P.eight && number === 8) added.push(this._add('perk', 'mult', 'x', P.eight, 'EIGHT BALL', at));
+    if (this.potsThisStroke === 0) {
+      if (P.opener && this.strokesUsed === 0) added.push(this._add('perk', 'mult', '+', P.opener, 'OPENING BREAK', at));
+      if (P.streak && this.paidStreak > 0) added.push(this._add('perk', 'mult', '+', P.streak * this.paidStreak, 'HOT STREAK', at));
+    }
+    if (P.runout && this.standing.size === 1 && this.standing.has(number)) {
+      added.push(this._add('perk', 'mult', 'x', P.runout, 'RUN OUT', at));
+    }
+    this.potsThisStroke += 1;
+
+    // The order bonus is MULT rather than a separate pot of money, so it
+    // compounds with everything else the stroke has built.
     let rungs = 0;
     if (inOrder) {
       this.orderStreak += 1;
       this.orderPots += 1;
       rungs = Math.min(this.orderStreak, RULES.order.streakCap) * RULES.order.bonusRung;
-      if (rungs > 0) this._step(rungs);
+      // a table can leave the order unpaid (from review: Table 1 teaches the
+      // target; the order is Table 2's idea, so it pays from there on)
+      if (rungs > 0 && this.mission?.orderBonus !== false) added.push(this._add('order', 'mult', '+', rungs, 'IN ORDER', opts.at ?? null));
     } else {
       this.orderStreak = 0;
       this.orderBroken = true;
     }
 
-    this._paid();
-    const value = Math.round(number * RULES.score.perPip * this.multiplier);
-    this.strokeScore += value;
+    this._lock();
     this.ballsDown += 1;
-    // A refused ball never reaches here — `foulReason` turns it away before the
-    // ladder sees it — so leaving `standing` is the same event as being paid
-    // for, and the order never has to be told about a ball coming back.
+    // A refused ball never reaches here — `foulReason` turns it away before
+    // this is called — so leaving `standing` is the same event as being paid.
     this.standing.delete(number);
-    this.strokeEvents.push({ number, value, multiplier: this.multiplier, inOrder });
-    return { value, multiplier: this.multiplier, inOrder, streak: this.orderStreak, rungs };
+    return {
+      value: number * this.val('perPip'),
+      events: added,
+      points: this.points,
+      mult: this.mult,
+      multiplier: this.mult,
+      inOrder,
+      streak: this.orderStreak,
+      rungs
+    };
   }
 
+  /**
+   * WHAT THIS STROKE COMES TO, without ending it.
+   *
+   * `takenBack` is every event after the last pot, latest last; a presenter
+   * walks it backwards. A scratch or a foul voids the lot.
+   */
+  strokeResult() {
+    const voided = this.scratched;
+    return {
+      points: this.lockedPoints,
+      mult: this.lockedMult,
+      paid: voided ? 0 : this.strokeScore,
+      locked: this.lockedCount > 0,
+      voided,
+      voidReason: voided ? this.voidReason || 'scratch' : null,
+      takenBack: this.pending,
+      events: this.events
+    };
+  }
+
+  /**
+   * End the stroke and spend one from the budget. A freeze does NOT come
+   * through here — the whole point of a freeze is that the stroke is still
+   * going.
+   */
+  endStroke() {
+    const result = this.strokeResult();
+    const paid = RULES.scratch.voidScore ? result.paid : this.strokeScore;
+    this.roomScore += paid;
+    if (paid > 0) {
+      this.ledger.push({
+        id: 'stroke',
+        label: `Shot ${this.strokesUsed + 1}`,
+        detail: `${this.lockedPoints} × ${this.lockedMult}`,
+        amount: paid
+      });
+    }
+    this.paidStreak = paid > 0 ? this.paidStreak + 1 : 0;
+    this.strokesLeft = Math.max(0, this.strokesLeft - 1);
+    this.strokesUsed += 1;
+    const voided = this.scratched && this.strokeScore > 0;
+    const summary = {
+      paid,
+      voided,
+      lost: voided ? this.strokeScore : 0,
+      points: this.lockedPoints,
+      multiplier: this.lockedMult,
+      banks: this.paidBanks,
+      takenBack: result.takenBack,
+      scratched: this.scratched,
+      pots: this.potsThisStroke
+    };
+    if (this.strokesLeft <= 0 && !this.filled) this.failed = true;
+    this.resetStroke();
+    return summary;
+  }
 
   /* ---------------------------------------------------------------- *
-   * WHAT THE PILL SAYS
-   *
-   * The ladder goes on climbing after a ball drops, because the next ball
-   * might be about to drop onto it — that is the rule, and it is right. But a
-   * figure that goes UP after your ball is already in the pocket reads as
-   * points still being added to it, which was reported twice: "I'm still
-   * seeing points being added for bank hits after the ball was pocketed".
-   *
-   * So the readout stops following the ladder the moment the stroke pays. It
-   * holds the figure the last pot was PAID at until something pays again —
-   * and a second pot then jumps it to its own figure, which correctly includes
-   * every rail taken between the two. Nothing about the scoring changes; this
-   * is the difference between the ladder and the report of it.
+   * What the HUD shows mid-stroke: the numbers as they stand, pending
+   * included. The presenter fades the boxes until something is locked.
    * ---------------------------------------------------------------- */
 
-  /** Has this stroke put anything down yet? */
-  get hasPaid() {
-    return this.strokeEvents.length > 0;
-  }
-
   get shownMultiplier() {
-    return this.hasPaid ? this.paidMultiplier : this.multiplier;
+    return this.mult;
   }
 
   get shownBanks() {
-    return this.hasPaid ? this.paidBanks : this.banks;
+    return this.banks;
   }
 
   get shownTouched() {
-    return this.hasPaid ? this.paidTouched : this.ballsTouched;
+    return this.ballsTouched;
   }
 
-  /** The cue ball went down a pocket. */
-  scratch() {
+  /** An extra shot this table: the budget and the counter both grow by one. */
+  grantStroke() {
+    this.strokesLeft += 1;
+    this.bonusStrokes = (this.bonusStrokes || 0) + 1;
+  }
+
+  /**
+   * The shot is void: the cue ball went down a pocket, or (`why` 'foul') a
+   * ball went in that the mission refused. Kept apart so the table can say
+   * which it was (from review: an early 8 read "Scratch").
+   */
+  scratch(why = 'scratch') {
     this.scratched = true;
+    this.voidReason = this.voidReason === 'scratch' ? 'scratch' : why;
   }
 
   /* ---------------------------------------------------------------- *
@@ -490,10 +676,47 @@ export class Rules {
     return this.freezeCharges;
   }
 
+  /** A charge is spent whole: half a charge is progress toward one, not a freeze. */
   spendFreeze() {
-    if (this.freezeCharges <= 0) return false;
+    if (this.freezeCharges < 1) return false;
     this.freezeCharges -= 1;
     return true;
+  }
+
+  /** Spend CASH in the shop. Points are never spent: they are each table's test. */
+  spend(dollars) {
+    if (!(dollars > 0) || this.cash < dollars) return false;
+    this.cash -= dollars;
+    return true;
+  }
+
+  /** An extra life, up to the cap. Returns false when already full. */
+  gainLife(n = 1) {
+    if (this.lives >= RULES.lives.max) return false;
+    this.lives = Math.min(RULES.lives.max, this.lives + n);
+    return true;
+  }
+
+  /**
+   * What a stroke that paid earns in charges: combinations, extra pots and a
+   * big mult. Granted here; the caller shows each one landing.
+   * @param {{paid:number, voided:boolean, pots:number, multiplier:number}} summary
+   * @param {number} combinations balls knocked in by another ball this stroke
+   * @returns {{amount:number, label:string}[]} what was actually granted
+   */
+  earnCharges(summary, combinations = 0) {
+    const out = [];
+    if (!summary || summary.paid <= 0 || summary.voided) return out;
+    const E = RULES.freeze.earn;
+    const add = (amount, label) => {
+      const before = this.freezeCharges;
+      this.grantFreeze(amount);
+      if (this.freezeCharges > before) out.push({ amount: this.freezeCharges - before, label });
+    };
+    for (let i = 0; i < combinations; i++) add(this.perks.frostbite ? 1 : E.combination, 'Combination');
+    for (let i = 1; i < (summary.pots || 0); i++) add(E.extraPot, 'Two in one');
+    if (summary.multiplier >= E.bigShotMult) add(E.bigShot, `Big shot · ×${summary.multiplier}`);
+    return out;
   }
 
   /** Everything the HUD needs, in one object. */
@@ -505,13 +728,23 @@ export class Rules {
       ballsDown: this.ballsDown,
       rack: this.mission.rack,
       strokesLeft: this.strokesLeft,
-      strokesTotal: this.mission.strokes,
+      strokesTotal: this.mission.strokes + (this.bonusStrokes || 0),
       multiplier: this.shownMultiplier,
+      points: this.points,
+      mult: this.mult,
+      locked: this.lockedCount > 0,
       strokeScore: this.strokeScore,
       roomScore: this.roomScore,
       runScore: this.runScore,
-      /** What the score readout should say right now. */
-      displayScore: this.runScore + (this.roomClosed ? 0 : this.roomScore),
+      /**
+       * What the corner says: THIS table's points, against its target.
+       * Points start fresh every table; cash is what carries over.
+       */
+      displayScore: this.roomScore,
+      target: this.target,
+      cash: this.cash,
+      lives: this.lives,
+      livesMax: RULES.lives.max,
       freezeCharges: this.freezeCharges,
       banks: this.shownBanks,
       ballsTouched: this.shownTouched,

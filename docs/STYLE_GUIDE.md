@@ -1,3 +1,6 @@
+> **Superseded.** This guide describes the real-time game Lightline replaced. The current
+> design bible is [`DESIGN_BIBLE.md`](DESIGN_BIBLE.md); this file is kept for history only.
+
 # Style Guide — Aesthetic, Audio & Thematic Blueprint
 
 **Theme name:** *Dark Velvet Cyber-Billiards*

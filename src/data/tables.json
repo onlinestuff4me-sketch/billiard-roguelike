@@ -1,0 +1,632 @@
+{
+  "$schema": "./tables.schema.md",
+  "note": "The first tables of a run, authored and tuned by hand. Table N of the run is tables[N-1]. See tables.schema.md.",
+  "tables": [
+    {
+      "id": "first-target",
+      "name": "Beat the Target",
+      "intro": {
+        "title": "Table 1 · Beat the Target",
+        "sub": "Sink balls to score points. Beat the target to clear the table."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": 5.8,
+          "z": 3.0
+        },
+        {
+          "number": 2,
+          "x": -5.6,
+          "z": 10.6
+        },
+        {
+          "number": 8,
+          "x": -5.8,
+          "z": 3.0
+        }
+      ],
+      "strokes": 5,
+      "target": 200,
+      "shop": [
+        "soft-touch",
+        "long-rail",
+        "freeze-charge",
+        "odd-ones"
+      ],
+      "orderBonus": false
+    },
+    {
+      "id": "by-the-numbers",
+      "name": "In Order Pays More",
+      "intro": {
+        "title": "Table 2 · In Order Pays More",
+        "sub": "Sink them in order, 1 then 2 then 8, and each one pays more."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -5.8,
+          "z": 3.0
+        },
+        {
+          "number": 2,
+          "x": 5.6,
+          "z": 10.6
+        },
+        {
+          "number": 8,
+          "x": 6.2,
+          "z": -12.6
+        }
+      ],
+      "strokes": 5,
+      "target": 250,
+      "shop": [
+        "long-rail",
+        "bank-vault",
+        "kiss-chase",
+        "bounce"
+      ],
+      "showOrder": true
+    },
+    {
+      "id": "off-the-rail",
+      "name": "Rails Add Mult",
+      "intro": {
+        "title": "Table 3 · Rails Add Mult",
+        "sub": "Every rail the cue ball touches before a ball drops adds Mult. Bank one in."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": 6.4,
+          "z": 1.8
+        },
+        {
+          "number": 2,
+          "x": -6.4,
+          "z": 1.8
+        },
+        {
+          "number": 8,
+          "x": -6.5,
+          "z": -13.5
+        }
+      ],
+      "strokes": 5,
+      "target": 300,
+      "obstacles": [
+        {
+          "type": "box",
+          "x": 0,
+          "z": -3.5,
+          "hw": 4.5,
+          "hh": 0.4
+        }
+      ],
+      "shop": [
+        "doubles",
+        "kiss-chase",
+        "opening-break",
+        "extra-life"
+      ]
+    },
+    {
+      "id": "two-at-once",
+      "name": "Two in One Shot",
+      "intro": {
+        "title": "Table 4 · Two in One Shot",
+        "sub": "Two down in one shot pays big, and saves a shot."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -4.2,
+          "z": 0.7
+        },
+        {
+          "number": 2,
+          "x": -6.2,
+          "z": 0.7
+        },
+        {
+          "number": 3,
+          "x": 6.3,
+          "z": -12.7
+        },
+        {
+          "number": 8,
+          "x": -6.0,
+          "z": -12.6
+        }
+      ],
+      "strokes": 4,
+      "target": 350,
+      "shop": [
+        "prism",
+        "corner-office",
+        "side-hustle",
+        "freeze-charge"
+      ]
+    },
+    {
+      "id": "pay-twice",
+      "name": "Orange Ring Pays ×2",
+      "intro": {
+        "title": "Table 5 · Orange Ring Pays ×2",
+        "sub": "The orange ring comes back every shot. Roll through it before a ball drops: that shot pays double."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": 6.6,
+          "z": 1.5
+        },
+        {
+          "number": 2,
+          "x": -6.4,
+          "z": 1.6
+        },
+        {
+          "number": 3,
+          "x": -6.3,
+          "z": -12.8
+        },
+        {
+          "number": 8,
+          "x": 6.0,
+          "z": -12.6
+        }
+      ],
+      "strokes": 5,
+      "target": 400,
+      "objects": [
+        {
+          "kind": "double",
+          "x": 0.0,
+          "z": 3.0
+        }
+      ]
+    },
+    {
+      "id": "live-lane",
+      "name": "Mines Void a Shot",
+      "intro": {
+        "title": "Table 6 · Mines Void a Shot",
+        "sub": "Red is a mine. Roll over it and the shot pays nothing. Go around."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": 6.6,
+          "z": 1.5
+        },
+        {
+          "number": 2,
+          "x": -6.4,
+          "z": 1.6
+        },
+        {
+          "number": 3,
+          "x": -6.3,
+          "z": -12.8
+        },
+        {
+          "number": 8,
+          "x": 6.0,
+          "z": -12.6
+        }
+      ],
+      "strokes": 5,
+      "target": 450,
+      "objects": [
+        {
+          "kind": "mine",
+          "x": 3.0,
+          "z": 4.2
+        },
+        {
+          "kind": "mine",
+          "x": -2.8,
+          "z": -4.0
+        },
+        {
+          "kind": "double",
+          "x": -3.4,
+          "z": 4.0
+        }
+      ]
+    },
+    {
+      "id": "the-freeze",
+      "name": "Tap to Freeze",
+      "intro": {
+        "title": "Table 7 · Tap to Freeze",
+        "sub": "Pick up the ice, then tap FREEZE while the table moves to stop it and aim again."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -6.6,
+          "z": 1.5
+        },
+        {
+          "number": 2,
+          "x": 6.4,
+          "z": 1.6
+        },
+        {
+          "number": 3,
+          "x": 6.0,
+          "z": -12.6
+        },
+        {
+          "number": 8,
+          "x": -6.2,
+          "z": -12.7
+        }
+      ],
+      "strokes": 5,
+      "target": 450,
+      "objects": [
+        {
+          "kind": "freeze",
+          "x": -3.0,
+          "z": 4.2
+        },
+        {
+          "kind": "mine",
+          "x": 0.0,
+          "z": -6.0
+        }
+      ]
+    },
+    {
+      "id": "through-the-ring",
+      "name": "Rings Teleport",
+      "intro": {
+        "title": "Table 8 · Rings Teleport",
+        "sub": "A ball into one ring comes out of the other. Same speed, same heading."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": 4.5,
+          "z": 1.5
+        },
+        {
+          "number": 2,
+          "x": -4.5,
+          "z": -1.0
+        },
+        {
+          "number": 3,
+          "x": -6.0,
+          "z": -8.0
+        },
+        {
+          "number": 4,
+          "x": 6.0,
+          "z": -12.6
+        },
+        {
+          "number": 8,
+          "x": 0.0,
+          "z": -9.0
+        }
+      ],
+      "strokes": 6,
+      "target": 500,
+      "obstacles": [
+        {
+          "type": "box",
+          "x": -6.4,
+          "z": -4.5,
+          "hw": 2.6,
+          "hh": 0.95
+        },
+        {
+          "type": "box",
+          "x": 6.4,
+          "z": -4.5,
+          "hw": 2.6,
+          "hh": 0.95
+        }
+      ],
+      "portals": [
+        {
+          "a": {
+            "x": -5.6,
+            "z": 5.4
+          },
+          "b": {
+            "x": 5.6,
+            "z": -9.6
+          }
+        }
+      ]
+    },
+    {
+      "id": "bumpers",
+      "name": "Bumpers and Free Shots",
+      "intro": {
+        "title": "Table 9 · Bumpers and Free Shots",
+        "sub": "Bumpers kick back harder than a rail. The green ring with a + is a free extra shot."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -3.0,
+          "z": 1.0
+        },
+        {
+          "number": 2,
+          "x": 3.4,
+          "z": -4.0
+        },
+        {
+          "number": 3,
+          "x": -3.4,
+          "z": -9.0
+        },
+        {
+          "number": 4,
+          "x": 5.0,
+          "z": -11.0
+        },
+        {
+          "number": 8,
+          "x": -6.6,
+          "z": -12.5
+        }
+      ],
+      "strokes": 5,
+      "target": 500,
+      "obstacles": [
+        {
+          "type": "circle",
+          "x": 0,
+          "z": -6.5,
+          "radius": 1.4,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": -5.8,
+          "z": -2,
+          "radius": 1.05,
+          "kind": "bumper"
+        },
+        {
+          "type": "circle",
+          "x": 5.8,
+          "z": -2,
+          "radius": 1.05,
+          "kind": "bumper"
+        }
+      ],
+      "objects": [
+        {
+          "kind": "shot",
+          "x": 0,
+          "z": 1.6
+        }
+      ]
+    },
+    {
+      "id": "last-word",
+      "name": "The 8 Goes Last",
+      "intro": {
+        "title": "Table 10 · The 8 Goes Last",
+        "sub": "Sink every other ball first. Knock the 8 in early and it comes straight back."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -5.0,
+          "z": 2.0
+        },
+        {
+          "number": 2,
+          "x": 3.0,
+          "z": -5.0
+        },
+        {
+          "number": 3,
+          "x": -4.0,
+          "z": -9.5
+        },
+        {
+          "number": 4,
+          "x": 2.0,
+          "z": -12.0
+        },
+        {
+          "number": 8,
+          "x": 6.6,
+          "z": -0.8
+        }
+      ],
+      "strokes": 5,
+      "target": 550,
+      "eightLast": true,
+      "objects": [
+        {
+          "kind": "double",
+          "x": -2.6,
+          "z": 4.2
+        }
+      ]
+    },
+    {
+      "id": "one-short",
+      "name": "Two in One, 8 Last",
+      "intro": {
+        "title": "Table 11 · Two in One, 8 Last",
+        "sub": "One shot short: you'll need two down in one shot. Sink the 8 last."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -4.2,
+          "z": 0.7
+        },
+        {
+          "number": 2,
+          "x": -6.2,
+          "z": 0.7
+        },
+        {
+          "number": 3,
+          "x": 4.2,
+          "z": 0.7
+        },
+        {
+          "number": 4,
+          "x": 6.2,
+          "z": 0.7
+        },
+        {
+          "number": 8,
+          "x": 0.0,
+          "z": -12.6
+        }
+      ],
+      "strokes": 4,
+      "target": 600,
+      "eightLast": true,
+      "objects": [
+        {
+          "kind": "double",
+          "x": 0.0,
+          "z": -4.0
+        }
+      ]
+    },
+    {
+      "id": "final-table",
+      "name": "Everything, 8 Last",
+      "intro": {
+        "title": "Table 12 · Everything, 8 Last",
+        "sub": "Everything you've learned, on one table. The 8 goes last."
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": 5.5,
+          "z": 1.5
+        },
+        {
+          "number": 2,
+          "x": -5.5,
+          "z": -0.5
+        },
+        {
+          "number": 3,
+          "x": 3.5,
+          "z": -6.0
+        },
+        {
+          "number": 4,
+          "x": -4.0,
+          "z": -8.5
+        },
+        {
+          "number": 5,
+          "x": 5.0,
+          "z": -11.5
+        },
+        {
+          "number": 8,
+          "x": -6.5,
+          "z": -13.5
+        }
+      ],
+      "strokes": 7,
+      "target": 625,
+      "eightLast": true,
+      "obstacles": [
+        {
+          "type": "circle",
+          "x": 0,
+          "z": -3.2,
+          "radius": 1.2,
+          "kind": "bumper"
+        }
+      ],
+      "objects": [
+        {
+          "kind": "double",
+          "x": -3.0,
+          "z": 3.2
+        },
+        {
+          "kind": "mine",
+          "x": 2.6,
+          "z": -1.8
+        }
+      ],
+      "portals": [
+        {
+          "a": {
+            "x": -6.4,
+            "z": 5.6
+          },
+          "b": {
+            "x": 6.2,
+            "z": -8.4
+          }
+        }
+      ]
+    }
+  ]
+}

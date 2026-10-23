@@ -76,9 +76,12 @@ try {
   await page.click('#btn-play');
   await wait(2400);
   await page.mouse.click(215, 430); // the room banner holds until it is read
-  // A room opens mid-resolve — the menu hands over while its attract stroke is
-  // still rolling — and nothing can be aimed until the table is still.
-  for (let i = 0; i < 40; i += 1) {
+  // The tap that dismisses the banner is also a release, and every release
+  // fires (InputManager), so the room can open on a soft shot still rolling.
+  // Nothing can be aimed until the table is still. Since the score presenter
+  // landed, a stroke that scores runs in slow motion while each number
+  // presents, so the wait is sized to a presented stroke, not a bare one.
+  for (let i = 0; i < 160; i += 1) {
     if ((await page.evaluate(() => window.__game.phase)) === 'aim') break;
     await wait(250);
   }

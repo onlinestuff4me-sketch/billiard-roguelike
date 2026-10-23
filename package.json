@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.4.0",
   "type": "module",
-  "description": "Real-time kinetic billiards meets boon-stacking action roguelike. Portrait (9:16) mobile web prototype built with Vite + Three.js.",
+  "description": "Lightline: Billiard Roguelike. Trick-shot billiards with Points × Mult scoring and a roguelike on top. Portrait (9:16) mobile web, Vite + Three.js.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

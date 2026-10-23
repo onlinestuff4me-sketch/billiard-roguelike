@@ -288,6 +288,260 @@ class TrailRibbon {
  *   3. carom deflection cone off the first body struck
  * ------------------------------------------------------------------ */
 
+/**
+ * THE CUE, AS A STICK.
+ *
+ * A full-length tapered cue drawn ABOVE the rails, so it carries on past the
+ * table's edge the way a real cue does (and the way 8 Ball Pool draws one):
+ * the thing in your hand is longer than the table is wide. Lightline style: a
+ * dark shaft with lit cyan edges, a white ferrule at the tip and two light
+ * bands at the butt. Under it, a flat stylised shadow falls across the felt
+ * and the rail, offset as if lit from the top left — weight you can see.
+ *
+ * Rebuilt every frame from (tip, direction), as one of three looks
+ * (TRAJECTORY.stickLook): rod, classic or hardlight.
+ */
+class CueStick {
+  constructor(parent) {
+    this.group = new THREE.Group();
+    this.group.renderOrder = 6;
+    parent.add(this.group);
+    const QUADS = 28;
+    this.QUADS = QUADS;
+    const make = (count, vertexColors, opacity, order) => {
+      const positions = new Float32Array(count * 4 * 3);
+      const colors = new Float32Array(count * 4 * 3);
+      const index = new Uint16Array(count * 6);
+      for (let q = 0; q < count; q += 1) {
+        const v = q * 4;
+        index.set([v, v + 1, v + 2, v, v + 2, v + 3], q * 6);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      if (vertexColors) geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geo.setIndex(new THREE.BufferAttribute(index, 1));
+      const mat = new THREE.MeshBasicMaterial({
+        color: vertexColors ? 0xffffff : 0x000000,
+        vertexColors,
+        transparent: true,
+        opacity,
+        depthTest: false,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = order;
+      this.group.add(mesh);
+      return { positions, colors, geo, mat, mesh };
+    };
+    // Two shadow layers (a soft wide one and a firmer core), then the stick.
+    this.shadowSoft = make(1, false, 0.3, 5);
+    this.shadow = make(1, false, 0.62, 5);
+    this.body = make(QUADS, true, 1, 7);
+    // The smear: on the strike, a streak of light over the ground the stick
+    // just covered, the one-frame blur an animator would draw.
+    this.smear = make(1, false, 0, 6);
+    this.smear.mat.color.set(PALETTE.player);
+    this.smear.mat.blending = THREE.AdditiveBlending;
+    this.smear.mesh.visible = false;
+    this.group.visible = false;
+    this._c = new THREE.Color();
+    this._hot = new THREE.Color(PALETTE.scoreMult ?? 0xff8a1e);
+    this._white = new THREE.Color(0xffffff);
+    this._look = null;
+  }
+
+  /**
+   * THE LOOKS. Each is a list of quads along the stick: [d0, d1, f0, f1, hex]
+   * runs from d0 to d1 units back from the tip, and across from f0 to f1 of
+   * the half-width at that point (-1 is one edge, 1 the other). Lengths ending
+   * in 'L' are fractions of the stick's length.
+   */
+  static quads(look, L, ferrule) {
+    const Q = [];
+    const at = (v) => (typeof v === 'string' ? parseFloat(v) * L : v);
+    const q = (d0, d1, f0, f1, hex, mul = 0) => Q.push([at(d0), at(d1), f0, f1, hex, mul]);
+    if (look === 'classic') {
+      // A real cue: maple shaft shaded round, white ferrule, blue tip, a cyan
+      // joint ring, an ebony butt with inlay bands, a black bumper.
+      q(ferrule, '0.56L', -1, 1, 0xc9a46b);
+      q(ferrule, '0.56L', -1, -0.45, 0x9c7a46);
+      q(ferrule, '0.56L', 0.15, 0.42, 0xf1dcae);
+      q(0.06, ferrule, -1, 1, 0xf3f1ea);
+      q(0, 0.06, -1, 1, 0x3d7fe0);
+      q('0.56L', '0.575L', -1, 1, PALETTE.player);
+      q('0.575L', L - 0.28, -1, 1, 0x3b2a20);
+      q('0.575L', L - 0.28, -1, -0.5, 0x26190f);
+      q('0.575L', L - 0.28, 0.1, 0.4, 0x6a4e3b);
+      for (const f of [0.66, 0.78, 0.9]) q(`${f}L`, `${f + 0.012}L`, -0.9, 0.9, 0xb8c8d0);
+      q('0.6L', '0.64L', -0.25, 0.25, PALETTE.player);
+      q(L - 0.28, L, -1, 1, 0x101012);
+    } else if (look === 'hardlight') {
+      // Light, not wood: a faint fill, segmented edges like a light-cycle's
+      // wall, a white-hot core, and an emitter at the tip.
+      q(0, L, -1, 1, 0x0a3a50);
+      const seg = 1.5;
+      const gap = 0.22;
+      for (let d = 0.4; d < L - 0.2; d += seg + gap) {
+        const e = Math.min(L - 0.2, d + seg);
+        q(d, e, -1, -0.66, PALETTE.player);
+        q(d, e, 0.66, 1, PALETTE.player);
+      }
+      q(0.4, '0.8L', -0.1, 0.1, 0xd9feff);
+      q(0, 0.4, -1, 1, 0xffffff);
+      q(L - 0.2, L, -1, 1, PALETTE.player);
+    } else {
+      // ROD, the first one built: dark steel, lit cyan edges, a lit streak,
+      // two bands at the butt and a dark cap.
+      q(ferrule, L, -1, 1, TRAJECTORY.stickShaft);
+      q(0, ferrule, -1, 1, PALETTE.bone);
+      q(ferrule, L, -1, -0.8, PALETTE.player, 0.75);
+      q(ferrule, L, 0.8, 1, PALETTE.player, 0.75);
+      q(L * 0.7, L * 0.7 + 0.16, -1, 1, PALETTE.player);
+      q(L * 0.7 + 0.32, L * 0.7 + 0.48, -1, 1, PALETTE.player);
+      q(L - 0.5, L, -1, 1, TRAJECTORY.stickButt);
+      q(ferrule + 0.1, '0.66L', -0.18, 0.18, TRAJECTORY.stickShine);
+    }
+    return Q;
+  }
+
+  /**
+   * @param {number} tx,tz  the tip, on the table
+   * @param {number} ux,uz  the shot direction (the stick points back along -u)
+   * @param {{len:number, tipLit:boolean, opacity:number, heat?:number,
+   *          widthScale?:number, jitter?:number}} o
+   *   heat 0..1 crawls a glow from the butt to the tip (1 is fully lit);
+   *   widthScale thins the stick (the pierce strike); jitter shakes it sideways
+   */
+  set(tx, tz, ux, uz, o) {
+    const look = TRAJECTORY.stickLook || 'rod';
+    if (look !== this._look) {
+      this._look = look;
+      this.body.mat.blending = look === 'hardlight' ? THREE.AdditiveBlending : THREE.NormalBlending;
+      this.body.mat.needsUpdate = true;
+    }
+    const y = TRAJECTORY.stickHeight;
+    const L = o.len;
+    const nx = -uz;
+    const nz = ux;
+    const ws = o.widthScale ?? 1;
+    const w0 = TRAJECTORY.stickWidth * 0.55 * ws;
+    const w1 = TRAJECTORY.stickWidth * 1.9 * ws;
+    const wAt = (d) => w0 + (w1 - w0) * (Math.max(0, d) / L);
+    const j = o.jitter || 0;
+    tx += nx * j;
+    tz += nz * j;
+    const ferrule = 0.32;
+    const quads = CueStick.quads(look, L, ferrule);
+    const heat = o.heat || 0;
+    const b = this.body;
+    const p = b.positions;
+    const col = b.colors;
+    const c = this._c;
+    for (let qi = 0; qi < this.QUADS; qi += 1) {
+      const spec = quads[qi];
+      if (!spec || spec[0] === spec[1]) {
+        for (let i = 0; i < 12; i += 1) p[qi * 12 + i] = 0;
+        continue;
+      }
+      const [d0, d1, f0, f1, hex] = spec;
+      const pts = [
+        [d0, f0 * wAt(d0)],
+        [d1, f0 * wAt(d1)],
+        [d1, f1 * wAt(d1)],
+        [d0, f1 * wAt(d0)]
+      ];
+      c.setHex(hex);
+      if (spec[5]) c.multiplyScalar(spec[5]);
+      // the tip lights at full power, whatever the look
+      if (o.tipLit && d1 <= ferrule + 0.01) c.lerp(this._white, 0.6);
+      // HEAT crawls from the butt to the tip: a quad warms once the front
+      // passes its middle, and a fully heated stick burns toward white.
+      if (heat > 0) {
+        const mid = (d0 + d1) / 2 / L;
+        const h = Math.min(1, Math.max(0, (heat * 1.25 - (1 - mid)) * 3));
+        if (h > 0) c.lerp(this._hot, h * 0.6);
+        if (heat >= 1) c.lerp(this._white, 0.08);
+      }
+      for (let i = 0; i < 4; i += 1) {
+        const [d, s] = pts[i];
+        const o3 = (qi * 4 + i) * 3;
+        p[o3] = tx - ux * d + nx * s;
+        p[o3 + 1] = y;
+        p[o3 + 2] = tz - uz * d + nz * s;
+        col[o3] = c.r;
+        col[o3 + 1] = c.g;
+        col[o3 + 2] = c.b;
+      }
+    }
+    // the tip's halo at full power
+    if (o.tipLit) {
+      const qi = this.QUADS - 1;
+      const g = 0.22;
+      const pts = [[-g, -w0 - g], [ferrule * 0.6, -w0 - g], [ferrule * 0.6, w0 + g], [-g, w0 + g]];
+      c.setHex(PALETTE.playerCore);
+      pts.forEach(([d, s], i) => {
+        const o3 = (qi * 4 + i) * 3;
+        p[o3] = tx - ux * d + nx * s;
+        p[o3 + 1] = y;
+        p[o3 + 2] = tz - uz * d + nz * s;
+        col[o3] = c.r;
+        col[o3 + 1] = c.g;
+        col[o3 + 2] = c.b;
+      });
+    }
+    b.geo.attributes.position.needsUpdate = true;
+    b.geo.attributes.color.needsUpdate = true;
+    b.mat.opacity = o.opacity;
+
+    // The shadow: the whole stick, offset down and to the right. Light casts
+    // only a faint one.
+    const sx = TRAJECTORY.stickShadow[0];
+    const sz = TRAJECTORY.stickShadow[1];
+    const shade = look === 'hardlight' ? 0.4 : 1;
+    const flat = (buf, d0, d1, a0, a1, b0, b1, ox, oz) => {
+      const pts = [[d0, a0], [d1, b0], [d1, b1], [d0, a1]];
+      pts.forEach(([d, s], i) => {
+        buf.positions.set([tx - ux * d + nx * s + ox, y, tz - uz * d + nz * s + oz], i * 3);
+      });
+      buf.geo.attributes.position.needsUpdate = true;
+    };
+    flat(this.shadow, 0, L, -w0, w0, -w1, w1, sx, sz);
+    flat(this.shadowSoft, -0.1, L + 0.2, -w0 - 0.14, w0 + 0.14, -w1 - 0.2, w1 + 0.2, sx * 1.25, sz * 1.25);
+    this.shadow.mat.opacity = 0.62 * o.opacity * shade;
+    this.shadowSoft.mat.opacity = 0.3 * o.opacity * shade;
+    this.group.visible = true;
+  }
+
+  /** A point `d` units back from the tip of the stick as last drawn. */
+  pointAt(tx, tz, ux, uz, d) {
+    return { x: tx - ux * d, z: tz - uz * d };
+  }
+
+  /** A streak from `from` to `to` units behind the ball along -u (0 hides it). */
+  setSmear(bx, bz, ux, uz, from, to, opacity) {
+    const m = this.smear;
+    m.mesh.visible = opacity > 0 && from > to;
+    if (!m.mesh.visible) return;
+    const y = TRAJECTORY.stickHeight - 0.01;
+    const nx = -uz;
+    const nz = ux;
+    const w = TRAJECTORY.stickWidth * 0.75;
+    const pts = [[to, -w * 0.6], [from, -w * 1.4], [from, w * 1.4], [to, w * 0.6]];
+    pts.forEach(([d, sx], i) => {
+      m.positions.set([bx - ux * d + nx * sx, y, bz - uz * d + nz * sx], i * 3);
+    });
+    m.geo.attributes.position.needsUpdate = true;
+    m.mat.opacity = opacity;
+  }
+
+  hide() {
+    this.group.visible = false;
+    this.smear.mesh.visible = false;
+  }
+}
+
 class AimRenderer {
   constructor() {
     this.group = new THREE.Group();
@@ -325,6 +579,59 @@ class AimRenderer {
     this.beam = new THREE.Mesh(this.beamGeo, this.beamMat);
     this.beam.frustumCulled = false;
     this.group.add(this.beam);
+
+    // 0b. THE QUIETER AIM STYLES (TRAJECTORY.aimStyle).
+    //
+    // The beam does two jobs: it is the first leg of the shot, and it is the
+    // only thing that says how hard you are pulling, by swelling to nearly two
+    // ball-widths of additive light. That made it the brightest object on the
+    // table while the player is reading everything else on it. The other
+    // styles draw the first leg like every other predicted line and move the
+    // power read somewhere it does not cover the felt:
+    //   slim  — a ring around the cue ball that fills as the draw grows
+    //   pulse — a spark that runs the first leg, faster the harder you pull,
+    //           flaring the ghost ball each time it arrives
+    // Both spend the brightness the beam used to spend on the RELEASE instead:
+    // a beam that fires down the line once, as the shot is taken.
+    this.lead = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 });
+    this.gaugeTrack = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.16 }, 48);
+    this.gauge = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 }, 48);
+    this.comet = new Ribbon(this.group, { color: PALETTE.playerCore, opacity: 0.95 }, 8);
+    // cue — the stick itself, behind the ball, drawn back as far as the
+    // thumb has pulled. What 8 Ball Pool and the golf games do: power is
+    // shown behind the ball, never on the line ahead of it.
+    this.stick = new Ribbon(this.group, { color: PALETTE.bone, opacity: 0.85 }, 8);
+    this.stickTip = new Ribbon(this.group, { color: PALETTE.aim, opacity: 0.95 }, 8);
+    // THE STICK COMES BACK IN LIGHT (from review: it reappeared abruptly). A
+    // line of light shoots out from the ball along where the stick will lie,
+    // and the stick fills in along it. Every time it returns: after a shot,
+    // after a freeze, at the start of a table.
+    this.beamIn = new Ribbon(this.group, { color: PALETTE.aim, opacity: 1 }, 8);
+    this.beamIn.mat.blending = THREE.AdditiveBlending;
+    /** seconds into the stick's return, or null once it is fully back */
+    this.revealT = 0;
+    this.comet.mat.blending = THREE.AdditiveBlending;
+    this.cometPhase = 0;
+    this._lastShow = 0;
+
+    // The release flash lives outside the aim group, because a launch hides
+    // the aim and the flash is what plays after it.
+    this.fxGroup = new THREE.Group();
+    this.fxGroup.renderOrder = 3;
+    this.flash = new Ribbon(this.fxGroup, { color: PALETTE.aim, opacity: 1 }, 8);
+    this.flash.mat.blending = THREE.AdditiveBlending;
+    this.flashCore = new Ribbon(this.fxGroup, { color: PALETTE.playerCore, opacity: 1 }, 8);
+    this.flashCore.mat.blending = THREE.AdditiveBlending;
+    this.cue = new CueStick(this.fxGroup);
+    this.cueState = null;
+    this.strike = null;
+    /** Seconds since a 'lock' max-power moment fired (null when idle). */
+    this.lockT = null;
+    this.sparkT = 0;
+    /** Hooks main.js fills: the stick reaching the ball, and a spark off a hot stick. */
+    this.onContact = null;
+    this.onSpark = null;
+    this.flashState = null;
 
     // 1. Primary path.
     this.primaryPositions = new Float32Array(6);
@@ -550,6 +857,204 @@ class AimRenderer {
 
   hide() {
     this.group.visible = false;
+    if (!this.strike) {
+      this.cue.hide();
+      this.cueState = null;
+      // the next time it is drawn, it comes back in light (or fades in under
+      // the thumb)
+      this.revealT = 0;
+      this.heldFade = 0;
+    }
+    this.beamIn.hide();
+  }
+
+  /**
+   * How far into its return the stick is: the beam's length and glow, and the
+   * stick's own opacity. `TRAJECTORY.stickReveal` is [beam, fill] seconds.
+   */
+  _reveal(dt) {
+    if (this.revealT == null) return { beam: 0, glow: 0, stick: 1 };
+    const [tb, tf] = TRAJECTORY.stickReveal || [0.22, 0.3];
+    // the first frame back carries the time it was hidden; it starts from zero
+    this.revealT += this.revealT === 0 ? 0.0001 : dt;
+    const t = this.revealT;
+    if (t >= tb + tf) {
+      this.revealT = null;
+      return { beam: 0, glow: 0, stick: 1 };
+    }
+    if (t < tb) {
+      const u = t / tb;
+      return { beam: 1 - Math.pow(1 - u, 3), glow: 1, stick: 0 };
+    }
+    const u = (t - tb) / tf;
+    return { beam: 1, glow: 1 - u, stick: u * u * (3 - 2 * u) };
+  }
+
+  /**
+   * THE POWER RING around the cue ball: centred on the shot's direction, it
+   * opens both ways as the thumb pulls back and closes completely at full
+   * power, where it FLASHES once — a quick swell of white light — and then
+   * stays white for as long as the draw is held there.
+   */
+  _ring(player, ux, uz, t, y, now) {
+    const r = player.radius + TRAJECTORY.gaugeGap;
+    const base = Math.atan2(uz, ux);
+    const full = t >= TRAJECTORY.fullDraw;
+    if (full && !this._ringFull) this._ringFlashAt = now;
+    this._ringFull = full;
+    const since = full ? now - (this._ringFlashAt || 0) : 1;
+    // The flash: a hard swell that eases out over a third of a second...
+    const flash = since < 0.35 ? Math.pow(1 - since / 0.35, 2) : 0;
+    // ...and then a slow breath for as long as full power is held.
+    const breath = full ? 0.5 + 0.5 * Math.sin(now * 9) : 0;
+    const arc = (from, to, n, radius) => {
+      const segs = [];
+      for (let i = 0; i < n; i += 1) {
+        const a0 = from + ((to - from) * i) / n;
+        const a1 = from + ((to - from) * (i + 1)) / n;
+        segs.push({
+          ax: player.x + Math.cos(a0) * radius,
+          az: player.z + Math.sin(a0) * radius,
+          bx: player.x + Math.cos(a1) * radius,
+          bz: player.z + Math.sin(a1) * radius
+        });
+      }
+      return segs;
+    };
+    this.gaugeTrack.set(arc(0, Math.PI * 2, 40, r), { y, width: TRAJECTORY.gaugeWidth * 0.7, opacity: 0.16 });
+    const half = Math.max(0.04, t) * Math.PI;
+    this.gauge.set(arc(base - half, base + half, Math.max(2, Math.round(40 * t)), r * (1 + 0.32 * flash)), {
+      y,
+      width: TRAJECTORY.gaugeWidth * (full ? 1.5 + 0.35 * breath + 3.5 * flash : 1),
+      color: full ? PALETTE.playerCore : PALETTE.aim,
+      opacity: 0.95
+    });
+  }
+
+  /**
+   * THE RELEASE. In the quiet styles the brightness the beam used to spend
+   * on aiming is spent here instead: a beam that fires down the first leg in
+   * a tenth of a second and fades, as the shot is taken.
+   */
+  fire(segment, power) {
+    if ((TRAJECTORY.aimStyle || 'beam') === 'beam' || !segment) return;
+    this.flashState = { s: segment, power, t: 0 };
+    // THE STRIKE: the stick snaps forward through where the ball was, then
+    // fades. The ball is already moving; the stick is the reason it is.
+    if (this.cueState && TRAJECTORY.aimStyle === 'cue') {
+      this.strike = { ...this.cueState, t: 0, power, contacted: false, style: TRAJECTORY.strikeStyle || 'snap' };
+    }
+    this.lockT = null;
+  }
+
+  /** Full power was just reached. */
+  maxed() {
+    if ((TRAJECTORY.maxStyle || 'flash') === 'lock') this.lockT = 0;
+  }
+
+  /** Per frame, on real time: the release flash. */
+  tick(rawDt) {
+    if (this.lockT != null) {
+      this.lockT += rawDt;
+      if (this.lockT > 0.5) this.lockT = null;
+    }
+    // Sparks shed by a burning stick, while it is held at full power.
+    const cs = this.cueState;
+    if (cs && cs.full && !this.strike && (TRAJECTORY.maxStyle || 'flash') === 'ignite' && this.onSpark) {
+      this.sparkT += rawDt;
+      while (this.sparkT > 0.045) {
+        this.sparkT -= 0.045;
+        const d = cs.gap + 0.6 + Math.random() * TRAJECTORY.stickLength * 0.55;
+        this.onSpark(cs.bx - cs.ux * d, cs.bz - cs.uz * d);
+      }
+    }
+    const k = this.strike;
+    if (k) {
+      k.t += rawDt;
+      // THE STRIKE. Every style opens with the snap (accelerating: the stick
+      // is thrown, not slid); what happens at the ball is the style.
+      //   snap    follow through past the ball, then ease back as it fades
+      //   impact  bounce off the ball, hard, as the table freezes on contact
+      //   pierce  carry on through as a bolt of light, thinning to nothing
+      const snap = TRAJECTORY.stickStrike;
+      const contact = k.r * 0.2;
+      let gap;
+      let fade = 1;
+      let widthScale = 1;
+      if (k.t <= snap) {
+        const u = k.t / snap;
+        gap = k.gap + (contact - k.gap) * u * u;
+      } else {
+        if (!k.contacted) {
+          k.contacted = true;
+          this.onContact?.({ x: k.bx, z: k.bz, ux: k.ux, uz: k.uz, full: k.full, power: k.power, style: k.style });
+        }
+        const t = k.t - snap;
+        if (k.style === 'impact') {
+          const rec = 0.16;
+          if (t <= rec) {
+            const u = t / rec;
+            gap = contact + 1.3 * (1 - Math.pow(1 - u, 3));
+          } else {
+            const u = Math.min(1, (t - rec) / 0.26);
+            gap = contact + 1.3 + 0.25 * u;
+            fade = 1 - u;
+          }
+        } else if (k.style === 'pierce') {
+          const u = Math.min(1, t / 0.2);
+          gap = contact - 7 * Math.pow(u, 0.6);
+          widthScale = 1 - 0.85 * u;
+          fade = 1 - u * u;
+        } else {
+          const through = 0.09;
+          if (t <= through) {
+            const u = t / through;
+            gap = contact - 0.45 * (1 - (1 - u) * (1 - u));
+          } else {
+            const u = Math.min(1, (t - through) / 0.3);
+            gap = contact - 0.45 + 0.35 * u * u;
+            fade = 1 - u;
+          }
+        }
+      }
+      if (fade <= 0) {
+        this.strike = null;
+        this.cue.hide();
+        this.cueState = null;
+      } else {
+        this.cue.set(k.bx - k.ux * gap, k.bz - k.uz * gap, k.ux, k.uz, {
+          len: TRAJECTORY.stickLength,
+          tipLit: k.full,
+          opacity: fade,
+          heat: k.heat || 0,
+          widthScale
+        });
+        // the smear covers the snap, and is gone a beat after contact
+        const after = Math.max(0, k.t - snap);
+        const sm = Math.max(0, 1 - after / (k.style === 'pierce' ? 0.2 : 0.12));
+        this.cue.setSmear(k.bx, k.bz, k.ux, k.uz, k.gap + 1.2, gap, sm * (k.full ? 0.55 : 0.35));
+      }
+    }
+    const f = this.flashState;
+    if (!f) return;
+    f.t += rawDt;
+    const life = TRAJECTORY.releaseFlash;
+    if (f.t >= life) {
+      this.flash.hide();
+      this.flashCore.hide();
+      this.flashState = null;
+      return;
+    }
+    const s = f.s;
+    const dx = s.bx - s.ax;
+    const dz = s.bz - s.az;
+    const reach = Math.min(1, f.t / 0.09);
+    const fade = 1 - Math.max(0, (f.t - 0.09) / (life - 0.09));
+    const seg = [{ ax: s.ax, az: s.az, bx: s.ax + dx * reach, bz: s.az + dz * reach }];
+    const width = TRAJECTORY.beamWidth + (TRAJECTORY.beamWidthMax - TRAJECTORY.beamWidth) * f.power;
+    // A soft body and a white-hot core: a shot of light, not a bar.
+    this.flash.set(seg, { y: 0.14, width, color: PALETTE.aim, opacity: 0.45 * fade });
+    this.flashCore.set(seg, { y: 0.15, width: width * 0.28, color: PALETTE.playerCore, opacity: fade });
   }
 
   /**
@@ -563,8 +1068,124 @@ class AimRenderer {
     const y = 0.12;
     const segments = prediction.segments;
 
+    const style = TRAJECTORY.aimStyle || 'beam';
+    const quiet = style !== 'beam';
+    const now = performance.now() / 1000;
+    const frameDt = Math.min(0.1, Math.max(0, now - (this._lastShow || now)));
+    this._lastShow = now;
+    this.markerFlare = 0;
+
+    // --- the quiet styles: a line, and the power read off the felt ---
+    if (quiet && segments.length > 0) {
+      const s = segments[0];
+      const dx = s.bx - s.ax;
+      const dz = s.bz - s.az;
+      const L = Math.hypot(dx, dz) || 1;
+      const ux = dx / L;
+      const uz = dz / L;
+      this.lead.set([s], { y, width: TRAJECTORY.leadWidth, color: PALETTE.aim, opacity: 0.6 + 0.35 * power });
+
+      if (style !== 'cue' && !this.strike) {
+        this.cue.hide();
+        this.cueState = null;
+      }
+      if (style === 'slim') {
+        this._ring(player, ux, uz, charge, y, now);
+        this.comet.hide();
+        this.stick.hide();
+        this.stickTip.hide();
+      } else if (style === 'cue') {
+        this.comet.hide();
+        this._ring(player, ux, uz, charge, y, now);
+        // THE STICK MOVES WITH THE THUMB, ONE FOR ONE. `charge` is how far the
+        // thumb has travelled across the pad (0 to 1), and `stickTravel` is
+        // that same travel in table units, so a centimetre of thumb is a
+        // centimetre of cue. At full power the tip lights.
+        let gap = player.radius + 0.2 + TRAJECTORY.stickTravel * charge;
+        const full = charge >= TRAJECTORY.fullDraw;
+        const maxStyle = TRAJECTORY.maxStyle || 'flash';
+        // IGNITE: heat crawls up the stick from the butt as you pull, and at
+        // full power the whole cue burns and trembles.
+        let heat = 0;
+        let jitter = 0;
+        if (maxStyle === 'ignite') {
+          heat = full ? 1 : Math.max(0, Math.min(1, (charge - 0.4) / (TRAJECTORY.fullDraw - 0.4)));
+          if (full) jitter = Math.sin(now * 57) * 0.03 + Math.sin(now * 96) * 0.02;
+        }
+        // LOCK: at full power the stick kicks back a little further and
+        // settles, like a mechanism catching.
+        if (maxStyle === 'lock' && this.lockT != null) {
+          const u = Math.min(1, this.lockT / 0.32);
+          gap += 0.55 * Math.sin(Math.PI * Math.min(1, u * 1.6)) * (1 - u);
+        }
+        this.stick.hide();
+        this.stickTip.hide();
+        if (!this.strike) {
+          let R;
+          if ((TRAJECTORY.stickShow || 'rest') === 'drag') {
+            // THE STICK IS UNDER THE THUMB (from review, after Ultrapool): it
+            // fades in as you press and out when you let go without shooting.
+            const step = Math.min(frameDt, 1 / 30) / (TRAJECTORY.stickFade || 0.16);
+            const want = context.held ? 1 : 0;
+            const f = this.heldFade ?? 0;
+            this.heldFade = want > f ? Math.min(1, f + step) : Math.max(0, f - step);
+            R = { beam: 0, glow: 0, stick: this.heldFade * this.heldFade * (3 - 2 * this.heldFade) };
+          } else {
+            R = this._reveal(frameDt);
+          }
+          const tx = player.x - ux * gap;
+          const tz = player.z - uz * gap;
+          if (R.stick > 0) {
+            this.cue.set(tx, tz, ux, uz, {
+              len: TRAJECTORY.stickLength,
+              tipLit: full,
+              opacity: R.stick,
+              heat,
+              jitter
+            });
+          } else {
+            this.cue.hide();
+          }
+          if (R.glow > 0) {
+            const reach = TRAJECTORY.stickLength * R.beam;
+            this.beamIn.set([{ ax: tx, az: tz, bx: tx - ux * reach, bz: tz - uz * reach }], {
+              y: TRAJECTORY.stickHeight + 0.03,
+              width: TRAJECTORY.stickWidth * 1.4,
+              opacity: R.glow
+            });
+          } else {
+            this.beamIn.hide();
+          }
+        }
+        this.cueState = { bx: player.x, bz: player.z, ux, uz, gap, full, heat, r: player.radius };
+      } else {
+        this.stick.hide();
+        this.stickTip.hide();
+        // The spark: one short packet of light running the first leg. How
+        // fast it runs IS the power, and it flares the ghost ball on arrival.
+        this.gaugeTrack.hide();
+        this.gauge.hide();
+        this.cometPhase = (this.cometPhase + frameDt * (0.45 + 1.6 * power)) % 1;
+        const head = this.cometPhase;
+        const tail = Math.max(0, head - 0.16);
+        this.comet.set(
+          [{ ax: s.ax + ux * L * tail, az: s.az + uz * L * tail, bx: s.ax + ux * L * head, bz: s.az + uz * L * head }],
+          { y: y + 0.01, width: TRAJECTORY.leadWidth * (2.2 + 1.6 * power), opacity: 0.95 }
+        );
+        this.markerFlare = head > 0.82 ? (head - 0.82) / 0.18 : 0;
+      }
+    } else {
+      this.lead.hide();
+      this.gaugeTrack.hide();
+      this.gauge.hide();
+      this.comet.hide();
+      this.stick.hide();
+      this.stickTip.hide();
+      if (!this.strike) this.cue.hide();
+    }
+
     // --- the beam ---
-    if (segments.length > 0) {
+    if (!quiet && segments.length > 0) {
       const s = segments[0];
       const dx = s.bx - s.ax;
       const dz = s.bz - s.az;
@@ -623,7 +1244,7 @@ class AimRenderer {
     }
 
     // --- primary path (hairline core over the beam) ---
-    if (segments.length > 0) {
+    if (!quiet && segments.length > 0) {
       const s = segments[0];
       this.primaryPositions.set([s.ax, y, s.az, s.bx, y, s.bz]);
       this.primaryGeo.attributes.position.needsUpdate = true;
@@ -721,6 +1342,10 @@ class AimRenderer {
       // is exactly the point the swept-circle predictor solved for.
       this.marker.visible = true;
       this.marker.position.set(h.x, y, h.z);
+      // In the pulse style the ghost ball is where the light lands.
+      const flare = this.markerFlare || 0;
+      this.markerMat.opacity = 0.5 + 0.5 * flare;
+      this.marker.scale.setScalar(1 + 0.35 * flare);
 
       // THE TANGENT LINE TELLS THE TRUTH ABOUT ITS OWN CONFIDENCE.
       //
@@ -801,7 +1426,9 @@ class AimRenderer {
     this.pullPositions.set([player.x, y, player.z, cue.x, y, cue.z]);
     this.pullGeo.attributes.position.needsUpdate = true;
     this.pull.visible = true;
-    this.anchor.visible = true;
+    // The draw-point dot predates the full cue stick, which now shows the draw
+    // itself; in review it read as a distracting pulsing ball on the shaft.
+    this.anchor.visible = false;
     this.anchor.position.set(cue.x, y, cue.z);
 
     // MAXED OUT. Power is draw distance and nothing announced when the draw ran
@@ -934,6 +1561,7 @@ export class Player {
     this.scene.add(this.group);
     this.scene.add(this.trail.mesh);
     this.scene.add(this.aimRenderer.group);
+    this.scene.add(this.aimRenderer.fxGroup);
   }
 
   /* ---------------------------------------------------------------- *
@@ -1018,6 +1646,7 @@ export class Player {
     this.iFrameTimer = PLAYER.iFrameGrace;
     this.pyreTimer = 0;
     this.aimPower = 0;
+    this.aimRenderer.fire(this.prediction?.segments?.[0] ?? null, power);
     this.prediction = null;
     this.aimRenderer.hide();
 
@@ -1131,6 +1760,7 @@ export class Player {
    * @param {boolean} aimingActive whether bullet-time is actually engaged
    */
   update(dt, rawDt, game, aimingActive) {
+    this.aimRenderer.tick(rawDt);
     // --- Focus economy runs on REAL time: slow-mo must feel expensive. ---
     if (RULES.staticTable) {
       this.focus = this.focusMax;

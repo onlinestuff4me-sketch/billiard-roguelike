@@ -12,7 +12,7 @@
  *   2. How am I doing against it?          the progress pips
  *   3. What is it costing me?              the stroke chips
  *   4. What is this shot worth?            the multiplier pill
- *   5. What have I got?                    run score, hull, freeze charges
+ *   5. What have I got?                    table points vs target, lives, cash, freeze charges
  *
  * Those five used to be spread between a room counter, a wave line and a combo
  * that meant nothing on its own. Every one of them is now a sentence or a
@@ -52,13 +52,16 @@ export class HUD {
 
     /* ---------------- top bar ---------------- */
     const top = el('div', 'hud-top', this.root);
+    this.topBand = top;
 
+    // LIVES and CASH: what you carry from table to table. Missing a table's
+    // target costs a life; cash is spent in the shop between tables.
     const hpBlock = el('div', 'hud-hp', top);
-    el('div', 'hud-label', hpBlock).textContent = 'Hull';
-    const hpBar = el('div', 'hp-bar', hpBlock);
-    this.hpGhost = el('div', 'hp-ghost', hpBar);
-    this.hpFill = el('div', 'hp-fill', hpBar);
-    this.hpText = el('div', 'hp-text', hpBlock);
+    el('div', 'hud-label', hpBlock).textContent = 'Lives';
+    this.livesRow = el('div', 'lives-row', hpBlock);
+    // THE WALLET: one boxed figure, always in this corner, during play, the
+    // table's result and the shop alike.
+    this.cashValue = el('div', 'cash-value', hpBlock);
 
     // The mission. This is the single most important thing on the screen and
     // it is written as a sentence, not encoded.
@@ -77,11 +80,20 @@ export class HUD {
      * sentence you have to translate.
      */
     this.missionOrder = el('div', 'mission-order', missionBlock);
+    // THE TABLE'S RULE, in a few words (from review): it flies here from the
+    // table's intro card and stays for the whole table.
+    this.ruleChip = el('div', 'rule-chip', missionBlock);
+    this.ruleChip.hidden = true;
 
 
     const scoreBlock = el('div', 'hud-score', top);
-    el('div', 'hud-label', scoreBlock).textContent = 'Run';
+    el('div', 'hud-label', scoreBlock).textContent = 'Your score';
     this.scoreValue = el('div', 'score-value', scoreBlock);
+    // THE TARGET this table's points have to beat, as a bar that fills as you
+    // score, so how far you have to go is visible at a glance all table long.
+    const bar = el('div', 'score-bar', scoreBlock);
+    this.targetFill = el('div', 'fill', bar);
+    this.tableValue = el('div', 'score-table', scoreBlock);
 
     /* ---------------- build strip ---------------- */
     this.buildStrip = el('div', 'hud-build', this.root);
@@ -100,9 +112,38 @@ export class HUD {
     this.strokeText = el('div', 'stroke-text', strokeBlock);
 
     /* ---------------- freeze charges ---------------- */
+    // THE FREEZE BUTTON (from review: "is there a button … near the natural
+    // thumb placement?"). The meter is the button: while the balls roll and a
+    // charge is in hand it lights up and says FREEZE, and a tap on it stops
+    // the table. Anywhere else, a tap only hurries the numbers along.
     const freezeBlock = el('div', 'hud-freeze', this.root);
-    el('div', 'hud-label', freezeBlock).textContent = 'Freeze';
+    this.freezeBlock = freezeBlock;
+    this.freezeLabel = el('div', 'hud-label', freezeBlock);
+    this.freezeLabel.textContent = 'Freeze frame';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
+    this.freezeCall = el('div', 'freeze-call', freezeBlock);
+    this.freezeCall.textContent = 'Tap to freeze';
+    /** set by the game: what a press on the button does */
+    this.onFreeze = null;
+    freezeBlock.addEventListener('pointerdown', (e) => {
+      if (!freezeBlock.classList.contains('armed')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      this.onFreeze?.();
+    });
+
+    /* ---------------- practice ---------------- */
+    // A practice table (from review): what to try, and the way out.
+    this.practice = el('div', 'hud-practice', this.root);
+    this.practice.hidden = true;
+    this.practiceTitle = el('div', 'practice-title', this.practice);
+    this.practiceLine = el('div', 'practice-line', this.practice);
+    this.practiceCount = el('div', 'practice-count', this.practice);
+    this.practiceDone = el('button', 'practice-done', this.root);
+    this.practiceDone.type = 'button';
+    this.practiceDone.hidden = true;
+    // the button is not a shot or a freeze
+    this.practiceDone.addEventListener('pointerdown', (e) => e.stopPropagation());
 
     /* ---------------- banner ---------------- */
     this.banner = el('div', 'hud-banner', this.root);
@@ -112,7 +153,7 @@ export class HUD {
     /** A banner that waits for a tap rather than a clock. */
     this.bannerHolds = false;
     this.bannerHint = el('div', 'banner-hint', this.banner);
-    this.bannerHint.textContent = 'Tap anywhere to dismiss';
+    this.bannerHint.textContent = 'Tap anywhere to continue';
 
     /* ---------------- room scorecard ---------------- */
     this.card = el('div', 'hud-card', this.root);
@@ -160,8 +201,9 @@ export class HUD {
 
     // Cached values so we only touch the DOM when something actually changed.
     this._cache = {
-      hp: -1,
-      ghost: -1,
+      lives: '',
+      cash: null,
+      target: '',
       mission: '',
       order: '',
       progress: '',
@@ -171,7 +213,7 @@ export class HUD {
       mult: -1,
       buildKey: ''
     };
-    this._ghost = 1;
+
   }
 
   /* ---------------------------------------------------------------- *
@@ -203,7 +245,149 @@ export class HUD {
     this.bannerHolds = duration === HOLD;
     this.bannerTimer = this.bannerHolds ? 0 : duration;
     this.bannerHint.style.display = this.bannerHolds ? '' : 'none';
+    // A banner that waits is read, not glanced at: it gets a dark band so the
+    // resting aim line underneath doesn't run through the words.
+    this.banner.classList.toggle('holds', this.bannerHolds);
     this.banner.classList.add('visible');
+  }
+
+  /** The table's rule chip under the mission; null hides it. */
+  setRule(text, arrived = false) {
+    this.ruleChip.hidden = !text;
+    this.ruleChip.textContent = text || '';
+    if (text && arrived) {
+      this.ruleChip.animate(
+        [{ transform: 'scale(1.25)', filter: 'brightness(1.8)' }, { transform: 'scale(1)', filter: 'none' }],
+        { duration: 420, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }
+      );
+    }
+  }
+
+  /**
+   * A shot was just added (+1 SHOT). The mark at `index` is the new one: it
+   * opens a gap between the shots you have and the ones you've spent, lands
+   * white-hot and settles to the counter's amber, and the count flashes.
+   */
+  shotAdded(index) {
+    this.freshShot = index;
+    this.strokeText.animate?.(
+      [{ color: '#ffb340', transform: 'scale(1.25)' }, { color: '#ffb340', transform: 'scale(1)', offset: 0.6 }, { color: '' }],
+      { duration: 1400, easing: 'ease-out' }
+    );
+  }
+
+  /**
+   * A practice table's panel, or null to put the table back the way it was.
+   * @param {{title:string, line:string, count?:string, done:string, ready?:boolean, onDone?:Function}|null} p
+   */
+  setPractice(p) {
+    this.root.classList.toggle('practicing', !!p);
+    this.practice.hidden = !p;
+    this.practiceDone.hidden = !p;
+    if (!p) return;
+    this.practiceTitle.textContent = p.title;
+    if (this.practiceLine.textContent !== p.line) {
+      this.practiceLine.textContent = p.line;
+      this.practiceLine.animate?.([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+    }
+    this.practiceCount.textContent = p.count || '';
+    this.practiceDone.textContent = p.done;
+    this.practiceDone.classList.toggle('ready', !!p.ready);
+    if (p.onDone) this.practiceDone.onclick = p.onDone;
+  }
+
+  /** A −1 lifts off the pip that just went out, and the count flashes. */
+  _shotSpent(pip) {
+    if (!pip?.animate) return;
+    const block = this.strokeRow.parentNode;
+    const a = pip.getBoundingClientRect();
+    const b = block.getBoundingClientRect();
+    const chip = el('div', 'shot-minus', block);
+    chip.textContent = '−1';
+    chip.style.left = `${a.left - b.left + a.width / 2}px`;
+    chip.style.top = `${a.top - b.top}px`;
+    chip.animate(
+      [
+        { transform: 'translate(-50%, 0) scale(0.4)', opacity: 0 },
+        { transform: 'translate(-50%, -14px) scale(1.25)', opacity: 1, offset: 0.25 },
+        { transform: 'translate(-50%, -22px) scale(1)', opacity: 1, offset: 0.6 },
+        { transform: 'translate(-50%, -34px) scale(0.9)', opacity: 0 }
+      ],
+      { duration: 900, easing: 'ease-out', fill: 'forwards' }
+    ).onfinish = () => chip.remove();
+    this.strokeText.animate?.(
+      [{ color: '#fff', transform: 'scale(1.2)' }, { color: '#fff', transform: 'scale(1)', offset: 0.5 }, { color: '' }],
+      { duration: 700, easing: 'ease-out' }
+    );
+  }
+
+  /**
+   * AN ACHIEVEMENT, THE MOMENT IT IS EARNED (from review: "pop up when you
+   * take the action that earns you the achievement, and linger long enough
+   * for you to read it, with a way to see all achievements and to dismiss
+   * it"). A plate drops in under the top band with the name and what it was
+   * for, stays about six seconds, and has two controls: See all opens the
+   * whole list, × puts it away. Two earned at once queue, one after another.
+   */
+  achievement(a, { all } = {}) {
+    this._achQueue = this._achQueue || [];
+    this._achQueue.push({ a, all });
+    if (!this._achUp) this._achNext();
+  }
+
+  _achNext() {
+    const next = this._achQueue.shift();
+    if (!next) {
+      this._achUp = null;
+      return;
+    }
+    const { a, all } = next;
+    const t = el('div', 'ach-toast', this.root);
+    t.innerHTML =
+      '<span class="ach-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4.5a5 5 0 0 1-10 0Zm0 1.5H3.5a3.5 3.5 0 0 0 3.6 4M17 5.5h3.5a3.5 3.5 0 0 1-3.6 4M12 13.5V17m-4 3.5h8l-1-3.5H9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg></span>' +
+      '<span class="ach-words"><small>Achievement</small><b></b><em></em></span>' +
+      '<button class="ach-all" type="button">See all</button>' +
+      '<button class="ach-x" type="button" aria-label="Dismiss">×</button>';
+    t.querySelector('b').textContent = a.name;
+    t.querySelector('em').textContent = a.text;
+    // its buttons are not a shot or a freeze
+    for (const type of ['pointerdown', 'pointerup']) t.addEventListener(type, (e) => e.stopPropagation());
+    this._achUp = t;
+    // just under the top band, so the score and target stay in view
+    const band = this.topBand.getBoundingClientRect();
+    t.style.top = `${Math.round(band.bottom - this.root.getBoundingClientRect().top + 6)}px`;
+    let gone = false;
+    const leave = () => {
+      if (gone) return;
+      gone = true;
+      clearTimeout(timer);
+      stay?.cancel();
+      const out = t.animate?.([{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -16px) scale(0.92)', opacity: 0 }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
+      const done = () => {
+        t.remove();
+        this._achNext();
+      };
+      if (out) out.onfinish = done;
+      else done();
+    };
+    t.querySelector('.ach-x').addEventListener('click', leave);
+    t.querySelector('.ach-all').addEventListener('click', () => {
+      leave();
+      all?.();
+    });
+    // in, then held long enough to read the name and what it was for
+    const HOLD = 6500;
+    const stay = t.animate?.(
+      [
+        { transform: 'translate(-50%, -24px) scale(0.6)', opacity: 0 },
+        { transform: 'translate(-50%, 4px) scale(1.06)', opacity: 1, offset: 230 / HOLD },
+        { transform: 'translate(-50%, 0) scale(1)', opacity: 1, offset: 380 / HOLD },
+        { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }
+      ],
+      { duration: HOLD, easing: 'ease-out' }
+    );
+    if (stay) stay.onfinish = leave;
+    const timer = stay ? 0 : setTimeout(leave, HOLD);
   }
 
   /** Is a hold-until-tapped banner up? */
@@ -238,11 +422,11 @@ export class HUD {
       el('span', 'card-d', row).textContent = entry.detail || '';
       el('span', 'card-v', row).textContent = `+${entry.amount.toLocaleString()}`;
     }
-    if (data.penalty && data.penalty.standing > 0) {
-      const row = el('div', 'card-line bad', this.cardLines);
-      el('span', 'card-k', row).textContent = 'Balls left';
-      el('span', 'card-d', row).textContent = `${data.penalty.standing} still up`;
-      el('span', 'card-v', row).textContent = `−${data.penalty.damage} hull`;
+    if (data.target) {
+      const row = el('div', `card-line${data.beaten ? ' hero' : ' bad'}`, this.cardLines);
+      el('span', 'card-k', row).textContent = data.beaten ? 'Target beaten' : 'Target missed';
+      el('span', 'card-d', row).textContent = data.target.toLocaleString();
+      el('span', 'card-v', row).textContent = data.beaten ? `+$${data.earned}` : '−1 life';
     }
     if (!this.cardLines.childElementCount) {
       const row = el('div', 'card-line', this.cardLines);
@@ -377,25 +561,32 @@ export class HUD {
    * @param {object} s snapshot
    * @param {number} rawDt real seconds (HUD animation is never slowed)
    */
+  /** The node of the life that is about to go, for the moment to break. */
+  lifeNode(index) {
+    return this.livesRow.children[index] || null;
+  }
+
+  /** Hold the wallet's figure while a moment animates it; release repaints. */
+  lockCash(on) {
+    this.cashLocked = !!on;
+    if (!on) this._cache.cash = undefined;
+  }
+
   update(s, rawDt) {
     const cache = this._cache;
 
-    // --- health, with a lagging "damage ghost" fill ---
-    const hpRatio = Math.max(0, Math.min(1, s.hp / s.maxHp));
-    if (Math.abs(hpRatio - cache.hp) > 0.001) {
-      cache.hp = hpRatio;
-      this.hpFill.style.width = `${hpRatio * 100}%`;
-      this.hpText.textContent = `${Math.ceil(s.hp)}/${s.maxHp}`;
-      this.hpFill.classList.toggle('critical', hpRatio < 0.3);
+    // --- lives and cash ---
+    const lifeKey = `${s.lives}/${s.livesMax}`;
+    if (lifeKey !== cache.lives) {
+      cache.lives = lifeKey;
+      this.livesRow.textContent = '';
+      for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow);
     }
-    if (this._ghost > hpRatio) {
-      this._ghost = Math.max(hpRatio, this._ghost - rawDt * 0.55);
-    } else {
-      this._ghost = hpRatio;
-    }
-    if (Math.abs(this._ghost - cache.ghost) > 0.002) {
-      cache.ghost = this._ghost;
-      this.hpGhost.style.width = `${this._ghost * 100}%`;
+    // While a moment counts the wallet itself (collecting, spending), the
+    // HUD leaves its figure alone; unlocking repaints it with the real one.
+    if (!this.cashLocked && s.cash !== cache.cash) {
+      cache.cash = s.cash;
+      this.cashValue.textContent = `$${s.cash ?? 0}`;
     }
 
     // --- the mission, in words ---
@@ -441,23 +632,50 @@ export class HUD {
       this.missionOrder.textContent = order;
       this.missionOrder.classList.toggle('on', !warned && !s.strictOrder && streak > 0);
       this.missionOrder.classList.toggle('strict', warned || !!s.strictOrder);
-      this.missionOrder.hidden = !order;
+      // Declutter (from review): the order hint shows only when it is a rule —
+      // a refused line, or Strict Order mode — never as a standing reminder.
+      // An authored table about the order (Table 2) shows it all table long.
+      this.missionOrder.hidden = !order || !(warned || s.strictOrder || s.orderHint);
     }
 
-    // --- run score ---
+    // --- this table's points, against its target ---
     if (s.displayScore !== cache.score) {
       cache.score = s.displayScore;
       this.scoreValue.textContent = (s.displayScore || 0).toLocaleString();
+    }
+    const beaten = (s.displayScore || 0) >= (s.target || Infinity);
+    const targetKey = `${s.target}/${beaten}`;
+    if (targetKey !== cache.target) {
+      cache.target = targetKey;
+      this.tableValue.innerHTML = s.target ? `<small>Target</small> ${s.target.toLocaleString()}${beaten ? ' ✓' : ''}` : '';
+      this.tableValue.classList.toggle('on', !!s.target);
+      this.tableValue.classList.toggle('beaten', beaten);
+      this.targetFill.parentNode.classList.toggle('beaten', beaten);
+    }
+    const ratio = s.target ? Math.min(1, (s.displayScore || 0) / s.target) : 0;
+    if (Math.abs(ratio - (cache.ratio ?? -1)) > 0.001) {
+      cache.ratio = ratio;
+      this.targetFill.style.width = `${ratio * 100}%`;
     }
 
     // --- the stroke budget ---
     const strokeKey = `${s.strokesLeft}/${s.strokesTotal}`;
     if (strokeKey !== cache.strokes) {
+      // A SHOT SPENT IS SHOWN GOING OUT (from review): one fewer of the same
+      // total is the pip at the new count, and it flashes, sheds a −1 and
+      // drains to the spent look.
+      const spending = cache.strokesTotal === s.strokesTotal && cache.strokesLeft === s.strokesLeft + 1 ? s.strokesLeft : -1;
       cache.strokes = strokeKey;
+      cache.strokesLeft = s.strokesLeft;
+      cache.strokesTotal = s.strokesTotal;
       this.strokeRow.textContent = '';
       for (let i = 0; i < (s.strokesTotal || 0); i++) {
-        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}`, this.strokeRow);
+        const fresh = i === this.freshShot ? ' fresh' : '';
+        const spend = i === spending ? ' spend' : '';
+        el('span', `cue${i < s.strokesLeft ? '' : ' spent'}${fresh}${spend}`, this.strokeRow);
       }
+      this.freshShot = null;
+      if (spending >= 0) this._shotSpent(this.strokeRow.children[spending]);
       this.strokeText.textContent = `${s.strokesLeft} of ${s.strokesTotal} left`;
       this.strokeRow.classList.toggle('last', s.strokesLeft === 1);
       this.strokeRow.classList.toggle('out', s.strokesLeft === 0);
@@ -467,11 +685,23 @@ export class HUD {
     if (s.freezeCharges !== cache.freeze) {
       cache.freeze = s.freezeCharges;
       this.freezeRow.textContent = '';
-      const shown = Math.max(3, s.freezeCharges);
+      // Halves: a charge is earned half at a time and spent whole.
+      const shown = Math.max(3, Math.ceil(s.freezeCharges));
+      // the diamond a gain just filled flashes in (from review: every change
+      // is telegraphed)
+      const prev = cache.freezePrev ?? s.freezeCharges;
+      const fresh = s.freezeCharges > prev ? Math.floor(prev) : -1;
+      cache.freezePrev = s.freezeCharges;
       for (let i = 0; i < shown; i++) {
-        el('span', `frz${i < s.freezeCharges ? ' on' : ''}`, this.freezeRow);
+        const full = s.freezeCharges >= i + 1;
+        const half = !full && s.freezeCharges >= i + 0.5;
+        el('span', `frz${full ? ' on' : half ? ' half' : ''}${i === fresh ? ' fresh' : ''}`, this.freezeRow);
       }
-      this.root.classList.toggle('has-freeze', s.freezeCharges > 0);
+      this.root.classList.toggle('has-freeze', s.freezeCharges >= 1);
+    }
+    if (!!s.canFreeze !== cache.canFreeze) {
+      cache.canFreeze = !!s.canFreeze;
+      this.freezeBlock.classList.toggle('armed', cache.canFreeze);
     }
 
     // --- the multiplier, while a stroke is running ---

@@ -64,8 +64,11 @@ for (const size of SIZES) {
         // is wrong or the type in it is.
         inner: box('.menu-inner#menu-main'),
         play: box('#btn-play'),
-        row: box('.menu-row'),
-        buttons: ['#btn-modes', '#btn-settings', '#btn-mute'].map(box),
+        // the home screen's corners (from review): Settings and the trophy
+        corners: ['#btn-settings', '#btn-trophy'].map((s) => {
+          const r = document.querySelector(s)?.getBoundingClientRect();
+          return r ? { l: r.left, r: r.right, t: r.top, b: r.bottom, w: r.width } : null;
+        }),
         title: box('.menu-title'),
         eyebrow: box('.menu-eyebrow')
       };
@@ -75,8 +78,7 @@ for (const size of SIZES) {
       ['the menu box', menu.inner],
       ['the title', menu.title],
       ['the eyebrow', menu.eyebrow],
-      ['Play', menu.play],
-      ['the button row', menu.row]
+      ['Play', menu.play]
     ]) {
       if (!b) continue;
       check(b.l >= -0.5 && b.r <= menu.vw + 0.5, `${name} stays on screen`, `${b.l} → ${b.r} of ${menu.vw}`);
@@ -93,19 +95,20 @@ for (const size of SIZES) {
         );
       }
     }
-    const widths = menu.buttons.filter(Boolean).map((b) => b.w);
+    const [gear, trophy] = menu.corners;
     check(
-      widths.length === 3 && Math.max(...widths) - Math.min(...widths) < 0.5,
-      'the three buttons are one width',
-      widths.join(' / ')
+      !!gear && !!trophy && gear.w >= 40 && trophy.w >= 40,
+      'Settings and the trophy sit in the corners, big enough to tap',
+      `${gear?.w} / ${trophy?.w}`
     );
     check(
-      menu.buttons.every((b) => b && b.l >= menu.row.l - 0.5 && b.r <= menu.row.r + 0.5),
-      'and none of them escapes the row'
+      menu.corners.every((c) => c && c.l >= 0 && c.r <= menu.vw + 0.5 && c.t >= 0),
+      'and both stay on screen'
     );
+    check(!!gear && !!trophy && trophy.r < menu.vw / 2 && gear.l > menu.vw / 2, 'one on each side');
 
     // In a lesson: the coach has its own strip and the felt starts below it.
-    await game.gotoBoard('two-in-one');
+    await game.gotoBoard('combo');
     await game.page.waitForTimeout(400);
     const lesson = await game.page.evaluate(() => {
       const g = window.__game;
