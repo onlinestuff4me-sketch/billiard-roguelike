@@ -105,7 +105,7 @@ for (const size of SIZES) {
       menu.corners.every((c) => c && c.l >= 0 && c.r <= menu.vw + 0.5 && c.t >= 0),
       'and both stay on screen'
     );
-    check(!!gear && !!trophy && gear.r < menu.vw / 2 && trophy.l > menu.vw / 2, 'one on each side');
+    check(!!gear && !!trophy && trophy.r < menu.vw / 2 && gear.l > menu.vw / 2, 'one on each side');
 
     // In a lesson: the coach has its own strip and the felt starts below it.
     await game.gotoBoard('combo');
