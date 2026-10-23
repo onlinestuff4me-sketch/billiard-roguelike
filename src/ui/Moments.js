@@ -440,7 +440,7 @@ export class Moments {
     act.remove();
     this._actBtn = null;
     const next = el('div', 'mo-next', root);
-    el('div', 'mo-next-label', next).textContent = d.choices?.length > 1 ? 'Pick your next table' : 'Next table';
+    el('div', 'mo-next-label', next).textContent = d.nextLabel || (d.choices?.length > 1 ? 'Pick your next table' : 'Next table');
     const list = el('div', 'mo-choices', next);
     (d.choices || []).forEach((choice, i) => {
       const button = el('button', 'mo-choice', list);

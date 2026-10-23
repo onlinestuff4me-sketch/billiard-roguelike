@@ -2180,7 +2180,7 @@ function runOver() {
  */
 function showRoomResult(data, shownRun) {
   // a replayed table is on its own: no shop, no run to end
-  if (game.replay) data = { ...data, lives: Math.max(1, data.lives), choices: replayChoices(game.replay) };
+  if (game.replay) data = { ...data, lives: Math.max(1, data.lives), choices: replayChoices(game.replay), nextLabel: 'Replay' };
   if (!momentsOn()) {
     hud.showScorecard(data);
     if (data.lives <= 0) game.on.playerDeath();
