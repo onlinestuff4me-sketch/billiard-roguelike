@@ -95,5 +95,5 @@ threat budgets and the palette. A balance pass should be a one-file diff.
 
 The visual and verbal system the table is built to — four families, one word each,
 and the order they are taught in — lives in [`design/system/`](design/system/) and
-is published as a canvas. Every colour decision in `src/config.js` traces back to
+is published as a canvas. Every color decision in `src/config.js` traces back to
 the allocation on the first board there.

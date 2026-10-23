@@ -419,7 +419,7 @@ export class Rules {
     const key = number ?? `#${this._kissedBalls.size}`;
     if (this._kissedBalls.has(key)) return null;
     this._kissedBalls.add(key);
-    return this._add('kiss', 'mult', '+', this.val('perKiss'), RULES.labels?.kiss || 'KISS', at);
+    return this._add('kiss', 'mult', '+', this.val('perKiss'), RULES.labels?.kiss || 'ASSIST', at);
   }
 
   /** The bonus zone: multiply whatever MULT has been built. */

@@ -8,7 +8,7 @@
  * it reads like the whole difference between the two designs. It is not. The
  * real-time build also had nine lessons instead of six, a goal bar, a gun on
  * the stripe balls, chain targets, doors to shoot through instead of buttons,
- * and no contract or stroke budget at all — two dozen commits of behaviour
+ * and no contract or stroke budget at all — two dozen commits of behavior
  * that the current design removed rather than gated. Flipping the flag would
  * produce a hybrid that nobody designed and nobody has played.
  *

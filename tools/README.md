@@ -59,7 +59,7 @@ npm run coach
 ```
 
 It plays real strokes through the boards' own rules and reads the table and the
-band afterwards. Both halves were wrong and neither was visible from a sweep:
+band afterward. Both halves were wrong and neither was visible from a sweep:
 
 - **the stroke was charged twice.** A scratch on the four-in-three board ran the
   ordinary miss path — cue home, *whole rack rebuilt* — so every ball already
@@ -95,7 +95,7 @@ It also holds the boards to their promises:
 ## `npm run layout`
 
 Four viewports, from a 360px phone up. Nothing may cross the edge of the
-screen, a row that is meant to be centred has to be, buttons sharing a row have
+screen, a row that is meant to be centered has to be, buttons sharing a row have
 to be one width, and in a lesson the table must start below the coaching band.
 
 The menu's three secondary buttons were a flex row of items each carrying
@@ -220,8 +220,8 @@ The thumb is a good way to test the input and a bad way to test a verdict.
 ## `npm run portal`
 
 A portal is the first thing on this table whose route is not a line: a ball whose
-centre reaches one ring is translated by the vector between the two, keeping its
-heading, its speed and its offset from the ring's centre. Two pieces of code have to
+center reaches one ring is translated by the vector between the two, keeping its
+heading, its speed and its offset from the ring's center. Two pieces of code have to
 believe exactly the same thing about that — the table, which resolves it at the
 crossing inside a sub-step, and the preview, which solves the crossing on the drawn
 line — and the whole value of this game's aiming rests on them agreeing.
@@ -278,7 +278,7 @@ underneath it.
   stroke, the sweep, and the multi-stroke beam search.
 - `verify-boards.mjs` — the CLI and the thresholds.
 - `check-coach.mjs` — what the boards say and do, and whether they mean it.
-- `check-palette.mjs` — the ball colours and contrasts, out of the framebuffer.
+- `check-palette.mjs` — the ball colors and contrasts, out of the framebuffer.
 - `check-layout.mjs` — nothing off the edge, at six viewports.
 - `find-board.mjs` — where should the balls go, searched rather than guessed.
 - `check-scoring.mjs` — the ladder pays for what happened (no browser needed).
@@ -296,3 +296,5 @@ and `__simPlan` take any table the game can be put into, so the same machinery
 answers "is this generated room solvable in its stroke budget?" — which is the
 question every procedurally generated room in the run silently assumes a
 "yes" to.
+
+- `check-aim-run.mjs` — the aim line's promise on the twelve run tables: plays every drawn heading the way a frame of the game does (`--mode frame60|frame120|slow`) and compares pots and scratches. Floor 100%.

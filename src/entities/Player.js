@@ -153,7 +153,7 @@ export const PLAYER_STATE = {
 
 /* ------------------------------------------------------------------ *
  * Motion ribbon — an indexed quad strip rebuilt every frame.
- * Additive blending + per-vertex colour means fading the tail to black
+ * Additive blending + per-vertex color means fading the tail to black
  * fades it to invisible, which is both cheaper and prettier than alpha.
  * ------------------------------------------------------------------ */
 
@@ -652,7 +652,7 @@ class AimRenderer {
     // This was the last `LineSegments` in the preview. GPU line width is
     // clamped to one PHYSICAL pixel, so on a phone at 3x the whole of a bank
     // shot past the wall — which on the banking lesson is the entire point of
-    // the shot — was a third of a CSS pixel of dimmed colour. Reported as
+    // the shot — was a third of a CSS pixel of dimmed color. Reported as
     // "when aiming the cue at a wall for a bank shot, the dotted line at the
     // wall is very faint, which is strange".
     //
@@ -666,7 +666,7 @@ class AimRenderer {
     // WHOSE PATH IS WHOSE — ONE LINE PER BALL.
     //
     // This was a single line object holding the whole chain in one amber. Two
-    // balls' routes in one colour, crossing the same felt, is a picture that
+    // balls' routes in one color, crossing the same felt, is a picture that
     // cannot answer the only question being asked of it: which of these is the
     // 4 and which is the 1. Each leg gets its own line now, carrying that
     // ball's own hue (PALETTE.ballInk).
@@ -678,7 +678,8 @@ class AimRenderer {
     // confidence the physics does not have; drawing it not at all would hide
     // the second half of every combination.
     this.legLines = [];
-    for (let i = 0; i < 4; i += 1) {
+    // the played shot draws every ball it moves (main.js simulateAim)
+    for (let i = 0; i < 10; i += 1) {
       this.legLines.push(new Ribbon(this.group, { color: PALETTE.solid, opacity: 0.9 }));
     }
 
@@ -697,7 +698,7 @@ class AimRenderer {
     // which is why the ghost-ball method is what beginners are taught first.
     // YOUR ball's ghost, at YOUR ball's first collision — so it wears the
     // player's cyan rather than a neutral bone. Every other ghost on the table
-    // is the colour of the ball it belongs to; this one was the exception for
+    // is the color of the ball it belongs to; this one was the exception for
     // no reason but that it predated them.
     this.markerMat = new THREE.MeshBasicMaterial({
       color: PALETTE.player,
@@ -719,7 +720,7 @@ class AimRenderer {
     // A line says which way something goes; it does not say where it stops,
     // and a label saying so is a word the eye has to leave the table to read.
     // A translucent copy of the ball, sitting at the end of its own route in
-    // its own colour, is the same fact as a shape — so the plan can be read
+    // its own color, is the same fact as a shape — so the plan can be read
     // without reading. Cyan is yours, amber is the rack, bone is a pocket, red
     // is a pocket about to eat your own ball.
     //
@@ -827,12 +828,12 @@ class AimRenderer {
         continue;
       }
       // The ball's own hue, decided in main.js next to the geometry, so a
-      // ghost is always the colour of the ball it is a ghost of.
+      // ghost is always the color of the ball it is a ghost of.
       ghost.fillMat.color.setHex(spec.ink);
       ghost.ringMat.color.setHex(spec.ink);
       // A GHOST IN A POCKET IS NOT A NEUTRAL PROJECTION, whichever ball it
       // belongs to. A scratch is the outcome the player must not discover
-      // afterwards; a ball dropping is the outcome they are trying to cause,
+      // afterward; a ball dropping is the outcome they are trying to cause,
       // and on a lit pocket both were being lost in the glow. Either way the
       // ghost stops being a hollow maybe and becomes a filled statement, with
       // a dark collar behind it and drawn after the bloom composite so nothing
@@ -891,7 +892,7 @@ class AimRenderer {
   }
 
   /**
-   * THE POWER RING around the cue ball: centred on the shot's direction, it
+   * THE POWER RING around the cue ball: centered on the shot's direction, it
    * opens both ways as the thumb pulls back and closes completely at full
    * power, where it FLASHES once — a quick swell of white light — and then
    * stays white for as long as the draw is held there.
@@ -1098,7 +1099,7 @@ class AimRenderer {
         this.comet.hide();
         this._ring(player, ux, uz, charge, y, now);
         // THE STICK MOVES WITH THE THUMB, ONE FOR ONE. `charge` is how far the
-        // thumb has travelled across the pad (0 to 1), and `stickTravel` is
+        // thumb has traveled across the pad (0 to 1), and `stickTravel` is
         // that same travel in table units, so a centimetre of thumb is a
         // centimetre of cue. At full power the tip lights.
         let gap = player.radius + 0.2 + TRAJECTORY.stickTravel * charge;
@@ -1221,7 +1222,7 @@ class AimRenderer {
         this.beamPositions[o + 5] = cz - pz * w;
 
         // A charged wavefront fills the beam from the ball outward, with a
-        // travelling ripple behind it: the wind-up is the animation.
+        // traveling ripple behind it: the wind-up is the animation.
         // Brightness carries the charge state, but never far enough to make the
         // beam hard to see: the unfilled section stays legible, and the ripple
         // rides on top of a high floor rather than dimming the line.
@@ -1298,8 +1299,8 @@ class AimRenderer {
       // EACH BALL, TWICE: up to its collision, and on past it.
       //
       // Slots alternate leg / tail / leg / tail. The leg is the part the
-      // player is choosing — bright, in that ball's colour. The tail is where
-      // the same ball carries on after it hands off, in the same colour at
+      // player is choosing — bright, in that ball's color. The tail is where
+      // the same ball carries on after it hands off, in the same color at
       // half the strength, because it is a solution stacked on a solution.
       const legs = context.objectPath ?? [];
       const inks = context.legInks ?? [];
@@ -1338,7 +1339,7 @@ class AimRenderer {
         );
       }
 
-      // The ghost ball sits where the cue ball's centre stops at contact, which
+      // The ghost ball sits where the cue ball's center stops at contact, which
       // is exactly the point the swept-circle predictor solved for.
       this.marker.visible = true;
       this.marker.position.set(h.x, y, h.z);
@@ -1632,19 +1633,7 @@ export class Player {
    * @returns {{speed:number, dirX:number, dirZ:number}}
    */
   launch(aim, game) {
-    // Power is how long the shot was held, not how far anything was dragged.
-    const power = aim.power ?? 1;
-    const speed =
-      (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * power) *
-      this.stats.launchSpeedMult;
-    this.vx = aim.dirX * speed;
-    this.vz = aim.dirZ * speed;
-    this.state = PLAYER_STATE.LAUNCHED;
-    this.drag = PLAYER.dragLaunched;
-    this.bouncesUsed = 0;
-    this.launchPower = power;
-    this.iFrameTimer = PLAYER.iFrameGrace;
-    this.pyreTimer = 0;
+    const { speed, power } = this.launchMotion(aim);
     this.aimPower = 0;
     this.aimRenderer.fire(this.prediction?.segments?.[0] ?? null, power);
     this.prediction = null;
@@ -1660,6 +1649,28 @@ export class Player {
       dirZ: aim.dirZ
     });
     return { speed, dirX: aim.dirX, dirZ: aim.dirZ };
+  }
+
+  /**
+   * THE STRIKE, AS MOTION ONLY: what a launch does to the ball and nothing it
+   * does to the screen. The aim preview plays the shot with this (main.js
+   * simulateAim), so it and the stroke start from the same numbers.
+   */
+  launchMotion(aim) {
+    // Power is how far the stick is drawn back.
+    const power = aim.power ?? 1;
+    const speed =
+      (PLAYER.launchSpeedMin + (PLAYER.launchSpeedMax - PLAYER.launchSpeedMin) * power) *
+      this.stats.launchSpeedMult;
+    this.vx = aim.dirX * speed;
+    this.vz = aim.dirZ * speed;
+    this.state = PLAYER_STATE.LAUNCHED;
+    this.drag = PLAYER.dragLaunched;
+    this.bouncesUsed = 0;
+    this.launchPower = power;
+    this.iFrameTimer = PLAYER.iFrameGrace;
+    this.pyreTimer = 0;
+    return { speed, power };
   }
 
   /** Emergency reposition — no slow-mo, no Focus cost, short cooldown. */
@@ -1738,15 +1749,66 @@ export class Player {
 
   /** Reposition without resetting the build (used when entering a new room). */
   placeAt(x, z) {
+    this.resetAt(x, z);
+    this.trail.clear();
+  }
+
+  /** placeAt without the ribbon: the motion half, shared with the preview. */
+  resetAt(x, z) {
     this.x = x;
     this.z = z;
+    this.prevX = x;
+    this.prevZ = z;
     this.vx = 0;
     this.vz = 0;
     this.state = PLAYER_STATE.IDLE;
     this.drag = PLAYER.dragIdle;
     this.bouncesUsed = 0;
     this.iFrameTimer = 0.6;
-    this.trail.clear();
+  }
+
+  /**
+   * ONE FIXED STEP OF THE BALL'S OWN RULES: its timers, settling out of a
+   * launch, and the drag that goes with its state. Run once per physics step,
+   * never per frame, so a stroke plays the same at any frame rate and under
+   * any slow motion, and the aim preview (which runs these same steps) draws
+   * exactly the stroke that will be played.
+   */
+  /**
+   * WHERE TO DRAW THE BALL: between its last two physics steps, by how far
+   * this frame is into the next one (main.js sets `renderAlpha`). The table
+   * steps at a fixed rate, so under slow motion a frame can fall between two
+   * steps; drawn at the step it would move in jumps. A jump the ball really
+   * made (a portal, a respot) is drawn as a jump.
+   */
+  renderAt() {
+    const a = this.renderAlpha;
+    if (!(a >= 0 && a < 1) || !Number.isFinite(this.prevX)) return [this.x, 0, this.z];
+    const dx = this.x - this.prevX;
+    const dz = this.z - this.prevZ;
+    if (dx * dx + dz * dz > 4) return [this.x, 0, this.z];
+    return [this.prevX + dx * a, 0, this.prevZ + dz * a];
+  }
+
+  stepMotion(h) {
+    if (this.iFrameTimer > 0) this.iFrameTimer -= h;
+    if (this.dashCooldown > 0) this.dashCooldown -= h;
+    if (this.touchTimer > 0) this.touchTimer -= h;
+    if (this.pyreTimer > 0) this.pyreTimer -= h;
+
+    if (this.state === PLAYER_STATE.DASHING) {
+      this.dashTimer -= h;
+      if (this.dashTimer <= 0) this.endLaunch();
+    }
+
+    if (this.state === PLAYER_STATE.LAUNCHED && this.speed < PLAYER.settleSpeed) {
+      this.endLaunch();
+    }
+
+    this.drag =
+      this.state === PLAYER_STATE.LAUNCHED || this.state === PLAYER_STATE.DASHING
+        ? PLAYER.dragLaunched
+        : PLAYER.dragIdle;
   }
 
   /* ---------------------------------------------------------------- *
@@ -1773,29 +1835,12 @@ export class Player {
       );
     }
 
-    // --- timers ---
-    if (this.iFrameTimer > 0) this.iFrameTimer -= dt;
+    // --- timers --- (the ones that change how the ball moves are in
+    // stepMotion, run per physics step; these are presentation)
     if (this.flashTimer > 0) this.flashTimer -= rawDt;
-    if (this.dashCooldown > 0) this.dashCooldown -= dt;
-    if (this.touchTimer > 0) this.touchTimer -= dt;
     // Stops one scratch being reported on every sub-step while the cue ball
     // is still sitting inside the pocket's capture radius.
     if (this.scratchGuard > 0) this.scratchGuard -= rawDt;
-    if (this.pyreTimer > 0) this.pyreTimer -= dt;
-
-    if (this.state === PLAYER_STATE.DASHING) {
-      this.dashTimer -= dt;
-      if (this.dashTimer <= 0) this.endLaunch();
-    }
-
-    if (this.state === PLAYER_STATE.LAUNCHED && this.speed < PLAYER.settleSpeed) {
-      this.endLaunch();
-    }
-
-    this.drag =
-      this.state === PLAYER_STATE.LAUNCHED || this.state === PLAYER_STATE.DASHING
-        ? PLAYER.dragLaunched
-        : PLAYER.dragIdle;
 
     // --- presentation ---
     const speed = this.speed;
@@ -1805,7 +1850,7 @@ export class Player {
     this.trail.decay(Math.max(dt, rawDt * 0.25));
     this.trail.rebuild();
 
-    this.group.position.set(this.x, 0, this.z);
+    this.group.position.set(...this.renderAt());
 
     const hot = this.flashTimer > 0 ? 3.2 : 0.75 + Math.min(speed / 40, 1) * 1.4;
     this.bodyMat.emissiveIntensity = hot;
@@ -1826,7 +1871,7 @@ export class Player {
     // While flying you are both untouchable and the thing doing the damage;
     // once you settle, the exact opposite is true. That inversion is the core
     // risk rule of the game and it was previously only a faint opacity shift,
-    // so it now changes colour as well: cyan halo = armed and safe, amber ring
+    // so it now changes color as well: cyan halo = armed and safe, amber ring
     // = you can be hit.
     const armed = this.invulnerable;
     this.haloMat.color.setHex(armed ? PALETTE.player : PALETTE.aimGhost);

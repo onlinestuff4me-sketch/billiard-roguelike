@@ -14,8 +14,8 @@
  *   1. FREEZES the table for a beat (hit-stop), then runs it in SLOW MOTION
  *      while the number has its moment. Events that happen meanwhile queue.
  *   2. Makes its CAUSE react — the wall lights and pulses, the zone swells,
- *      the ball wiggles, the pocket flares — in the colour of the box it feeds.
- *   3. Pops a big labelled PLATE beside the cause ("+1 WALL", "×2 ZONE").
+ *      the ball wiggles, the pocket flares — in the color of the box it feeds.
+ *   3. Pops a big labeled PLATE beside the cause ("+1 WALL", "×2 ZONE").
  *   4. FLIES the plate into its box, which jumps as it lands.
  *
  * NOTHING COUNTS UNTIL A BALL DROPS, and the boxes only ever show what counts
@@ -49,7 +49,7 @@ const style = () => SCORE_FEED.style;
 /** Balatro's wiggle: an instant squash, then ~8 Hz decaying over 0.45 s. */
 const wig = (age) => (age < 0 || age > 0.45 ? 0 : Math.sin(50 * age) * Math.pow(1 - age / 0.45, 3));
 
-/** A hex colour number as CSS. */
+/** A hex color number as CSS. */
 const css = (n) => `#${(n >>> 0).toString(16).padStart(6, '0')}`;
 
 const el = (tag, cls, parent) => {
@@ -384,7 +384,7 @@ export class ScoreFeed {
   }
 
   /**
-   * THE CAUSE REACTS, in the colour of the box it feeds. The light a wall
+   * THE CAUSE REACTS, in the color of the box it feeds. The light a wall
    * gives off is the cushion itself lighting up along its length; a pocket
    * flares; a ball and a zone wiggle.
    */

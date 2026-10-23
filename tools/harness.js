@@ -110,7 +110,9 @@
     P.launch({ dirX: Math.sin(th), dirZ: -Math.cos(th), power }, game);
     game.midStroke = true;
     game.phase = 'resolve';
-    for (let i = 0; i < STEPS; i++) game.physics.update(H, game);
+    // the table's own fixed steps (main.js motionStep), for as long as before
+    const n = Math.ceil((STEPS * H) / window.__run.stepSize);
+    window.__run.step(n);
 
     out.bounces = P.bouncesUsed;
     out.rest = { x: P.x, z: P.z };
@@ -293,7 +295,7 @@
 
   /**
    * BEAM SEARCH over whole tables. At each state every heading (at `step`)
-   * and power is played; shots with the same outcome on neighbouring headings
+   * and power is played; shots with the same outcome on neighboring headings
    * form a run, and a run narrower than `minWidth` degrees is one no human
    * could aim, so it is dropped. The best `beam` states go on to the next
    * stroke, until the rack is down or the shots run out.
@@ -664,6 +666,7 @@
     const ballTrails = {};
     const watch = spec.trails ? game.rooms.scriptedEnemies.filter((e) => e.alive) : [];
     for (const e of watch) ballTrails[e.number] = [];
+    let acc = 0;
     for (let i = 0; i < Math.ceil(20 / dt); i++) {
       // A WHOLE FRAME, in the order main.js runs one. The entities carry state
       // machines that change their drag as they slow, and a probe that steps
@@ -671,9 +674,12 @@
       // static table the creep assist happens to dominate both switches, so
       // this changes nothing today — which is worth knowing rather than
       // assuming.)
-      game.player?.update?.(dt, dt, game, false);
-      for (const e of game.enemies || []) e.update?.(dt, game);
-      game.physics.update(dt, game);
+      // the frame's time, spent in the table's own fixed steps, as main.js does
+      acc += dt;
+      while (acc >= window.__run.stepSize * (1 - 1e-9)) {
+        window.__run.step(1);
+        acc -= window.__run.stepSize;
+      }
       if (i % 2 === 0 && P.alive) cueTrail.push([+P.x.toFixed(3), +P.z.toFixed(3)]);
       for (const e of watch) {
         if (e.alive && i % 2 === 0) ballTrails[e.number].push([+e.x.toFixed(3), +e.z.toFixed(3)]);

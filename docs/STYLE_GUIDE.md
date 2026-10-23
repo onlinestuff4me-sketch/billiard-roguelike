@@ -22,11 +22,11 @@ eye is drawn to something, that something must be actionable.
 ### 1.2 Palette
 
 All values live in `src/config.js` (`PALETTE` for WebGL, `CSS_PALETTE` for DOM) so
-the shader colours and the HUD never drift apart.
+the shader colors and the HUD never drift apart.
 
 | Role | Hex | Usage |
 | --- | --- | --- |
-| Obsidian | `#05070a` | Scene clear colour, letterbox, modal scrim |
+| Obsidian | `#05070a` | Scene clear color, letterbox, modal scrim |
 | Felt Deep | `#06231d` | Under-panel vignette; corners fall into this |
 | Felt | `#0b3a2e` | The bed of the table |
 | Felt Line | `#14624c` | Guide grid ("diamonds"), 28% opacity |
@@ -49,7 +49,7 @@ the shader colours and the HUD never drift apart.
 | Spark | `#fff6d8` | Impact particles |
 | Bone | `#eaf6ff` | All HUD text |
 
-**Colour law:** *hue encodes threat class, brightness encodes state.*
+**Color law:** *hue encodes threat class, brightness encodes state.*
 A dim magenta cube is a spawning Solid; a full-brightness one is active; a
 white-hot one is knocked and lethal to its own allies.
 
@@ -69,11 +69,11 @@ white-hot one is knocked and lethal to its own allies.
 
 ### 1.4 Motion & feel vocabulary
 
-| Element | Behaviour |
+| Element | Behavior |
 | --- | --- |
 | **Motion ribbon** | A 26-point tapering trail behind the cue ball, alpha-faded from head to tail, only drawn above 4 u/s. It is the primary read for "how fast am I going". |
 | **Directional squash** | Enemies scale slightly along their velocity vector while knocked, selling momentum without animation. |
-| **Impact sparks** | 8–20 short-lived points fired along the reflected normal; colour inherits the *struck* entity. |
+| **Impact sparks** | 8–20 short-lived points fired along the reflected normal; color inherits the *struck* entity. |
 | **Shatter debris** | Wall-splats and deaths spray longer-lived fragments in the impact hemisphere. |
 | **Screen shake** | Impulse proportional to collision momentum, decaying exponentially (7.5/s), applied as a camera *offset* — never rotation, which breaks aim reading. |
 | **Hit-stop** | 30 ms standard / 60 ms on carom & crit. The whole simulation freezes; audio does not. This is the single most important feel parameter in the game. |
@@ -102,14 +102,14 @@ get a tick.
 
 **A finished shot draws nothing.** The resting cue line is the invitation to
 take a shot, so it belongs only to a table that will accept one. It is off
-while the ball is travelling, off between the ball coming to rest and the
+while the ball is traveling, off between the ball coming to rest and the
 lesson judging it — one frame, and the flash reported at the end of every
 board — and off for good once the card says the lesson is over. `npm run flash`
 holds it to that.
 
 ### 1.5 Layout & framing
 
-- Hard **9:16 portrait** stage, letterboxed and centred on desktop, full-height on
+- Hard **9:16 portrait** stage, letterboxed and centered on desktop, full-height on
   mobile. The playfield never crops: the orthographic frustum is fixed in world
   units, so every device sees the *same* table with the same angles.
 - HUD occupies the top ~12% and bottom ~10%; the middle 78% is untouched play space.
@@ -178,7 +178,7 @@ required by mobile autoplay policies, and suspended when the tab is hidden.
 Enemies must be read by **shape at a glance**, because during bullet-time the player
 is parsing the whole table in under two seconds.
 
-| Billiard name | Primitive | Colour | Role read | Behavioural tell |
+| Billiard name | Primitive | Color | Role read | Behavioral tell |
 | --- | --- | --- | --- | --- |
 | **Solids** | Cube (boxy, grounded) | Red `#ff3d6e` | *Chaser* — comes to you | Constant forward lean; slight roll toward the player |
 | **Stripes** | Octagonal prism (many-sided, "aimed") | Violet `#a05cff` | *Shooter* — keeps distance | Charge ring closes for 0.75 s before firing; body faces you |
@@ -186,7 +186,7 @@ is parsing the whole table in under two seconds.
 
 ### Supporting cast
 
-| Object | Primitive | Colour | Read |
+| Object | Primitive | Color | Read |
 | --- | --- | --- | --- |
 | Player | Sphere with a hot inner core + ribbon | Cyan | "This is me, and this is my speed" |
 | Stripe projectile | Small sphere with a tail | Pink | Slow enough to dodge, fast enough to punish standing still |
@@ -200,14 +200,14 @@ is parsing the whole table in under two seconds.
 | State | Visual |
 | --- | --- |
 | Spawning | 0.55 s expanding telegraph ring; body at 25% opacity, no collision |
-| Active | Full colour, gentle idle bob |
+| Active | Full color, gentle idle bob |
 | Charging (Stripe) | Closing ring + brightening emissive |
 | Knocked (lethal object ball) | Emissive pushed toward white, velocity-aligned squash, trail sparks |
 | Damaged | 90 ms white flash |
 | Dying | Shatter debris in the impact hemisphere + a fading shockwave ring |
 
-**Anti-goal:** never communicate a mechanic with colour alone. Shields have a band,
-charging has a ring, knocked bodies have a trail. Colour-blind players read shape
+**Anti-goal:** never communicate a mechanic with color alone. Shields have a band,
+charging has a ring, knocked bodies have a trail. Color-blind players read shape
 and motion first.
 
 ---
@@ -220,13 +220,13 @@ and motion first.
   only large glyphs.
 - **HUD components:**
   - *Health bar* — top-left, segmented, drains with a lagging "damage ghost" fill.
-  - *Radial Focus gauge* — bottom-centre ring around the thumb's resting zone; it
+  - *Radial Focus gauge* — bottom-center ring around the thumb's resting zone; it
     depletes clockwise and pulses when it can no longer sustain an aim.
-  - *Room counter* — top-centre, `ROOM 07` with a depth ramp in colour, with the
+  - *Room counter* — top-center, `ROOM 07` with a depth ramp in color, with the
     targets still standing (`3 LEFT` → `CLEAR`) directly underneath. The wave
     line only ever appeared on multi-wave rooms, so most of the time nothing on
     screen answered "how much of this is left" and the player had to count balls.
-  - *Combo counter* — centre-right, `×1.8` over `3 HITS`, scales up on each step
+  - *Combo counter* — center-right, `×1.8` over `3 HITS`, scales up on each step
     and drifts back down. It sits on a pill rather than bare on the felt, and
     carries a thin bar draining the chain window: the window is the only thing in
     the game on a hidden clock, and "why did my ×1.8 vanish" is a fair question
@@ -236,4 +236,4 @@ and motion first.
   rarity border (Common: bone, Rare: cyan, Epic: magenta). The modal freezes time
   completely (timeScale 0) and is the only screen with a scrim.
 - **Motion for reduced-motion users:** shake and zoom punch scale to zero when
-  `prefers-reduced-motion` is set; hit-stop and colour feedback remain.
+  `prefers-reduced-motion` is set; hit-stop and color feedback remain.

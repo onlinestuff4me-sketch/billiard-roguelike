@@ -72,7 +72,7 @@ player who does gets told, the first time the bonus lands, that the rack has a s
 **03 · Pay Twice.** The called pocket has a clean straight-in line and the double sits
 off it at forty degrees. Taking the pot pays once; banking through the double and then
 potting pays what the room is scored on. Two windows, deliberately: the cheap line is
-wide, the paying line is narrow, and the scorecard shows afterwards which one was taken.
+wide, the paying line is narrow, and the scorecard shows afterward which one was taken.
 
 **05 · The Live Lane.** A mine bar across the straight route to the only called pocket;
 the way round is one cushion. The mine is wide enough that a player aiming straight

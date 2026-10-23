@@ -86,7 +86,7 @@ function layoutStage() {
   // its aspect and fits the height that is left; the strip is added back on so
   // the framed box still reaches the bottom of the screen. See setBandReserve.
   //
-  // Sized to the TARGET rather than to the value currently easing towards it,
+  // Sized to the TARGET rather than to the value currently easing toward it,
   // so the canvas and its post-processing targets are reallocated once per
   // change instead of once per frame of the animation. Taking the strip is
   // instant, so nothing is ever drawn into a stage that is too small for it;
@@ -155,12 +155,12 @@ function buildComposer(width, height) {
   // THE COMPOSER GETS AN EXPLICITLY LINEAR TARGET.
   //
   // EffectComposer's default render target inherits the renderer's output
-  // colour space, which is sRGB. RenderPass then writes sRGB-encoded values
+  // color space, which is sRGB. RenderPass then writes sRGB-encoded values
   // into it and OutputPass encodes them a second time on the way to the
   // screen. A double encode lifts every mid-tone toward white, which is why
-  // the balls measured as four near-identical greys — #afacaf, #a2a9b7,
+  // the balls measured as four near-identical grays — #afacaf, #a2a9b7,
   // #a2aabe, #a2aaaf, a worst-case separation of dE 3.3 — while their source
-  // colours were 32 apart. Darks survive it and very bright saturated colours
+  // colors were 32 apart. Darks survive it and very bright saturated colors
   // clip and survive it, so the cue ball and the felt looked fine and only the
   // mid-tones, which is every ball, were destroyed.
   //
@@ -181,7 +181,7 @@ function buildComposer(width, height) {
   );
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
-  // Exposed for tools/check-palette.mjs, which measures the colours the player
+  // Exposed for tools/check-palette.mjs, which measures the colors the player
   // actually sees. Bloom is part of that answer — it was the whole answer, the
   // first time this was measured — so the check has to be able to reach it.
   if (typeof window !== 'undefined') {
@@ -542,7 +542,7 @@ function buildTable(target) {
   for (const slot of slots) {
     const m = mouth(slot);
 
-    // The gap faces the centre of the table. atan2 is taken in the same frame
+    // The gap faces the center of the table. atan2 is taken in the same frame
     // RingGeometry uses (theta from +x, counter-clockwise in XY before the
     // -90° rotation puts it flat), which is why z is negated here.
     const toCentre = Math.atan2(-(0 - slot.z), 0 - slot.x);
@@ -556,7 +556,7 @@ function buildTable(target) {
     swell.position.set(slot.x, 0.78, slot.z);
     table.add(swell);
 
-    // The void. Absence reads faster than any colour.
+    // The void. Absence reads faster than any color.
     const hole = new THREE.Mesh(
       new THREE.CircleGeometry(m, 40),
       new THREE.MeshBasicMaterial({ color: PALETTE.void })
@@ -1062,7 +1062,7 @@ game.boons = boons;
 const rules = new Rules();
 game.rules = rules;
 game.callPocket = callPocket;
-// Handed to tools/check-palette.mjs, which measures these colours as the
+// Handed to tools/check-palette.mjs, which measures these colors as the
 // renderer draws them rather than as they are written down.
 game.ballInk = PALETTE.ballInk;
 // A handle for the console and for automated smoke runs. Read-only in spirit:
@@ -1121,6 +1121,16 @@ function railNormal(x, z) {
 }
 
 /** An object ball meeting a rail: remembered, because a pot after it is a bank pot. */
+/** A bumper gives the cue ball speed back: the motion, shared with the preview. */
+function bumperKick(p) {
+  const current = Math.hypot(p.vx, p.vz) || 1;
+  const target = Math.max(current * INJECTOR.bumper.boost, INJECTOR.bumper.minOut);
+  const scale = target / current;
+  p.vx *= scale;
+  p.vz *= scale;
+  if (INJECTOR.bumper.refundsBounce) p.bouncesUsed = Math.max(0, p.bouncesUsed - 1);
+}
+
 function noteObjectRail(ball, x, z, kind) {
   if (!game.midStroke || !ball || kind !== 'rail') return;
   ball.railsThisStroke = (ball.railsThisStroke || 0) + 1;
@@ -1280,11 +1290,11 @@ const sinking = [];
 /**
  * A POT SHOULD LOOK LIKE THE BALL WENT IN.
  *
- * It used to be a shatter: the ball vanished in a burst of its own colour, at
+ * It used to be a shatter: the ball vanished in a burst of its own color, at
  * the pocket, on the same frame the score text appeared over the top of it. The
  * one moment the whole game is about was the one moment you could not see.
  *
- * The ball now falls INTO the mouth — pulled to the pocket centre, shrinking
+ * The ball now falls INTO the mouth — pulled to the pocket center, shrinking
  * and dropping below the felt over a fifth of a second — and the score text is
  * thrown clear of the pocket rather than sitting on it.
  */
@@ -1399,9 +1409,11 @@ game.tutorialGuard = null;
 
 /** Is every body on the table at rest? */
 function tableSettled() {
-  if (player.alive && player.speed > RULES.settleSpeed) return false;
+  // AT REST, NOT NEARLY: every ball comes to an exact stop (RULES.stopSpeed),
+  // so the stroke ends where the aim preview said it would.
+  if (player.alive && player.speed > 0) return false;
   for (const ball of game.enemies) {
-    if (ball.alive && ball.speed > RULES.settleSpeed) return false;
+    if (ball.alive && ball.speed > 0) return false;
   }
   return true;
 }
@@ -1695,7 +1707,7 @@ game.tryFreeze = tryFreeze;
 function kickBack(source) {
   // The kicker takes the nearest ball on the table and sends it at you. It
   // does not consume it — the ball is still worth its number if you can get it
-  // down — but while it is travelling it is the one thing on a static table
+  // down — but while it is traveling it is the one thing on a static table
   // that can hurt you.
   let target = null;
   let best = Infinity;
@@ -2005,7 +2017,7 @@ game.on = {
 
     // EVERY RAIL IS A RUNG.
     //
-    // Banking is the cheapest way to build a multiplier and the most skilful,
+    // Banking is the cheapest way to build a multiplier and the most skillful,
     // so it pays on contact rather than on some later condition. A dying kiss
     // does not count — but the bar sits just under the creep threshold, since
     // below that a ball is already being dragged to a stop and cannot ladder
@@ -2015,12 +2027,7 @@ game.on = {
     }
 
     if (kind === 'bumper') {
-      const current = Math.hypot(p.vx, p.vz) || 1;
-      const target = Math.max(current * INJECTOR.bumper.boost, INJECTOR.bumper.minOut);
-      const scale = target / current;
-      p.vx *= scale;
-      p.vz *= scale;
-      if (INJECTOR.bumper.refundsBounce) p.bouncesUsed = Math.max(0, p.bouncesUsed - 1);
+      bumperKick(p);
       audio.bumper();
       fx.burst(x, z, 12, PALETTE.lip, 11, 0.8);
       fx.shockwave(x, z, PALETTE.lip, 2.6, 0.3);
@@ -2420,7 +2427,7 @@ function doorName(door) {
 }
 
 /**
- * One button per exit, in the exit's own colour.
+ * One button per exit, in the exit's own color.
  *
  * The doors still exist in the room — they are what carries the reward and
  * decides the next level — but the player no longer has to shoot the cue ball
@@ -2918,7 +2925,7 @@ function replayChoices(n) {
  * Put the ghost pad under the thumb.
  *
  * The pad's geometry is in world units so it tracks the table exactly, and is
- * projected with the same camera maths the coach spotlight and door labels use.
+ * projected with the same camera math the coach spotlight and door labels use.
  * It draws only once the pad is SEATED — before that the gesture is still
  * inside the dead zone and there is no pivot to show yet.
  */
@@ -3004,7 +3011,7 @@ function projectCuePath(prediction) {
     let dz = last.bz - last.az;
     const dl = Math.hypot(dx, dz);
     // A cue ball already resting against the object ball has no segment to
-    // read a heading from; it is travelling the way it is aimed.
+    // read a heading from; it is traveling the way it is aimed.
     if (dl < 1e-5) {
       dx = player.aimDir.x;
       dz = player.aimDir.z;
@@ -3181,7 +3188,7 @@ function chainFrom(shot, mass, seen) {
       }
     );
     // The contact position is the swept-circle solution the predictor already
-    // has: where THIS ball's centre sits at the moment it reaches the next one.
+    // has: where THIS ball's center sits at the moment it reaches the next one.
     // It is the point the ghost marks, and it is not the end of the route —
     // the route carries on past it, dimmer, to where the ball would have gone.
     legs.push({
@@ -3221,7 +3228,7 @@ function chainFrom(shot, mass, seen) {
     // A collision is not the end of the ball that caused it — it deflects and
     // keeps rolling, exactly as the cue ball does, and that is the half of a
     // combination a player has to see before they can plan the shot AFTER this
-    // one. The maths is the same two-body impulse used everywhere else: the
+    // one. The math is the same two-body impulse used everywhere else: the
     // striker keeps its velocity plus its share of the impulse along the
     // contact normal.
     //
@@ -3278,11 +3285,11 @@ function chainFrom(shot, mass, seen) {
 /**
  * WHERE EACH BALL GOES, AS A GHOST OF THE BALL.
  *
- * A line says which way something travels; it does not say where the travelling
+ * A line says which way something travels; it does not say where the traveling
  * stops mattering. The moment that matters is the COLLISION — that is where the
  * player's choice is spent, where the shot becomes committed, and where every
  * plan is actually made. So each ball the shot moves gets a hollow copy of
- * itself at its first contact, in its own colour, and the part of its route
+ * itself at its first contact, in its own color, and the part of its route
  * beyond that contact is drawn dimmer: still shown, no longer a promise.
  *
  * This replaces a set of endpoint LABELS ("YOUR BALL", "2 STOPS HERE"). Words
@@ -3361,7 +3368,7 @@ function aimGhosts(prediction, cuePath, objectPath, fouls = new Map()) {
   // YOUR BALL, but only when it is about to be lost. Where the cue ball comes
   // to rest is already drawn — the departure line ends there — and a ghost on
   // it was one more shape competing with the balls. A scratch is different: it
-  // is the one outcome the player must not discover afterwards.
+  // is the one outcome the player must not discover afterward.
   // THE PREDICTOR'S VERDICT, not a re-measurement of what got drawn. Asking
   // `pathPocket` whether the drawn line finds a hole was a second opinion on a
   // question already answered exactly, and it disagreed with the first at the
@@ -3413,8 +3420,8 @@ function aimGhosts(prediction, cuePath, objectPath, fouls = new Map()) {
 /**
  * WHICH OF THE BALLS THIS LINE SINKS THE MISSION WOULD TURN AWAY.
  *
- * Keyed by leg index, so the drawing can colour exactly the leg that is the
- * problem and leave the rest of the shot in its own colours — a whole preview
+ * Keyed by leg index, so the drawing can color exactly the leg that is the
+ * problem and leave the rest of the shot in its own colors — a whole preview
  * gone red would say "this shot is wrong" when what is true is "this one ball
  * is early".
  *
@@ -3426,6 +3433,14 @@ function aimGhosts(prediction, cuePath, objectPath, fouls = new Map()) {
 function foulPreview(objectPath) {
   const out = new Map();
   if (tutorial.running || !objectPath?.length) return out;
+  // a played shot already carries the mission's verdict on each pot, in the
+  // order the balls actually dropped
+  if (objectPath.some((leg) => 'foul' in leg)) {
+    objectPath.forEach((leg, i) => {
+      if (leg.foul) out.set(i, leg.foul);
+    });
+    return out;
+  }
   const sinking = [];
   objectPath.forEach((leg, i) => {
     const number = leg?.ball?.number ?? 0;
@@ -3636,7 +3651,7 @@ function paintCoachRoute() {
     const size = (band.size ?? 1) * (1 + routeLock * 0.22);
     // THE MARCH GOES THE WAY THE ARROWS POINT. Subtracting the phase slid
     // every arrow BACKWARDS along the path a little faster each frame, so a
-    // road drawn to send you left had its arrows travelling right: the two
+    // road drawn to send you left had its arrows traveling right: the two
     // halves of the one thing the road exists to say, disagreeing.
     let carried = routePhase;
     let last = null;
@@ -3752,9 +3767,11 @@ if (typeof window !== 'undefined') {
     player.aimPower = power;
     refreshPrediction();
     const pockets = rooms.table.pockets;
-    const pred = player.prediction;
-    const cuePath = projectCuePath(pred);
-    const objectPath = projectObjectPath(pred, cuePath);
+    // what the felt is showing: the played shot, not a fresh solve
+    const shot = playedAim();
+    const pred = shot.prediction;
+    const cuePath = shot.cuePath;
+    const objectPath = shot.objectPath;
     const cueSegs = cuePath?.segments?.length ? cuePath.segments : pred?.segments;
     const scratch = cuePath ? cuePath.pocket : pred?.pocket ?? null;
     const fouls = foulPreview(objectPath);
@@ -3763,7 +3780,7 @@ if (typeof window !== 'undefined') {
       power,
       /**
        * WHAT THE MISSION SAYS ABOUT THIS LINE, in the words the player is
-       * shown and in the colour the felt uses. Both come from the refresh
+       * shown and in the color the felt uses. Both come from the refresh
        * above rather than from a second opinion formed here, so a check can
        * hold the drawn line to the verdict the game actually reached.
        */
@@ -3848,7 +3865,7 @@ function projectShot(dir, power) {
  *      of the widest window is the shot with the most room for error either
  *      side, which is the shot worth teaching.
  *   4. ONLY THE GOAL IS DRAWN — the cue's path to its first contact, and the
- *      target ball's path to its pocket. What the other balls do afterwards is
+ *      target ball's path to its pocket. What the other balls do afterward is
  *      true and irrelevant, and drawing it is what made the picture unreadable.
  *
  * @param {{number?: number, slot?: string, reach?: number}} want
@@ -4101,30 +4118,382 @@ function goalLeg(shot, want, pockets) {
   return miss;
 }
 
+/* ------------------------------------------------------------------ *
+ * THE LINE IS THE SHOT
+ *
+ * From playtest: "50% of the time or more, when a line said a ball was going
+ * to sink into a pocket, the ball actually went at a different angle after
+ * being hit and never went into the pocket. Our projected lines need to be
+ * 100% accurate."
+ *
+ * The line used to be a separate model of the table: rays swept through
+ * static geometry, one ball at a time, with the two-body impulse solved on
+ * paper at each contact. It could not see two moving balls meet (a struck
+ * ball banking back into the cue ball that is still rolling, the commonest
+ * miss), and every one of its simplifications was a place to disagree with
+ * the table.
+ *
+ * So the preview is no longer a model. It PLAYS the shot: the real physics,
+ * the real balls, the same fixed steps the stroke will take (motionStep),
+ * with everything a stroke does to the screen, the score and the sound
+ * switched off and every ball put back afterward. What it draws is a record
+ * of what happened, so it is the shot by construction.
+ * ------------------------------------------------------------------ */
+
+/**
+ * THE BOTTOM ROW NEVER OVERLAPS (from playtest: "the orange score badge at the
+ * bottom of the screen covers the freeze shot meter"). The score boxes sit in
+ * the gap between the shots on the left and Freeze frame on the right, and
+ * shrink to fit it when the numbers, the shot count or a narrow phone would
+ * otherwise run them into either side.
+ */
+function fitScoreFeed() {
+  const box = feed.root;
+  if (!box || box.hidden || box.classList.contains('tucked')) return;
+  const L = uiLayer.getBoundingClientRect();
+  const left = hud.root.querySelector('.hud-strokes')?.getBoundingClientRect();
+  const right = hud.root.querySelector('.hud-freeze')?.getBoundingClientRect();
+  if (!left || !right || !L.width) return;
+  const gapL = (left.width ? left.right : L.left) - L.left + 6;
+  const gapR = (right.width ? right.left : L.right) - L.left - 6;
+  const room = Math.max(40, gapR - gapL);
+  const natural = box.offsetWidth || 1;
+  const scale = Math.min(1, room / natural);
+  box.style.left = `${(gapL + gapR) / 2}px`;
+  box.style.transform = `translateX(-50%) scale(${scale.toFixed(3)})`;
+  box.style.transformOrigin = '50% 100%';
+}
+
+/** One physics step of the table. The stroke and the preview both use only this. */
+const SIM_H = TIME.fixedStep;
+const SIM_MAX_PER_FRAME = 12;
+
+function motionStep(h) {
+  player.prevX = player.x;
+  player.prevZ = player.z;
+  if (player.alive) player.stepMotion(h);
+  for (const ball of game.enemies) {
+    ball.prevX = ball.x;
+    ball.prevZ = ball.z;
+    ball.stepMotion(h);
+  }
+  physics.update(h, game);
+}
+
+/** What a portal does to the ribbon behind the ball, while the preview plays. */
+const NO_TRAIL = { clear() {}, push() {}, decay() {}, rebuild() {} };
+
+/**
+ * Play the shot (`dir`, `power`) from the table as it stands, put everything
+ * back, and return what happened: each ball's path, corner by corner, every
+ * contact, every pot, and the scratch.
+ */
+function playAim(dir, power) {
+  const bodies = [player, ...game.enemies];
+  const saved = bodies.map((b) => ({ ...b }));
+  const realOn = game.on;
+  const realTrail = player.trail;
+  const realMidStroke = game.midStroke;
+  const realPhase = game.phase;
+  const rec = { cueHits: [], contacts: [], pots: [], scratch: null, fouls: [], objects: [], unsure: false, steps: 0 };
+  const potted = [];
+  const spawn = { x: rooms.layout.spawn.x, z: spawnZ() };
+  const at = () => rec.steps;
+  const handlers = {
+    cueStrike({ player: p, enemy, nx, nz }) {
+      const hit = { body: enemy, x: p.x, z: p.z, nx: -nx, nz: -nz, bx: enemy.x, bz: enemy.z, t: at(), speed: p.speed, bounces: p.bouncesUsed };
+      rec.cueHits.push(hit);
+      rec.contacts.push({ a: player, b: enemy, ax: p.x, az: p.z, bx: enemy.x, bz: enemy.z, t: at() });
+      return {};
+    },
+    carom({ striker, target }) {
+      rec.contacts.push({ a: striker, b: target, ax: striker.x, az: striker.z, bx: target.x, bz: target.z, t: at() });
+    },
+    potted({ ball, pocket }) {
+      if (!ball.alive) return;
+      if (!(ball.number > 0)) {
+        ball.alive = false;
+        return;
+      }
+      // the mission's verdict on this pot, after the ones before it this shot
+      const reasons = tutorial.running ? [] : rules.foulsAhead([...potted, ball.number]);
+      const foul = reasons[reasons.length - 1] || null;
+      rec.pots.push({ ball, pocket, t: at(), foul, x: ball.x, z: ball.z });
+      if (foul) {
+        // it comes back to its spot, as rooms.respot puts it: home if clear
+        const others = game.enemies.filter((b) => b !== ball && b.alive);
+        const home = Number.isFinite(ball.homeX) && others.every((b) => Math.hypot(b.x - ball.homeX, b.z - ball.homeZ) > 1.6) && !rooms.table.blocked(ball.homeX, ball.homeZ, 1.2);
+        if (rooms.authored && home) {
+          ball.x = ball.homeX;
+          ball.z = ball.homeZ;
+          ball.vx = 0;
+          ball.vz = 0;
+          ball.state = ENEMY_STATE.ACTIVE;
+          ball.respotted = true;
+        } else {
+          // somewhere the room's dice decide: past here the table cannot be
+          // played in advance, so the preview stops trusting what follows
+          ball.alive = false;
+          rec.unsure = true;
+        }
+        return;
+      }
+      potted.push(ball.number);
+      ball.alive = false;
+    },
+    scratch({ player: p, pocket }) {
+      if (rec.scratch) return;
+      rec.scratch = { pocket, t: at(), x: p.x, z: p.z };
+      p.resetAt(spawn.x, spawn.z);
+    },
+    objectHit({ object, isCue }) {
+      if (!isCue || !object.armed || rec.objects.includes(object)) return;
+      rec.objects.push(object);
+      if (object.kind === 'kicker') rec.unsure = true;
+    },
+    playerRebound(event) {
+      if (event.kind === 'bumper') bumperKick(event.player);
+    }
+  };
+  const noop = () => {};
+  game.on = new Proxy(handlers, { get: (t, k) => t[k] || noop });
+  player.trail = NO_TRAIL;
+  game.midStroke = true;
+  game.phase = 'resolve';
+
+  // the path of every ball, corner by corner, from where it stands
+  const paths = bodies.map((b) => ({ body: b, pts: [b.x, b.z], breaks: [], done: false, v0: Math.hypot(b.vx, b.vz) }));
+  try {
+    player.scratchGuard = 0;
+    player.launchMotion({ dirX: dir.x, dirZ: dir.z, power });
+    let still = 0;
+    const max = Math.ceil(RULES.strokeTimeout / SIM_H);
+    for (; rec.steps < max; rec.steps++) {
+      const alive = bodies.map((b) => b.alive);
+      const scratched = !!rec.scratch;
+      motionStep(SIM_H);
+      for (let i = 0; i < bodies.length; i++) {
+        const b = bodies[i];
+        const path = paths[i];
+        if (path.done || !alive[i]) continue;
+        const t = b.stepTrail;
+        const n = b.stepTrailN || 0;
+        if (t && n >= 2) {
+          const jumps = b.stepTrailJump || 0;
+          for (let k = 1; k < n; k++) {
+            if (jumps & (1 << (k - 1))) path.breaks.push(path.pts.length);
+            path.pts.push(t[k * 2], t[k * 2 + 1]);
+          }
+        }
+        // the cue ball is drawn to the pocket it scratches in, and a ball the
+        // mission sends back is drawn to the pocket it was refused by
+        if ((i === 0 && !scratched && rec.scratch) || (i > 0 && b.respotted) || !b.alive) {
+          if (i === 0 && rec.scratch) path.pts.push(rec.scratch.x, rec.scratch.z);
+          path.done = true;
+        }
+      }
+      const moving = bodies.some((b) => b.alive && (b.vx !== 0 || b.vz !== 0));
+      if (!moving) {
+        still += 1;
+        if (still > 1) break;
+      } else still = 0;
+    }
+  } finally {
+    game.on = realOn;
+    player.trail = realTrail;
+    game.midStroke = realMidStroke;
+    game.phase = realPhase;
+    bodies.forEach((b, i) => {
+      for (const k of Object.keys(b)) if (!(k in saved[i])) delete b[k];
+      Object.assign(b, saved[i]);
+    });
+  }
+  rec.paths = paths;
+  return rec;
+}
+
+/** A path's corners as the drawn segments: collinear runs merged, portal legs left out. */
+function pathSegments(pts, breaks, from = 0, to = pts.length / 2 - 1) {
+  const segs = [];
+  let bounce = 0;
+  let ax = pts[from * 2];
+  let az = pts[from * 2 + 1];
+  let dx = 0;
+  let dz = 0;
+  for (let i = from + 1; i <= to; i++) {
+    const bx = pts[i * 2];
+    const bz = pts[i * 2 + 1];
+    if (breaks.includes(i)) {
+      // a portal: the leg into the ring ends, the next starts at the far one
+      if (dx || dz) segs.push({ ax, az, bx: pts[(i - 1) * 2], bz: pts[(i - 1) * 2 + 1], bounce, kind: 'portal' });
+      ax = bx;
+      az = bz;
+      dx = 0;
+      dz = 0;
+      continue;
+    }
+    const ex = bx - pts[(i - 1) * 2];
+    const ez = bz - pts[(i - 1) * 2 + 1];
+    const el = Math.hypot(ex, ez);
+    if (el < 1e-7) continue;
+    const ux = ex / el;
+    const uz = ez / el;
+    if (dx || dz) {
+      // the same heading: the same straight line, carry on
+      if (Math.abs(ux * dz - uz * dx) < 1e-6 && ux * dx + uz * dz > 0) continue;
+      const cx = pts[(i - 1) * 2];
+      const cz = pts[(i - 1) * 2 + 1];
+      segs.push({ ax, az, bx: cx, bz: cz, bounce, kind: 'rail' });
+      bounce += 1;
+      ax = cx;
+      az = cz;
+    }
+    dx = ux;
+    dz = uz;
+  }
+  const lx = pts[to * 2];
+  const lz = pts[to * 2 + 1];
+  if ((dx || dz) && Math.hypot(lx - ax, lz - az) > 1e-7) segs.push({ ax, az, bx: lx, bz: lz, bounce, kind: 'rail' });
+  return segs;
+}
+
+/** Index of the corner nearest (x, z), at or after `from`. */
+function cornerAt(pts, x, z, from = 0) {
+  let best = from;
+  let bd = Infinity;
+  for (let i = from; i < pts.length / 2; i++) {
+    const d = Math.hypot(pts[i * 2] - x, pts[i * 2 + 1] - z);
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+const segsLength = (segs) => segs.reduce((t, g) => t + Math.hypot(g.bx - g.ax, g.bz - g.az), 0);
+
+/**
+ * The played shot, in the three shapes the drawing has always read: the cue's
+ * approach to its first ball (`prediction`), the cue after it (`cuePath`), and
+ * each ball it moved (`objectPath`), up to that ball's own first contact and
+ * on past it (`tail`).
+ */
+function simulateAim(dir, power) {
+  const rec = playAim(dir, power);
+  const [cue, ...balls] = rec.paths;
+  const first = rec.cueHits[0] || null;
+  const end = cue.pts.length / 2 - 1;
+  const split = first ? cornerAt(cue.pts, first.x, first.z) : end;
+  const approach = pathSegments(cue.pts, cue.breaks, 0, split);
+  if (first && approach.length) approach[approach.length - 1].kind = 'body';
+  const scratchedFirst = rec.scratch && (!first || rec.scratch.t <= first.t);
+  const prediction = {
+    segments: approach,
+    hit: first ? { body: first.body, x: first.x, z: first.z, nx: first.nx, nz: first.nz, bounces: first.bounces } : null,
+    caromDir: first ? { x: first.nx, z: first.nz } : null,
+    bounces: Math.max(0, approach.length - 1),
+    totalDistance: segsLength(approach),
+    hitSpeed: first ? first.speed : null,
+    endSpeed: first ? first.speed : 0,
+    pocket: scratchedFirst ? rec.scratch.pocket : null,
+    portals: cue.breaks.filter((b) => b <= split).length,
+    played: true,
+    unsure: rec.unsure
+  };
+  if (scratchedFirst && approach.length) approach[approach.length - 1].kind = 'pocket';
+  let cuePath = null;
+  if (first && split < end) {
+    const segments = pathSegments(cue.pts, cue.breaks, split, end);
+    if (segments.length) {
+      if (rec.scratch && !scratchedFirst) segments[segments.length - 1].kind = 'pocket';
+      cuePath = {
+        segments,
+        bounces: Math.max(0, segments.length - 1),
+        portals: cue.breaks.filter((b) => b > split).length,
+        pocket: rec.scratch && !scratchedFirst ? rec.scratch.pocket : null,
+        hits: [],
+        totalDistance: segsLength(segments)
+      };
+    }
+  }
+
+  // every ball the shot moves, in the order it started moving
+  const objectPath = [];
+  for (const path of balls) {
+    const b = path.body;
+    if (path.pts.length < 4) continue;
+    const segsAll = pathSegments(path.pts, path.breaks);
+    if (!segsAll.length || segsLength(segsAll) < 1e-3) continue;
+    const contacts = rec.contacts.filter((c) => c.a === b || c.b === b);
+    // A ball at rest is set moving by its first contact, and the leg runs to
+    // its NEXT one; a ball already rolling (a frozen stroke) runs to its first.
+    const rolling = path.pts.length >= 4 && (path.v0 || 0) > 0;
+    const startT = rolling ? 0 : contacts.length ? contacts[0].t : 0;
+    const next = rolling ? contacts[0] : contacts[1];
+    const pot = rec.pots.find((p) => p.ball === b) || null;
+    let leg;
+    if (next && (!pot || next.t < pot.t)) {
+      const cx = next.a === b ? next.ax : next.bx;
+      const cz = next.a === b ? next.az : next.bz;
+      const k = cornerAt(path.pts, cx, cz, 1);
+      const last = path.pts.length / 2 - 1;
+      leg = {
+        ball: b,
+        segs: pathSegments(path.pts, path.breaks, 0, k),
+        tail: k < last ? pathSegments(path.pts, path.breaks, k, last) : [],
+        contact: { x: cx, z: cz },
+        pocket: null,
+        tailPocket: pot ? pot.pocket : null
+      };
+    } else {
+      leg = { ball: b, segs: segsAll, tail: [], contact: null, pocket: pot ? pot.pocket : null, tailPocket: null };
+    }
+    leg.potT = pot ? pot.t : Infinity;
+    leg.startT = startT;
+    leg.foul = pot?.foul || null;
+    objectPath.push(leg);
+  }
+  objectPath.sort((a, b) => a.startT - b.startT);
+  return { prediction, cuePath, objectPath, rec };
+}
+
+/** The last shot the preview played, so the same exact shot is the one taken. */
+let aimMemo = null;
+
+/** The table the shot is played from: where everything is and how it moves. */
+const tableKey = () =>
+  `${player.x},${player.z},${player.vx},${player.vz},${game.enemies.map((b) => (b.alive ? `${b.x},${b.z},${b.vx},${b.vz}` : '-')).join(';')}`;
+const aimKey = () => `${player.aimDir.x},${player.aimDir.z},${player.aimPower}|${tableKey()}`;
+
+function playedAim() {
+  const key = aimKey();
+  if (aimMemo && aimMemo.key === key) return aimMemo;
+  const dl = Math.hypot(player.aimDir.x, player.aimDir.z) || 1;
+  const dir = { x: player.aimDir.x / dl, z: player.aimDir.z / dl };
+  aimMemo = { key, table: tableKey(), dir, power: player.aimPower, ...simulateAim(dir, player.aimPower) };
+  return aimMemo;
+}
+
+/**
+ * THE SHOT ON THE FELT. Letting go strikes exactly the shot last drawn, even
+ * if the thumb drifted after the frame that drew it: the line is the promise.
+ */
+function drawnShot() {
+  const shot = game.drawnShot;
+  return shot && shot.table === tableKey() ? shot : null;
+}
+
 function refreshPrediction() {
   if (!player.alive) return;
-  const prediction = physics.predictTrajectory({ x: player.x, z: player.z }, player.aimDir, {
-    radius: player.radius,
-    // EVERY BANK THE LAUNCH IS ALLOWED. This used to stop at
-    // TRAJECTORY.previewBounces, which is four, while the stroke itself is
-    // allowed six — so the last two rails of a long shot were not drawn at
-    // all, and a scratch taken on one of them arrived with no warning. The
-    // speed budget below is what ends the line now; the bounce count only has
-    // to agree with what the stroke may actually spend.
-    maxBounces: player.maxBounces,
-    // THE SPEED, so the preview can spend it the way the table will: a cushion
-    // costs four percent, and a line drawn without that tax reaches pockets
-    // the ball stops short of.
-    speed: launchSpeed(),
-    drag: PLAYER.dragLaunched,
-    pockets: rooms.table.pockets,
-    portals: rooms.table.portalRings,
-    bodies: game.enemies
-  });
-  // The pockets go in so the preview can warn about a scratch: a line that
-  // ends down a hole is the one prediction the player most needs in advance.
-  const cuePath = projectCuePath(prediction);
-  const objectPath = projectObjectPath(prediction, cuePath);
+  // THE SHOT, PLAYED (see playAim): not a model of it.
+  const t0 = performance.now();
+  const shot = playedAim();
+  game.aimCost = performance.now() - t0;
+  game.drawnShot = shot;
+  const prediction = shot.prediction;
+  const cuePath = shot.cuePath;
+  const objectPath = shot.objectPath;
   // ONE LIST, TWO RENDERERS. The ghost balls on the felt and the labels on the
   // UI layer are both drawn from these, so the shape you see and the words
   // next to it can never end up describing different places.
@@ -4140,7 +4509,7 @@ function refreshPrediction() {
     power: player.aimPower,
     cuePath,
     objectPath,
-    // One hue per leg, taken from the ball travelling it — except a ball the
+    // One hue per leg, taken from the ball traveling it — except a ball the
     // mission would refuse, which travels in red. The line is the promise, so
     // the line is where a refusal has to appear.
     legInks: objectPath.map((leg, i) => (fouls.has(i) ? PALETTE.bad : inkOf(leg.ball))),
@@ -4207,15 +4576,19 @@ const input = new InputManager(stage, {
     noteAimPower(aim);
     player.updateAim(aim);
     showPad(aim);
+    // the line is played once a frame, in the frame loop: a touch screen that
+    // reports twice a frame would otherwise play every shot twice
     if (aim.valid) {
-      refreshPrediction();
+      game.aimDirty = true;
     } else {
+      game.drawnShot = null;
       player.hideTrajectory();
       game.aimTags = null;
       game.aimFoul = null;
     }
   },
   onAimCancel: () => {
+    game.drawnShot = null;
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
     hud.setPad(null);
@@ -4234,7 +4607,11 @@ const input = new InputManager(stage, {
     }
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
-    player.launch(aim, game);
+    // THE SHOT THE LINE PLAYED, to the last bit: the drawn preview is a record
+    // of this exact heading and power, so that is what is struck.
+    const shown = drawnShot();
+    game.drawnShot = null;
+    player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : aim, game);
     // THE STICK GETS THERE FIRST. The table holds still for the few frames the
     // cue takes to snap into the ball, so the ball leaves when it is hit, not
     // when the thumb lets go.
@@ -4422,7 +4799,7 @@ function applyReserve() {
   camera.left = -camera.right;
   // -z is screen-up: moving the camera up-world pushes the table down-screen.
   // NOT via lookAt — the orientation was set once at boot and re-aiming at a
-  // moved centre would tilt a camera whose whole job is to be straight down.
+  // moved center would tilt a camera whose whole job is to be straight down.
   //
   // AND THE ENGINE HAS TO BE TOLD, because it owns this position: it rewrites
   // camera.position from its own `basePosition` every frame to apply shake.
@@ -5061,6 +5438,18 @@ if (typeof window !== 'undefined') {
     intro: () => showRoomBanner(),
     /** Leave this table for the next, the way the shop's Next table does. */
     advance: () => advanceRoom(),
+    /** One fixed physics step of the table, as a stroke takes it. */
+    step: (n = 1) => {
+      for (let i = 0; i < n; i++) motionStep(SIM_H);
+    },
+    stepSize: SIM_H,
+    /** The freeze practice table, as the run opens it before Table 7. */
+    practice: () => startPractice('freeze', () => {}),
+    /** The aim preview's played shot alone, nothing drawn (for timing it). */
+    playShot: (deg, power) => {
+      const th = (deg * Math.PI) / 180;
+      return simulateAim({ x: Math.sin(th), z: -Math.cos(th) }, power).rec.steps;
+    },
     /** Earn an achievement now, as play would. */
     unlock: (id) => achievements.unlock(id),
     /** Point the resting cue along `deg` (0 is up the table, clockwise). */
@@ -5325,6 +5714,24 @@ function anticipateBallPot() {
 }
 
 function simulate(dt, rawDt, aiming) {
+  // THE TABLE MOVES IN FIXED STEPS (from playtest: the line said a ball would
+  // go in and it went somewhere else). However long this frame was, and
+  // however slow the score presentation has the table running, the physics
+  // takes the same SIM_H steps in the same order, so a stroke plays out
+  // identically on every device and exactly as the aim preview played it.
+  game.simAcc = (game.simAcc || 0) + dt;
+  let steps = 0;
+  while (game.simAcc >= SIM_H * (1 - 1e-9) && steps < SIM_MAX_PER_FRAME) {
+    motionStep(SIM_H);
+    game.simAcc -= SIM_H;
+    steps += 1;
+  }
+  if (steps >= SIM_MAX_PER_FRAME) game.simAcc = 0;
+  // drawn between the last two steps (Player/Enemy.renderAt)
+  const alpha = game.simAcc / SIM_H;
+  player.renderAlpha = alpha;
+  for (const ball of game.enemies) ball.renderAlpha = alpha;
+
   player.update(dt, rawDt, game, aiming);
 
   if (player.state === PLAYER_STATE.LAUNCHED || player.state === PLAYER_STATE.DASHING) {
@@ -5334,7 +5741,6 @@ function simulate(dt, rawDt, aiming) {
   for (const enemy of game.enemies) enemy.update(dt, game);
   for (const projectile of game.projectiles) projectile.update(dt);
 
-  physics.update(dt, game);
   anticipatePot();
   boons.update(dt, game);
   sweepEntities();
@@ -5397,6 +5803,7 @@ function frame(now) {
   pumpSinking(rawDt);
   feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.practice && !game.headless && game.state !== 'dead');
   feed.update(rawDt);
+  fitScoreFeed();
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
   // The boxes cover the bottom of the felt, where the preview draws where a
@@ -5414,13 +5821,18 @@ function frame(now) {
     } else if (game.phase === 'resolve' && dt > 0) {
       simulate(dt, rawDt, false);
     } else if (game.state !== 'modal') {
+      // between strokes every ball is drawn where it is
+      if (game.phase !== 'resolve') {
+        player.renderAlpha = undefined;
+        for (const ball of game.enemies) ball.renderAlpha = undefined;
+      }
       // Frozen (hit-stop): keep presentation alive, skip simulation.
       player.update(0, rawDt, game, aiming && engine.inBulletTime);
     }
-    // While the ball is travelling under its own steam, the compass needle
+    // While the ball is traveling under its own steam, the compass needle
     // follows it. When it settles the needle is simply left where the ball was
     // last heading, which is the default the next shot starts from.
-    // Only while the ball is travelling under its OWN steam. Being body-checked
+    // Only while the ball is traveling under its OWN steam. Being body-checked
     // also clears settleSpeed, and that silently swung the resting cue to point
     // wherever the player had just been shoved — the one heading that is
     // supposed to be a fixed, re-readable default.
@@ -5440,12 +5852,25 @@ function frame(now) {
         noteAimPower(aim);
         player.updateAim(aim);
         if (aim.valid) {
-          refreshPrediction();
+          // A SLOW PHONE KEEPS ITS FRAME RATE: after a preview that ate most
+          // of a frame, the next frame keeps the line it has (the shot taken
+          // is always the one drawn, see drawnShot)
+          if (game.aimCost > 10 && !game.aimSkipped) {
+            game.aimSkipped = true;
+          } else {
+            game.aimSkipped = false;
+            refreshPrediction();
+          }
+          game.aimDirty = false;
         } else {
           player.hideTrajectory();
           game.aimFoul = null;
         }
       }
+    } else if (game.aimDirty && input.isAiming) {
+      // an aim the frame loop does not own (a frozen stroke): played here
+      game.aimDirty = false;
+      refreshPrediction();
     } else if (
       game.state === 'playing' &&
       player.alive &&

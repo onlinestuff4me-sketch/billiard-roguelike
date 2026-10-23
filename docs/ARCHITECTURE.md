@@ -38,7 +38,7 @@ orchestrator (`main.js`) that wires them together and drives the loop.
 
 1. **`config.js` imports nothing.** Every other module may import it.
 2. **Entities never import systems.** `Player` and `Enemy` are state + mesh + local
-   behaviour. They expose data; systems act on them.
+   behavior. They expose data; systems act on them.
 3. **Systems never import each other directly.** They communicate through the
    `game` context object that `main.js` passes into every `update()`.
 4. **UI never touches gameplay state directly.** `HUD.update(snapshot)` and
@@ -169,7 +169,7 @@ height, hover, squash). This keeps every test 2-D and cheap.
 
 Collision response is **impulse-based and deterministic**. Static geometry reflects
 with `v' = (v − 2(v·n)n) · restitution`. Ball-vs-ball — cue into enemy, and enemy
-into enemy — is solved as a real two-body collision along the line of centres:
+into enemy — is solved as a real two-body collision along the line of centers:
 
 ```
 j = −(1 + e)(v_rel · n) / (1/mA + 1/mB)        n = unit vector from A to B
@@ -179,7 +179,7 @@ vA += (j/mA) n        vB −= (j/mB) n
 Only the normal component is exchanged; each body keeps its tangential velocity.
 That single rule reproduces the results a player already expects from a pool table
 without any of them being special-cased: equal masses head-on give a stop shot, a
-cut sends the object ball down the centre line while the cue ball departs along the
+cut sends the object ball down the center line while the cue ball departs along the
 tangent (the **90° rule**), and momentum is conserved exactly. A heavier Eight-Ball
 throws the cue ball back purely because of its mass.
 
@@ -325,7 +325,7 @@ pure presentation with no state of their own. Particles use a single ring-buffer
 ## 7. Git Versioning & Rollback Workflow
 
 Game feel is found by *iterating and reverting*. The repository is therefore
-organised so that any experiment can be thrown away in one command.
+organized so that any experiment can be thrown away in one command.
 
 ### 7.1 Milestone tags
 

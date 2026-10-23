@@ -137,7 +137,7 @@ export async function openGame(opts = {}) {
   // The harness runs against the live systems, so it goes in AFTER boot.
   await page.evaluate(readFileSync(join(HERE, 'harness.js'), 'utf8'));
   // The palette lives in a module the page does not expose; hand it over so a
-  // check can measure the colours the game is actually configured with.
+  // check can measure the colors the game is actually configured with.
   await page.evaluate(() => {
     window.__BALL_INK = window.__game?.ballInk ?? null;
   });

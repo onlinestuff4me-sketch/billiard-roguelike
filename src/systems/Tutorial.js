@@ -5,7 +5,7 @@
  * the player happened to do the right thing in a normal, randomly generated
  * room. That fails in every way a tutorial can fail. The room might not contain
  * the shot being described. The targets wander off the diagram. A half-finished
- * attempt kills the thing you were meant to practise on, so the lesson becomes
+ * attempt kills the thing you were meant to practice on, so the lesson becomes
  * unteachable halfway through. And the instruction disappears the instant you
  * start, which is exactly when you need to read it again.
  *
@@ -67,7 +67,7 @@ const HAND_RELEASE = 8.6;
  *
  * `say` is MARKUP, not text, and it is ONE SENTENCE — the coaching band holds
  * a fixed two lines and nothing else, so a board that needs a paragraph is a
- * board teaching two things. The markup is the game's own colour allocation,
+ * board teaching two things. The markup is the game's own color allocation,
  * not decoration: `<b>` names a ball and takes the rack's amber, `<em>` names
  * the good thing or the way through and takes green, and plain ink is the
  * band's bone-white — the same white the called pocket is lit in, so a pocket
@@ -249,7 +249,7 @@ const RULES = {
     // wonder which of them is the answer. One line: the measured one.
     route: { fromSolve: true, number: 4, slot: 'ml' },
     cheer: 'Two balls, one stroke. That is what to look for',
-    scold: 'Only one went down. Aim so the <b>1</b> clips the <b>4</b> thinly — it has to keep rolling afterwards',
+    scold: 'Only one went down. Aim so the <b>1</b> clips the <b>4</b> thinly — it has to keep rolling afterward',
     whiff: 'You missed the <b>1</b> completely — aim at the near ball, not past it',
     nudge: 'Follow the road: through the edge of the <b>1</b>, so it puts the <b>4</b> in and carries on.'
   },
@@ -414,7 +414,7 @@ export class Tutorial {
     // re-read them. The band is not in the play area, so it never moves, never
     // fades, and never has to choose between being readable and being clear of
     // the balls. Four states — instruct, aiming, missed, complete — are the
-    // same strip in the same place, in three colours.
+    // same strip in the same place, in three colors.
     const el = document.createElement('div');
     el.id = 'coach';
     el.innerHTML =
@@ -879,7 +879,7 @@ export class Tutorial {
    * SOLVE THE STRIP ONCE, EXACTLY, AND THEN LEAVE IT ALONE.
    *
    * The reserve is measured against the ARENA, and the arena is not the last
-   * thing the table draws: the far rail stands above the pocket centres, so a
+   * thing the table draws: the far rail stands above the pocket centers, so a
    * strip sized to the arena leaves the rail poking into the band. Buying the
    * difference moves the camera, which moves the rail — the correction has to
    * account for its own effect.
@@ -1064,7 +1064,7 @@ export class Tutorial {
 
   /**
    * What this lesson is talking about, as an AXIS-ALIGNED ELLIPSE in world
-   * space — centre plus a half-extent on each axis.
+   * space — center plus a half-extent on each axis.
    *
    * Not a circle: the two things most worth pointing at are a goal bar three
    * times wider than it is tall and a rack strung out in a line. A circle
@@ -1194,7 +1194,7 @@ export class Tutorial {
    * "1 → SIDE POCKET". All of them named a place the picture was already
    * showing, in words the eye had to leave the felt to read, and each one then
    * had to be kept clear of every ball and pocket it might cover. The ghosts
-   * say all of it better: a hollow copy of the ball, in the ball's colour, at
+   * say all of it better: a hollow copy of the ball, in the ball's color, at
    * the point its journey commits.
    *
    * SCRATCH survives, because it is not a place. It is a consequence — this
@@ -1256,11 +1256,11 @@ export class Tutorial {
     const cue = toPx(this.player.x, this.player.z);
     blockers.push({ ...cue, r: (this.player.radius / visZ) * h + 3 });
 
-    /** How badly a label box centred here lands on something worth seeing. */
+    /** How badly a label box centered here lands on something worth seeing. */
     const cost = (cx, cy, bw, bh) => {
       let worst = 0;
       for (const b of blockers) {
-        // Closest point on the box to the blocker's centre.
+        // Closest point on the box to the blocker's center.
         const dx = Math.max(Math.abs(b.x - cx) - bw / 2, 0);
         const dy = Math.max(Math.abs(b.y - cy) - bh / 2, 0);
         const gap = Math.hypot(dx, dy) - b.r;
@@ -1337,7 +1337,7 @@ export class Tutorial {
    *
    * The demonstration is the real thing, not a cartoon of it: the press point
    * and the release point are the actual positions a thumb would occupy for
-   * this lesson's own resting heading, projected through the same camera maths
+   * this lesson's own resting heading, projected through the same camera math
    * the spotlight uses. So the hand draws back along the cue's own axis, and
    * stops exactly where full power is.
    *
@@ -1430,7 +1430,7 @@ export class Tutorial {
     if (this._launched && !this.input.isAiming) {
       // Only while the world is running. Aiming stops time completely, but this
       // clock used to keep draining through it — so holding an aim for three
-      // seconds after a shot cancelled that shot mid-gesture: the ball teleported
+      // seconds after a shot canceled that shot mid-gesture: the ball teleported
       // from mid-flight back to spawn and the player was told they had missed,
       // with their thumb still down. Taking three seconds over a shot is
       // entirely ordinary, and bullet time exists to invite exactly that.
@@ -1633,7 +1633,7 @@ export class Tutorial {
       ).length;
       // At least one ball-to-ball hand-off, and every ball ended up somewhere
       // else. Counting cue strikes instead was wrong: a cue ball that stops
-      // dead on the first ball still creeps forward afterwards and taps another
+      // dead on the first ball still creeps forward afterward and taps another
       // one, which is not the player doing anything — but it made the strike
       // count 2 and rejected a shot that had visibly worked.
       if (this._passes >= 1 && rack.length && moved >= rack.length) this._score();
@@ -1848,7 +1848,7 @@ export class Tutorial {
     // A RACK-CLEARING BOARD IS ONE LONG ATTEMPT, NOT A SERIES OF REPS.
     //
     // Every other board resets between attempts, which is right: they are the
-    // same shot practised until it lands. This one is a rack being cleared over
+    // same shot practiced until it lands. This one is a rack being cleared over
     // three strokes, and teleporting the cue ball back to the spawn after each
     // one throws away the position the player just played for — and does it
     // silently, which is exactly how it was reported ("it resets my cue without
@@ -2086,7 +2086,7 @@ export class Tutorial {
     const opener = 'Scratched — your own ball went in the pocket';
     const next = multi ? this._guideNext() : null;
     return next
-      ? `${opener}. Try ${this._nextLine(next)}, but hit it off-centre`
+      ? `${opener}. Try ${this._nextLine(next)}, but hit it off-center`
       : `${opener}. Hit the target ball off to one side, and yours rolls clear instead`;
   }
 
@@ -2253,11 +2253,11 @@ export class Tutorial {
 
   /**
    * Write the band. One entry point for all four states, because the states
-   * differ only in the sentence and the colour — nothing appears, nothing
+   * differ only in the sentence and the color — nothing appears, nothing
    * disappears, and nothing moves.
    *
    * innerHTML, deliberately: lesson copy carries <em>/<b> so the one word that
-   * matters is coloured. Nothing here is player-supplied — every string is a
+   * matters is colored. Nothing here is player-supplied — every string is a
    * constant in RULES above — so there is nothing to escape.
    */
   /**
@@ -2275,10 +2275,10 @@ export class Tutorial {
   }
 
   _say(html, tone) {
-    // A BALL NAMED IN THE SENTENCE IS INKED IN THAT BALL'S OWN COLOUR.
+    // A BALL NAMED IN THE SENTENCE IS INKED IN THAT BALL'S OWN COLOR.
     //
     // Every solid now has its own hue on the felt, so "hit the 4, so it knocks
-    // the 1" can point with colour instead of asking the player to read two
+    // the 1" can point with color instead of asking the player to read two
     // small numerals and match them. `<b>4</b>` picks up the 4's yellow; a
     // <b> holding anything that is not a ball number keeps the rack amber.
     this.lineEl.innerHTML = (html || '').replace(

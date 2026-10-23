@@ -3,7 +3,7 @@
 **Version:** 0.1 (strategy, not built)
 **Builds on:** [PROGRESSION.md](PROGRESSION.md) (the Gate Ladder) and
 [MECHANICS.md](MECHANICS.md) (every noun and what it costs the preview)
-**Research:** puzzle-design sources summarised in §10
+**Research:** puzzle-design sources summarized in §10
 
 The Gate Ladder already answers *where* a mechanic is introduced: an authored gate
 for each new noun, procedural tables everywhere else. This document answers the

@@ -97,7 +97,7 @@ export class BoonModal {
       //    cards at a glance rather than dug out of a sentence.
       if (def.numbers) el('div', 'card-numbers', card).textContent = def.numbers(offer.values);
 
-      // 4. Identity last: the name matters for recognising the build you are
+      // 4. Identity last: the name matters for recognizing the build you are
       //    assembling, not for making this decision.
       const foot = el('div', 'card-foot', card);
       el('span', 'card-glyph', foot).textContent = def.glyph;

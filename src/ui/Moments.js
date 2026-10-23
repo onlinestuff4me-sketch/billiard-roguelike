@@ -644,9 +644,27 @@ export class Moments {
   /**
    * THE SHOP, in CASH, with three actions (decided in review): buy a card,
    * hold a card for the next shop, or reroll. Gold is money and nothing else;
-   * rarity is the 1–3 stars on each card, not a colour. Built once per visit
+   * rarity is the 1–3 stars on each card, not a color. Built once per visit
    * and kept, so going back to the summary and returning keeps every choice.
    */
+  /**
+   * A PANEL FITS THE SCREEN IT IS ON (from playtest: elements overlapping).
+   * It starts below the top band, and on a short phone it shrinks until it and
+   * the row of buttons under it both fit, rather than running under them.
+   */
+  _fitPanel(panel, above = null) {
+    const L = this.layer.getBoundingClientRect();
+    if (!L.height) return;
+    panel.style.zoom = '';
+    const top = Math.max(panel.offsetTop, (this.hud.topBandBottom?.() ?? L.top) - L.top + 6);
+    panel.style.top = `${Math.round(top)}px`;
+    // the button row under the panel: its height, the gap above it, a margin;
+    // or, when the row is already placed, everything above it
+    const room = above ? above.getBoundingClientRect().top - L.top - top - 10 : L.height - top - 64 - 14;
+    const h = panel.offsetHeight;
+    if (h > room && room > 120) panel.style.zoom = (room / h).toFixed(3);
+  }
+
   _buildShop(root, shop, live) {
     const panel = el('div', 'mo-shop', root);
     const head = el('div', 'mo-shop-head', panel);
@@ -775,7 +793,11 @@ export class Moments {
       rolling = false;
     });
     // the cards deal in when the shop first slides in
-    panel._deal = () => renderCards(true);
+    panel._deal = () => {
+      renderCards(true);
+      this._fitPanel(panel, root.querySelector('.mo-actrow'));
+    };
+    this._fitPanel(panel);
     return panel;
   }
 
@@ -952,6 +974,7 @@ export class Moments {
       el('span', 'v', r).textContent = '0';
     }
 
+    this._fitPanel(panel);
     // panel and title arrive together, once each
     this.anim(kicker, [{ letterSpacing: '0.7em', opacity: 0, filter: 'blur(4px)' }, { letterSpacing: '0.16em', opacity: 1, filter: 'blur(0)' }], { duration: 420, delay: 120, easing: OUT });
     await this.anim(panel, [{ transform: 'translate(-50%, -40px) scale(1.08)', opacity: 0 }, { transform: 'translate(-50%, 0) scale(1)', opacity: 1 }], { duration: 300, easing: BACK });
@@ -1083,7 +1106,7 @@ export class Moments {
    * THE WALLET — collecting cash and spending it (MOMENTS.wallet)
    * -------------------------------------------------------------- */
 
-  /** A node's centre, in layer pixels. */
+  /** A node's center, in layer pixels. */
   _at(node) {
     const r = node.getBoundingClientRect();
     const L = this.layer.getBoundingClientRect();
@@ -1520,7 +1543,7 @@ export class Moments {
     if (note) this.anim(note, [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: OUT });
     await this.wait(520);
 
-    // THE BOOT TRACE: two light-cycles leave the bottom centre and draw the
+    // THE BOOT TRACE: two light-cycles leave the bottom center and draw the
     // rails, meeting at the top.
     const R = this._railRect();
     const g = svg('svg', { class: 'mo-boot', width: this.W, height: this.H, viewBox: `0 0 ${this.W} ${this.H}` }, root);

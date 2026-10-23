@@ -57,6 +57,7 @@ export class HUD {
     // LIVES and CASH: what you carry from table to table. Missing a table's
     // target costs a life; cash is spent in the shop between tables.
     const hpBlock = el('div', 'hud-hp', top);
+    this.hpBlock = hpBlock;
     el('div', 'hud-label', hpBlock).textContent = 'Lives';
     this.livesRow = el('div', 'lives-row', hpBlock);
     // THE WALLET: one boxed figure, always in this corner, during play, the
@@ -122,7 +123,7 @@ export class HUD {
     this.freezeLabel.textContent = 'Freeze frame';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
     this.freezeCall = el('div', 'freeze-call', freezeBlock);
-    this.freezeCall.textContent = 'Tap to freeze';
+    this.freezeCall.textContent = 'Freeze';
     /** set by the game: what a press on the button does */
     this.onFreeze = null;
     freezeBlock.addEventListener('pointerdown', (e) => {
@@ -291,6 +292,16 @@ export class HUD {
       this.practiceLine.animate?.([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
     }
     this.practiceCount.textContent = p.count || '';
+    // between the lives in the corner and the right edge, not over them
+    const R = this.root.getBoundingClientRect();
+    const hp = this.hpBlock?.getBoundingClientRect();
+    if (hp?.width && R.width) {
+      const left = hp.right - R.left + 8;
+      this.practice.style.left = `${left}px`;
+      this.practice.style.right = getComputedStyle(this.root).getPropertyValue('--hud-pad') || '12px';
+      this.practice.style.width = 'auto';
+      this.practice.style.transform = 'none';
+    }
     this.practiceDone.textContent = p.done;
     this.practiceDone.classList.toggle('ready', !!p.ready);
     if (p.onDone) this.practiceDone.onclick = p.onDone;
@@ -345,6 +356,23 @@ export class HUD {
     else if (!this._achUp) this._achNext();
   }
 
+  /**
+   * The bottom of the top band in page pixels, down to the lowest thing that
+   * hangs off it (the mission's BEAT THE TARGET chip sits below the band's
+   * own box). Whatever drops in under the band starts here.
+   */
+  topBandBottom() {
+    const R = this.root.getBoundingClientRect();
+    let bottom = this.topBand.getBoundingClientRect().bottom;
+    // a practice table's what-to-try sits where the band's middle was
+    if (!this.practice.hidden) bottom = Math.max(bottom, this.practice.getBoundingClientRect().bottom);
+    for (const n of this.topBand.querySelectorAll('*')) {
+      const r = n.getBoundingClientRect();
+      if (r.height && r.bottom < R.top + R.height * 0.3) bottom = Math.max(bottom, r.bottom);
+    }
+    return bottom;
+  }
+
   /** How much longer the plate up needs to have been on screen `ms`. */
   achievementReadLeft(ms) {
     if (!this._achUp) return 0;
@@ -369,8 +397,7 @@ export class HUD {
     this._achUp = t;
     this._achAt = performance.now();
     // just under the top band, so the score and target stay in view
-    const band = this.topBand.getBoundingClientRect();
-    t.style.top = `${Math.round(band.bottom - this.root.getBoundingClientRect().top + 6)}px`;
+    t.style.top = `${Math.round(this.topBandBottom() - this.root.getBoundingClientRect().top + 6)}px`;
     let gone = false;
     const leave = () => {
       if (gone) return;

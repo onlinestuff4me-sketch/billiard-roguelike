@@ -26,11 +26,11 @@ If an action or a reward does not get a reaction the player can see, hear and
 
 ## 2. The eight laws
 
-1. **Colour says which number it feeds.** White light (`pts`) adds points.
+1. **Color says which number it feeds.** White light (`pts`) adds points.
    Heat (`mult`) multiplies them. Cyan (`you`) is your ball and nothing you
    collect. Pink-red (`hazard`) costs you. Everything else is `structure`,
    architecture with no meaning. A new mechanic takes one of these roles, or it
-   gets no colour.
+   gets no color.
 2. **Shape says what a thing is.** Circles are things on the table: balls,
    pockets, rings. Diamonds multiply, rings add, chevrons cost. Chamfered
    rectangles are UI. Nothing on the HUD is round; nothing on the table is
@@ -64,7 +64,7 @@ If an action or a reward does not get a reaction the player can see, hear and
 
 ---
 
-## 3. Colour
+## 3. Color
 
 | Role | Token | Hex | Use it for | Never for |
 | --- | --- | --- | --- | --- |
@@ -76,7 +76,7 @@ If an action or a reward does not get a reaction the player can see, hear and
 | Hazard | `hazard` | `#ff2e7e` | Scratch, foul, void, out of shots | Anything without a chevron or a strike |
 | Ice | `ice` | `#bff4ff` | Freeze frame only: the ice wave, frost rings, the label, charge plates, the freeze pickup | Anything else (it is a state, not a reward) |
 
-**A pickup on the felt wears the colour of the counter it fills** (from
+**A pickup on the felt wears the color of the counter it fills** (from
 review): the ×2 ring is `mult` orange like the MULT box, +1 SHOT is the shot
 counter's amber `#ffb340`, freeze is `ice`. Anything else you collect is mint
 `#2ef2c4`; hazards are red. (`inkFor` in Table.js.)
@@ -84,7 +84,7 @@ counter's amber `#ffb340`, freeze is `ice`. Anything else you collect is mint
 | Architecture | `grid`, `structure`, `structure-lit` | `#0f2b3f`, `#1e4f6b`, `#3a87a8` | Grid, rails, lips, dividers | Text |
 | Text | `ink`, `muted-ink`, `on-plate` | `#e9f8ff`, `#7fa3b8`, `#02050b` | Words; `on-plate` is ink printed on a solid plate | |
 
-**Colour-blind safety.** POINTS and MULT differ by lightness (white vs orange),
+**Color-blind safety.** POINTS and MULT differ by lightness (white vs orange),
 not hue alone. Hazard always comes with a chevron, a strike-through or the word.
 Object balls carry no hue that matters: number and band identify them. Check
 every new pair with `npm run palette`.
@@ -128,7 +128,7 @@ box-value 26 · popup 26 · tick 13 · mission 18 · body 16 · label 11.
 The table is inset, not edge to edge, so nothing the player reads sits on the
 felt while they play (picked in review, after Ultrapool, though less inset).
 
-- **Top band:** the HUD's top bar: lives and cash on the left; **YOUR SCORE in the centre**, with a bar filling toward the table's TARGET, so how far you have to go is visible all table long; the mission on the right. The order hint ("NEXT 1 · IN ORDER PAYS") shows only when it is a rule: a refused line, or Strict Order mode.
+- **Top band:** the HUD's top bar: lives and cash on the left; **YOUR SCORE in the center**, with a bar filling toward the table's TARGET, so how far you have to go is visible all table long; the mission on the right. The order hint ("NEXT 1 · IN ORDER PAYS") shows only when it is a rule: a refused line, or Strict Order mode.
 - **Bottom band:** one row, with shots on the left, the score boxes in the
   middle and Freeze frame on the right. The score boxes show only while a
   stroke plays.
@@ -145,9 +145,9 @@ when it is taller.
 **One movement at a time** (from review). A moment is a sequence, not a
 pile-up: let each movement finish before the next starts, and keep everything
 else still while it happens. Don't move, restyle or reflow anything that
-doesn't have to change. A number that grows must not push its neighbours
+doesn't have to change. A number that grows must not push its neighbors
 (fixed columns, tabular digits), and a value that has been counted keeps its
-place, size and face afterwards.
+place, size and face afterward.
 
 **Durations:** instant 80 · fast 150 · base 250 · slow 400 · boot 700 ·
 hit-stop 90 · pop 420 · hold 800 (×0.9 per event, min 400) · flight 340 ·
@@ -176,12 +176,12 @@ the table, never the presentation.
 
 ## 7. The count (scoring presentation)
 
-Summarised here; the full spec is in the Lightline design system ("The count")
+Summarized here; the full spec is in the Lightline design system ("The count")
 and the code in `src/systems/Rules.js` and `src/ui/ScoreFeed.js`.
 
 Until a pot, a rail or the ring only **lights** its cause, briefly and with no
 number (from review, round 20: faded boxes, "Locked in", provisional tags and
-a grey "not counted" line each asked a new player to follow numbers that might
+a gray "not counted" line each asked a new player to follow numbers that might
 not count). Then, by `SCORE_FEED.style` (in review):
 
 - **cash** (picked, round 21): **just before the cue ball strikes a ball
@@ -206,7 +206,7 @@ Each number:
 
 1. **Freeze** (90 ms hit-stop, soft thud) — cash only.
 2. **Slow motion** at 0.12× — cash only.
-3. **The cause reacts** in the colour of the box it feeds: the wall lights, the
+3. **The cause reacts** in the color of the box it feeds: the wall lights, the
    zone swells, the ball wiggles, the pocket flares.
 4. **A plate pops** beside the cause, holds, then **flies** into POINTS or
    MULT, which jumps; a note one scale degree higher plays.
@@ -246,7 +246,7 @@ to amber, and the count flashes ("3 of 5" becomes "4 of 6").
 
 ---
 
-## 8. The moment catalogue
+## 8. The moment catalog
 
 Every beat of the game, what it must say, and how. Where two treatments are on
 trial, both are built and switchable (Settings, or `window.__moment(kind, v)`)
@@ -319,8 +319,8 @@ achievements, a saved run and Strict Order if unlocked.
 
 | Beat | Treatment | Code |
 | --- | --- | --- |
-| Aim | Touch anywhere and drag. The full preview, always: cue path with reflections, ghost ball, cue path after contact, struck ball to its landing or pocket, and hazard colouring for scratches and refused pots. | `Player.js` `AimRenderer`, `main.js` |
-| Power | **Cue** style (default). A full-length cue stick runs back off the table past the rail, tapered, with cyan lit edges, a lit centre streak, butt bands and a two-layer shadow on the felt and rail. It slides back 1:1 with the thumb (5.2 units over a full draw). The ring around the ball fills both ways as power builds. | `CueStick`, `_ring` |
+| Aim | Touch anywhere and drag. The full preview, always: cue path with reflections, ghost ball, cue path after contact, struck ball to its landing or pocket, and hazard coloring for scratches and refused pots. | `Player.js` `AimRenderer`, `main.js` |
+| Power | **Cue** style (default). A full-length cue stick runs back off the table past the rail, tapered, with cyan lit edges, a lit center streak, butt bands and a two-layer shadow on the felt and rail. It slides back 1:1 with the thumb (5.2 units over a full draw). The ring around the ball fills both ways as power builds. | `CueStick`, `_ring` |
 | Full power | The ring closes and flashes, a burst of light leaves the ball, a MAX POWER badge flies out away from the aim line, a two-note riser plays, the screen jolts and the phone buzzes (18 ms). One threshold: `TRAJECTORY.fullDraw`. | `noteAimPower`, `maxPowerBadge` |
 | Strike | The table holds (60 ms) while the stick snaps into the ball, accelerating, with a light smear over the ground it covers. It follows through past the ball, then eases back as it fades. The ball leaves when it is hit, not when the thumb lets go. | `AimRenderer.tick`, `onRelease` |
 | Showing | **Only under the thumb** (from review, after Ultrapool; `TRAJECTORY.stickShow` 'drag'). At rest nothing is drawn: no stick and no aim lines (from review: the lines stayed while the stick waited); the lessons keep their resting line because the coaching points along it. Lines and stick come in as a thumb goes down; the stick fades in (`stickFade` 0.16 s) and out if the thumb lets go without shooting; a shot plays the strike and fades it as before. The other setting, 'rest', keeps the stick on the table and beams it back in after every shot (a line of light along it, then it fills in; `stickReveal`). | `AimRenderer` (`heldFade`, `_reveal`) |
@@ -367,7 +367,7 @@ this did not cost a shot.
 cue ball, turning the table into a frozen blue monotone as it passes. Each
 rolling ball gets a frost hexagon and a dashed arrow showing where it is
 headed. FREEZE FRAME is set in ice type. On release the ice shatters outward
-from the cue ball and colour floods back. No viewfinder brackets: they
+from the cue ball and color floods back. No viewfinder brackets: they
 collided with the corner pockets.
 
 ### 8.3a Teaching a new control (from review)
@@ -376,7 +376,7 @@ Before the first table that needs it (Table 7's ice), or as soon as the run has
 it in hand another way (bought in the shop, Ice Box, Frostbite), the game
 shows **one card** (from review: one screen, not two): the control working in
 a loop, one line ("Tap FREEZE while balls are still moving to re-aim and shoot
-again.") and **Tap to practise**. The loop is recorded on the practice table
+again.") and **Tap to practice**. The loop is recorded on the practice table
 with real input (a drag to aim and shoot, a tap on FREEZE, a drag to re-aim on
 the frozen table, the release) with a finger drawn over every touch, and plays
 from a sprite sheet stepped on the frame clock
@@ -521,7 +521,7 @@ characters, checked in `npm run scoring`), so a reroll never moves the shelf.
 Four cards from a pool of 22 (`src/systems/Upgrades.js`), weighted by rarity
 (common 6, rare 3, epic 1), never one you already own unless it stacks. A
 Freeze frame charge is one of those cards, not a fourth action. **Rarity is
-marked by stars** (★, ★★, ★★★) in the card's tag, never by colour, and never
+marked by stars** (★, ★★, ★★★) in the card's tag, never by color, and never
 by a shape the HUD already uses (diamonds are the Freeze frame meter, pips are
 lives). **Gold means money and nothing else**. A card you can't afford shows
 its price in `hazard`; a card that would do nothing says why ("Meter full").
@@ -549,7 +549,7 @@ from alternating sides, each with a cyan leading edge. ROOM and the number you
 finished appear big and solid; the number rolls over to the next one with a
 note and a jolt, and holds. What you just bought ("Bought · Frostbite,
 Bounce") is written in heat under it. Then two light-cycles leave the bottom
-centre and trace the rails, meeting at the top, and the strips open from the
+center and trace the rails, meeting at the top, and the strips open from the
 middle outward on the new table. About 3 s.
 
 ### 8.5b The table card
@@ -579,7 +579,7 @@ number showing there all table long.
 
 ## 9. Sound
 
-All synthesised (Web Audio, `src/core/AudioManager.js`). Pitch is quantised to
+All synthesised (Web Audio, `src/core/AudioManager.js`). Pitch is quantized to
 a minor pentatonic, so a long shot plays a rising melody.
 
 | Event | Voice |
@@ -614,7 +614,7 @@ a minor pentatonic, so a long shot plays a rising melody.
 ## 11. Where the build stands
 
 The bible is the target; this table is the honest gap. Close a row, delete it.
-The Tron pass closed the felt, the colour of you, the type and the grid.
+The Tron pass closed the felt, the color of you, the type and the grid.
 
 | Area | Bible | Build today |
 | --- | --- | --- |
@@ -626,7 +626,7 @@ The Tron pass closed the felt, the colour of you, the type and the grid.
 
 ### What the Tron pass changed
 
-- **The floor** is unlit black (`felt` `#061222` at the centre to `feltDeep`
+- **The floor** is unlit black (`felt` `#061222` at the center to `feltDeep`
   `#02050b` at the edge), not lit cloth.
 - **The grid** is hair lines every 1.5 units with every third brighter
   (`feltLine`, `gridMajor`). It is a shader that **answers**: pots, a cleared

@@ -49,7 +49,7 @@ not a hard mechanic, it is an unfair one.
 | Multi-ball in one stroke | Two balls down on one stroke pay at two different rungs — the first steps the ladder before the second drops. No separate bonus. | Shipped | yes — archetype | free |
 | The 8 goes last | From room 5. Potting it early is a foul: re-spotted, stroke pays nothing. | Shipped | yes — order | free |
 | Scratch | Your own ball down a pocket. The shot pays nothing and you re-spot. | Shipped | with the mission | free |
-| Pockets | Six, identical, colourless, in the same six places. Capture zones: the drawn mouth is 1.18× the radius that takes a ball, so what looks in, goes in. | Shipped | architecture | free |
+| Pockets | Six, identical, colorless, in the same six places. Capture zones: the drawn mouth is 1.18× the radius that takes a ball, so what looks in, goes in. | Shipped | architecture | free |
 | Rails | Cushions that reflect, resolved at the exact time of impact rather than out of whatever overlap a frame ended in. | Shipped | architecture | free |
 | Piece scale | One multiplier on every piece radius, 0.78 today, 0.66 the floor. The difficulty axis that teaches nothing new. | Shipped | tuning | free |
 | Hull | Damage only lands while a stroke resolves: mine 12, kickback 10, 8 per ball still standing at the end. | Shipped | payout only | free |
@@ -87,7 +87,7 @@ felt object** — an object ball rolling over a mine would make routing unreadab
 | Bumpers | A barrier that gives back more than it takes. | Shipped | payout only | free |
 | Loose balls | 8 hull each for every ball still standing when the budget runs out. | Shipped | no | free |
 | The 8, early | A foul rather than a loss: re-spotted, stroke pays nothing. | Shipped | yes — order | free |
-| **Portal** | A pair of rings. A ball whose centre reaches one is **translated** by the vector between them — same heading, same speed, same offset from the ring's centre — so the whole path is picked up and put down parallel to itself. Architecture: authored with the table, never rolled, never spent, and drawn in the table's own teal because it does nothing to your score. Cue ball only. | Shipped | yes — aim | a new line, built |
+| **Portal** | A pair of rings. A ball whose center reaches one is **translated** by the vector between them — same heading, same speed, same offset from the ring's center — so the whole path is picked up and put down parallel to itself. Architecture: authored with the table, never rolled, never spent, and drawn in the table's own teal because it does nothing to your score. Cue ball only. | Shipped | yes — aim | a new line, built |
 | Portal thread | The dotted line between a pair. "Where does this send me" is the one question a portal has to answer before it is used, and no arrangement of a single ring answers it. | Shipped | with the portal | free |
 | **Black hole · swallower** | A seventh hole that is not yours: takes any ball, cue or object, and pays nothing. A pocket's code with a different verdict. | **Proposed** | yes — routing | free |
 | **Black hole · gravity** | A radial pull that bends a rolling ball as it passes. The most interesting thing here and the most expensive. | **Proposed** | yes — aim | integrate |
@@ -179,7 +179,7 @@ Re-keying that table is part of building the ladder, not a separate job.
   The preview asks the mission the same question the pot will ask, over the table each
   earlier pot leaves behind, so a line that sinks the 1 and then the 2 is two legal pots
   rather than one refusal. `npm run foul` sweeps every heading and holds the drawn line to
-  the mission's verdict in words and in colour.
+  the mission's verdict in words and in color.
 - ~~**The teleporter**~~ — **built, as the portal.** Both questions answered the way
   the note proposed: the heading is preserved (the whole path translates, so the line
   out of the far ring is parallel to the line into the near one), and only the cue ball
