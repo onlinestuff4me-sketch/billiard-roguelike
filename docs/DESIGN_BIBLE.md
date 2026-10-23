@@ -257,7 +257,8 @@ until one is picked; the pick is then recorded here and the other deleted.
 **The home screen** (from review): the name and one big **Play**. The
 **achievements** trophy is in the top-left corner with a badge of how many are
 earned ("5/12"); Settings is an icon (a gear) in the top-right. Both are 56 px
-squares with 30 px icons, the badge 13 px type. Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
+squares with 30 px icons in the same cyan; only the badge is orange (13 px
+type). Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
 
 **Play** takes a first visit (the lessons not yet done) straight into the
 lessons. Anyone else gets **the play screen**: a big **Continue · Table N**
@@ -266,14 +267,15 @@ lessons. Anyone else gets **the play screen**: a big **Continue · Table N**
 a second button when a run is saved, which asks once ("Tap again to start
 over"); **the tables**, the twelve of a run as a grid; and **Modes**.
 
-**The tables say their state by look, not words** (from review): a
-**cleared** table is a lit, raised button with a tick and a replay arrow, and
-tapping it **replays** that table; the saved run's table is solid cyan with a
-play arrow and tapping it is Continue; a **locked** one is flat, dashed and
-dim with a padlock and does nothing. A replay (`startReplay`) is one table on
-its own from a fresh start: no shop after it, the saved run untouched, a
-missed target costs nothing, and it ends on **Play again** or **Back to
-tables**.
+**The tables are rows** (from review: room for the whole name and the
+table's best score, `lightline-table-best-v1`), and say their state by look,
+not words: a table you can play has a **play arrow** by its number (the saved
+run's table is solid cyan and is Continue; a cleared one is a lit row and
+**replays** it), and a table not yet cleared is dim with a **padlock** and does
+nothing. Clearing a table means beating its target. The list scrolls, with the
+saved run's table kept in view. A replay (`startReplay`) is one table on its
+own from a fresh start: no shop after it, the saved run untouched, a missed
+target costs nothing, and it ends on **Play again** or **Back to tables**.
 
 **Continue** (`saveRun`/`resumeRun` in main.js): the run is saved as each
 table begins (`lightline-run-v1`: the table, run score, cash, lives, freeze
@@ -288,10 +290,17 @@ in one, the ×2 ring then a pot, a purchase, a freeze (not in practice), 300 in
 one shot, a table in order. **Each shows at the moment that earns it, on the
 table that earned it** (from review): the pot (`shotAchievements`: worked out
 as each pot locks the shot in, shown when the feed puts that pot's plate up,
-never before), the clear (when the table's total lands as Beaten, after the
-moment's title), the buy, the freeze, the last lesson's finished board. A plate drops in just under the top band (the score and target stay in view) with the name and what it
-was for, stays about six seconds, and has **See all** (the list, over the
-table, which waits until Done) and **×** to dismiss. Two at once queue. The
+never before), In Order on the last ball, a table's clear the moment its score
+passes the target (the shot's tally landing in YOUR SCORE), the buy, the
+freeze, the last lesson's finished board. A plate drops in just under the top
+band (the score and target stay in view) with the name and what it was for,
+stays about six seconds, and has **See all** (the list, over the table, which
+waits until Done) and **×** to dismiss. Two at once queue. **No plate ever
+sits on the score screen**: one still up fades as the screen comes in, and a
+plate earned on the table's last shot holds the screen back until it has been
+up `MOMENTS.achievementRead` (2.2 s). Anything earned once the screen is up
+(the result itself, a buy in the shop) waits and shows as the next table
+opens. The
 trophy screen lists them all, done or not yet.
 
 **A first run**: Play → Lesson 1 (the cut) → Lesson 2 (a combination) →

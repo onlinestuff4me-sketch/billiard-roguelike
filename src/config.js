@@ -951,6 +951,12 @@ export const MOMENTS = {
    * telegraph it"). Off, the meter just pulses.
    */
   chargePlates: true,
+  /**
+   * Seconds an achievement plate is guaranteed on screen before the score
+   * screen takes over (from review: it never sits on the score screen, so
+   * one earned on a table's last shot holds the screen back this long).
+   */
+  achievementRead: 2.2,
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
   clear: 'ledger',
   /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */

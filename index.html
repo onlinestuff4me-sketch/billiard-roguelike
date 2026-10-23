@@ -1835,7 +1835,8 @@
         cursor: pointer;
       }
       .menu-corner[hidden] { display: none; }
-      .menu-corner.left { left: calc(14px + env(safe-area-inset-left, 0px)); color: var(--amber); border-color: rgba(255, 179, 64, 0.5); }
+      /* both corners in the same cyan (from review); only the badge is orange */
+      .menu-corner.left { left: calc(14px + env(safe-area-inset-left, 0px)); }
       .menu-corner.right { right: calc(14px + env(safe-area-inset-right, 0px)); }
       .menu-corner svg { width: 30px; height: 30px; }
       .menu-corner:hover { background: rgba(34, 232, 255, 0.14); }
@@ -1868,47 +1869,50 @@
       .table-path {
         list-style: none;
         margin: 0;
-        padding: 0;
+        padding: 0 2px 0 0;
         width: 100%;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 6px;
+        gap: 5px;
+        max-height: min(44vh, 440px);
+        overflow-y: auto;
       }
       .table-path li { min-width: 0; display: grid; }
-      .tp-tile {
-        position: relative;
+      .tp-row {
         display: grid;
-        gap: 1px;
-        padding: 7px 4px 6px;
+        grid-template-columns: 16px 22px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 0 12px;
         border-radius: 9px;
         font: inherit;
-        font-size: 9px;
-        line-height: 1.15;
-        letter-spacing: 0.04em;
-        text-align: center;
+        font-size: 13px;
+        letter-spacing: 0.03em;
+        text-align: left;
         min-width: 0;
       }
-      .tp-tile b { font-size: 15px; font-weight: 700; }
-      .tp-tile .tp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .tp-tile .tp-icon { position: absolute; top: 4px; right: 4px; width: 12px; height: 12px; }
-      .tp-tile .tp-icon svg { display: block; width: 100%; height: 100%; }
+      .tp-row b { font-size: 15px; font-weight: 700; text-align: right; }
+      .tp-row .tp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .tp-row .tp-icon { width: 14px; height: 14px; }
+      .tp-row .tp-icon svg { display: block; width: 100%; height: 100%; }
+      .tp-row .tp-best { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .tp-row .tp-best small { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.7; margin-right: 2px; }
       /* locked: flat, dim, a padlock, nothing to press */
-      .tp-tile.locked { border: 1px dashed rgba(234, 246, 255, 0.14); background: transparent; color: rgba(234, 246, 255, 0.28); }
-      /* cleared: a lit, raised button with a tick and the replay arrow */
-      .tp-tile.cleared {
+      .tp-row.locked { border: 1px solid rgba(234, 246, 255, 0.08); background: rgba(8, 18, 30, 0.35); color: rgba(234, 246, 255, 0.3); }
+      /* cleared: a lit button with the play arrow; tap to replay */
+      .tp-row.cleared {
         cursor: pointer;
         color: var(--bone);
-        border: 1.5px solid rgba(34, 232, 255, 0.6);
-        background: linear-gradient(180deg, rgba(34, 232, 255, 0.16), rgba(8, 18, 30, 0.9));
-        box-shadow: 0 3px 0 rgba(34, 232, 255, 0.28), 0 0 10px rgba(34, 232, 255, 0.18);
+        border: 1.5px solid rgba(34, 232, 255, 0.55);
+        background: rgba(8, 18, 30, 0.85);
       }
-      .tp-tile.cleared b::after { content: ' ✓'; color: var(--cyan); }
-      .tp-tile.cleared .tp-icon { color: var(--cyan); }
-      .tp-tile.cleared:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(34, 232, 255, 0.28); }
-      /* where the run you left is: solid, with the play arrow */
-      .tp-tile.here { cursor: pointer; color: #02050b; border: 1.5px solid var(--cyan); background: var(--cyan); box-shadow: 0 3px 0 rgba(10, 110, 130, 0.9), 0 0 16px rgba(34, 232, 255, 0.5); }
-      .tp-tile.here:active { transform: translateY(2px); }
-      .tp-tile:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+      .tp-row.cleared .tp-icon { color: var(--cyan); }
+      .tp-row.cleared .tp-best { color: var(--cyan); }
+      .tp-row.cleared:active { transform: scale(0.98); background: rgba(34, 232, 255, 0.12); }
+      /* where the run you left is: solid, with the play arrow (Continue) */
+      .tp-row.here { cursor: pointer; color: #02050b; border: 1.5px solid var(--cyan); background: var(--cyan); box-shadow: 0 0 14px rgba(34, 232, 255, 0.45); }
+      .tp-row.here:active { transform: scale(0.98); }
+      .tp-row:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
       .ach-list {
         list-style: none;
         margin: 0;

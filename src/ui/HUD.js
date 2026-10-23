@@ -335,12 +335,26 @@ export class HUD {
     if (!this._achUp) this._achNext();
   }
 
+  /**
+   * Hold plates off while the score screen is up: the one showing fades
+   * now, and the rest wait until the hold lifts.
+   */
+  holdAchievements(on) {
+    this._achHold = on;
+    if (on) this._achLeave?.();
+    else if (!this._achUp) this._achNext();
+  }
+
+  /** How much longer the plate up needs to have been on screen `ms`. */
+  achievementReadLeft(ms) {
+    if (!this._achUp) return 0;
+    return Math.max(0, ms - (performance.now() - this._achAt));
+  }
+
   _achNext() {
-    const next = this._achQueue.shift();
-    if (!next) {
-      this._achUp = null;
-      return;
-    }
+    if (this._achHold) return;
+    const next = this._achQueue?.shift();
+    if (!next) return;
     const { a, all } = next;
     const t = el('div', 'ach-toast', this.root);
     t.innerHTML =
@@ -353,6 +367,7 @@ export class HUD {
     // its buttons are not a shot or a freeze
     for (const type of ['pointerdown', 'pointerup']) t.addEventListener(type, (e) => e.stopPropagation());
     this._achUp = t;
+    this._achAt = performance.now();
     // just under the top band, so the score and target stay in view
     const band = this.topBand.getBoundingClientRect();
     t.style.top = `${Math.round(band.bottom - this.root.getBoundingClientRect().top + 6)}px`;
@@ -360,16 +375,19 @@ export class HUD {
     const leave = () => {
       if (gone) return;
       gone = true;
+      this._achLeave = null;
       clearTimeout(timer);
       stay?.cancel();
       const out = t.animate?.([{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -16px) scale(0.92)', opacity: 0 }], { duration: 240, easing: 'ease-in', fill: 'forwards' });
       const done = () => {
         t.remove();
+        this._achUp = null;
         this._achNext();
       };
       if (out) out.onfinish = done;
       else done();
     };
+    this._achLeave = leave;
     t.querySelector('.ach-x').addEventListener('click', leave);
     t.querySelector('.ach-all').addEventListener('click', () => {
       leave();

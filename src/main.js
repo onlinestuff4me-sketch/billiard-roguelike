@@ -1528,6 +1528,10 @@ function finishStroke() {
 
   flushAchievements();
   const summary = rules.endStroke();
+  // CLEARING A TABLE IS EARNED THE MOMENT THE SCORE PASSES THE TARGET: the
+  // shot's tally has just landed in YOUR SCORE (from review: as soon as the
+  // action happens, for as long as possible before the score screen)
+  if (!game.headless && rules.roomScore >= rules.target) tableAchievements();
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
   // ice plate flying into the meter, and the meter holds its old value until
   // the plate lands (from review: every change is telegraphed).
@@ -2136,13 +2140,7 @@ function completeRoom() {
   // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
   // promise to do something harder, and a promise you have never kept once is
   // not a difficulty setting, it is a trap with a menu entry.
-  saveBest(game.level, rules.runScore);
-  // shown when the table's total lands, after the moment's title has been
-  // read (see showRoomResult)
-  if (game.level === 1) pendingAch.add('table1');
-  if (game.level === 6) pendingAch.add('table6');
-  if (game.level === 12) pendingAch.add('table12');
-  if (result.swept) pendingAch.add('order');
+  recordTable(result);
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
     hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
@@ -2194,21 +2192,44 @@ function showRoomResult(data, shownRun) {
   // The corner's cash and lives change only when the moment shows them change.
   game.cashHold = data.cashFrom;
   game.livesHold = data.livesFrom;
-  moments.clear({
-    ...data,
-    // The exits are replaced by the shop: the next table is a button in it.
-    choices: game.replay ? data.choices : [],
-    shownRun,
-    onTotal: () => {
-      game.scoreHold = null;
-      flushAchievements();
-    },
-    onCashLanded: () => (game.cashHold = null),
-    onLifeLost: () => (game.livesHold = null),
-    // no lives left: the moment ends on the last life breaking, not the shop
-    shop: data.lives > 0 && !game.replay ? openShop() : null,
-    onRunOver: data.lives > 0 ? null : runOver
-  });
+  const go = () => {
+    // AN ACHIEVEMENT NEVER SITS ON THE SCORE SCREEN (from review): the one
+    // up fades as the screen comes in, and any earned from here on (the
+    // table's result, a buy in the shop) wait for the next table to open
+    hud.holdAchievements(true);
+    moments.clear({
+      ...data,
+      // The exits are replaced by the shop: the next table is a button in it.
+      choices: game.replay ? data.choices : [],
+      shownRun,
+      onTotal: () => (game.scoreHold = null),
+      onCashLanded: () => (game.cashHold = null),
+      onLifeLost: () => (game.livesHold = null),
+      // no lives left: the moment ends on the last life breaking, not the shop
+      shop: data.lives > 0 && !game.replay ? openShop() : null,
+      onRunOver: data.lives > 0 ? null : runOver
+    });
+  };
+  // ...but one earned on the shot that ended the table gets long enough to
+  // be read before the screen takes over
+  const wait = hud.achievementReadLeft(MOMENTS.achievementRead * 1000);
+  if (wait > 0) setTimeout(go, wait);
+  else go();
+}
+
+/** A table is over: what it means for the bests, and what it earned. */
+function recordTable(result) {
+  if (game.headless) return;
+  saveBest(result.beaten ? game.level : 0, rules.runScore);
+  saveTableBest(game.level, result.roomScore, result.beaten);
+  if (result.beaten) tableAchievements();
+}
+
+/** Clearing a table is beating its target. */
+function tableAchievements() {
+  if (game.level === 1) achievements.unlock('table1');
+  if (game.level === 6) achievements.unlock('table6');
+  if (game.level === 12) achievements.unlock('table12');
 }
 
 /* ------------------------------------------------------------------ *
@@ -2246,6 +2267,8 @@ function shotAchievements(last) {
   if (kinds.has('multiPot')) pendingAch.add('inone');
   if (kinds.has('zone')) pendingAch.add('zone');
   if (rules.strokeScore >= 300) pendingAch.add('big');
+  // the last ball down with the order never broken
+  if (rules.filled && !rules.orderBroken) pendingAch.add('order');
   if (last && feed.enabled) last.onShown = flushAchievements;
   else flushAchievements();
 }
@@ -2360,6 +2383,7 @@ function failRoom() {
   game.state = 'cleared';
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
+  recordTable(result);
 
   audio.playerDeath?.();
   engine.shake(18);
@@ -2738,6 +2762,7 @@ function spawnZ() {
  * the mission — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
+  hud.holdAchievements(false);
   // EVERY ONE OF THESE INTRODUCES A RULE, so every one of them waits to be
   // read. They are not reports on something the player just watched; they are
   // the terms of the room, and a rule that scrolled past unread is a rule the
@@ -4524,6 +4549,28 @@ function loadBest() {
   }
 }
 
+const TABLE_BEST_KEY = 'lightline-table-best-v1';
+
+/** Each table's best score on this device, and whether it has been cleared. */
+function loadTableBests() {
+  try {
+    return JSON.parse(localStorage.getItem(TABLE_BEST_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveTableBest(level, score, cleared) {
+  const all = loadTableBests();
+  const was = all[level] || { score: 0, cleared: false };
+  all[level] = { score: Math.max(was.score, score), cleared: was.cleared || cleared };
+  try {
+    localStorage.setItem(TABLE_BEST_KEY, JSON.stringify(all));
+  } catch {
+    /* private mode */
+  }
+}
+
 function saveBest(table, score) {
   const best = loadBest();
   const next = { table: Math.max(best.table, table), score: Math.max(best.score, score) };
@@ -4639,7 +4686,6 @@ function resumeRun() {
 }
 
 const TP_ICON = {
-  again: '<svg viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.6-3.7M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   play: '<svg viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.6 8Z" fill="currentColor"/></svg>',
   lock: '<svg viewBox="0 0 16 16"><path d="M4.5 7.5h7v5.5h-7Zm1.5 0V5.5a2 2 0 0 1 4 0v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
 };
@@ -4658,28 +4704,36 @@ function showPlayPanel() {
   $('play-new').hidden = !run;
   $('play-new').textContent = 'New run';
   $('play-new').classList.remove('confirm');
-  // Three looks, no words (from review): a cleared table is a lit button
-  // with a tick and the replay arrow, the table you are on is solid with the
-  // play arrow, and a locked one is dim with a padlock and does nothing.
+  // ROWS, NOT BOXES (from review): room for the whole name and the table's
+  // best. Two looks and no words: a table you can play has the play arrow
+  // (the run you left is the lit one; any you have cleared replay), and one
+  // you have not reached is dim with a padlock and does nothing.
+  const bests = loadTableBests();
   const path = $('table-path');
   path.textContent = '';
+  let hereRow = null;
   TABLES.forEach((tb, i) => {
     const n = i + 1;
     const here = n === run?.level;
-    const cleared = !here && n <= best.table;
+    const cleared = !here && (n <= best.table || bests[n]?.cleared);
     const li = document.createElement('li');
-    const tile = document.createElement(here || cleared ? 'button' : 'div');
-    tile.className = `tp-tile ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
-    if (tile.tagName === 'BUTTON') tile.type = 'button';
-    tile.innerHTML = `<span class="tp-icon" aria-hidden="true">${here ? TP_ICON.play : cleared ? TP_ICON.again : TP_ICON.lock}</span><b>${n}</b><span class="tp-name"></span>`;
-    tile.querySelector('.tp-name').textContent = tb.name;
-    tile.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · cleared, replay' : ' · locked'}`);
-    if (here) tile.addEventListener('click', () => play(resumeRun));
-    else if (cleared) tile.addEventListener('click', () => play(() => startReplay(n)));
-    li.appendChild(tile);
+    const row = document.createElement(here || cleared ? 'button' : 'div');
+    row.className = `tp-row ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
+    if (row.tagName === 'BUTTON') row.type = 'button';
+    row.innerHTML = `<span class="tp-icon" aria-hidden="true">${here || cleared ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b><span class="tp-name"></span><span class="tp-best"></span>`;
+    row.querySelector('.tp-name').textContent = tb.name;
+    const top = bests[n]?.score;
+    if (top && !row.classList.contains('locked')) row.querySelector('.tp-best').innerHTML = `<small>Best</small> ${top.toLocaleString()}`;
+    row.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · replay' : ' · locked'}${top ? ` · best ${top}` : ''}`);
+    if (here) row.addEventListener('click', () => play(resumeRun));
+    else if (cleared) row.addEventListener('click', () => play(() => startReplay(n)));
+    li.appendChild(row);
     path.appendChild(li);
+    if (here) hereRow = li;
   });
   showPanel('play');
+  // the run you left is in view, even when the list scrolls
+  hereRow?.scrollIntoView({ block: 'nearest' });
 }
 
 /**
@@ -4739,6 +4793,7 @@ function showTutorialState() {
 
 function openMenu() {
   menuOpen = true;
+  hud.holdAchievements(false);
   input.cancel();
   tutorial.stop();
   bootVeil.classList.remove('hidden');
