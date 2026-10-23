@@ -11,10 +11,10 @@
  * in the same six places, every room. This file keeps only the capture data.
  *
  * FELT OBJECTS are the opposite: rolled per room, and the only things on the
- * table allowed to carry a semantic colour. One form — a dashed outline
+ * table allowed to carry a semantic color. One form — a dashed outline
  * around a hollow interior — and two meanings. Mint is a pick-up you want to
  * hit; red is a hazard to route around. The glyph says which. From review,
- * the pick-ups that fill a counter wear that counter's colour (see inkFor).
+ * the pick-ups that fill a counter wear that counter's color (see inkFor).
  */
 
 import * as THREE from 'three';
@@ -27,7 +27,7 @@ export const HAZARDS = Object.keys(TABLE.object.hazards);
 export const isPickup = (kind) => PICKUPS.includes(kind);
 
 /**
- * A pick-up wears the colour of the counter it fills (from review): ×2 the
+ * A pick-up wears the color of the counter it fills (from review): ×2 the
  * MULT box's orange, +1 SHOT the shot counter's amber, freeze the meter's ice.
  * Anything else you collect is mint; every hazard is red.
  */
@@ -234,7 +234,7 @@ export class Table {
   /**
    * Where this step first reaches a portal, and where it comes out.
    *
-   * Entry is on the CENTRE, the same test a pocket uses, because a rule the
+   * Entry is on the CENTER, the same test a pocket uses, because a rule the
    * preview and the table have to agree on to the millimetre cannot afford a
    * fudge factor in one of them.
    *
@@ -426,7 +426,7 @@ export class Table {
    * ---------------------------------------------------------------- */
 
   /**
-   * Has this body dropped? Capture is on the CENTRE, so a ball has to reach
+   * Has this body dropped? Capture is on the CENTER, so a ball has to reach
    * the pocket rather than brush past it — and the drawn mouth is wider than
    * this, so anything that looks in, is in.
    */
@@ -450,7 +450,7 @@ export class Table {
    * Same predicate as the preview's, on the same geometry.
    *
    * @returns {{pocket: object, x: number, z: number} | null} the pocket and
-   *   where along the step the centre entered it.
+   *   where along the step the center entered it.
    */
   pocketAlong(ax, az, bx, bz) {
     const dx = bx - ax;
@@ -465,7 +465,7 @@ export class Table {
     const uz = dz / len;
     let best = null;
     for (const pocket of this.pockets) {
-      // Where the centre-line first comes within the pocket's radius: the
+      // Where the center-line first comes within the pocket's radius: the
       // entry root of the ray/circle test, clamped to this step.
       const mx = ax - pocket.x;
       const mz = az - pocket.z;

@@ -173,7 +173,7 @@ export const PHYSICS = {
    * Restitution for ball-vs-ball impulses (player↔enemy, enemy↔enemy).
    *
    * Near-elastic, so collisions obey the textbook billiard results the aim
-   * preview draws: the object ball leaves along the line of centres, and the
+   * preview draws: the object ball leaves along the line of centers, and the
    * cue ball departs along the tangent — the 90° rule.
    */
   ballRestitution: 0.96,
@@ -334,7 +334,7 @@ export const TRAJECTORY = {
   /** 'rest': the stick's return after a shot or a freeze: a beam of light runs out along it, then it fills in. [beam, fill] seconds. */
   stickReveal: [0.22, 0.3],
   stickShaft: 0x335f7c,
-  /** The shaft's lit centre streak, and the butt. */
+  /** The shaft's lit center streak, and the butt. */
   stickShine: 0x9fe8ff,
   stickButt: 0x0e2232,
   /** The stylised shadow's offset (x, z), as if lit from the top left. */
@@ -412,7 +412,7 @@ export const ENEMY = {
   },
   /**
    * The 8. On a real table it is exactly the same size as every other ball —
-   * it is special by colour, not bulk. At 1.15 it was 43px across on a phone,
+   * it is special by color, not bulk. At 1.15 it was 43px across on a phone,
    * nearly double a normal ball, and it ate the felt.
    */
   heavy: {
@@ -492,7 +492,7 @@ export const RULES = {
    * the room).
    */
   settleSpeed: 1.1,
-  settleGrace: 0.28,
+  settleGrace: 0.12,
   /**
    * The tail of a shot is the boring part: a ball drifting at two units a
    * second is not going to reach anything, but it holds the whole turn open.
@@ -502,6 +502,15 @@ export const RULES = {
    */
   creepSpeed: 5.5,
   creepDrag: 3.2,
+  /**
+   * AND THEN IT STOPS. Below this a creeping ball is put at rest, exactly. A
+   * drag only ever approaches zero, so without a floor a stroke "settled" at
+   * an arbitrary moment with balls still inching along, and where they ended
+   * depended on how long the score presentation happened to keep the table
+   * running. With it, every stroke ends the same way, at the same place, and
+   * the aim preview (which plays the stroke to rest) can promise it.
+   */
+  stopSpeed: 0.25,
   strokeTimeout: 14,
 
   /**
@@ -696,22 +705,22 @@ export const TABLE = {
   /**
    * POCKETS ARE ARCHITECTURE.
    *
-   * All six are identical and carry no colour at all: they are drawn in the
+   * All six are identical and carry no color at all: they are drawn in the
    * table's own materials, with the frame swelling around each mouth and the
    * cushions breaking and flaring into it. That is what stops them competing
    * with the mint and red objects for the same glance — the eye can look for
    * "a hole" without parsing hue.
    *
    * There are no pocket types. Every pocket pays the ball's number; the
-   * multiplier, upgrade and hazard effects live on the felt, where colour is
+   * multiplier, upgrade and hazard effects live on the felt, where color is
    * allowed to mean something.
    */
   pocket: {
-    /** A body whose centre gets inside this radius is captured. */
+    /** A body whose center gets inside this radius is captured. */
     radius: 1.25,
     /**
      * Side pockets sit almost flush with the cushion, so a ball can never get
-     * its centre to the pocket centre. A smaller capture radius keeps the
+     * its center to the pocket center. A smaller capture radius keeps the
      * live stretch of rail down to about two units instead of three.
      */
     sideRadius: 1.05,
@@ -734,16 +743,16 @@ export const TABLE = {
   /**
    * PORTALS — a pair of rings, and the one route that is not a line.
    *
-   * A ball whose centre reaches one ring is TRANSLATED by the vector between
-   * the two: same heading, same speed, same distance off the ring's centre.
+   * A ball whose center reaches one ring is TRANSLATED by the vector between
+   * the two: same heading, same speed, same distance off the ring's center.
    * The whole path is picked up and put down somewhere else, which is the only
    * rule here a player can hold in their head while aiming — "through this one
    * is out of that one, parallel" — and the only one the projection can draw
    * without a word of explanation.
    *
    * It is ARCHITECTURE, not a pick-up: authored with the table rather than
-   * rolled onto it, never spent, and drawn in the table's own colours because
-   * colour in this game says what a thing does to your SCORE, and a portal
+   * rolled onto it, never spent, and drawn in the table's own colors because
+   * color in this game says what a thing does to your SCORE, and a portal
    * does nothing to your score at all.
    *
    * Called a PORTAL and never a gate, because a gate in this project is a room
@@ -793,7 +802,7 @@ export const TABLE = {
 export const RACK = {
   /**
    * Which archetype wears which number. The silhouettes stay exactly as they
-   * were — the number is a decal on top, so shape still encodes behaviour.
+   * were — the number is a decal on top, so shape still encodes behavior.
    */
   archetypeByNumber: ['solid', 'solid', 'solid', 'solid', 'stripe', 'stripe', 'stripe', 'heavy'],
   /** The 8 is always the last ball of a rack, and always the heavy. */
@@ -934,12 +943,12 @@ export const FEEL = {
 /**
  * HOW BALL NUMBERS ARE DRAWN (medium picked in review, round 19; the numbers were hard to
  * read on a phone).
- *   inset  a light disc in the inner half of the ball, the ball's colour all
+ *   inset  a light disc in the inner half of the ball, the ball's color all
  *          round it (passes npm run palette as it stands)
  *   medium between the two: the disc about half the ball, as a real pool
  *          ball prints it, with a bigger digit
  *   face   a light face across the whole ball with a digit about twice the
- *          size; the ball's colour is carried by its glow ring
+ *          size; the ball's color is carried by its glow ring
  */
 export const BALL_NUMERALS = { style: 'medium', options: ['inset', 'medium', 'face'] };
 
@@ -951,6 +960,12 @@ export const MOMENTS = {
    * telegraph it"). Off, the meter just pulses.
    */
   chargePlates: true,
+  /**
+   * Seconds an achievement plate is guaranteed on screen before the score
+   * screen takes over (from review: it never sits on the score screen, so
+   * one earned on a table's last shot holds the screen back this long).
+   */
+  achievementRead: 2.2,
   /** Ledger: a scanline wipe, then a receipt that counts in line by line (picked in review) */
   clear: 'ledger',
   /** Glitch: red alert, the screen tears, a beam brings the ball back and the cue takes form (picked in review) */
@@ -1000,10 +1015,10 @@ export const SCORE_FEED = {
   /** ...and the time it is given to drop before its own number shows. */
   drop: 0.28,
   /**
-   * How a ×-Mult plate (the ×2 ring's) is coloured against the +-Mult
+   * How a ×-Mult plate (the ×2 ring's) is colored against the +-Mult
    * plates (in review: gold beside orange was too close to tell apart):
-   * 'gold' (as it was), 'orange' (one colour, the sign tells them apart),
-   * 'mint' (the ring's own colour).
+   * 'gold' (as it was), 'orange' (one color, the sign tells them apart),
+   * 'mint' (the ring's own color).
    */
   xStyle: 'orange',
   /**
@@ -1056,9 +1071,9 @@ export const PALETTE = {
   /* ---------------------------------------------------------------- *
    * FIVE CHANNELS. No hue appears in two of them.
    *
-   * Colour was doing two jobs at once — a cyan pocket and a cyan pick-up
+   * Color was doing two jobs at once — a cyan pocket and a cyan pick-up
    * shouting for the same glance while meaning different things. It cannot.
-   * Form now says what a thing IS; colour says only what it DOES to your
+   * Form now says what a thing IS; color says only what it DOES to your
    * score. See design/system/Main.dc.html.
    * ---------------------------------------------------------------- */
 
@@ -1078,7 +1093,7 @@ export const PALETTE = {
   obsidian: 0x02050b,
   /** The floor at its edge, and the void beyond the table. */
   feltDeep: 0x02050b,
-  /** The floor at its centre. */
+  /** The floor at its center. */
   felt: 0x061222,
   /** The minor grid line. */
   feltLine: 0x10304a,
@@ -1110,12 +1125,12 @@ export const PALETTE = {
    * it knocks the 1" is a sentence about two specific balls, and on an
    * all-amber table the only thing telling them apart is a numeral ten pixels
    * tall. Two amber routes crossing the same felt are worse — the picture
-   * cannot say whose is whose. This is why real pool balls are coloured.
+   * cannot say whose is whose. This is why real pool balls are colored.
    *
    * FOUR, because four is what the space holds. Red is danger, mint is a
    * pick-up, cyan is your own ball, teal is the table and bone is a called
    * pocket; every one of those is a meaning a ball must not accidentally wear.
-   * What is left is a little over half the wheel, and under red-green colour
+   * What is left is a little over half the wheel, and under red-green color
    * blindness — around one man in twelve — it collapses further onto a
    * blue-yellow axis. Five hues that survive all of that do not exist. Four do,
    * and a generated rack holds exactly four solids.
@@ -1125,8 +1140,8 @@ export const PALETTE = {
    * and tritanopia, plus each ball against the reserved meanings and against
    * the cloth. It fails the build rather than the player.
    *
-   * And colour is not the only channel: every ball carries its number in bone
-   * on its face. Colour is here to make the numeral unnecessary at a glance,
+   * And color is not the only channel: every ball carries its number in bone
+   * on its face. Color is here to make the numeral unnecessary at a glance,
    * not to replace it.
    */
   ballInk: {
@@ -1148,21 +1163,21 @@ export const PALETTE = {
   /**
    * The ink every ball's numeral is printed in.
    *
-   * One colour, not one per ball, and dark rather than light: dark ink cannot
-   * bloom, so it costs the ball none of its colour, and one constant makes the
+   * One color, not one per ball, and dark rather than light: dark ink cannot
+   * bloom, so it costs the ball none of its color, and one constant makes the
    * requirement on the palette a single clear line — every ball must be light
    * enough to carry it at 4.5:1. See tools/check-palette.mjs.
    */
   ballGlyph: 0x05070a,
   stripe: 0xa05cff,
-  /** Stripes are a bone body with a coloured band, like a real striped ball. */
+  /** Stripes are a bone body with a colored band, like a real striped ball. */
   stripeBody: 0xcfdceb,
   eight: 0x14181f,
 
   /* -- GOOD: every pick-up ------------------------------------------- */
   good: 0x2ef2c4,
 
-  /* -- PICK-UPS wear the colour of the counter they fill (from review) -- */
+  /* -- PICK-UPS wear the color of the counter they fill (from review) -- */
   /** +1 SHOT: the shot counter's amber. */
   shots: 0xffb340,
   /** Freeze charges: the freeze meter's ice. */
@@ -1193,7 +1208,7 @@ export const CSS_PALETTE = {
   amber: '#ffb340',
   violet: '#a05cff',
   /* Mirrors PALETTE.ballInk, so a ball named in coaching copy can be inked in
-     that ball's own colour rather than in a generic "this is a ball" amber. */
+     that ball's own color rather than in a generic "this is a ball" amber. */
   ballInk: {
     1: '#f0c775',
     2: '#e085c2',
@@ -1298,7 +1313,7 @@ export const INPUT = {
    * fires AWAY from the thumb, drawing back still loads it, and angular gain is
    * still 1/draw, so a long pull is still a fine one.
    *
-   * The pad also re-centres on the first movement out of the dead zone so the
+   * The pad also re-centers on the first movement out of the dead zone so the
    * heading you had is the heading you keep: see InputManager._seatPad.
    */
   floatingPad: true,
@@ -1480,7 +1495,7 @@ export const TEACH = {
     /** recorded on the practice table with a real drag and tap, a finger drawn on */
     demo: { sheet: './teach/freeze-sheet.webp', cols: 15, rows: 10, frames: 150, fps: 25 },
     demoAlt: 'A finger drags to aim and shoots; while the balls roll it taps FREEZE in the corner; the table freezes; the finger drags again to re-aim the cue ball and lets go.',
-    go: 'Tap to practise',
+    go: 'Tap to practice',
     practice: {
       id: 'practice-freeze',
       name: 'Practice',
@@ -1495,7 +1510,7 @@ export const TEACH = {
       target: 0,
       objects: []
     },
-    /** charges in hand while practising, refilled after every shot */
+    /** charges in hand while practicing, refilled after every shot */
     charges: 3,
     title: 'Practice · Freeze frame',
     lines: {

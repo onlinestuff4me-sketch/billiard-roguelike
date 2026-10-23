@@ -55,25 +55,25 @@ while targets were interchangeable and stopped the moment a lesson named one:
 "hit the 4, so it knocks the 1" is a sentence about two specific balls, and on
 an all-amber table the only thing telling them apart is a numeral ten pixels
 tall. Two amber routes crossing the same felt are worse — the picture cannot
-say whose is whose. This is why real pool balls are coloured. A ball named in
-coaching copy is inked in its own colour too, so the word and the object match.
+say whose is whose. This is why real pool balls are colored. A ball named in
+coaching copy is inked in its own color too, so the word and the object match.
 
 Four, because four is what the space holds. Red is danger, mint a pick-up, cyan
 your own ball, teal the table, bone a called pocket — every one of those is a
 meaning a ball must not accidentally wear. What is left is a little over half
-the wheel, and under red-green colour blindness it collapses further onto a
+the wheel, and under red-green color blindness it collapses further onto a
 blue-yellow axis. Five hues that survive all of that do not exist; four do, and
 a generated rack holds exactly four solids. One board was using a fifth number
-purely as a label — it was renumbered rather than given a fifth colour that
+purely as a label — it was renumbered rather than given a fifth color that
 could not be defended.
 
 **The palette is measured, not eyeballed.** `npm run palette`
 (`tools/check-palette.mjs`) checks every pair of balls that can share a table —
-read from the rack rules and from `lessons.json`, because two colours only have
+read from the rack rules and from `lessons.json`, because two colors only have
 to be told apart if a player can see both at once — in normal vision and in
 simulated protanopia, deuteranopia and tritanopia, plus each ball against the
 reserved meanings and against the cloth. It fails the build rather than the
-player. Two floors, not one: chase the colour-blind number alone and every ball
+player. Two floors, not one: chase the color-blind number alone and every ball
 is herded into blue-violet, where dichromats keep the most separation —
 technically accessible, useless as a set of billiard balls.
 
@@ -83,15 +83,15 @@ is the deficiency that makes magenta approach red; holding all three to the same
 number costs the palette its whole warm half to protect against the rarest, which
 is a worse outcome for everyone including the people it is meant to protect.
 
-**Colour is never the only channel.** Every ball carries its number in bone on
+**Color is never the only channel.** Every ball carries its number in bone on
 its face — that is the identifier WCAG 1.4.1 asks for, and it does not care
-about hue. Colour is here to make the numeral unnecessary at a glance, not to
+about hue. Color is here to make the numeral unnecessary at a glance, not to
 replace it.
 
 **The ghost goes where the journey commits, not where it ends.** A line says
 which way a ball travels; the moment that matters is the collision — that is
 where the choice is spent. So each ball gets a hollow copy of itself, in its own
-colour, at its first contact; and its route carries on past that point at a
+color, at its first contact; and its route carries on past that point at a
 fraction of the strength. Still shown, no longer a promise.
 
 Into a pocket, the ghost goes **in the pocket** — not where the predicted path
@@ -172,7 +172,7 @@ mistaken for a live one.
 - **Say what happened, then what to do.** Every correction is two halves: the
   event in the player's own terms, and the next thing to try. "Scratched — your
   own ball went in the pocket. Try the 6 into the side pocket, but hit it
-  off-centre." Not "Down", not "Not quite". A correction with no instruction in
+  off-center." Not "Down", not "Not quite". A correction with no instruction in
   it is a scoreboard.
 
   Nothing else goes in. The table putting itself back is not narrated — it has
@@ -193,14 +193,14 @@ mistaken for a live one.
   wrongly from where the player sits. `npm run scoring`.
 
 `npm run coach` checks all three the way `npm run verify` checks solvability:
-it plays real strokes, reads the table and the band afterwards, and fails on a
+it plays real strokes, reads the table and the band afterward, and fails on a
 band that reaches for a word the game has not taught.
 - **Three highlights, and only three.** Bone-white is the called pocket. Green
   is a thing that helps you and the way forward. Red is a thing that costs you
   and a miss. These layer on top of the table's own channels — cyan is always
   your ball, amber always the rack — and nothing else gets a highlight.
   Coaching text obeys the same allocation, so a word and the object it names
-  are the same colour: a ball named in the band is amber, the good thing is
+  are the same color: a ball named in the band is amber, the good thing is
   green, and a pocket named in the band is the band's own bone-white, which is
   what the lit pocket on the felt is. An endpoint tag takes the channel of the
   ball whose route it ends, except at a pocket, where it takes bone-white — or
@@ -269,7 +269,7 @@ band that reaches for a word the game has not taught.
      is the shot worth teaching.
   4. **Only the goal is drawn** — the cue's run to its first contact and the
      chain up to the goal leg, and not one leg further. What the other balls do
-     afterwards is true, irrelevant, and what made the first version of this
+     afterward is true, irrelevant, and what made the first version of this
      unreadable.
 - **A demonstrated shot has to be a shot that works.** Every board stores
   `solve`, a heading, and two things teach it as the answer — the cue swinging
@@ -283,7 +283,7 @@ band that reaches for a word the game has not taught.
 The band is **above the felt, not on it**. A lesson reserves a strip at the top
 of the screen for Skip and the sentence, and the table shrinks to fit what is
 left — measured against what the table actually draws, then held clear every
-frame, because the far rail stands above the pocket centres and a strip sized
+frame, because the far rail stands above the pocket centers and a strip sized
 to the arena alone left it poking into the band.
 
 It used to be pinned to the one strip of felt no board places anything in,
@@ -372,7 +372,7 @@ across a dimmed table is the loudest way a finished board goes on looking live.
 and stroke readouts in hiding during a lesson — it states a number nothing
 enforces on an unfailable board, and its band is where the two far corner
 pockets live, which two of the six boards call. Skip moved out of the top-right
-corner to the top centre for the same reason: a control parked in a corner of
+corner to the top center for the same reason: a control parked in a corner of
 that band is a control sitting in a pocket.
 
 **One board moved.** `budget`'s ball 2 was against the top rail, close enough

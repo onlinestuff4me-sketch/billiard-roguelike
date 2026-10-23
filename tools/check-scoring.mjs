@@ -10,7 +10,7 @@
  * banks after a ball went down were "counting as extra multipliers".
  *
  * They were not being PAID — points are paid at the instant a ball drops, at
- * the multiplier standing then, and a rail hit afterwards has nothing left to
+ * the multiplier standing then, and a rail hit afterward has nothing left to
  * pay. But the stroke's ledger line reported the multiplier the ladder had
  * REACHED, and the run's best-multiplier stat recorded it too. The number the
  * player was shown was the number they were told they had been paid at, and it

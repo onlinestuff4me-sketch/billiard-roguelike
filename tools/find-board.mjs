@@ -112,8 +112,8 @@ const PLANS = {
     //
     // This is a different shape, and the difference is the whole point: the
     // object ball is not pushed twice, it is cut thin. A thin cut sends the
-    // second ball off along the line of centres with very little of the
-    // energy and leaves the first ball almost all of it, still travelling
+    // second ball off along the line of centers with very little of the
+    // energy and leaves the first ball almost all of it, still traveling
     // nearly where it was going. So the second ball drops in the side pocket
     // it is parked on, and the first carries on into a corner.
     //

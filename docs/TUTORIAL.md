@@ -83,7 +83,7 @@ prevents.
 ### 1. Teach one lesson at a time
 
 A lesson introduces exactly one idea. Not one idea plus the thing that makes it
-work, not one idea plus a complication that arrives while you are practising it.
+work, not one idea plus a complication that arrives while you are practicing it.
 
 *Broken by:* a "hold to stop time" lesson that also introduced chasing enemies,
 so a player who missed was learning to dodge and to freeze and to aim at once.
@@ -184,8 +184,8 @@ called. Darkening the felt helps while the player is *reading* about the table
 and hurts while they are aiming across it.
 
 **One word carries the sentence.** `say` and `hint` are markup: the target is
-red (`<b>`), the gesture is green (`<em>`), the same two colours on every
-lesson, so the colour is readable before the sentence is. Never more than one of
+red (`<b>`), the gesture is green (`<em>`), the same two colors on every
+lesson, so the color is readable before the sentence is. Never more than one of
 each per line — highlighting everything highlights nothing.
 
 ## The lessons
@@ -305,7 +305,7 @@ only fires at 1.0 reports them broken when they are working correctly.
 
 | lesson | passes at | fails at |
 |---|---|---|
-| 2 `goal`, 3 `pass-straight`, 4 `pass-angled` | 0.85 and below | 1.00 — the ball shatters instead of travelling |
+| 2 `goal`, 3 `pass-straight`, 4 `pass-angled` | 0.85 and below | 1.00 — the ball shatters instead of traveling |
 | 5 `pass-three` | 1.00 only | 0.85 and below — the first ball survives, so the cue stops there |
 
 Three lessons were unsolvable when first authored: one bank was geometrically

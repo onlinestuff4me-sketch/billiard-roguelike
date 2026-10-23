@@ -27,7 +27,7 @@
  * when accuracy matters most. A short exponential filter removes tremor.
  *
  * The manager knows nothing about the player beyond an anchor position; it
- * emits normalised aim payloads and the game decides what they mean.
+ * emits normalized aim payloads and the game decides what they mean.
  */
 
 import { INPUT, PLAYER, ARENA, RENDER } from '../config.js';
@@ -190,7 +190,7 @@ export class InputManager {
   /**
    * SEAT THE PAD SO THE HEADING SURVIVES THE FIRST NUDGE.
    *
-   * A pad centred exactly on the touch point has no direction at zero draw, so
+   * A pad centered exactly on the touch point has no direction at zero draw, so
    * the aim can only snap somewhere the moment the thumb leaves the dead zone —
    * and on a table where a pot is worth one to three degrees, a snap is the
    * difference between adjusting a shot and starting again.
@@ -280,7 +280,7 @@ export class InputManager {
     //
     // One time constant has to serve two jobs that want opposite numbers: keep
     // up with a swing across the table, and hold steady while a pocket is
-    // being lined up. Set fast, the quantised input steps straight through to
+    // being lined up. Set fast, the quantized input steps straight through to
     // the line; set slow, the cue lags a real movement.
     //
     // So it is set from how fast the target is actually turning. A thumb
@@ -362,7 +362,7 @@ export class InputManager {
       try {
         this.element.setPointerCapture(event.pointerId);
       } catch {
-        /* Safari can throw on synthetic pointers; capture is an optimisation. */
+        /* Safari can throw on synthetic pointers; capture is an optimization. */
       }
     }
 

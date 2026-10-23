@@ -15,7 +15,7 @@
  * Three things are checked, at four viewports:
  *
  *   OVERFLOW   nothing crosses the left or right edge of the viewport.
- *   CENTRED    a row that is meant to be centred has its middle on the middle.
+ *   CENTERED    a row that is meant to be centered has its middle on the middle.
  *   EQUAL      buttons sharing a row are the same width, so the row reads as
  *              one control rather than three that disagree.
  *

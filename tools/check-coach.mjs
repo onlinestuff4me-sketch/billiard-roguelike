@@ -6,7 +6,7 @@
  *
  * `verify-boards` proves a board can be solved. This proves the other half:
  * that a board played over several strokes handles a failed one correctly, and
- * that the sentence the player reads afterwards describes what actually
+ * that the sentence the player reads afterward describes what actually
  * happened to the table in front of them.
  *
  * Both halves of that were wrong, and neither was visible from a sweep:
@@ -20,9 +20,9 @@
  *   THE BAND SAID "DOWN". Then it said it again over the top of the scratch
  *   correction, because the progress line was written before the verdict was.
  *
- * So the checks here are behavioural, not cosmetic. A stroke is played for
+ * So the checks here are behavioral, not cosmetic. A stroke is played for
  * real, through the board's own rules, and the table and the band are read
- * afterwards.
+ * afterward.
  */
 
 import { openGame, boardIds } from './sim.mjs';

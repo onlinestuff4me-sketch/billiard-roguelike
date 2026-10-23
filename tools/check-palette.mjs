@@ -10,9 +10,9 @@
  * worst-case separation of dE 3.9. The palette was never the problem. The
  * numeral sprite was `radius * 2.5`, a quarter wider than the ball it labels,
  * with a heavy dark halo: it covered the entire face, and the only part of a
- * ball wearing the ball's colour was a rim a pixel or two thick.
+ * ball wearing the ball's color was a rim a pixel or two thick.
  *
- * A check on source colour cannot see that, and no amount of care choosing hex
+ * A check on source color cannot see that, and no amount of care choosing hex
  * values would have. So this boots the actual game, renders an actual board,
  * and reads actual pixels — the same discipline `npm run verify` applies to
  * whether a board can be played, and `__simShot` applies to whether a lesson's
@@ -21,7 +21,7 @@
  * WHAT IT MEASURES
  *
  *   1. Every pair of balls that can share a table — derived from the rack
- *      rules and lessons.json, because two colours only need telling apart if
+ *      rules and lessons.json, because two colors only need telling apart if
  *      a player can see both at once — in normal vision and in simulated
  *      protanopia, deuteranopia and tritanopia. CIE76 dE in Lab.
  *   2. Every ball against the things that MEAN something: the cue ball, the
@@ -33,10 +33,10 @@
  *   4. Every ball's NUMERAL against the ball it is written on, the same way.
  *
  * Sampling is an annulus at 0.8 of the ball's radius: outside the numeral and
- * its halo, inside the silhouette. That is where a ball wears its colour, and
+ * its halo, inside the silhouette. That is where a ball wears its color, and
  * choosing it carelessly is how the first measurement went wrong twice.
  * A bigger numeral disc (BALL_NUMERALS) moves that band out, so the annulus
- * follows it: the middle of the coloured band between the disc's edge and the
+ * follows it: the middle of the colored band between the disc's edge and the
  * rim (the medium disc reaches 0.72 of the radius, so its band is sampled at
  * 0.87; the face disc reaches nearly the rim, so it is sampled at 0.95).
  *
@@ -57,7 +57,7 @@
  * black on the light ones, the way a real pool ball is printed.
  *
  * Both are measured HERE, out of the same framebuffer, rather than computed
- * from the source hexes: bloom lifts a rendered colour well off its authored
+ * from the source hexes: bloom lifts a rendered color well off its authored
  * one, and it is the rendered one the player has to see.
  *
  *   npm run palette  [--verbose]
@@ -81,7 +81,7 @@ const verbose = process.argv.includes('--verbose');
  * on-screen difference in this game. Compare against what shipped before this
  * check existed — 3.9 — rather than against an abstract scale.
  *
- * Colour is also never the only channel: every ball carries its number. That
+ * Color is also never the only channel: every ball carries its number. That
  * is the identifier WCAG 1.4.1 asks for; hue is here to make reading the
  * numeral unnecessary at a glance, not to replace it.
  * ------------------------------------------------------------------ */
@@ -127,7 +127,7 @@ const MIN_FELT = 14;
  * than the graphic one.
  */
 /**
- * Raisable from the command line, because the right number here is a judgement
+ * Raisable from the command line, because the right number here is a judgment
  * about a particular table and not a fact about the standard: `--floor 4`.
  * The standard is the floor the CHECK enforces; a search may be asked for more.
  */
@@ -141,14 +141,14 @@ const MIN_ON_BACKGROUND = (() => {
  * The standard's 3:1 is a floor and this treats it as one. A ball that only
  * just cleared it — 4.0:1 against the obsidian, 3.1:1 against the felt — was
  * the one reported as hard to make out, so the search will not hand back a
- * palette built out of colours sitting on the line when the same gamut has
+ * palette built out of colors sitting on the line when the same gamut has
  * plenty that are not.
  */
 const PREFER_ON_BACKGROUND = 4;
 const MIN_NUMERAL = 4.5;
 
 /* ------------------------------------------------------------------ *
- * Colour maths
+ * Color math
  * ------------------------------------------------------------------ */
 
 const srgbToLinear = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -234,7 +234,7 @@ function coOccurring() {
   // EVERY NUMBERED BALL, not only the solids. Stripes were left out because a
   // stripe did not carry a hue — it rendered as the archetype's pale body
   // whatever number it wore — so there was nothing to tell apart. Now that the
-  // body carries the ball's own colour they are balls like any other, and the
+  // body carries the ball's own color they are balls like any other, and the
   // pair a player has to read is any pair that can sit on one table.
   const arch = /archetypeByNumber:\s*\[([^\]]*)\]/.exec(config);
   if (arch) {
@@ -301,7 +301,7 @@ try {
     spec.enemies.length = 0;
     // THE ARCHETYPE EACH NUMBER IS ACTUALLY RACKED AS. The rig used to spawn
     // the fourth ball as a stripe for variety, which measured a ball the game
-    // never racks — and while stripes carried the archetype's colour instead
+    // never racks — and while stripes carried the archetype's color instead
     // of their own, that one substitution was the difference between measuring
     // the palette and measuring a pale ball with a violet band on it.
     spec.enemies.push(
@@ -313,9 +313,9 @@ try {
   measured = await game.page.evaluate((reserved) => {
     const g = window.__game;
 
-    // where the ball wears its colour, for the numeral style in use
+    // where the ball wears its color, for the numeral style in use
     const RIM = { inset: 0.8, medium: 0.87, face: 0.95 }[window.__ballNumerals?.()] || 0.8;
-    /** Read the framebuffer once and sample the balls' colour annulus. */
+    /** Read the framebuffer once and sample the balls' color annulus. */
     // The projection constants, read once: the glyph pass needs them outside
     // the closure `shoot` builds its sampler in.
     const glc0 = document.getElementById('stage-canvas');
@@ -363,7 +363,7 @@ try {
         });
       });
 
-    /** Paint every ball one colour and read it back, so each is measured
+    /** Paint every ball one color and read it back, so each is measured
         under identical lighting, bloom and position. */
     const asColour = async (hexColour) => {
       for (const e of g.rooms.scriptedEnemies) {
@@ -394,10 +394,10 @@ try {
 
       // THE NUMERALS, ON THE BALLS THEY ARE ACTUALLY PRINTED ON.
       //
-      // Everything above repaints every ball one colour so each candidate is
+      // Everything above repaints every ball one color so each candidate is
       // measured under identical light. A numeral cannot be measured that way:
       // its ink is chosen FOR the ball it sits on, so the ball has to be
-      // wearing its own colour and its own number.
+      // wearing its own color and its own number.
       for (const e of g.rooms.scriptedEnemies) if (e.alive) e.setNumber(e.number);
       const { at: at2, ctx: ctx2, dpr: dpr2 } = await shoot();
       const glyphs = {};
@@ -447,7 +447,7 @@ try {
  * Choosing hexes by eye, or by distance between source values, is how this
  * palette went wrong twice. The renderer is not a straight pipe: emissive
  * material, rim lights, a bloom composite and a tone-free output stage between
- * them lift and compress a colour so far that the ordering of two source
+ * them lift and compress a color so far that the ordering of two source
  * values is not reliably the ordering of what lands on screen.
  *
  * So candidates are put THROUGH the renderer, sampled back, and judged on what
@@ -626,7 +626,7 @@ for (const [n, g] of Object.entries(measured.glyphs ?? {})) {
 
 if (picking) {
   // HUE FAMILIES, NOT DISTANCES FROM ONE SWATCH. "Green means a pick-up" and
-  // "red means it hurts" are rules about a family of colours, and a ball far
+  // "red means it hurts" are rules about a family of colors, and a ball far
   // enough from the exact mint to pass a dE test can still be unmistakably
   // green. Cyan belongs to the cue ball for the same reason.
   const RESERVED_HUES = [
@@ -680,7 +680,7 @@ if (picking) {
 
   // Thin to a spread-out shortlist first — four out of two hundred is nine
   // million combinations, and nearly all of them are two shades of the same
-  // colour with a third thrown in.
+  // color with a third thrown in.
   const shortlist = [];
   const pool = [...usable];
   while (shortlist.length < 26 && pool.length) {

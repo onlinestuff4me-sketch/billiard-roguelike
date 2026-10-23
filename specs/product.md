@@ -19,7 +19,7 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 
 ## Must keep
 
-- **The aiming system, unchanged.** Touch anywhere and drag to aim. The preview shows where the cue ball goes, where it collides, where it travels after the collision, where the struck ball goes and where it lands, with colour warnings for scratches and fouls. The drawn line is the shot the table plays.
+- **The aiming system, unchanged.** Touch anywhere and drag to aim. The preview shows where the cue ball goes, where it collides, where it travels after the collision, where the struck ball goes and where it lands, with color warnings for scratches and fouls. The drawn line is the shot the table plays.
 - **How the first leg is drawn is a setting** (Settings → Aim line), because the original glowing beam was overwhelming. Picked in review: **Cue** is the default.
   - **Cue** (default): a thin line. Power is a full-length cue stick that runs back off the table past the rail like 8 Ball Pool: tapered, with lit edges and a shadow cast on the felt and rail. It slides back one-for-one with the thumb, and a ring around the ball fills as you pull.
   - **The strike:** on release the table holds for a few frames while the stick snaps into the ball with a light smear. The ball leaves when it is hit, then the stick follows through and fades.
@@ -39,7 +39,7 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
 - **Build live.** Points appear as each thing happens, one at a time:
   - the table freezes briefly, then runs in slow motion while the number presents;
   - the cause (wall, zone, ball, pocket) lights up and wiggles;
-  - a big labelled plate pops beside the cause and holds (0.8s, a bit quicker each time, never under 0.4s);
+  - a big labeled plate pops beside the cause and holds (0.8s, a bit quicker each time, never under 0.4s);
   - the plate flies into its box and the box jumps;
   - until a ball drops, rails and hits only light up on the table. When a ball reaches a pocket, the table all but stops with the ball at the lip while what it cashes in flies into the boxes; then it drops and its own numbers land, and the shot ends on a celebrated tally (style "cash", picked in review).
   - Tap during a shot to speed the presentation up.
@@ -56,7 +56,7 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 
 **The economy** (decided in review, after Balatro and Gambonanza). Every table has a points **target** (500 on the first, growing 18% a table); points start fresh each table. **Cash** carries over: beating the target pays $4, plus $1 per shot left, plus $1 per 25% past the target (up to $5), plus interest of $1 per $5 held (up to $5). **Three lives** replace hull: missing a target costs one, and the last one ends the run. Hazards void the shot instead of doing damage.
 
-**The shop** (built; replaces "pick your next table"). Three actions only: buy a card, hold a card ($2, it waits in the next shop), or reroll ($3, +$1 each). Four random cards ($4–10) from a pool of 22, rarity shown as diamonds, never colour; a Freeze frame charge is one of the cards. Gold means money. Upgrades change scoring or what a table gives, never physics or the preview.
+**The shop** (built; replaces "pick your next table"). Three actions only: buy a card, hold a card ($2, it waits in the next shop), or reroll ($3, +$1 each). Four random cards ($4–10) from a pool of 22, rarity shown as diamonds, never color; a Freeze frame charge is one of the cards. Gold means money. Upgrades change scoring or what a table gives, never physics or the preview.
 
 **Freeze frame charges** (built; cap of 3). Charges come in halves, earned only on shots that pay: +½ for a combination, +½ for each extra ball in one shot, +½ for ×5 mult or more. A whole charge can be bought in the shop for $4.
 

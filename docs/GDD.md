@@ -27,7 +27,7 @@ skill being scored is how few strokes it took.*
 The cue ball carries no damage number. Hitting a ball moves it; that is all. Pockets
 and shatter gates are the only things that take a ball off the table. That single
 change is what makes the *shot* — not the power — the thing the player is choosing,
-and it retires the damage maths (`strikeDamage × speedRatio × chainMultiplier`) that
+and it retires the damage math (`strikeDamage × speedRatio × chainMultiplier`) that
 used to decide, invisibly, whether a ball survived contact.
 
 ### Design Pillars
@@ -115,7 +115,7 @@ Score comes from four places, and only four.
 | **Multipliers earned** | Bounces, balls touched, balls dropped — the trick ladder |
 
 Every pocket pays the same. There are no pocket types: the multiplier, the
-upgrade and the risk all live on the felt, where colour is allowed to mean
+upgrade and the risk all live on the felt, where color is allowed to mean
 something.
 
 ### 3.1 The multiplier ladder
@@ -199,13 +199,13 @@ is not a lit target painted on the felt; it is a hole with a railing round it,
 in the same six places every room.
 
 They are **capture zones, not holes cut in the geometry** — the rails still
-reflect, and a body is taken the moment its centre gets inside the capture
+reflect, and a body is taken the moment its center gets inside the capture
 radius. The drawn mouth is deliberately *wider* than that radius, so a ball that
 looks like it is going in, goes in: the visual promise is always more generous
 than the rule. The throat is drawn, not simulated — no jaw rattles, and no
 near-miss the trajectory preview did not show.
 
-**All six are identical and carry no colour at all.** They are drawn in the
+**All six are identical and carry no color at all.** They are drawn in the
 table's own materials, which is what stops them competing with the mint and red
 objects for the same glance: the eye can look for "a hole" without parsing hue.
 A pocket has exactly one extra state — **called**, a bone-white lip, when a
@@ -236,15 +236,15 @@ the thing you are choosing.
 
 ### 4.2a Portals
 
-A pair of rings, authored with the table. **A ball whose centre reaches one is
+A pair of rings, authored with the table. **A ball whose center reaches one is
 translated by the vector between them** — same heading, same speed, same offset
-from the ring's centre — so the whole path is picked up and put down parallel to
+from the ring's center — so the whole path is picked up and put down parallel to
 itself. A dotted thread joins the pair, because "where does this send me" is the
 one question a portal has to answer before it is used.
 
 They are architecture, not pick-ups: part of the table like a barrier, never
 rolled onto it by the director, never spent, and drawn in the table's own teal —
-colour here says what a thing does to your **score**, and a portal does nothing
+color here says what a thing does to your **score**, and a portal does nothing
 to your score at all. Only the cue ball goes through one, which is the rule every
 felt object already follows.
 
@@ -254,7 +254,7 @@ other. `npm run portal` measures that the drawn line and the played shot agree.
 ### 4.3 The rack
 
 Every ball is numbered, because the mission talks about them by name and the
-number *is* the ball's worth. The rack is its own colour channel — never red,
+number *is* the ball's worth. The rack is its own color channel — never red,
 never mint, because a ball is neither good nor bad:
 
 | Numbers | Look |
@@ -263,7 +263,7 @@ never mint, because a ball is neither good nor bad:
 | 5–7 | A bone ball with a violet band, like a real striped ball |
 | **8** | Black with a bone rim. Always the last ball of a rack. |
 
-The 8 is exactly the same size as every other ball. It is special by colour, not
+The 8 is exactly the same size as every other ball. It is special by color, not
 bulk — at nearly double a normal ball it was eating the felt.
 
 ### 4.4 Scale
@@ -309,7 +309,7 @@ re-spotted and the stroke it happened on pays nothing.
 
 Between strokes the table is already frozen, so there is nothing to slow down. The
 thing worth earning is the *other* freeze: **stopping the table mid-stroke**, while
-the cue ball is still travelling, and re-aiming from wherever it has got to.
+the cue ball is still traveling, and re-aiming from wherever it has got to.
 
 - Spending a charge stops every body where it is. The cue ball comes to rest and is
   re-aimed; every other ball keeps the velocity it had.
@@ -329,7 +329,7 @@ be honestly, calmly static.
 
 ## 7. Rewards
 
-On room clear, **two** doors materialise on the top rail with independently rolled
+On room clear, **two** doors materialize on the top rail with independently rolled
 rewards, telegraphed before you commit the shot.
 
 | Reward | Effect |

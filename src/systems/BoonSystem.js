@@ -308,7 +308,7 @@ export const BOON_DEFS = [
     glyph: '◇',
     flavour: 'Make your own caroms.',
     values: (rank, scalar) => ({ radius: 3.2 + 0.4 * rank, knock: 15 + 4 * scalar * rank }),
-    desc: (v) => `Impacts blast neighbours outward at ${Math.round(v.knock)} m/s — free caroms.`,
+    desc: (v) => `Impacts blast neighbors outward at ${Math.round(v.knock)} m/s — free caroms.`,
     effect: () => 'Knock nearby enemies flying',
     numbers: (v) => `${Math.round(v.knock)} m/s blast · ${v.radius.toFixed(1)}m · makes caroms`,
     run(event, v, game) {
@@ -462,7 +462,7 @@ export class BoonSystem {
     const existing = this.owned.find((o) => o.def.id === def.id);
     if (existing) {
       existing.rank = Math.min(existing.rank + 1, BOONS.maxRank);
-      // Keep the better rarity scalar when a boon is levelled.
+      // Keep the better rarity scalar when a boon is leveled.
       if (BOONS.rarity[rarity].scalar > BOONS.rarity[existing.rarity].scalar) {
         existing.rarity = rarity;
       }

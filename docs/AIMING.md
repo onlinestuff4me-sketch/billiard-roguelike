@@ -28,7 +28,7 @@ The control therefore has to satisfy four things at once:
    where a thumb naturally rests.
 3. **The gesture must match what happens on screen.** If the hand turns, the line
    turns, the same way, by the same amount.
-4. **Uniform behaviour.** The same movement should do the same thing everywhere
+4. **Uniform behavior.** The same movement should do the same thing everywhere
    on screen, so the control can be learned once.
 
 ---
@@ -192,7 +192,7 @@ drawing the shaft).
 
 > **Debugging trap.** `player.aimDir` is a *copy* refreshed only while aiming, so
 > between shots it is stale. Assert against `input.heading`, never
-> `player.aimDir` — mistaking the two turns correct behaviour into a phantom
+> `player.aimDir` — mistaking the two turns correct behavior into a phantom
 > 180° failure.
 
 ---
@@ -249,7 +249,7 @@ Halving the substep used to move the chain agreement from 64% to 81%. It no
 longer moves it at all, which is the point: the table is frame-rate independent
 now, and two players on different phones get the same shot.
 
-### The preview was modelling a table that does not exist
+### The preview was modeling a table that does not exist
 
 None of the following could be fixed by a finer step, and none of them were
 visible as a wrong-LOOKING line — only as a line of the wrong length:
@@ -261,7 +261,7 @@ visible as a wrong-LOOKING line — only as a line of the wrong length:
   so a line arriving at a pocket was drawn bouncing cleanly off the rail beside
   it while the ball dropped in. This was the single largest source of scratches
   the preview never warned about. A pocket now ends the line — drawn to the
-  pocket's CENTRE, because ending it on the lip leaves every downstream test
+  pocket's CENTER, because ending it on the lip leaves every downstream test
   measuring a closest approach of exactly the radius, which is a coin toss.
 - **Only four cushions were drawn** while the stroke is allowed six.
 - **A struck ball's line stopped at the first rail**, so a banked pot was
@@ -304,7 +304,7 @@ in a purely geometric solution to put a body that MOVES.
 
 Two ways out, neither taken here:
 
-1. **Parameterise both paths by time rather than distance.** Both start at the
+1. **Parameterize both paths by time rather than distance.** Both start at the
    same instant and both have a known speed profile, so "do these two moving
    circles meet, and when" is answerable. It is a real solver, with its own
    failure modes, and it has to re-enter the chain when the answer is yes.
@@ -317,6 +317,50 @@ Two ways out, neither taken here:
 Until one of those, the honest statement is the one above: the line keeps its
 promise on better than 99 in 100 headings, and the shots where it does not are
 ricochets rather than shots anyone aims at.
+
+### The preview now PLAYS the shot (October)
+
+Reported from the run tables: *"50% of the time or more, when a line said a
+ball was going to sink into a pocket, the ball actually went at a different
+angle after being hit and never went into the pocket. Our projected lines need
+to be 100% accurate."* Measured on the twelve run tables
+(`tools/check-aim-run.mjs`), only 79% of the pots the line promised went in,
+before the score feed's slow motion was even in play. The commonest miss was
+the shape above: a struck ball banking back into the still-rolling cue.
+
+So the second way out was taken. `main.js` `playAim` plays the shot the aim is
+pointing at with the real physics, on the real balls: the same `motionStep` the
+stroke takes, with every handler that touches the score, the screen or the
+sound swapped for one that only records (a bumper's kick and a scratch's
+respawn are the motion they share with the game, through `bumperKick` and
+`Player.resetAt`), and every ball's state put back afterward. What it draws is
+the record: each ball's path corner by corner (the physics already keeps each
+step's corners, `stepTrail`), each contact, each pot, the scratch.
+`simulateAim` turns that into the three shapes the drawing always read.
+
+That only holds if the stroke is the same stroke wherever and however it is
+played, so four things changed with it:
+
+- **Fixed steps.** `simulate` spends a frame's time in whole `SIM_H` steps
+  (`TIME.fixedStep`) through an accumulator, so frame rate and the score
+  feed's slow motion change when steps happen, never their size. Balls are
+  drawn between their last two steps (`renderAt`), so slow motion stays smooth.
+- **The ball's own rules per step.** Settling out of a launch, the knock timer
+  and the drag that goes with each state moved from the per-frame `update` to
+  `Player/Enemy.stepMotion`, run inside `motionStep`.
+- **An exact stop.** A creeping ball is put at rest below `RULES.stopSpeed`,
+  and a stroke ends only when every ball is at rest, so where it finishes does
+  not depend on how long the presentation kept the table running.
+- **The drawn shot is the shot.** Letting go strikes the heading and power of
+  the last preview drawn (`drawnShot`), not the thumb's last position.
+
+Measured: 100% of drawn lines agree with the played stroke on all twelve
+tables, at 60 fps, 120 fps and under 0.2× slow motion, and 30 of 30 shots
+played through the real frame loop (score feed, freeze-before-the-hit,
+hit-stops) went where they were drawn. Cost: about 2–4 ms a preview on a
+desktop CPU, once a frame at most while the aim moves (a ball at rest is
+skipped by the physics, so most of the table costs nothing); after a preview
+that eats most of a frame, the next frame keeps the line it has.
 
 ### The control is smooth; the LINE is what jumps
 
@@ -357,11 +401,11 @@ the far end of everything drawn:
 | `cut-combo` | 0.532 | 2.146 | 5.0% |
 
 One cause was self-inflicted and is fixed: the line used to be drawn to the
-pocket's CENTRE, so the instant a sweeping aim crossed into a mouth the far end
+pocket's CENTER, so the instant a sweeping aim crossed into a mouth the far end
 teleported there and back — at exactly the spot the player is lining up. It
 ends at the lip now, and the pot verdict comes from `result.pocket`, which is
 exact and needs no re-derivation. On `angle` that took the median step from
-**0** (pinned at the centre through the whole window) to 0.130.
+**0** (pinned at the center through the whole window) to 0.130.
 
 The rest are the path genuinely changing: classified on `bank`, of the
 teleports that remain five are pure geometry — a four-to-six-cushion path
@@ -376,7 +420,7 @@ player needs to see it.
 very faint, which is strange." It was the last `THREE.LineSegments` in the
 preview. Everything up to the first cushion gets the wide beam; everything
 past it was one-physical-pixel dots in a desaturated slate — a third of a CSS
-pixel of colour on a 3x phone. On the banking lesson the leg past the cushion
+pixel of color on a 3x phone. On the banking lesson the leg past the cushion
 IS the shot, so the player was being asked to plan from the faintest thing on
 the felt. It is a ribbon now at the cue line's own width and hue, still dashed,
 because dashed is what says "after a bounce".
@@ -384,7 +428,7 @@ because dashed is what says "after a bounce".
 ### Frame rate
 
 The table used to move a body by `v·h` and then damp `v`, which overshoots the
-drag it is modelling by about half a step of decay. `integrate` now uses the
+drag it is modeling by about half a step of decay. `integrate` now uses the
 closed-form displacement, so a coast covers exactly `v/drag` — the same number
 `carryDistance` gives the preview — at any step size. Playing the same 720
 strokes at 30, 60 and 120 Hz lands the cue in the same place to a median of

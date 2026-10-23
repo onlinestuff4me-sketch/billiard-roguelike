@@ -7,7 +7,7 @@
  *   Stripes      violet octagons      hold range, charge a linear shot every 3 s
  *   Eight-Balls  amber cylinders      slow tanks with a 180° frontal shield
  *
- * The important shared behaviour is the KNOCKED state: a struck enemy becomes a
+ * The important shared behavior is the KNOCKED state: a struck enemy becomes a
  * lethal projectile that damages its own allies on contact (a Carom) and
  * shatters against the rails (a Wall-Splat). That is what makes the table a
  * weapon rather than a container.
@@ -25,7 +25,7 @@ export const ENEMY_STATE = {
 
 /* Shared geometry — created once, reused by every instance. */
 /**
- * Barrel length in world units, measured from the enemy's centre. The bullet is
+ * Barrel length in world units, measured from the enemy's center. The bullet is
  * born at this point rather than at a bare radial offset, so it leaves the gun
  * instead of appearing beside the body.
  */
@@ -60,7 +60,7 @@ function geometry(key, factory) {
  * Every ball on the table carries a number, because the mission talks about
  * them by name ("the 8 last") and because the number IS the ball's value. The
  * digit rides as a camera-facing sprite rather than being baked into the
- * silhouette, so shape still means behaviour and the number means worth —
+ * silhouette, so shape still means behavior and the number means worth —
  * two channels, never one doing both jobs.
  * ------------------------------------------------------------------ */
 
@@ -71,7 +71,7 @@ let STRIPE_TEXTURE = null;
 /**
  * The stripe band, circle-clipped so it never overhangs the ball.
  *
- * BONE ON THE BALL'S OWN COLOUR, which is the inverse of a real stripe and the
+ * BONE ON THE BALL'S OWN COLOR, which is the inverse of a real stripe and the
  * right way round here. It used to be a violet band on a bone body, and that
  * body is what a stripe ACTUALLY rendered as — the per-ball hue was applied to
  * solids only, so every stripe on the table was the same pale ball with the
@@ -99,7 +99,7 @@ function stripeTexture() {
 }
 
 /**
- * The digit sits on a disc of the BALL'S OWN COLOUR, not on a bone one.
+ * The digit sits on a disc of the BALL'S OWN COLOR, not on a bone one.
  *
  * A light disc was the obvious choice and the wrong one: bloom is thresholded
  * at 0.34, so a near-white puck haloed harder than anything else on the table
@@ -134,7 +134,7 @@ function numberTexture(number, hex) {
   // exactly as it was reported: the white 1 could not be read on the yellow.
   //
   // A LIGHT DISC, in the lit scene. It sits far above the bloom threshold, so
-  // it blew out to pure white from the centre to 0.5 of the radius and lifted
+  // it blew out to pure white from the center to 0.5 of the radius and lifted
   // the whole ball with it. Every ball measured as the same near-white: the
   // failure the oversized outlined numeral caused, from the opposite side.
   //
@@ -149,9 +149,9 @@ function numberTexture(number, hex) {
   // digit's ground stops being a function of the palette: near-black on bone
   // is about 17:1 on every ball there will ever be.
   const c = size / 2;
-  // Small, because the ball's colour is the other half of the identification
+  // Small, because the ball's color is the other half of the identification
   // and a confirmation that covers what it confirms has eaten it. This reaches
-  // roughly half the ball's radius, leaving the outer half pure colour — which
+  // roughly half the ball's radius, leaving the outer half pure color — which
   // is also where check-palette.mjs samples.
   const r = size * look.disc;
 
@@ -166,7 +166,7 @@ function numberTexture(number, hex) {
   ctx.fill();
 
   // BIGGER DIGIT, SAME DISC (from review: the numbers were hard to read). The
-  // disc stays inside the inner half of the ball so the colour still reads,
+  // disc stays inside the inner half of the ball so the color still reads,
   // and the digit now fills the disc instead of floating in it.
   ctx.font = `800 ${size * look.digit}px Rajdhani, "Segoe UI", Arial, sans-serif`;
   ctx.textAlign = 'center';
@@ -319,7 +319,7 @@ export class Enemy {
     this.body.position.y = cfg.radius * 0.85;
     this.group.add(this.body);
 
-    // A real stripe: a coloured band across a bone ball, so the word names
+    // A real stripe: a colored band across a bone ball, so the word names
     // something you can see rather than something you were told.
     //
     // It has to be a DECAL, not a band of geometry. The camera looks straight
@@ -519,17 +519,17 @@ export class Enemy {
     // This was radius * 2.5 — a sprite a quarter WIDER than the ball it
     // labels, carrying a heavy near-black stroke and a soft dark halo. On a
     // thirteen-pixel ball that covered the entire face and a ring of felt
-    // besides, so the only part of the ball wearing the ball's colour was a
-    // thin rim. Measured through the real framebuffer, four colours 32 dE
-    // apart at source rendered as four greys 3.9 apart: the palette was fine
+    // besides, so the only part of the ball wearing the ball's color was a
+    // thin rim. Measured through the real framebuffer, four colors 32 dE
+    // apart at source rendered as four grays 3.9 apart: the palette was fine
     // and nothing was showing it.
     //
     // It was widened deliberately, because a numeral confined to the
     // silhouette is about ten pixels tall and that was the only thing telling
     // two amber balls apart. That reasoning expired when the balls got their
-    // own hues: colour identifies at a glance, the numeral confirms, and a
+    // own hues: color identifies at a glance, the numeral confirms, and a
     // confirmation does not need to cover the thing it confirms. Like a real
-    // pool ball — a small numeral in the middle, colour all around it.
+    // pool ball — a small numeral in the middle, color all around it.
     const scale = Math.max(0.86, this.radius * ({ face: 2.3, medium: 2.05 }[BALL_NUMERALS.style] || 1.85));
     // NEAR-BLACK ON EVERY BALL, and the palette is picked so that works —
     // see numberTexture above, and the 4.5:1 floor in tools/check-palette.mjs.
@@ -553,8 +553,8 @@ export class Enemy {
       // being the ones nobody could see.
       this.material.emissiveIntensity = 0.45;
       // The ground marker and the spawn telegraph are built from the TYPE's
-      // colour, before the number is known — so a violet 3 kept an amber halo
-      // and read as an amber ball with an odd centre. Both follow the ball.
+      // color, before the number is known — so a violet 3 kept an amber halo
+      // and read as an amber ball with an odd center. Both follow the ball.
       this.markerMat?.color.setHex(own);
       this.telegraphMat?.color.setHex(own);
     }
@@ -661,14 +661,52 @@ export class Enemy {
    * Frame update — AI only; motion is integrated by PhysicsSystem
    * ---------------------------------------------------------------- */
 
+  /**
+   * ONE FIXED STEP OF THE BALL'S OWN RULES: the knock timer, settling out of
+   * a knock, and the spawn. Per physics step, never per frame, like
+   * Player.stepMotion and for the same reason: the stroke has to play the
+   * same at any frame rate, and exactly as the aim preview played it.
+   */
+  /**
+   * WHERE TO DRAW THE BALL: between its last two physics steps, by how far
+   * this frame is into the next one (main.js sets `renderAlpha`). The table
+   * steps at a fixed rate, so under slow motion a frame can fall between two
+   * steps; drawn at the step it would move in jumps. A jump the ball really
+   * made (a portal, a respot) is drawn as a jump.
+   */
+  renderAt() {
+    const a = this.renderAlpha;
+    if (!(a >= 0 && a < 1) || !Number.isFinite(this.prevX)) return [this.x, 0, this.z];
+    const dx = this.x - this.prevX;
+    const dz = this.z - this.prevZ;
+    if (dx * dx + dz * dz > 4) return [this.x, 0, this.z];
+    return [this.prevX + dx * a, 0, this.prevZ + dz * a];
+  }
+
+  stepMotion(h) {
+    if (!this.alive) return;
+    if (this.knockTimer > 0) this.knockTimer -= h;
+    if (this.state === ENEMY_STATE.SPAWNING) {
+      this.spawnTimer -= h;
+      if (this.spawnTimer <= 0) {
+        this.state = ENEMY_STATE.ACTIVE;
+        this.drag = PHYSICS.enemyDrag;
+      }
+    } else if (this.state === ENEMY_STATE.KNOCKED) {
+      // Once it settles it stops being lethal and rejoins the fight.
+      if (this.speed < PHYSICS.knockedSettleSpeed && this.knockTimer <= 0) {
+        this.state = ENEMY_STATE.ACTIVE;
+        this.drag = PHYSICS.enemyDrag;
+      }
+    }
+  }
+
   update(dt, game) {
     if (!this.alive) return;
     const player = game.player;
 
     if (this.flashTimer > 0) this.flashTimer -= dt;
     if (this.fireFlash > 0) this.fireFlash -= dt;
-    if (this.caromCooldown > 0) this.caromCooldown -= dt;
-    if (this.knockTimer > 0) this.knockTimer -= dt;
 
     // Face the player (used for shields, backstabs and shot aiming).
     const tx = player.x - this.x;
@@ -679,21 +717,8 @@ export class Enemy {
 
     switch (this.state) {
       case ENEMY_STATE.SPAWNING:
-        this.spawnTimer -= dt;
         this.facingX = dirX;
         this.facingZ = dirZ;
-        if (this.spawnTimer <= 0) {
-          this.state = ENEMY_STATE.ACTIVE;
-          this.drag = PHYSICS.enemyDrag;
-        }
-        break;
-
-      case ENEMY_STATE.KNOCKED:
-        // Once it settles it stops being lethal and rejoins the fight.
-        if (this.speed < PHYSICS.knockedSettleSpeed && this.knockTimer <= 0) {
-          this.state = ENEMY_STATE.ACTIVE;
-          this.drag = PHYSICS.enemyDrag;
-        }
         break;
 
       case ENEMY_STATE.ACTIVE:
@@ -702,7 +727,7 @@ export class Enemy {
         // No pursuit, no range-keeping, no wind-up, no shot. It sits where the
         // last stroke left it until the next one moves it. This is the single
         // switch the whole "nothing moves between shots" promise hangs on, so
-        // it is checked here rather than being spread across three behaviours
+        // it is checked here rather than being spread across three behaviors
         // that each have to remember to opt out.
         if (RULES.staticTable) break;
         // A frozen enemy still collides, still gets knocked, still dies — it
@@ -888,7 +913,7 @@ export class Enemy {
   }
 
   _updateMesh(dt, distToPlayer) {
-    this.group.position.set(this.x, 0, this.z);
+    this.group.position.set(...this.renderAt());
     this.group.rotation.y = Math.atan2(this.facingX, this.facingZ);
 
     const knocked = this.state === ENEMY_STATE.KNOCKED;
@@ -1007,7 +1032,7 @@ export class Enemy {
     // Idle it is a short dark nub — just enough to show which way the thing is
     // pointing. The wind-up runs it out to four times that protrusion and
     // lights it, so "it is about to shoot" is a change in the silhouette and
-    // not only a change in colour.
+    // not only a change in color.
     const extend = Math.max(charge, firing);
     this.gun.scale.z = (0.55 + 0.45 * extend) * GUN_LENGTH;
     // A little tilt is kept purely so the barrel catches the light and reads as

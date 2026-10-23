@@ -144,7 +144,7 @@ export function sweepCircleBox(px, pz, dx, dz, radius, box) {
   // through the left face, whose outward normal is -x; moving left, through
   // the right face, whose outward normal is +x. So the sign is -sign(d) in
   // both cases — but the swap branch used to set it to +sign(d), which handed
-  // back a normal pointing INTO the box for every hit taken travelling in the
+  // back a normal pointing INTO the box for every hit taken traveling in the
   // negative direction on the dominant axis.
   //
   // `reflect` is blind to the sign (a mirror is a mirror whichever way its
@@ -340,6 +340,15 @@ export class PhysicsSystem {
       if (!enemy.alive) continue;
       if (enemy.strikeCooldown > 0) enemy.strikeCooldown -= h;
       if (enemy.caromCooldown > 0) enemy.caromCooldown -= h;
+      // A BALL AT REST STAYS AT REST, and costs nothing: it has no step to
+      // take and nothing to hit. It still has a (zero-length) step on record,
+      // so anything that sweeps into it sees it where it stands. The aim
+      // preview plays a whole stroke every time the aim moves, and most of
+      // the table is standing still for most of it.
+      if (enemy.vx === 0 && enemy.vz === 0) {
+        this._rest(enemy, h);
+        continue;
+      }
       this.integrate(enemy, h);
       this.resolveEnemyGeometry(enemy, game);
     }
@@ -358,6 +367,8 @@ export class PhysicsSystem {
       for (let j = i + 1; j < enemies.length; j++) {
         const b = enemies[j];
         if (!b.alive) continue;
+        // two balls at rest cannot meet
+        if (a.vx === 0 && a.vz === 0 && b.vx === 0 && b.vz === 0) continue;
         this.resolveEnemyPair(a, b, game);
       }
     }
@@ -388,7 +399,7 @@ export class PhysicsSystem {
     }
 
     // Pockets and felt objects are tested last, once every body is where this
-    // sub-step leaves it. A ball is taken by its CENTRE reaching a pocket, so
+    // sub-step leaves it. A ball is taken by its CENTER reaching a pocket, so
     // the rails can keep reflecting normally and the trajectory preview stays
     // exactly as trustworthy as it was.
     if (game.table) this.resolveTable(game);
@@ -400,7 +411,7 @@ export class PhysicsSystem {
 
   /**
    * A ball whose step reaches a ring comes out of the other one, carrying its
-   * heading, its speed and its offset from the ring's centre — the whole path
+   * heading, its speed and its offset from the ring's center — the whole path
    * picked up and put down somewhere else.
    *
    * Resolved at the crossing rather than at the end of the step, like every
@@ -444,7 +455,7 @@ export class PhysicsSystem {
       const cz = body.z;
       // Whatever was left of the step, spent from the far ring on the same
       // heading — so passing through costs the ball nothing but the distance
-      // it would have travelled anyway.
+      // it would have traveled anyway.
       body.x += body.vx * left;
       body.z += body.vz * left;
       this._trailPush(body);
@@ -510,6 +521,9 @@ export class PhysicsSystem {
     for (let i = 0; i < enemies.length; i++) {
       const ball = enemies[i];
       if (!ball.alive || ball.state === ENEMY_STATE.SPAWNING) continue;
+      // standing still this step (see _rest): it reaches nothing it was not
+      // already at
+      if ((ball.stepTrailN || 0) < 2 && ball.vx === 0 && ball.vz === 0) continue;
       const drop = walk(ball, (ax, az, bx, bz) => table.pocketAlong(ax, az, bx, bz));
       if (drop) {
         ball.x = drop.x;
@@ -532,7 +546,7 @@ export class PhysicsSystem {
   /**
    * Resolve a near-elastic collision between two circular bodies.
    *
-   * This is the standard impulse along the line of centres:
+   * This is the standard impulse along the line of centers:
    *
    *     j = -(1 + e)(v_rel · n) / (1/mA + 1/mB)
    *
@@ -541,7 +555,7 @@ export class PhysicsSystem {
    * familiar billiard results — full transfer on a head-on hit between equal
    * masses, and a 90° separation on a cut.
    *
-   * Nothing here is scripted or randomised, so the outcome always matches the
+   * Nothing here is scripted or randomized, so the outcome always matches the
    * line the aim preview drew before the shot.
    *
    * @param {object} a first body ({ vx, vz, mass })
@@ -586,15 +600,19 @@ export class PhysicsSystem {
     let drag = body.drag || 0;
     // The creep assist: a body too slow to reach anything stops being allowed
     // to hold the stroke open. See RULES.creepSpeed.
+    let creeping = false;
     if (RULES.staticTable) {
       const speed = Math.hypot(body.vx, body.vz);
-      if (speed > 0 && speed < RULES.creepSpeed) drag = Math.max(drag, RULES.creepDrag);
+      if (speed > 0 && speed < RULES.creepSpeed) {
+        drag = Math.max(drag, RULES.creepDrag);
+        creeping = true;
+      }
     }
 
     // THE EXACT DISPLACEMENT, NOT A STEP AT THE OLD SPEED.
     //
     // This moved the body by v·h and then damped v, which over a whole stroke
-    // overshoots the drag it is modelling by about half a step's worth of
+    // overshoots the drag it is modeling by about half a step's worth of
     // decay — roughly 1% at 180 Hz, and MORE on a slower phone. Two
     // consequences, both of which showed up as the preview lying:
     //
@@ -616,11 +634,24 @@ export class PhysicsSystem {
       body.z += body.vz * travel;
       body.vx *= damp;
       body.vz *= damp;
+      // ...and then it stops, exactly (RULES.stopSpeed)
+      if (creeping && Math.hypot(body.vx, body.vz) < RULES.stopSpeed) {
+        body.vx = 0;
+        body.vz = 0;
+      }
     } else {
       body.x += body.vx * h;
       body.z += body.vz * h;
     }
     this._trailPush(body);
+  }
+
+  /** A body that does not move this step: its step is a point where it stands. */
+  _rest(body, h) {
+    body.stepX = body.x;
+    body.stepZ = body.z;
+    body.stepH = h;
+    this._trailStart(body);
   }
 
   /* ---------------------------------------------------------------- *
@@ -654,8 +685,8 @@ export class PhysicsSystem {
    *
    *   - the turn happens up to v*h past the cushion the ball really touched,
    *     which slides the whole outgoing line sideways;
-   *   - on a ball, the line of centres taken while the two are overlapping is
-   *     rotated away from the line of centres at the touch, so the object ball
+   *   - on a ball, the line of centers taken while the two are overlapping is
+   *     rotated away from the line of centers at the touch, so the object ball
    *     leaves on the wrong heading — by degrees, on a thin cut;
    *   - and the deeper the overlap, the bigger both errors, so the same shot
    *     played on a slower phone lands somewhere else.
@@ -695,7 +726,7 @@ export class PhysicsSystem {
     body.stepTrail[0] = body.x;
     body.stepTrail[1] = body.z;
     body.stepTrailN = 1;
-    // WHICH OF THIS STEP'S LEGS WERE NOT TRAVELLED. A portal moves a ball from
+    // WHICH OF THIS STEP'S LEGS WERE NOT TRAVELED. A portal moves a ball from
     // one ring to the other without crossing what is between them, so the leg
     // joining the two is a bookkeeping line, not a path: anything that reads
     // the trail as "where this body went" — pockets, pads — has to step over
@@ -717,14 +748,22 @@ export class PhysicsSystem {
     body.stepTrail[(body.stepTrailN - 1) * 2 + 1] = body.z;
   }
 
-  /** The straight line this step travelled, or null if there was none. */
+  /** The straight line this step traveled, or null if there was none. */
   _step(body) {
     if (!Number.isFinite(body.stepX)) return null;
     const dx = body.x - body.stepX;
     const dz = body.z - body.stepZ;
     const len = Math.hypot(dx, dz);
     if (len < EPS) return null;
-    return { x: body.stepX, z: body.stepZ, dx: dx / len, dz: dz / len, len };
+    // One per body, reused: read at once by every caller, never kept, and
+    // the aim preview asks for thousands of these a stroke.
+    const step = body._stepScratch || (body._stepScratch = { x: 0, z: 0, dx: 0, dz: 0, len: 0 });
+    step.x = body.stepX;
+    step.z = body.stepZ;
+    step.dx = dx / len;
+    step.dz = dz / len;
+    step.len = len;
+    return step;
   }
 
   /**
@@ -749,6 +788,11 @@ export class PhysicsSystem {
   _sweepsInto(mover, target) {
     const step = this._step(mover);
     if (!step) return null;
+    // too far apart to meet within this step
+    const reach = step.len + mover.radius + target.radius;
+    const gx = target.x - step.x;
+    const gz = target.z - step.z;
+    if (gx * gx + gz * gz > reach * reach) return null;
     const toi = sweepCircleCircle(
       step.x,
       step.z,
@@ -1014,7 +1058,7 @@ export class PhysicsSystem {
         nz = dz / dist;
         depth = body.radius - dist;
       } else {
-        // Centre is inside the box — escape along the shallowest face.
+        // Center is inside the box — escape along the shallowest face.
         const left = body.x - minX;
         const right = maxX - body.x;
         const top = body.z - minZ;
@@ -1142,10 +1186,10 @@ export class PhysicsSystem {
     const grazed = this._sweepsInto(player, enemy);
     if (!grazed && dist >= min) return;
 
-    // THE LINE OF CENTRES AT THE TOUCH, not at the overlap.
+    // THE LINE OF CENTERS AT THE TOUCH, not at the overlap.
     //
     // This is the one that matters most. An object ball leaves along the line
-    // of centres, so every degree of error here is a degree of error in where
+    // of centers, so every degree of error here is a degree of error in where
     // it goes — and a cut taken from inside an overlap is rotated toward
     // head-on, by more the deeper the step drove in. It is why a thin cut the
     // preview drew into the corner came off the table somewhere else, and why
@@ -1204,10 +1248,10 @@ export class PhysicsSystem {
         return;
       }
 
-      // Textbook two-body impulse along the line of centres. Solving it properly
+      // Textbook two-body impulse along the line of centers. Solving it properly
       // (rather than scripting a knock speed) is what makes the table legible:
       // equal masses head-on give a stop shot, a cut sends the object ball down
-      // the centre line while the cue ball leaves along the tangent — the 90°
+      // the center line while the cue ball leaves along the tangent — the 90°
       // rule the aim preview draws.
       this.resolveBallImpulse(player, enemy, -nx, -nz, PHYSICS.ballRestitution);
       if (enemy.alive) enemy.applyKnock(enemy.vx, enemy.vz);
@@ -1552,8 +1596,8 @@ export class PhysicsSystem {
       }
 
       // --- nearest pocket -------------------------------------------------
-      // Capture is on the CENTRE, so the sweep radius is zero: this asks where
-      // the centre-line first enters a mouth, which is the table's own test.
+      // Capture is on the CENTER, so the sweep radius is zero: this asks where
+      // the center-line first enters a mouth, which is the table's own test.
       let pocketT = Infinity;
       let pocketRef = null;
       for (let i = 0; i < pockets.length; i++) {
@@ -1566,7 +1610,7 @@ export class PhysicsSystem {
       }
 
       // --- nearest portal ---------------------------------------------------
-      // On the CENTRE, like a pocket and like the table's own test: a rule the
+      // On the CENTER, like a pocket and like the table's own test: a rule the
       // preview and the table have to agree on to the millimetre cannot afford
       // a fudge factor in one of them.
       let portalT = Infinity;
@@ -1631,13 +1675,13 @@ export class PhysicsSystem {
       if (pocketRef && pocketT <= Math.min(t, remaining)) {
         // TO THE LIP, AND THE VERDICT SEPARATELY.
         //
-        // This drew the segment all the way to the pocket's CENTRE, because
+        // This drew the segment all the way to the pocket's CENTER, because
         // every downstream test re-derived "does this line find a hole" by
         // measuring the closest approach of the drawn segments, and a segment
         // ending exactly ON the radius is a coin toss in floating point.
         //
         // But it also meant that the instant a sweeping aim crossed into the
-        // mouth the far end of the line teleported to the centre, and back out
+        // mouth the far end of the line teleported to the center, and back out
         // again — a visible jump at exactly the place the player is trying to
         // line up. The verdict lives in `result.pocket` now, which is exact and
         // needs no re-derivation, so the line can be drawn where the ball
@@ -1663,7 +1707,7 @@ export class PhysicsSystem {
       result.totalDistance += t;
 
       if (bodyFirst && Number.isFinite(bodyT) && bodyT <= remaining) {
-        // The struck body flies along the line from contact point to its centre.
+        // The struck body flies along the line from contact point to its center.
         const cdx = bodyRef.x - bx;
         const cdz = bodyRef.z - bz;
         const len = Math.hypot(cdx, cdz) || 1;

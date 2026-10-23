@@ -10,7 +10,7 @@
  *
  * Fully procedural geometry produces tables whose angles cannot be read, and an
  * angle you cannot predict is not a decision. Fully handcrafted rooms are
- * memorised in three runs. So the *space* is authored and the *contents* are
+ * memorized in three runs. So the *space* is authored and the *contents* are
  * rolled — every room is familiar enough to plan a bank shot in and fresh
  * enough to demand one.
  *
@@ -466,7 +466,7 @@ export class RoomManager {
    *
    * A lesson has to be repeatable from an identical table, and chain targets
    * are destroyed on contact like any other body — so restoring only the
-   * survivors would leave the player practising a two-ball split with one ball.
+   * survivors would leave the player practicing a two-ball split with one ball.
    */
   reRackScripted() {
     const spec = this.scriptedSpec;
@@ -583,7 +583,7 @@ export class RoomManager {
       const isBumper = c.kind === 'bumper';
       // A BUMPER IS A WALL, NOT A PICK-UP.
       //
-      // It was drawn in mint, which is now exactly the colour that means
+      // It was drawn in mint, which is now exactly the color that means
       // "hit this, something good happens" — and a bumper is geometry. It
       // goes back into the table channel and says "springy" by being lit
       // brighter than a plain pillar, not by wearing a different hue.
@@ -819,7 +819,7 @@ export class RoomManager {
     //
     // The table's own group used to be caught by this sweep, which quietly
     // detached it on the first generate() — every pocket and lit object built
-    // afterwards went into an orphaned group and rendered nowhere. Both
+    // afterward went into an orphaned group and rendered nowhere. Both
     // long-lived layers are named here so the next one added cannot repeat it.
     for (let i = this.group.children.length - 1; i >= 0; i--) {
       const child = this.group.children[i];

@@ -27,7 +27,7 @@ export const UPGRADES = [
   /* -- scoring: what each contact pays ------------------------------- */
   { id: 'soft-touch', name: 'Soft Touch', text: 'Each ball you touch and sink pays +5 more.', rarity: 'common', price: 5, perk: { perHit: 5 } },
   { id: 'long-rail', name: 'Long Rail', text: 'Each wall your ball takes: +1 more Mult.', rarity: 'common', price: 5, perk: { perBank: 1 } },
-  { id: 'kiss-chase', name: 'Kiss Chase', text: 'A ball driven into another pays +1 more Mult.', rarity: 'common', price: 5, perk: { perKiss: 1 } },
+  { id: 'kiss-chase', name: 'Assist Ace', text: 'Each assist (ball into ball): +1 more Mult.', rarity: 'common', price: 5, perk: { perKiss: 1 } },
   { id: 'bank-vault', name: 'Bank Vault', text: 'Bank pots pay +2 more Mult.', rarity: 'common', price: 6, perk: { bankPot: 2 } },
   { id: 'doubles', name: 'Doubles', text: 'Each extra ball in one shot: +2 Mult.', rarity: 'common', price: 6, perk: { extraPot: 2 } },
   { id: 'heavy-numbers', name: 'Heavy Numbers', text: 'Balls pay 15 per number instead of 10.', rarity: 'rare', price: 8, perk: { perPip: 5 } },

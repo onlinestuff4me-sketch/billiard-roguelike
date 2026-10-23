@@ -9,7 +9,7 @@
  *
  * A portal is the first thing on this table whose route is not a line: the ball
  * is translated by the vector between two rings, keeping its heading, its
- * speed and its offset from the ring's centre. Two pieces of code have to
+ * speed and its offset from the ring's center. Two pieces of code have to
  * believe exactly the same thing about that — the table, which resolves it at
  * the crossing inside a sub-step, and the preview, which solves the crossing
  * on the drawn line — and the whole value of this game's aiming rests on them

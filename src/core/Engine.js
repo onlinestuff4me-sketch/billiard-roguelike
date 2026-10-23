@@ -122,7 +122,7 @@ export class Engine {
    * STOP MOVING, NOW.
    *
    * Shake and the zoom punch decay over a few hundred milliseconds, which is
-   * the right behaviour while a stroke is still playing out and the wrong one
+   * the right behavior while a stroke is still playing out and the wrong one
    * the instant a board is finished: with the table frozen and every ball
    * standing still, the only thing left moving is the camera, and a camera
    * wobbling around a still ball reads as the ball itself twitching —
