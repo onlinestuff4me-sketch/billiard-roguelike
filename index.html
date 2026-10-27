@@ -1862,9 +1862,17 @@
         background: var(--amber);
         box-shadow: 0 0 10px rgba(255, 179, 64, 0.6);
       }
-      .menu-btn.play-big { display: grid; gap: 2px; padding-block: 14px 12px; }
-      .play-big .pb-main { font-size: clamp(16px, 4.8vmin, 20px); }
-      .play-big .pb-sub { font-size: clamp(9px, 2.4vmin, 11px); letter-spacing: 0.1em; opacity: 0.8; }
+      /* CONTINUE (from review): one line and a big play arrow, so it reads as
+         the button that takes you back in; a sheen crosses it now and then */
+      .menu-btn.play-big { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 12px 12px 22px; text-align: left; }
+      .play-big .pb-main { min-width: 0; overflow: hidden; font-size: clamp(14px, 5vmin, 21px); white-space: nowrap; }
+      .play-big .pb-go { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--cyan); background: #02050b; box-shadow: 0 0 0 2px rgba(2, 5, 11, 0.35), 0 0 16px rgba(2, 5, 11, 0.5); animation: pb-go 1.6s ease-in-out infinite; }
+      .play-big .pb-go svg { width: 22px; height: 22px; margin-left: 3px; filter: drop-shadow(0 0 6px rgba(34, 232, 255, 0.9)); }
+      .menu-btn.play-big::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, transparent 66%); transform: translateX(-120%); animation: pb-sheen 3.2s ease-in-out infinite; pointer-events: none; }
+      .menu-btn.play-big:active .pb-go { transform: scale(0.9); }
+      @keyframes pb-go { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+      @keyframes pb-sheen { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+      @media (prefers-reduced-motion: reduce) { .play-big .pb-go, .menu-btn.play-big::after { animation: none; } }
       .menu-btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
       .menu-label {
         margin: 6px 0 -2px;
@@ -1896,9 +1904,9 @@
       .table-path li { min-width: 0; display: grid; }
       .tp-row {
         display: grid;
-        grid-template-columns: 16px 22px minmax(0, 1fr) auto;
+        grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
-        gap: 8px;
+        gap: 9px;
         min-height: 36px;
         padding: 0 12px;
         border-radius: 9px;
@@ -1908,13 +1916,16 @@
         text-align: left;
         min-width: 0;
       }
-      .tp-row b { font-size: 15px; font-weight: 700; text-align: right; }
-      /* the whole name, always (from review): it wraps rather than being cut */
-      .tp-row .tp-name { overflow-wrap: anywhere; line-height: 1.2; padding: 6px 0; }
+      /* the icon and the number share one tight cell, so the name has the
+         room; the name is always one line, whole (from review) */
+      .tp-row .tp-num { display: inline-flex; align-items: center; gap: 5px; }
+      .tp-row b { min-width: 1.15em; font-size: 15px; font-weight: 700; text-align: left; }
+      .tp-row .tp-name { white-space: nowrap; overflow: hidden; font-size: clamp(11px, 3.5vw, 13px); letter-spacing: 0.02em; }
       .tp-row .tp-icon { width: 14px; height: 14px; }
       .tp-row .tp-icon svg { display: block; width: 100%; height: 100%; }
-      .tp-row .tp-best { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-      .tp-row .tp-best small { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.7; margin-right: 2px; }
+      /* BEST over the number, so the column is as narrow as the number */
+      .tp-row .tp-best { display: grid; justify-items: end; line-height: 1.05; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .tp-row .tp-best small { font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.7; }
       /* locked: flat, dim, a padlock, nothing to press */
       .tp-row.locked { border: 1px solid rgba(234, 246, 255, 0.08); background: rgba(8, 18, 30, 0.35); color: rgba(234, 246, 255, 0.3); }
       /* cleared: a lit button with the play arrow; tap to replay */
@@ -2518,7 +2529,7 @@
               <button id="play-back" class="play-back" type="button" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>
               <h2 class="menu-sub">Play</h2>
             </div>
-            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></button>
+            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8.5 5.5v13l10.5-6.5Z" fill="currentColor"/></svg></span></button>
             <p class="menu-label">The tables</p>
             <ol class="table-path" id="table-path" aria-label="The twelve tables of a run"></ol>
           </div>

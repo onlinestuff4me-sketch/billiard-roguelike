@@ -5081,12 +5081,9 @@ function showPlayPanel() {
   const run = loadRun();
   const best = loadBest();
   const t = run ? TABLES[run.level - 1] : null;
+  // one line (from review): the table's own row says the rest
   $('play-continue-main').textContent = run ? `Continue · Table ${run.level}` : 'New run';
-  $('play-continue-sub').textContent = run
-    ? `${t ? t.name + ' · ' : ''}${run.runScore.toLocaleString()} points · ${run.lives} ${run.lives === 1 ? 'life' : 'lives'} · $${run.cash}`
-    : best.table
-      ? `Best run: Table ${best.table} · ${best.score.toLocaleString()} points`
-      : 'Twelve tables, one rule each';
+  $('play-continue').setAttribute('aria-label', run ? `Continue at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a new run');
   // ROWS, NOT BOXES (from review): room for the whole name and the table's
   // best. Two looks and no words: a table you can play has the play arrow
   // (the run you left is the lit one; any you have cleared replay), and one
@@ -5103,10 +5100,10 @@ function showPlayPanel() {
     const row = document.createElement(here || cleared ? 'button' : 'div');
     row.className = `tp-row ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
     if (row.tagName === 'BUTTON') row.type = 'button';
-    row.innerHTML = `<span class="tp-icon" aria-hidden="true">${here || cleared ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b><span class="tp-name"></span><span class="tp-best"></span>`;
+    row.innerHTML = `<span class="tp-num"><span class="tp-icon" aria-hidden="true">${here || cleared ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b></span><span class="tp-name"></span><span class="tp-best"></span>`;
     row.querySelector('.tp-name').textContent = tb.name;
     const top = bests[n]?.score;
-    if (top && !row.classList.contains('locked')) row.querySelector('.tp-best').innerHTML = `<small>Best</small> ${top.toLocaleString()}`;
+    if (top && !row.classList.contains('locked')) row.querySelector('.tp-best').innerHTML = `<small>Best</small><span>${top.toLocaleString()}</span>`;
     row.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · replay' : ' · locked'}${top ? ` · best ${top}` : ''}`);
     if (here) row.addEventListener('click', () => play(resumeRun));
     else if (cleared) row.addEventListener('click', () => play(() => startReplay(n)));
@@ -5115,6 +5112,16 @@ function showPlayPanel() {
     if (here) hereRow = li;
   });
   showPanel('play');
+  // EVERY NAME ON ONE LINE, WHOLE: one that still does not fit a narrow
+  // phone comes down a size or two until it does
+  for (const name of [...path.querySelectorAll('.tp-name'), $('play-continue-main')]) {
+    name.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(name).fontSize);
+    while (name.scrollWidth > name.clientWidth + 0.5 && size > 8) {
+      size -= 0.5;
+      name.style.fontSize = `${size}px`;
+    }
+  }
   // the run you left is in view, even when the list scrolls
   hereRow?.scrollIntoView({ block: 'nearest' });
 }

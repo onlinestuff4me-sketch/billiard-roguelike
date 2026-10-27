@@ -262,14 +262,15 @@ type). Sound lives in Settings. Nothing else, for a first visit or a returning p
 
 **Play** takes a first visit (the lessons not yet done) straight into the
 lessons. Anyone else gets **the play screen**: **‹ Back** and a big
-**Continue · Table N** (the table's name, run score, lives and cash) for the
-run they left, or a big **New run** when there is none (with their best run
-under it), held at the top; under them **the tables**, the only part that
+**Continue · Table N**, one line with a round play arrow (a sheen crosses it
+now and then), or **New run** when there is none, held at the top; under them **the tables**, the only part that
 scrolls. **New run** (abandon the saved run and start at Table 1; with a run
 saved it asks once, naming the table that ends) and **Modes** are at the
 bottom of **Settings** (from review), and Modes' Done goes back there.
 
-**The tables are rows** (from review: room for the whole name and the
+**The tables are rows**, every name whole on one line (the icon and number share one
+tight cell, BEST sits over its number, and a name that still does not fit a
+narrow phone comes down a size) (from review: room for the whole name and the
 table's best score, `lightline-table-best-v1`), and say their state by look,
 not words: a table you can play has a **play arrow** by its number (the saved
 run's table is solid cyan and is Continue; a cleared one is a lit row and
