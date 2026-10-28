@@ -1862,14 +1862,14 @@
         background: var(--amber);
         box-shadow: 0 0 10px rgba(255, 179, 64, 0.6);
       }
-      /* CONTINUE (from review): one line and a forward arrow on the right, so
-         it reads as the button that takes you on; not the rows' play triangle.
-         The arrow is drawn symmetric about the circle's center. A sheen
-         crosses it now and then */
+      /* CONTINUE (from review): one line and a bare black play triangle on
+         the right, no circle, so it reads as the button that takes you on.
+         A sheen crosses behind the words and the triangle now and then */
       .menu-btn.play-big { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 12px 12px 22px; text-align: left; }
       .play-big .pb-main { min-width: 0; overflow: hidden; font-size: clamp(14px, 5vmin, 21px); white-space: nowrap; }
-      .play-big .pb-go { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--cyan); background: #02050b; box-shadow: 0 0 0 2px rgba(2, 5, 11, 0.35), 0 0 16px rgba(2, 5, 11, 0.5); animation: pb-go 1.6s ease-in-out infinite; }
-      .play-big .pb-go svg { display: block; width: 22px; height: 22px; filter: drop-shadow(0 0 6px rgba(34, 232, 255, 0.9)); }
+      .play-big .pb-main, .play-big .pb-go { position: relative; z-index: 1; }
+      .play-big .pb-go { display: grid; place-items: center; width: 34px; height: 44px; color: #02050b; animation: pb-go 1.6s ease-in-out infinite; }
+      .play-big .pb-go svg { display: block; width: 30px; height: 30px; }
       .menu-btn.play-big::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, transparent 66%); transform: translateX(-120%); animation: pb-sheen 3.2s ease-in-out infinite; pointer-events: none; }
       .menu-btn.play-big:active .pb-go { transform: scale(0.9); }
       @keyframes pb-go { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
@@ -2531,7 +2531,7 @@
               <button id="play-back" class="play-back" type="button" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>
               <h2 class="menu-sub">Play</h2>
             </div>
-            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
             <p class="menu-label">The tables</p>
             <ol class="table-path" id="table-path" aria-label="The twelve tables of a run"></ol>
           </div>
