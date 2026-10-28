@@ -5081,8 +5081,9 @@ function showPlayPanel() {
   const run = loadRun();
   const best = loadBest();
   const t = run ? TABLES[run.level - 1] : null;
-  // one line (from review): the table's own row says the rest
-  $('play-continue-main').textContent = run ? `Continue · Table ${run.level}` : 'New run';
+  // "Continue" big, the table small under it (from review)
+  $('play-continue-main').textContent = run ? 'Continue' : 'New run';
+  $('play-continue-sub').textContent = run ? `Table ${run.level}` : '';
   $('play-continue').setAttribute('aria-label', run ? `Continue at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a new run');
   // ROWS, NOT BOXES (from review): room for the whole name and the table's
   // best. Two looks and no words: a table you can play has the play arrow
@@ -5112,9 +5113,14 @@ function showPlayPanel() {
     if (here) hereRow = li;
   });
   showPanel('play');
+  // one shimmer across Continue each time this opens (from review)
+  const go = $('play-continue');
+  go.classList.remove('shine');
+  void go.offsetWidth;
+  go.classList.add('shine');
   // EVERY NAME ON ONE LINE, WHOLE: one that still does not fit a narrow
   // phone comes down a size or two until it does
-  for (const name of [...path.querySelectorAll('.tp-name'), $('play-continue-main')]) {
+  for (const name of path.querySelectorAll('.tp-name')) {
     name.style.fontSize = '';
     let size = parseFloat(getComputedStyle(name).fontSize);
     while (name.scrollWidth > name.clientWidth + 0.5 && size > 8) {

@@ -1862,19 +1862,24 @@
         background: var(--amber);
         box-shadow: 0 0 10px rgba(255, 179, 64, 0.6);
       }
-      /* CONTINUE (from review): one line and a bare black play triangle on
-         the right, no circle, so it reads as the button that takes you on.
-         A sheen crosses behind the words and the triangle now and then */
-      .menu-btn.play-big { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 12px 12px 22px; text-align: left; }
-      .play-big .pb-main { min-width: 0; overflow: hidden; font-size: clamp(14px, 5vmin, 21px); white-space: nowrap; }
-      .play-big .pb-main, .play-big .pb-go { position: relative; z-index: 1; }
-      .play-big .pb-go { display: grid; place-items: center; width: 34px; height: 44px; color: #02050b; animation: pb-go 1.6s ease-in-out infinite; }
-      .play-big .pb-go svg { display: block; width: 30px; height: 30px; }
-      .menu-btn.play-big::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, transparent 66%); transform: translateX(-120%); animation: pb-sheen 3.2s ease-in-out infinite; pointer-events: none; }
+      /* CONTINUE (from review): "Continue" big, the table smaller under it,
+         and a bare black play triangle beside them; the group sits in the
+         middle of the button, across and down. One shimmer crosses it, behind
+         the words, each time the play screen opens */
+      .menu-btn.play-big { position: relative; overflow: hidden; display: flex; justify-content: center; align-items: center; gap: 14px; padding: 12px 18px; text-align: center; }
+      .play-big .pb-text, .play-big .pb-go { position: relative; z-index: 1; }
+      .menu-btn.play-big::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.6) 48%, transparent 66%); transform: translateX(-120%); pointer-events: none; }
+      .menu-btn.play-big.shine::after { animation: pb-sheen 1.1s ease-in-out 0.3s both; }
+      @keyframes pb-sheen { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
+      .play-big .pb-text { display: grid; justify-items: center; min-width: 0; line-height: 1.05; }
+      .play-big .pb-main { font-size: clamp(20px, 7vmin, 28px); white-space: nowrap; }
+      .play-big .pb-sub { margin-top: 3px; font-size: clamp(11px, 3.4vmin, 14px); letter-spacing: 0.2em; white-space: nowrap; opacity: 0.72; }
+      .play-big .pb-sub:empty { display: none; }
+      .play-big .pb-go { display: grid; place-items: center; flex: none; width: 30px; height: 44px; color: #02050b; animation: pb-go 1.6s ease-in-out infinite; }
+      .play-big .pb-go svg { display: block; width: 28px; height: 28px; }
       .menu-btn.play-big:active .pb-go { transform: scale(0.9); }
       @keyframes pb-go { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
-      @keyframes pb-sheen { 0%, 55% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
-      @media (prefers-reduced-motion: reduce) { .play-big .pb-go, .menu-btn.play-big::after { animation: none; } }
+      @media (prefers-reduced-motion: reduce) { .play-big .pb-go, .menu-btn.play-big.shine::after { animation: none; } }
       .menu-btn.quiet { border-color: transparent; background: transparent; color: var(--muted); }
       .menu-label {
         margin: 6px 0 -2px;
@@ -2531,7 +2536,7 @@
               <button id="play-back" class="play-back" type="button" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>
               <h2 class="menu-sub">Play</h2>
             </div>
-            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
+            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-text"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
             <p class="menu-label">The tables</p>
             <ol class="table-path" id="table-path" aria-label="The twelve tables of a run"></ol>
           </div>
