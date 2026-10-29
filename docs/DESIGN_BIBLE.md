@@ -261,18 +261,22 @@ squares with 30 px icons in the same cyan; only the badge is orange (13 px
 type). Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
 
 **Play** takes a first visit (the lessons not yet done) straight into the
-lessons. Anyone else gets **the play screen**: a big **Continue · Table N**
-(the table's name, run score, lives and cash) for the run they left, or a big
-**New run** when there is none (with their best run under it); **New run** as
-a second button when a run is saved, which asks once ("Tap again to start
-over"); **the tables**, the twelve of a run as a grid; and **Modes**.
+lessons. Anyone else gets **the play screen**: **‹ Back** and a big
+**Continue · Table N**, one line with a round play arrow (a sheen crosses it
+now and then), or **New run** when there is none, held at the top; under them **the tables**, the only part that
+scrolls. **New run** (abandon the saved run and start at Table 1; with a run
+saved it asks once, naming the table that ends) and **Modes** are at the
+bottom of **Settings** (from review), and Modes' Done goes back there.
 
-**The tables are rows** (from review: room for the whole name and the
+**The tables are rows**, every name whole on one line (the icon and number share one
+tight cell, BEST sits over its number, and a name that still does not fit a
+narrow phone comes down a size) (from review: room for the whole name and the
 table's best score, `lightline-table-best-v1`), and say their state by look,
 not words: a table you can play has a **play arrow** by its number (the saved
 run's table is solid cyan and is Continue; a cleared one is a lit row and
 **replays** it), and a table not yet cleared is dim with a **padlock** and does
-nothing. Clearing a table means beating its target. The list scrolls, with the
+nothing. Clearing a table means sinking every ball on it (the target decides
+the cash and whether a life is lost). The list scrolls, with the
 saved run's table kept in view. A replay (`startReplay`) is one table on its
 own from a fresh start: no shop after it, the saved run untouched, a missed
 target costs nothing, and it ends on **Play again** or **Back to tables**.
@@ -290,8 +294,8 @@ in one, the ×2 ring then a pot, a purchase, a freeze (not in practice), 300 in
 one shot, a table in order. **Each shows at the moment that earns it, on the
 table that earned it** (from review): the pot (`shotAchievements`: worked out
 as each pot locks the shot in, shown when the feed puts that pot's plate up,
-never before), In Order on the last ball, a table's clear the moment its score
-passes the target (the shot's tally landing in YOUR SCORE), the buy, the
+never before), a table's clear and In Order on the pot that sinks the last
+ball, the buy, the
 freeze, the last lesson's finished board. A plate drops in just under the top
 band (the score and target stay in view) with the name and what it was for,
 stays about six seconds, and has **See all** (the list, over the table, which

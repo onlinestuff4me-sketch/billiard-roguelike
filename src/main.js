@@ -1540,10 +1540,6 @@ function finishStroke() {
 
   flushAchievements();
   const summary = rules.endStroke();
-  // CLEARING A TABLE IS EARNED THE MOMENT THE SCORE PASSES THE TARGET: the
-  // shot's tally has just landed in YOUR SCORE (from review: as soon as the
-  // action happens, for as long as possible before the score screen)
-  if (!game.headless && rules.roomScore >= rules.target) tableAchievements();
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
   // ice plate flying into the meter, and the meter holds its old value until
   // the plate lands (from review: every change is telegraphed).
@@ -2141,13 +2137,13 @@ function completeRoom() {
   game.state = 'cleared';
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
+  recordTable(result, true);
   gridPulse(0, 0, 1);
   if (!momentsOn()) audio.roomClear();
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
   // SWEEPING A ROOM IN ORDER IS WHAT UNLOCKS BEING ASKED TO. The mode is a
   // promise to do something harder, and a promise you have never kept once is
   // not a difficulty setting, it is a trap with a menu entry.
-  recordTable(result);
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
     hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
@@ -2224,19 +2220,21 @@ function showRoomResult(data, shownRun) {
   else go();
 }
 
-/** A table is over: what it means for the bests, and what it earned. */
-function recordTable(result) {
+/**
+ * A table is over: what it means for the bests. CLEARED is every ball down
+ * (from review); the target decides the cash and whether a life is lost.
+ */
+function recordTable(result, cleared) {
   if (game.headless) return;
-  saveBest(result.beaten ? game.level : 0, rules.runScore);
-  saveTableBest(game.level, result.roomScore, result.beaten);
-  if (result.beaten) tableAchievements();
+  saveBest(cleared ? game.level : 0, rules.runScore);
+  saveTableBest(game.level, result.roomScore, cleared);
+  // earned on the last pot already; this only catches a clear no pot made
+  if (cleared) for (const id of tableAchievementIds()) achievements.unlock(id);
 }
 
-/** Clearing a table is beating its target. */
-function tableAchievements() {
-  if (game.level === 1) achievements.unlock('table1');
-  if (game.level === 6) achievements.unlock('table6');
-  if (game.level === 12) achievements.unlock('table12');
+/** What clearing this table earns. */
+function tableAchievementIds() {
+  return game.level === 1 ? ['table1'] : game.level === 6 ? ['table6'] : game.level === 12 ? ['table12'] : [];
 }
 
 /* ------------------------------------------------------------------ *
@@ -2274,8 +2272,12 @@ function shotAchievements(last) {
   if (kinds.has('multiPot')) pendingAch.add('inone');
   if (kinds.has('zone')) pendingAch.add('zone');
   if (rules.strokeScore >= 300) pendingAch.add('big');
-  // the last ball down with the order never broken
-  if (rules.filled && !rules.orderBroken) pendingAch.add('order');
+  // THE LAST BALL DOWN CLEARS THE TABLE (from review: a table's goal is to
+  // sink every ball on it), and with the order never broken, in order
+  if (rules.filled) {
+    for (const id of tableAchievementIds()) pendingAch.add(id);
+    if (!rules.orderBroken) pendingAch.add('order');
+  }
   if (last && feed.enabled) last.onShown = flushAchievements;
   else flushAchievements();
 }
@@ -2390,7 +2392,7 @@ function failRoom() {
   game.state = 'cleared';
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
-  recordTable(result);
+  recordTable(result, false);
 
   audio.playerDeath?.();
   engine.shake(18);
@@ -5079,15 +5081,10 @@ function showPlayPanel() {
   const run = loadRun();
   const best = loadBest();
   const t = run ? TABLES[run.level - 1] : null;
-  $('play-continue-main').textContent = run ? `Continue · Table ${run.level}` : 'New run';
-  $('play-continue-sub').textContent = run
-    ? `${t ? t.name + ' · ' : ''}${run.runScore.toLocaleString()} points · ${run.lives} ${run.lives === 1 ? 'life' : 'lives'} · $${run.cash}`
-    : best.table
-      ? `Best run: Table ${best.table} · ${best.score.toLocaleString()} points`
-      : 'Twelve tables, one rule each';
-  $('play-new').hidden = !run;
-  $('play-new').textContent = 'New run';
-  $('play-new').classList.remove('confirm');
+  // "Continue" big, the table small under it (from review)
+  $('play-continue-main').textContent = run ? 'Continue' : 'New run';
+  $('play-continue-sub').textContent = run ? `Table ${run.level}` : '';
+  $('play-continue').setAttribute('aria-label', run ? `Continue at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a new run');
   // ROWS, NOT BOXES (from review): room for the whole name and the table's
   // best. Two looks and no words: a table you can play has the play arrow
   // (the run you left is the lit one; any you have cleared replay), and one
@@ -5104,10 +5101,10 @@ function showPlayPanel() {
     const row = document.createElement(here || cleared ? 'button' : 'div');
     row.className = `tp-row ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
     if (row.tagName === 'BUTTON') row.type = 'button';
-    row.innerHTML = `<span class="tp-icon" aria-hidden="true">${here || cleared ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b><span class="tp-name"></span><span class="tp-best"></span>`;
+    row.innerHTML = `<span class="tp-num"><span class="tp-icon" aria-hidden="true">${here || cleared ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b></span><span class="tp-name"></span><span class="tp-best"></span>`;
     row.querySelector('.tp-name').textContent = tb.name;
     const top = bests[n]?.score;
-    if (top && !row.classList.contains('locked')) row.querySelector('.tp-best').innerHTML = `<small>Best</small> ${top.toLocaleString()}`;
+    if (top && !row.classList.contains('locked')) row.querySelector('.tp-best').innerHTML = `<small>Best</small><span>${top.toLocaleString()}</span>`;
     row.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · replay' : ' · locked'}${top ? ` · best ${top}` : ''}`);
     if (here) row.addEventListener('click', () => play(resumeRun));
     else if (cleared) row.addEventListener('click', () => play(() => startReplay(n)));
@@ -5116,6 +5113,21 @@ function showPlayPanel() {
     if (here) hereRow = li;
   });
   showPanel('play');
+  // one shimmer across Continue each time this opens (from review)
+  const go = $('play-continue');
+  go.classList.remove('shine');
+  void go.offsetWidth;
+  go.classList.add('shine');
+  // EVERY NAME ON ONE LINE, WHOLE: one that still does not fit a narrow
+  // phone comes down a size or two until it does
+  for (const name of path.querySelectorAll('.tp-name')) {
+    name.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(name).fontSize);
+    while (name.scrollWidth > name.clientWidth + 0.5 && size > 8) {
+      size -= 0.5;
+      name.style.fontSize = `${size}px`;
+    }
+  }
   // the run you left is in view, even when the list scrolls
   hereRow?.scrollIntoView({ block: 'nearest' });
 }
@@ -5206,12 +5218,19 @@ $('btn-play').addEventListener('click', () => {
   else showPlayPanel();
 });
 $('play-continue').addEventListener('click', () => play(loadRun() ? resumeRun : startRun));
-// Starting over throws the saved run away, so it asks once.
-$('play-new').addEventListener('click', () => {
-  const btn = $('play-new');
-  if (!btn.classList.contains('confirm')) {
+// NEW RUN, in Settings (from review): starting over throws the saved run
+// away, so with one saved it asks once, naming what ends.
+function showNewRunState() {
+  const btn = $('set-newrun');
+  btn.classList.remove('confirm');
+  btn.textContent = 'New run';
+}
+$('set-newrun').addEventListener('click', () => {
+  const btn = $('set-newrun');
+  const run = loadRun();
+  if (run && !btn.classList.contains('confirm')) {
     btn.classList.add('confirm');
-    btn.textContent = 'Tap again to start over';
+    btn.textContent = `Tap again: your Table ${run.level} run ends`;
     return;
   }
   clearRun();
@@ -5232,6 +5251,7 @@ $('ach-back').addEventListener('click', () => {
 $('btn-settings').addEventListener('click', () => {
   showPanel('settings');
   showTutorialState();
+  showNewRunState();
 });
 $('set-back').addEventListener('click', () => showPanel('main'));
 // MODES. Each mode is its own built page, so choosing one is a navigation and
@@ -5255,7 +5275,8 @@ $('set-back').addEventListener('click', () => showPanel('main'));
 if (typeof __SINGLE_FILE__ !== 'undefined' && __SINGLE_FILE__) {
   $('mode-classic').hidden = true;
 }
-$('btn-modes').addEventListener('click', () => {
+// Modes is at the bottom of Settings (from review), and Done goes back there.
+$('set-modes').addEventListener('click', () => {
   showPanel('modes');
   showModesState();
 });
@@ -5282,8 +5303,10 @@ $('mode-strict').addEventListener('click', () => {
   audio.unlock();
   showModesState();
 });
-// Modes lives on the play screen now (from review), so Done goes back there.
-$('mode-back').addEventListener('click', showPlayPanel);
+$('mode-back').addEventListener('click', () => {
+  showPanel('settings');
+  showNewRunState();
+});
 $('set-mute').addEventListener('click', () => {
   muted = !muted;
   audio.unlock();
