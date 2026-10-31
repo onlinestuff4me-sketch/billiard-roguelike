@@ -274,7 +274,9 @@ console.log('\nfreeze frame charges\n');
   k.ballsDown = k.mission.rack;
   const kept = k.endRoom();
   check(!kept.beaten && kept.filled && kept.lives === RULES.lives.start, 'every ball down keeps your hearts, even short of the target');
-  check(miss.payout.length === 1 && miss.payout[0].id === 'interest' && miss.payout[0].amount === RULES.cash.interestCap, 'and pays only interest, capped', JSON.stringify(miss.payout));
+  check(kept.payout.every((p) => p.id === 'interest'), 'and short of the target pays only interest', JSON.stringify(kept.payout));
+  // (round 15) a table left with balls on it is played again: it pays nothing and banks no points
+  check(miss.payout.length === 0 && miss.runScore === 0, 'and pays nothing and banks no points (it is played again)', JSON.stringify(miss.payout));
   check(m.gainLife() && m.lives === RULES.lives.start && !m.gainLife(), 'an extra life refills one, never past the cap');
 }
 

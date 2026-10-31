@@ -264,9 +264,9 @@ type). Sound lives in Settings. Nothing else, for a first visit or a returning p
 lessons. Anyone else gets **the play screen** (round 14, from review: no
 tabs). **‹ Back**, then one big button held at the top for the run:
 **Continue** (Table N small under it) or **Start a run** (Table 1), the black
-play triangle beside, one shimmer each time the screen opens. Under it,
-"Replay tables you unlocked during a run.", the star key (**★ Target**, **★
-Every ball**, **★ In order**), and the tables: an **open** row has the play
+play triangle beside, one shimmer each time the screen opens. Under it, the
+one line "Replay tables you've unlocked" and the tables (the star key is on a
+replayed table's result, not here): an **open** row has the play
 arrow, its stars and its best; a **locked** one is dim with a padlock. Only
 the list scrolls; the total shows under it (★ 6 of 36). **New run** (ending a
 saved run, asking once) is in **Settings**.
@@ -290,6 +290,12 @@ place).
 
 **Runs unlock tables** (round 13): a table opens to replay once a run has
 reached it (`lightline-reached-v1`), and only then.
+
+**CLEAR IT TO GO ON** (round 15, from review): a run goes on to the shop and
+the next table only past a **cleared** table, every ball down within its
+shots. A table left with balls on it costs a heart and is played again, a
+fresh rack, from **Try again** under its result ("Clear it to go on"); its
+points don't bank and it pays nothing. Out of hearts, the run is over.
 
 **A HEART IS LOST FOR BALLS LEFT STANDING** (round 14, from review: "the
 criteria for losing a life must be simpler and easier to control than

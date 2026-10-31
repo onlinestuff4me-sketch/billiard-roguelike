@@ -2220,6 +2220,32 @@ function runFinale() {
   });
 }
 
+/** The same table again, a fresh rack: a run goes on only past a cleared table. */
+function retryTable() {
+  game.introUp = false;
+  moments.closeIntro();
+  game.chain.count = 0;
+  game.launchHits = 0;
+  boons.clearFields();
+  fx.clearTexts();
+  hud.setDoors([]);
+  hud.hideScorecard();
+  moments.closeClear();
+  game.scoreHold = null;
+  rooms.generate(game.level);
+  callPocket(null);
+  beginMission();
+  player.placeAt(rooms.layout.spawn.x, spawnZ());
+  game.state = 'playing';
+  game.phase = 'aim';
+  game.midStroke = false;
+  input.setHeading(0, -1);
+  saveRun();
+  // its card was read the first time; the rule chip goes straight to the corner
+  game.skipIntroCard = true;
+  showRoomBanner();
+}
+
 /** Off the end-of-run panel, to a new run or home. */
 function leaveRunEnd(next) {
   moments.closeClear();
@@ -2240,6 +2266,11 @@ function goHome() {
 function showRoomResult(data, shownRun) {
   // a replayed table is on its own: no shop, no run to end
   // (round 11) it pays stars, not cash, and costs no heart
+  // CLEAR IT TO GO ON (round 15, from review): balls left cost a heart and
+  // the same table is played again, a fresh rack, until it is cleared
+  if (!game.replay && !data.filled && data.lives > 0) {
+    data = { ...data, choices: [{ name: 'Try again', detail: `Table ${game.level}`, color: '#22e8ff', pick: retryTable }], nextLabel: 'Clear it to go on' };
+  }
   if (game.replay) {
     const n = game.replay;
     data = { ...data, lives: Math.max(1, data.lives), payout: [], single: true, stars: game.lastStars, onStarsShown: () => hud.setSingle(loadTableBests()[n]?.stars || {}), choices: replayChoices(n), nextLabel: 'What next' };
@@ -2263,7 +2294,9 @@ function showRoomResult(data, shownRun) {
     moments.clear({
       ...data,
       // The exits are replaced by the shop: the next table is a button in it.
-      choices: game.replay ? data.choices : [],
+      // a replay ends on its own choices; a table left with balls on it is
+      // played again (round 15); a cleared one goes on to the shop
+      choices: game.replay || !data.filled ? data.choices : [],
       shownRun,
       onTotal: () => (game.scoreHold = null),
       // the hearts let go here too: a table beaten loses none, and a heart
@@ -2274,8 +2307,8 @@ function showRoomResult(data, shownRun) {
       },
       onLifeLost: () => (game.livesHold = null),
       // no lives left: the moment ends on the last life breaking, not the shop
-      shop: data.lives > 0 && !game.replay ? openShop() : null,
-      finale: data.lives > 0 && !game.replay && game.level === TABLES.length ? runFinale : null,
+      shop: data.lives > 0 && !game.replay && data.filled ? openShop() : null,
+      finale: data.lives > 0 && !game.replay && data.filled && game.level === TABLES.length ? runFinale : null,
       onRunOver: data.lives > 0 ? null : runOver
     });
   };
