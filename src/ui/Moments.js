@@ -424,6 +424,13 @@ export class Moments {
       act.hidden = true;
       return;
     }
+    // THROUGH THE LAST AUTHORED TABLE (round 10): the run's end is marked
+    // before the shop, and the run goes on only if you choose to
+    if (d.finale) {
+      act.hidden = true;
+      const pick = await d.finale();
+      if (!live() || !pick?.resume) return;
+    }
     // THE SHOP replaces the exits: GO TO SHOP, or NEXT TABLE to skip it.
     if (d.shop) {
       this.skip = false;
@@ -461,6 +468,139 @@ export class Moments {
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+  }
+
+  /**
+   * THE END OF A RUN (round 10). The result panel steps aside and one panel
+   * says how far the run got: the twelve tables as a path (the ones behind
+   * you lit, the one you fell on marked), the run's score counted up against
+   * your best, and what to do next. Nothing starts again until you choose.
+   *
+   * @param {object} d
+   * @param {'over'|'complete'} d.kind  out of lives, or through Table 12
+   * @param {number} d.level       the table the run ended on (or finished)
+   * @param {number} d.tables      how many authored tables there are
+   * @param {number} d.runScore
+   * @param {number} d.bestBefore  the best run before this one (0: none yet)
+   * @param {{name:string,detail?:string,primary?:boolean,pick:Function}[]} d.actions
+   */
+  async runEnd(d) {
+    const root = this._clearRoot || el('div', 'mo-clear', this.root);
+    if (!this._clearRoot) {
+      this._clearRoot = root;
+      this.setFilter('clear', 'brightness(0.42) saturate(0.7)', 380);
+    }
+    const id = this._clear;
+    const live = () => this._clear === id && this._clearRoot === root;
+    this.skip = false;
+    // the result steps aside (the ledger, its Skip, the cash under it), and
+    // comes back if the run goes on
+    const aside = [...root.querySelectorAll('.mo-ledger, .mo-act, .mo-actrow, .mo-next')].filter((n) => !n.hidden);
+    for (const old of aside) {
+      old.style.pointerEvents = 'none';
+      this.anim(old, [{ opacity: 1, translate: '0 0' }, { opacity: 0, translate: '0 -24px' }], { duration: 260, easing: IN });
+    }
+    await this.wait(200);
+    if (!live()) return null;
+
+    const over = d.kind === 'over';
+    const panel = el('div', `mo-runend ${over ? 'over' : 'complete'}`, root);
+    const head = el('div', 'mo-head', panel);
+    el('div', 'mo-kicker', head).textContent = over ? 'Run over' : 'Run complete';
+    el('div', 'mo-title', head).textContent = over ? `Out of lives on Table ${d.level}` : `All ${d.tables} tables`;
+
+    // THE PATH: one pip per table; behind you lit, where it ended marked
+    const path = el('div', 'mo-path', panel);
+    const reached = Math.min(d.level, d.tables);
+    const pips = [];
+    for (let n = 1; n <= d.tables; n++) {
+      const state = n < reached || (!over && n === reached) ? 'done' : n === reached ? 'fell' : 'ahead';
+      const pip = el('span', `mo-pip ${state}`, path);
+      if (state === 'fell') pip.textContent = '×';
+      pips.push(pip);
+    }
+    const reach = el('div', 'mo-reach', panel);
+    reach.textContent = over
+      ? d.level > d.tables
+        ? `Reached Table ${d.level}`
+        : `Reached Table ${d.level} of ${d.tables}`
+      : 'From here every table is new';
+
+    const score = el('div', 'mo-runscore', panel);
+    el('span', 'k', score).textContent = 'Run score';
+    const scoreV = el('span', 'v', score);
+    scoreV.textContent = '0';
+    const best = el('div', 'mo-runbest', panel);
+    const newBest = d.runScore > d.bestBefore && d.bestBefore > 0;
+    el('span', 'k', best).textContent = newBest ? 'Old best' : 'Best run';
+    el('span', 'v', best).textContent = fmt(Math.max(d.bestBefore, newBest ? d.bestBefore : d.runScore));
+    const stamp = newBest ? el('span', 'mo-newbest', panel) : null;
+    if (stamp) stamp.textContent = 'New best';
+
+    const acts = el('div', 'mo-runacts', panel);
+    let picked;
+    const chosen = new Promise((resolve) => (picked = resolve));
+    const buttons = (d.actions || []).map((a) => {
+      const b = el('button', `mo-runbtn${a.primary ? ' primary' : ''}`, acts);
+      b.type = 'button';
+      const text = el('span', 'mo-runbtn-text', b);
+      el('span', 'mo-runbtn-name', text).textContent = a.name;
+      if (a.detail) el('span', 'mo-runbtn-detail', text).textContent = a.detail;
+      if (a.primary) el('span', 'mo-runbtn-go', b).innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+      absorb(b);
+      b.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!live() || acts.dataset.picked) return;
+        acts.dataset.picked = '1';
+        b.classList.add('picked');
+        a.pick?.();
+        picked(a);
+        // GOING ON: this panel goes and the result comes back where it was
+        if (a.resume) {
+          this.anim(panel, [{ opacity: 1 }, { opacity: 0, translate: '0 18px' }], { duration: 220, easing: IN }).then(() => panel.remove());
+          for (const old of aside) {
+            old.style.pointerEvents = '';
+            this.anim(old, [{ opacity: 0, translate: '0 -24px' }, { opacity: 1, translate: '0 0' }], { duration: 260, delay: 120, easing: OUT });
+          }
+        }
+      });
+      b.style.opacity = '0';
+      return b;
+    });
+
+    // IN: the panel drops in, the path fills along, the score counts up
+    await this.anim(panel, [{ opacity: 0, transform: 'translateX(-50%) translateY(18px) scale(0.97)' }, { opacity: 1, transform: 'translateX(-50%)' }], { duration: 320, easing: OUT });
+    if (over) this.audio.playerDeath?.();
+    else this.audio.roomClear?.();
+    for (const [i, pip] of pips.entries()) {
+      if (pip.classList.contains('ahead')) continue;
+      this.anim(pip, [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.35)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 240, delay: i * 55, easing: OUT });
+    }
+    await this.wait(Math.min(reached, d.tables) * 55 + 200);
+    if (!live()) return null;
+    const t0 = performance.now();
+    const span = this.skip ? 0 : Math.min(1100, 300 + d.runScore / 4);
+    await new Promise((resolve) => {
+      const step = () => {
+        const k = span ? Math.min(1, (performance.now() - t0) / span) : 1;
+        scoreV.textContent = fmt(d.runScore * (1 - (1 - k) ** 3));
+        if (k < 1 && live()) requestAnimationFrame(step);
+        else resolve();
+      };
+      step();
+    });
+    if (!live()) return null;
+    this.audio.scoreSlam?.();
+    this.anim(scoreV, [{ transform: 'scale(1.35)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 320, easing: OUT });
+    if (stamp) {
+      this.audio.scoreLock?.();
+      await this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
+    }
+    await this.wait(260);
+    if (!live()) return null;
+    buttons.forEach((b, i) => this.anim(b, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, delay: 90 * i, easing: BACK }));
+    return chosen;
   }
 
   /**
@@ -908,7 +1048,7 @@ export class Moments {
     const head = el('div', 'mo-head', panel);
     const kicker = el('div', 'mo-kicker', head);
     kicker.textContent = d.filled ? 'Table clear' : 'Out of shots';
-    el('div', 'mo-title', head).textContent = `Room ${String(d.level).padStart(2, '0')}`;
+    el('div', 'mo-title', head).textContent = `Table ${d.level}`;
     const list = el('div', 'mo-rows', panel);
     const rule = el('div', 'mo-rule', panel);
     const total = el('div', 'mo-total', panel);
@@ -1518,10 +1658,10 @@ export class Moments {
     );
     root.classList.add('covered');
     await swap();
-    // THE COUNT: the room you finished, then it rolls over to the next one
+    // THE COUNT: the table you finished, then it rolls over to the next one
     // and holds there, big, so the step is felt before the table arrives.
     const num = el('div', 'mo-roomnum', root);
-    el('small', '', num).textContent = 'Room';
+    el('small', '', num).textContent = 'Table';
     const digits = el('div', 'mo-digits', num);
     const oldN = el('b', 'old', digits);
     oldN.textContent = String(from).padStart(2, '0');

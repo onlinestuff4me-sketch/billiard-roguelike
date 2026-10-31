@@ -542,6 +542,28 @@ sees what they bought working.
 **Rule this taught:** a delayed animation holds its first frame (`fill:
 'both'`). Without it, an element shows, vanishes and then animates in.
 
+### 8.4c The end of a run (round 10)
+
+It must say how far the run got and what it scored, and then wait. Nothing
+starts again until the player chooses.
+
+- **Out of lives.** The table's result plays as ever, and the last life breaks
+  in the corner. Then the result steps aside and one panel, edged in hazard
+  pink, comes in: **RUN OVER**, "Out of lives on Table N". Under it is the
+  **path**, one pip per authored table: the tables behind you are lit, and the
+  one you fell on is a pink ×. Then the **run score** counts up against your
+  **best run**. If it beat it, the line reads "Old best" and a gold **NEW
+  BEST** stamp lands. Two buttons follow: **New run** (big, the play
+  triangle beside it) and **Home**. The saved run is cleared.
+- **Through Table 12.** After Table 12's result (with lives left), the same
+  panel comes in edged in cyan: **RUN COMPLETE**, "All 12 tables", every pip
+  lit, and the score against your best. **Keep going** (the play triangle)
+  puts the result back and opens the shop as usual, and new tables follow
+  without end. **Finish run** ends the run there.
+- The best that counts is the one from **before this run started**. It is
+  kept with the saved run, because each table already writes the run's score
+  into the best as it goes.
+
 ### 8.5 Next table
 
 It must say: one table is gone and the next is here, with its number. The new

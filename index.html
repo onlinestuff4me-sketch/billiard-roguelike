@@ -1412,6 +1412,50 @@
       .mo-total .v { font-size: 40px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
 
+      /* THE END OF A RUN (round 10): the path of tables, the run's score
+         against your best, and what next. Pink when the lives ran out, cyan
+         when the twelve are done. */
+      .mo-runend {
+        --edge: var(--ll-you);
+        position: absolute; left: 50%; top: calc(9% + 16px); width: min(90%, 360px);
+        padding: 18px 18px 16px; isolation: isolate; transform: translateX(-50%);
+        filter: drop-shadow(0 0 18px color-mix(in srgb, var(--edge) 35%, transparent));
+      }
+      .mo-runend.over { --edge: var(--ll-void); }
+      .mo-runend::before {
+        content: ''; position: absolute; inset: 0; z-index: -1;
+        background: linear-gradient(180deg, rgba(6, 18, 28, 0.97), rgba(2, 5, 11, 0.97));
+        border: 2px solid var(--edge);
+        clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+      }
+      .mo-runend .mo-kicker { color: var(--edge); text-shadow: 0 0 14px var(--edge); }
+      .mo-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; margin: 16px 2px 8px; }
+      .mo-pip { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; border: 1.5px solid rgba(34, 232, 255, 0.22); font-size: 12px; font-weight: 800; line-height: 1; }
+      .mo-pip.done { border-color: var(--ll-you); background: var(--ll-you); box-shadow: 0 0 8px rgba(34, 232, 255, 0.7); }
+      .mo-pip.fell { border-color: var(--ll-void); color: var(--ll-void); background: rgba(255, 46, 126, 0.16); box-shadow: 0 0 10px rgba(255, 46, 126, 0.6); }
+      .mo-reach { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+      .mo-runscore { display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px; padding: 0 4px; }
+      .mo-runscore .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+      .mo-runscore .v { font-family: var(--font-num); font-size: 40px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; display: inline-block; transform-origin: 100% 60%; }
+      .mo-runbest { display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px; padding: 0 4px; color: var(--muted); }
+      .mo-runbest .k { font-size: 12px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; }
+      .mo-runbest .v { font-family: var(--font-num); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .mo-newbest { justify-self: end; display: block; width: max-content; margin: 8px 4px 0 auto; padding: 4px 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-hot); opacity: 0; }
+      .mo-runacts { display: grid; gap: 8px; margin-top: 18px; }
+      .mo-runbtn {
+        display: flex; justify-content: center; align-items: center; gap: 14px; min-height: 48px; padding: 8px 14px;
+        font: inherit; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+        color: var(--ll-you); background: rgba(8, 18, 30, 0.6); border: 1.5px solid rgba(34, 232, 255, 0.55); border-radius: 10px; cursor: pointer;
+      }
+      .mo-runbtn-text { display: grid; justify-items: center; line-height: 1.05; }
+      .mo-runbtn-detail { margin-top: 3px; font-size: 11px; letter-spacing: 0.2em; opacity: 0.72; }
+      .mo-runbtn.primary { min-height: 64px; color: #02050b; background: var(--ll-you); border-color: transparent; box-shadow: 0 0 22px rgba(34, 232, 255, 0.45); }
+      .mo-runbtn.primary .mo-runbtn-name { font-size: 22px; }
+      .mo-runbtn-go { display: grid; place-items: center; width: 28px; height: 40px; }
+      .mo-runbtn-go svg { display: block; width: 26px; height: 26px; }
+      .mo-runbtn:active { transform: scale(0.97); }
+      .mo-runbtn.picked { filter: brightness(1.25); }
+
       .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 60px) 0; display: grid; justify-items: center; gap: 6px; padding: 0 9%; }
       .mo-next-label { font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 10px var(--ll-you); }
       .mo-choices { display: grid; gap: 6px; width: 100%; max-width: 330px; }

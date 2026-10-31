@@ -458,7 +458,7 @@ export class HUD {
   showScorecard(data) {
     this.cardStatus.textContent = data.filled ? 'Mission complete' : 'Out of shots';
     this.cardStatus.classList.toggle('failed', !data.filled);
-    this.cardTitle.textContent = `Room ${String(data.level).padStart(2, '0')}`;
+    this.cardTitle.textContent = `Table ${data.level}`;
 
     this.cardLines.textContent = '';
     for (const entry of data.ledger || []) {
@@ -482,7 +482,7 @@ export class HUD {
 
     this.cardTotals.textContent = '';
     const room = el('div', 'card-total', this.cardTotals);
-    el('span', 'card-k', room).textContent = 'Room';
+    el('span', 'card-k', room).textContent = 'Table';
     el('span', 'card-v', room).textContent = data.roomScore.toLocaleString();
     const run = el('div', 'card-total run', this.cardTotals);
     el('span', 'card-k', run).textContent = 'Run';

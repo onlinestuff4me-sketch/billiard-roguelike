@@ -2171,10 +2171,64 @@ function tableResult(result) {
   };
 }
 
-/** No lives left: the run is over once the table's moment has shown why. */
+/**
+ * NO LIVES LEFT (round 10): the run is over once the table's moment has shown
+ * why. Its own panel says how far the run got and what it scored against your
+ * best, and nothing starts again until you pick New run or Home.
+ */
 function runOver() {
+  clearRun();
+  engine.shake(14);
+  engine.zoomPunch(FEEL.zoomPunch * 1.4);
+  moments.runEnd({
+    kind: 'over',
+    level: game.level,
+    tables: TABLES.length,
+    runScore: rules.runScore,
+    bestBefore: game.bestBefore || 0,
+    actions: [
+      { name: 'New run', detail: 'Table 1', primary: true, pick: () => leaveRunEnd(startRun) },
+      { name: 'Home', pick: () => leaveRunEnd(goHome) }
+    ]
+  });
+}
+
+/**
+ * THROUGH TABLE 12 (round 10): the run's end is marked before the shop. Keep
+ * going and the shop opens as ever, then new tables without end; Finish run
+ * ends it here, its score banked.
+ */
+function runFinale() {
+  return moments.runEnd({
+    kind: 'complete',
+    level: game.level,
+    tables: TABLES.length,
+    runScore: rules.runScore,
+    bestBefore: game.bestBefore || 0,
+    actions: [
+      { name: 'Keep going', detail: `Table ${game.level + 1} · new every time`, primary: true, resume: true },
+      {
+        name: 'Finish run',
+        pick: () => {
+          clearRun();
+          leaveRunEnd(goHome);
+        }
+      }
+    ]
+  });
+}
+
+/** Off the end-of-run panel, to a new run or home. */
+function leaveRunEnd(next) {
   moments.closeClear();
-  game.on.playerDeath();
+  hud.hideScorecard();
+  next();
+}
+
+/** To the home screen, a table racked behind it as at boot. */
+function goHome() {
+  openMenu();
+  startRun();
 }
 
 /**
@@ -2210,6 +2264,7 @@ function showRoomResult(data, shownRun) {
       onLifeLost: () => (game.livesHold = null),
       // no lives left: the moment ends on the last life breaking, not the shop
       shop: data.lives > 0 && !game.replay ? openShop() : null,
+      finale: data.lives > 0 && !game.replay && game.level === TABLES.length ? runFinale : null,
       onRunOver: data.lives > 0 ? null : runOver
     });
   };
@@ -2817,7 +2872,7 @@ function showRoomBanner() {
   const c = rules.mission;
   // The mission holds until it is tapped away. It is the terms of the room,
   // not a report on something already watched, and it decides every shot.
-  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
+  hud.showBanner(`Table ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
 }
 
 /** Everything a fresh start clears, minus the room itself. */
@@ -2858,6 +2913,8 @@ function resetRunState() {
 
 function startRun() {
   resetRunState();
+  // what this run has to beat to be a new best (kept with the saved run)
+  game.bestBefore = loadBest().score;
   game.graceTimer = TUTORIAL.graceSeconds;
   game.tutorialGuard = null;
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
@@ -5010,7 +5067,8 @@ function saveRun() {
     paidStreak: rules.paidStreak || 0,
     owned: shopRun.owned.map((u) => u.id),
     held: shopRun.held?.id || null,
-    boons: boons.owned.map((o) => ({ id: o.def.id, rank: o.rank, rarity: o.rarity }))
+    boons: boons.owned.map((o) => ({ id: o.def.id, rank: o.rank, rarity: o.rarity })),
+    bestBefore: game.bestBefore || 0
   };
   try {
     localStorage.setItem(RUN_KEY, JSON.stringify(data));
@@ -5044,6 +5102,7 @@ function resumeRun() {
     return;
   }
   resetRunState();
+  game.bestBefore = d.bestBefore ?? loadBest().score;
   game.graceTimer = TUTORIAL.graceSeconds;
   game.tutorialGuard = null;
   rooms.runSeed = d.seed >>> 0;
@@ -5965,7 +6024,9 @@ function frame(now) {
         layout: rooms.layout ? rooms.layout.name : '',
         phase: game.phase,
         midStroke: game.midStroke,
-        cleared: game.state === 'cleared',
+        // MISSION COMPLETE only when every ball is down (round 10: an
+        // out-of-shots table said it too)
+        cleared: game.state === 'cleared' && rules.filled,
         // What the drawn line would be refused for, if anything.
         aimFoul: game.aimFoul,
         // a table about the order shows "NEXT n" all table long
