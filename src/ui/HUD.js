@@ -59,8 +59,12 @@ export class HUD {
     // target costs a life; cash is spent in the shop between tables.
     const hpBlock = el('div', 'hud-hp', top);
     this.hpBlock = hpBlock;
-    el('div', 'hud-label', hpBlock).textContent = 'Lives';
+    this.hpLabel = el('div', 'hud-label', hpBlock);
+    this.hpLabel.textContent = 'Lives';
     this.livesRow = el('div', 'lives-row', hpBlock);
+    // A TABLE ON ITS OWN (round 12): no hearts or cash to carry, so the corner
+    // shows the stars this table holds, the ones it is played for
+    this.singleStars = el('div', 'single-stars', hpBlock);
     // THE WALLET: one boxed figure, always in this corner, during play, the
     // table's result and the shop alike.
     this.cashValue = el('div', 'cash-value', hpBlock);
@@ -608,6 +612,13 @@ export class HUD {
    * @param {number} rawDt real seconds (HUD animation is never slowed)
    */
   /** The node of the life that is about to go, for the moment to break. */
+  /** Playing one table on its own: the corner shows its stars (null: a run). */
+  setSingle(stars) {
+    this.root.classList.toggle('single', !!stars);
+    this.hpLabel.textContent = stars ? 'Stars' : 'Lives';
+    this.singleStars.innerHTML = stars ? ['t', 'a', 'o'].map((k) => `<i class="${stars[k] ? 'on' : ''}">★</i>`).join('') : '';
+  }
+
   lifeNode(index) {
     return this.livesRow.children[index] || null;
   }

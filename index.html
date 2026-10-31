@@ -1432,9 +1432,9 @@
       .mo-star.had { color: rgba(34, 232, 255, 0.55); }
       .mo-star.on { color: var(--ll-you); text-shadow: 0 0 12px var(--ll-you); }
       .mo-star.new small { color: var(--ll-you); }
-      .mo-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; margin: 16px 2px 8px; }
-      .mo-pip { display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; border: 1.5px solid rgba(34, 232, 255, 0.22); font-size: 12px; font-weight: 800; line-height: 1; }
-      .mo-pip.done { border-color: var(--ll-you); background: var(--ll-you); box-shadow: 0 0 8px rgba(34, 232, 255, 0.7); }
+      .mo-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; margin: 16px 0 8px; }
+      .mo-pip { display: grid; place-items: center; height: 24px; border-radius: 5px; border: 1.5px solid rgba(34, 232, 255, 0.2); font-family: var(--font-num); font-size: 11px; font-weight: 700; line-height: 1; color: rgba(233, 248, 255, 0.3); font-variant-numeric: tabular-nums; }
+      .mo-pip.done { border-color: var(--ll-you); background: var(--ll-you); color: #02050b; box-shadow: 0 0 8px rgba(34, 232, 255, 0.6); }
       .mo-pip.fell { border-color: var(--ll-void); color: var(--ll-void); background: rgba(255, 46, 126, 0.16); box-shadow: 0 0 10px rgba(255, 46, 126, 0.6); }
       .mo-reach { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
       .mo-runscore { display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px; padding: 0 4px; }
@@ -2002,6 +2002,7 @@
       .play-tab[aria-selected="true"] { color: #02050b; background: var(--cyan); box-shadow: 0 0 12px rgba(34, 232, 255, 0.4); }
       .play-pane { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1 1 auto; min-height: 0; }
       .play-pane[hidden] { display: none; }
+      .play-rule span { white-space: nowrap; }
       .play-rule { margin: 0; text-align: center; text-wrap: balance; font-size: clamp(11px, 3.2vw, 13px); letter-spacing: 0.06em; color: var(--muted); }
       .star-key { display: flex; justify-content: center; gap: 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
       .star-key b { color: var(--cyan); font-weight: 400; text-shadow: 0 0 6px rgba(34, 232, 255, 0.8); }
@@ -2014,20 +2015,28 @@
       .run-hearts .life.on { color: #ff3b5c; filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.75)); }
       .run-hearts .life.on path { fill: currentColor; }
       .run-cash { font-family: var(--font-num); font-size: 16px; font-weight: 700; color: var(--amber); }
-      .run-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px; width: 100%; max-width: 330px; }
-      .run-path span { aspect-ratio: 1; border-radius: 50%; border: 1.5px solid rgba(34, 232, 255, 0.22); }
-      .run-path .done { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 8px rgba(34, 232, 255, 0.6); }
-      .run-path .here { border: 2px solid var(--cyan); box-shadow: 0 0 10px rgba(34, 232, 255, 0.8); }
+      /* the run's tables as numbered tiles (round 12: dots beside the hearts
+         read as more lives) */
+      .run-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; width: 100%; max-width: 330px; }
+      .run-path span { display: grid; place-items: center; height: 24px; border-radius: 5px; border: 1.5px solid rgba(34, 232, 255, 0.2); font-family: var(--font-num); font-size: 11px; font-weight: 700; color: rgba(233, 248, 255, 0.3); font-variant-numeric: tabular-nums; }
+      .run-path .done { border-color: var(--cyan); background: var(--cyan); color: #02050b; box-shadow: 0 0 8px rgba(34, 232, 255, 0.5); }
+      .run-path .here { border: 2px solid var(--cyan); color: var(--cyan); box-shadow: 0 0 10px rgba(34, 232, 255, 0.8); }
       .run-best { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
       .run-best:empty { display: none; }
-      .menu-btn.run-new { margin-top: auto; }
+      /* the run's block sits as one group in the middle of the screen */
+      #pane-run { justify-content: center; gap: 12px; padding-bottom: 8%; }
+      .menu-btn.run-new { margin-top: 10px; }
       .menu-btn.run-new.confirm { color: var(--amber); border-color: var(--amber); }
       .tp-row .tp-stars { font-size: 11px; letter-spacing: 1px; color: var(--cyan); }
       .tp-row .tp-stars i { font-style: normal; opacity: 0.22; }
       .tp-row .tp-stars i.on { opacity: 1; text-shadow: 0 0 6px rgba(34, 232, 255, 0.8); }
       .stars-total { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cyan); }
       /* playing one table on its own: no hearts and no cash to show */
-      .hud.single .hud-hp .lives-row, .hud.single .hud-hp .hud-label, .hud.single .cash-value { visibility: hidden; }
+      .hud.single .hud-hp .lives-row, .hud.single .cash-value { display: none; }
+      .single-stars { display: none; gap: 3px; margin-top: 2px; font-size: clamp(16px, 4.6vmin, 21px); line-height: 1; color: rgba(34, 232, 255, 0.25); }
+      .hud.single .single-stars { display: flex; }
+      .single-stars i { font-style: normal; }
+      .single-stars i.on { color: var(--cyan); text-shadow: 0 0 8px rgba(34, 232, 255, 0.8); }
       .ach-list {
         list-style: none;
         margin: 0;
@@ -2622,7 +2631,7 @@
               <button id="tab-tables" class="play-tab" role="tab" type="button" aria-selected="false" aria-controls="pane-tables">Tables</button>
             </div>
             <div class="play-pane" id="pane-run" role="tabpanel" aria-labelledby="tab-run">
-              <p class="play-rule">12 tables in a row · 3 hearts · a shop between</p>
+              <p class="play-rule"><span>12 tables in a row</span> · <span>3 hearts</span> · <span>a shop between</span></p>
               <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-text"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
               <div class="run-now" id="run-now"><span class="run-hearts" id="run-hearts"></span><span class="run-cash" id="run-cash"></span></div>
               <div class="run-path" id="run-path" aria-hidden="true"></div>

@@ -289,7 +289,17 @@ two tabs, one per way to play. The tab last used is remembered.
 outline once lost. The shop sells two, each costing cash and a shot: **Extra
 Life** (rare, $10: +1 heart now, the next table has 1 fewer shot, and its
 card says so) and **Spare Heart** (epic, $15: one more heart slot, filled,
-and every table has 1 fewer shot). A heart bought beats in the corner.
+and every table has 1 fewer shot). A heart bought beats in the corner. Once a
+heart is lost, **Extra Life is always on the shelf** (it takes the last rolled
+place).
+
+**Round 12, a design pass:** the end of a table no longer opens the old **exit
+doors** (two boxes on the top rail from when you shot into a door for a
+reward; the shop replaced them). A run's tables are **numbered tiles**, never
+dots, since dots beside the hearts read as lives. The result that ends a run
+reserves no cash rows. The shop's result leaves completely (it fades as it
+flies up). A table played on its own shows **STARS** in the hearts' corner,
+and they light once the result has shown them.
 
 **Continue** (`saveRun`/`resumeRun` in main.js): the run is saved as each
 table begins (`lightline-run-v1`: the table, run score, cash, lives, freeze

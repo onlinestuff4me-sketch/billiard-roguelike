@@ -2238,7 +2238,10 @@ function goHome() {
 function showRoomResult(data, shownRun) {
   // a replayed table is on its own: no shop, no run to end
   // (round 11) it pays stars, not cash, and costs no heart
-  if (game.replay) data = { ...data, lives: Math.max(1, data.lives), payout: [], single: true, stars: game.lastStars, choices: replayChoices(game.replay), nextLabel: 'What next' };
+  if (game.replay) {
+    const n = game.replay;
+    data = { ...data, lives: Math.max(1, data.lives), payout: [], single: true, stars: game.lastStars, onStarsShown: () => hud.setSingle(loadTableBests()[n]?.stars || {}), choices: replayChoices(n), nextLabel: 'What next' };
+  }
   if (!momentsOn()) {
     flushAchievements();
     hud.showScorecard(data);
@@ -2369,7 +2372,15 @@ function openShop() {
     const chosen = (curated || []).map((id) => UPGRADES.find((u) => u.id === id)).filter((u) => u && !skip.has(u.id)).slice(0, S.slots - held.length);
     curated = null;
     for (const u of chosen) skip.add(u.id);
-    return held.concat(chosen.map((u) => card(u)), rollShelf(skip, S.slots - held.length - chosen.length).map((u) => card(u)));
+    const items = held.concat(chosen.map((u) => card(u)), rollShelf(skip, S.slots - held.length - chosen.length).map((u) => card(u)));
+    // A HEART IS ALWAYS ON OFFER once one is lost (round 12): Extra Life
+    // takes the last rolled place on the shelf
+    const life = UPGRADES.find((u) => u.id === 'extra-life');
+    if (rules.lives < rules.livesMax && !items.some((it) => it.id === life.id)) {
+      const at = items.map((it) => !it.held).lastIndexOf(true);
+      if (at >= 0) items[at] = card(life);
+    }
+    return items;
   };
   const ctx = () => ({ rules, game, player, boons });
   const api = {
@@ -2474,6 +2485,13 @@ function failRoom() {
 }
 
 function openExits(title, sub) {
+  // THE SHOP REPLACED THE EXIT DOORS (round 12): with the moments on, the
+  // table ends without them; they drew two boxes on the top rail that meant
+  // nothing. The plain scorecard (moments off) still picks a door.
+  if (momentsOn()) {
+    rooms.cleared = true;
+    return;
+  }
   rooms.openExits();
 }
 
@@ -2892,7 +2910,7 @@ function showRoomBanner() {
 function resetRunState() {
   endPractice();
   game.replay = null;
-  hud.root.classList.remove('single');
+  hud.setSingle(null);
   game.skipIntroCard = false;
   boons.reset();
   boons.recompute();
@@ -2955,7 +2973,7 @@ function startReplay(n) {
   game.tutorialGuard = null;
   game.replay = n;
   game.level = n;
-  hud.root.classList.add('single');
+  hud.setSingle(loadTableBests()[n]?.stars || {});
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
   callPocket(null);
@@ -5230,6 +5248,7 @@ function showPlayPanel(tab) {
   runPath.textContent = '';
   for (let n = 1; n <= TABLES.length; n++) {
     const pip = document.createElement('span');
+    pip.textContent = n;
     if (run && n < run.level) pip.className = 'done';
     else if (run && n === run.level) pip.className = 'here';
     runPath.appendChild(pip);

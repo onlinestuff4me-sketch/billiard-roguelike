@@ -521,8 +521,9 @@ export class Moments {
     const pips = [];
     for (let n = 1; n <= d.tables; n++) {
       const state = n < reached || (!over && n === reached) ? 'done' : n === reached ? 'fell' : 'ahead';
+      // NUMBERED TILES, not dots (round 12): dots next to hearts read as lives
       const pip = el('span', `mo-pip ${state}`, path);
-      if (state === 'fell') pip.textContent = '×';
+      pip.textContent = n;
       pips.push(pip);
     }
     const reach = el('div', 'mo-reach', panel);
@@ -751,7 +752,8 @@ export class Moments {
       if (!live()) return;
       act.disabled = true;
       // the result flies up and away
-      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, 0)' }, { transform: 'translate(-50%, -115%)' }], { duration: 360, easing: IN });
+      // (round 12: and fades as it goes, so no edge of it is left over the corner)
+      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -115%)', opacity: 0 }], { duration: 360, easing: IN });
       if (!live()) return;
       const first = !panel;
       if (first) panel = this._buildShop(root, shop, live);
@@ -772,7 +774,7 @@ export class Moments {
       move(next, right, false);
       inShop = false;
       await this.wait(200);
-      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, -115%)' }, { transform: 'translate(-50%, 0)' }], { duration: 420, easing: OUT });
+      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, -115%)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 420, easing: OUT });
       act.disabled = false;
       await fadeIn(act);
     });
@@ -1112,7 +1114,9 @@ export class Moments {
     // reward reads as the result of beating the target. Every line is in
     // place from the start (invisible), so the panel never grows.
     this._pay = null;
-    if (d.target && (d.payout || []).length) {
+    // (round 12) not on the result that ends the run: no cash is coming, and
+    // its reserved rows left an empty band at the foot of the panel
+    if (d.target && (d.payout || []).length && d.lives > 0) {
       const box = el('div', 'mo-pay2', panel);
       el('div', 'mo-pay-k', box).textContent = 'Cash earned';
       // read like Gambonanza's results: a count, the reason with its rule,
@@ -1229,6 +1233,8 @@ export class Moments {
         await this.anim(st.s.querySelector('b'), [{ transform: 'scale(0.2) rotate(-30deg)', opacity: 0.3 }, { transform: 'scale(1.6) rotate(8deg)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 320, easing: OUT });
         if (!live()) return;
       }
+      // the corner's stars take what the result just showed
+      d.onStarsShown?.();
     }
   }
 
