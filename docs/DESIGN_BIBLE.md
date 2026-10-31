@@ -293,6 +293,16 @@ and every table has 1 fewer shot). A heart bought beats in the corner. Once a
 heart is lost, **Extra Life is always on the shelf** (it takes the last rolled
 place).
 
+**Round 13 (from review): runs unlock tables.** A table opens on the Tables
+tab once a run has reached it (`lightline-reached-v1`), and only then: runs
+are for getting further, the Tables tab for going back for stars and scores.
+A replayed table's card reads "Table N · Replay". **A heart lost is said on
+the result itself:** missing the target (out of shots, or every ball down
+short of it) adds a pink line under the target, "Target missed · −1 heart"
+("· last heart" on the last), with the run's hearts, and the one lost breaks
+there as it breaks in the corner. The run-over panel comes in as the result
+goes, with no bare table between.
+
 **Round 12, a design pass:** the end of a table no longer opens the old **exit
 doors** (two boxes on the top rail from when you shot into a door for a
 reward; the shop replaced them). A run's tables are **numbered tiles**, never

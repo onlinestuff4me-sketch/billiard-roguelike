@@ -2882,7 +2882,8 @@ function showRoomBanner() {
     game.introUp = true;
     moments
       .tableIntro({
-        kicker: `Table ${game.level}`,
+        // a replay says so (round 13): no hearts or shop, played for stars
+        kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
         name: t.name,
         rule: t.intro.sub,
         // the same facts on every card (from review): number, name, rule, balls, shots.
@@ -3032,15 +3033,31 @@ function replayChoices(n) {
 }
 
 /**
- * A TABLE OPENS ON ITS OWN (round 11) once the one before it has a star (its
- * target beaten) or every ball down, in either way of playing, or once a run
- * has reached it. Table 1 is always open.
+ * RUNS UNLOCK TABLES (round 13, from review): a table opens to be replayed on
+ * its own once a run has reached it, and only then. Runs are for getting
+ * further; the Tables tab is for going back for stars and scores. Table 1 is
+ * always open.
  */
+const REACHED_KEY = 'lightline-reached-v1';
+function tablesReached() {
+  try {
+    const v = localStorage.getItem(REACHED_KEY);
+    if (v !== null) return Number(v) || 1;
+  } catch {
+    return 1;
+  }
+  // first time: what this device had already reached before the key existed
+  return Math.max(1, loadRun()?.level || 0, loadBest().table || 0);
+}
+function noteReached(level) {
+  try {
+    localStorage.setItem(REACHED_KEY, String(Math.max(level, tablesReached())));
+  } catch {
+    /* private mode */
+  }
+}
 function tableUnlocked(n) {
-  if (n <= 1) return true;
-  const prev = loadTableBests()[n - 1];
-  if (prev?.cleared || prev?.stars?.t) return true;
-  return n <= loadBest().table + 1 || n <= (loadRun()?.level || 0);
+  return n <= 1 || n <= tablesReached();
 }
 
 const starCount = (s) => (s?.t ? 1 : 0) + (s?.a ? 1 : 0) + (s?.o ? 1 : 0);
@@ -5128,6 +5145,8 @@ function saveRun() {
   // not the table racked behind the menu at boot: that would overwrite the
   // run a player is coming back to
   if (menuOpen || game.headless || tutorial.running || game.practice || game.replay) return;
+  // a run that reaches a table opens it on the Tables tab
+  if (game.level <= TABLES.length) noteReached(game.level);
   const data = {
     v: 1,
     level: game.level,

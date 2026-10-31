@@ -1310,6 +1310,15 @@
       .mo-target .stamp { padding: 4px 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; opacity: 0; }
       .mo-target.beaten .stamp { background: var(--ll-you); }
       .mo-target.missed .stamp { background: var(--ll-void); }
+      /* a heart lost, said on the result (round 13) */
+      .mo-heartloss { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 2px; padding: 7px 10px; border: 1px solid rgba(255, 59, 92, 0.55); border-radius: 8px; background: rgba(255, 59, 92, 0.1); }
+      .mo-heartloss .k { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #ff5c78; }
+      .mo-heartloss .hearts { display: flex; gap: 3px; }
+      .mo-heartloss .life { width: 18px; height: 18px; color: rgba(255, 59, 92, 0.45); }
+      .mo-heartloss .life svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .mo-heartloss .life path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+      .mo-heartloss .life.on { color: #ff3b5c; filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.75)); }
+      .mo-heartloss .life.on path { fill: currentColor; }
       .mo-vs { grid-column: 1 / -1; position: relative; height: 10px; background: rgba(30, 79, 107, 0.55); }
       .mo-vs .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ll-you); box-shadow: 0 0 10px rgba(34, 232, 255, 0.6); }
       .mo-target.missed .mo-vs .fill { background: var(--ll-void); box-shadow: 0 0 10px rgba(255, 46, 126, 0.6); }
@@ -2639,7 +2648,7 @@
               <button id="play-newrun" class="menu-btn run-new" type="button">New run</button>
             </div>
             <div class="play-pane" id="pane-tables" role="tabpanel" aria-labelledby="tab-tables" hidden>
-              <p class="play-rule">Any table on its own, for up to three stars</p>
+              <p class="play-rule"><span>Replay any table a run has reached,</span> <span>for up to three stars</span></p>
               <div class="star-key" aria-label="Stars: beat the target, every ball down, every ball in order"><span><b>★</b> Target</span><span><b>★</b> Every ball</span><span><b>★</b> In order</span></div>
               <ol class="table-path" id="table-path" aria-label="The twelve tables"></ol>
               <p class="stars-total" id="stars-total"></p>

@@ -18,6 +18,7 @@
 
 import * as THREE from 'three';
 import { MOMENTS, ARENA, TRAJECTORY } from '../config.js';
+import { HEART } from './HUD.js';
 
 const el = (tag, cls, parent) => {
   const node = document.createElement(tag);
@@ -506,7 +507,9 @@ export class Moments {
       old.style.pointerEvents = 'none';
       this.anim(old, [{ opacity: 1, translate: '0 0' }, { opacity: 0, translate: '0 -24px' }], { duration: 260, easing: IN });
     }
-    await this.wait(200);
+    // (round 13) the panel comes in as the result goes, so the bare table
+    // never shows between them
+    await this.wait(60);
     if (!live()) return null;
 
     const over = d.kind === 'over';
@@ -1110,6 +1113,26 @@ export class Moments {
       tick.style.left = `${(d.target / scale) * 100}%`;
       this._verdict = { row, fill, to: (d.roomScore / scale) * 100 };
     }
+    // A HEART LOST IS SAID ON THE RESULT ITSELF (round 13: "should we be
+    // clearer about the fact you've lost a life?"): missing the target costs
+    // one, whether the table ran out of shots or was cleared short of it. The
+    // line is in place from the start (invisible), with the run's hearts; the
+    // one lost breaks here as it breaks in the corner.
+    this._heartLoss = null;
+    if (d.target && !d.beaten && !d.single) {
+      const loss = el('div', 'mo-heartloss', panel);
+      const max = Math.max(this.hud.livesRow?.children.length || 3, d.livesFrom || 0);
+      el('span', 'k', loss).textContent = d.lives > 0 ? 'Target missed · −1 heart' : 'Target missed · last heart';
+      const row = el('span', 'hearts', loss);
+      const hearts = [];
+      for (let i = 0; i < max; i++) {
+        const h = el('span', `life${i < (d.livesFrom || 0) ? ' on' : ''}`, row);
+        h.innerHTML = HEART;
+        hearts.push(h);
+      }
+      loss.style.opacity = '0';
+      this._heartLoss = { loss, lost: hearts[(d.livesFrom || 1) - 1] };
+    }
     // CASH EARNED sits right under the verdict, in the same panel, so the
     // reward reads as the result of beating the target. Every line is in
     // place from the start (invisible), so the panel never grows.
@@ -1250,10 +1273,22 @@ export class Moments {
     // a table played on its own has no hearts to lose
     if (!d.beaten && !d.single) {
       const pip = this.hud.lifeNode((d.livesFrom || 1) - 1);
-      if (pip) {
-        this.engine.shake?.(8);
-        await this.anim(pip, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.8)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.4)', opacity: 0 }], { duration: 520, easing: OUT });
+      const hl = this._heartLoss;
+      if (hl) {
+        hl.loss.style.opacity = '1';
+        await this.anim(hl.loss, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: OUT });
       }
+      this.engine.shake?.(8);
+      const breakIt = [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.8)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.4)', opacity: 0 }];
+      if (hl?.lost) {
+        // no fill: once it has broken it stays as an outline, the way it does in the corner
+        hl.lost.animate(breakIt, { duration: this.skip ? 0 : 520, easing: OUT }).finished.then(() => {
+          hl.lost.classList.remove('on');
+          hl.lost.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+        }, () => hl.lost.classList.remove('on'));
+      }
+      if (pip) await this.anim(pip, breakIt, { duration: 520, easing: OUT });
+      else await this.wait(520);
       d.onLifeLost?.();
       await this.wait(300);
       if (!live()) return;
