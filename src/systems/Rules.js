@@ -147,6 +147,8 @@ export class Rules {
     this.cash = RULES.cash.start;
     /** LIVES: missing a table's target costs one; none left ends the run. */
     this.lives = RULES.lives.start;
+    /** How many hearts the run can hold (Spare Heart adds one). */
+    this.livesMax = RULES.lives.max;
     /** This table's points target (RULES.target). */
     this.target = targetFor(1);
     /** Consecutive shots this table that paid (the Hot Streak upgrade). */
@@ -692,8 +694,8 @@ export class Rules {
 
   /** An extra life, up to the cap. Returns false when already full. */
   gainLife(n = 1) {
-    if (this.lives >= RULES.lives.max) return false;
-    this.lives = Math.min(RULES.lives.max, this.lives + n);
+    if (this.lives >= this.livesMax) return false;
+    this.lives = Math.min(this.livesMax, this.lives + n);
     return true;
   }
 
@@ -744,7 +746,7 @@ export class Rules {
       target: this.target,
       cash: this.cash,
       lives: this.lives,
-      livesMax: RULES.lives.max,
+      livesMax: this.livesMax,
       freezeCharges: this.freezeCharges,
       banks: this.shownBanks,
       ballsTouched: this.shownTouched,

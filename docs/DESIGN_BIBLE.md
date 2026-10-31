@@ -261,25 +261,35 @@ squares with 30 px icons in the same cyan; only the badge is orange (13 px
 type). Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
 
 **Play** takes a first visit (the lessons not yet done) straight into the
-lessons. Anyone else gets **the play screen**: **‹ Back** and a big
-**Continue · Table N**, one line with a round play arrow (a sheen crosses it
-now and then), or **New run** when there is none, held at the top; under them **the tables**, the only part that
-scrolls. **New run** (abandon the saved run and start at Table 1; with a run
-saved it asks once, naming the table that ends) and **Modes** are at the
-bottom of **Settings** (from review), and Modes' Done goes back there.
+lessons. Anyone else gets **the play screen** (round 11): **‹ Back**, then
+two tabs, one per way to play. The tab last used is remembered.
 
-**The tables are rows**, every name whole on one line (the icon and number share one
-tight cell, BEST sits over its number, and a name that still does not fit a
-narrow phone comes down a size) (from review: room for the whole name and the
-table's best score, `lightline-table-best-v1`), and say their state by look,
-not words: a table you can play has a **play arrow** by its number (the saved
-run's table is solid cyan and is Continue; a cleared one is a lit row and
-**replays** it), and a table not yet cleared is dim with a **padlock** and does
-nothing. Clearing a table means sinking every ball on it (the target decides
-the cash and whether a life is lost). The list scrolls, with the
-saved run's table kept in view. A replay (`startReplay`) is one table on its
-own from a fresh start: no shop after it, the saved run untouched, a missed
-target costs nothing, and it ends on **Play again** or **Back to tables**.
+- **RUN**: "12 tables in a row · 3 hearts · a shop between". A big
+  **Continue** (Table N small under it, the black play triangle beside, one
+  shimmer as it shows), or **New run · Table 1** when none is saved. Under it
+  the run as it stands: its **hearts** and **cash**, the **path** of twelve
+  dots (behind you lit, where you are ringed), and **Best run**. **New run ·
+  from Table 1** sits at the bottom; with a run saved it asks once ("Tap
+  again: your Table N run ends"). Rewarded by the run's score against your
+  best, reaching Table 12 (§8.4c), and the achievements.
+- **TABLES**: "Any table on its own, for up to three stars", with a key: **★
+  Target** (beat it), **★ Every ball** (all down), **★ In order** (all down,
+  in number order). The rows are every name whole on one line: an **open**
+  table has the play arrow, its stars and its best; a **locked** one is dim
+  with a padlock. A table opens once the one before it has its target star
+  or every ball down, in either way of playing, or once a run has reached it.
+  The total shows under the list (★ 6 of 36). A table played on its own
+  (`startReplay`) starts fresh, has no hearts, shop or cash (the corner hides
+  them), and leaves the saved run alone. Its result lights the stars it
+  earned under the title, and ends on **Next table** (once open), **Play
+  again** or **Back to tables**. Stars are kept once earned
+  (`lightline-table-best-v1`: score, cleared, stars).
+
+**Hearts** (round 11): lives are red hearts, full while you have them and an
+outline once lost. The shop sells two, each costing cash and a shot: **Extra
+Life** (rare, $10: +1 heart now, the next table has 1 fewer shot, and its
+card says so) and **Spare Heart** (epic, $15: one more heart slot, filled,
+and every table has 1 fewer shot). A heart bought beats in the corner.
 
 **Continue** (`saveRun`/`resumeRun` in main.js): the run is saved as each
 table begins (`lightline-run-v1`: the table, run score, cash, lives, freeze

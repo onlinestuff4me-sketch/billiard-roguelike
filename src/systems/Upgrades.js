@@ -61,11 +61,17 @@ export const UPGRADES = [
     apply: ({ boons }) => boons.addRunBonus({ maxBounces: 1 }),
     unapply: ({ boons }) => boons.addRunBonus({ maxBounces: -1 })
   },
+  /* -- hearts (round 11): each costs cash AND a shot ------------------- */
   {
-    id: 'extra-life', name: 'Extra Life', text: '+1 life (you can hold three).', rarity: 'rare', price: 8, stack: true, consumable: true,
-    available: ({ rules }) => rules.lives < RULES.lives.max,
-    apply: ({ rules }) => rules.gainLife(1),
-    unapply: ({ rules }) => { rules.lives = Math.max(1, rules.lives - 1); }
+    id: 'extra-life', name: 'Extra Life', text: '+1 heart now. Next table: 1 fewer shot.', rarity: 'rare', price: 10, stack: true, consumable: true,
+    available: ({ rules }) => rules.lives < rules.livesMax,
+    apply: ({ rules, game }) => { rules.gainLife(1); game.shotDebt = (game.shotDebt || 0) + 1; },
+    unapply: ({ rules, game }) => { rules.lives = Math.max(1, rules.lives - 1); game.shotDebt = Math.max(0, (game.shotDebt || 0) - 1); }
+  },
+  {
+    id: 'spare-heart', name: 'Spare Heart', text: '+1 heart slot, filled. 1 fewer shot a table.', rarity: 'epic', price: 15,
+    apply: ({ rules, game }) => { rules.livesMax += 1; rules.lives += 1; game.strokeBonus = (game.strokeBonus || 0) - 1; },
+    unapply: ({ rules, game }) => { rules.livesMax -= 1; rules.lives = Math.min(rules.lives, rules.livesMax); game.strokeBonus = (game.strokeBonus || 0) + 1; }
   },
   {
     id: 'freeze-charge', name: 'Freeze Frame', text: '+1 Freeze frame charge, now.', rarity: 'common', price: 4, stack: true, consumable: true,

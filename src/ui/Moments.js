@@ -447,6 +447,12 @@ export class Moments {
     act.remove();
     this._actBtn = null;
     const next = el('div', 'mo-next', root);
+    // under the result, never over it (a result with stars is taller)
+    const L = root.querySelector('.mo-ledger')?.getBoundingClientRect();
+    if (L) {
+      next.style.top = `${L.bottom - root.getBoundingClientRect().top + 12}px`;
+      next.style.bottom = 'auto';
+    }
     el('div', 'mo-next-label', next).textContent = d.nextLabel || (d.choices?.length > 1 ? 'Pick your next table' : 'Next table');
     const list = el('div', 'mo-choices', next);
     (d.choices || []).forEach((choice, i) => {
@@ -891,6 +897,7 @@ export class Moments {
           if (it.sold) {
             this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
             if (it.id === 'freeze-charge') this._pulseFreeze();
+            if (it.id === 'extra-life' || it.id === 'spare-heart') this._pulseHearts();
           }
           spendTo(before, buy);
           renderTools();
@@ -947,6 +954,17 @@ export class Moments {
     const r = node.getBoundingClientRect();
     const L = this.layer.getBoundingClientRect();
     return { node, x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 };
+  }
+
+  /** A heart bought (round 11): the hearts in the corner take it with a beat. */
+  _pulseHearts() {
+    // the HUD paints the new heart on its next frame; beat once it is there
+    requestAnimationFrame(() => {
+      const row = this.hud.livesRow;
+      const last = row?.querySelector('.life.on:last-of-type') || [...(row?.querySelectorAll('.life.on') || [])].pop();
+      if (!last) return;
+      last.animate([{ transform: 'scale(2)', filter: 'drop-shadow(0 0 12px #ff3b5c)' }, { transform: 'scale(0.9)', offset: 0.6 }, { transform: 'scale(1)', filter: 'none' }], { duration: 520, easing: OUT });
+    });
   }
 
   _pulseFreeze() {
@@ -1049,6 +1067,24 @@ export class Moments {
     const kicker = el('div', 'mo-kicker', head);
     kicker.textContent = d.filled ? 'Table clear' : 'Out of shots';
     el('div', 'mo-title', head).textContent = `Table ${d.level}`;
+    // A TABLE ON ITS OWN PAYS STARS (round 11): three, dim until the result
+    // lights the ones this play earned
+    const starEls = d.stars
+      ? (() => {
+          const row = el('div', 'mo-stars', head);
+          return [
+            ['t', 'Target'],
+            ['a', 'Every ball'],
+            ['o', 'In order']
+          ].map(([k, label]) => {
+            const s = el('span', 'mo-star', row);
+            el('b', '', s).textContent = '★';
+            el('small', '', s).textContent = label;
+            if (d.stars.was?.[k]) s.classList.add('had');
+            return { s, earned: !!d.stars[k], fresh: !!d.stars[k] && !d.stars.was?.[k] };
+          });
+        })()
+      : null;
     const list = el('div', 'mo-rows', panel);
     const rule = el('div', 'mo-rule', panel);
     const total = el('div', 'mo-total', panel);
@@ -1184,6 +1220,16 @@ export class Moments {
     await this.wait(620);
     if (!live()) return;
     if (d.target) await this._clearVerdict(panel, d, live, root);
+    if (starEls && live()) {
+      for (const st of starEls) {
+        if (!st.earned) continue;
+        st.s.classList.add('on');
+        if (st.fresh) st.s.classList.add('new');
+        this.audio.scoreLock?.();
+        await this.anim(st.s.querySelector('b'), [{ transform: 'scale(0.2) rotate(-30deg)', opacity: 0.3 }, { transform: 'scale(1.6) rotate(8deg)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 320, easing: OUT });
+        if (!live()) return;
+      }
+    }
   }
 
   /**
@@ -1195,7 +1241,8 @@ export class Moments {
     // the target, the bar and the verdict already landed with the total
     if (!live()) return;
 
-    if (!d.beaten) {
+    // a table played on its own has no hearts to lose
+    if (!d.beaten && !d.single) {
       const pip = this.hud.lifeNode((d.livesFrom || 1) - 1);
       if (pip) {
         this.engine.shake?.(8);

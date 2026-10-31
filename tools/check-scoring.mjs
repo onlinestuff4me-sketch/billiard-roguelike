@@ -312,7 +312,9 @@ console.log('\nfreeze frame charges\n');
   const owned = new Set(UPGRADES.filter((u) => !u.stack).map((u) => u.id));
   check(rollShelf(owned, 4).every((u) => u.stack), 'and never one the run already owns, unless it stacks');
   check(UPGRADES.length >= 20, 'the pool is large enough to be a roguelike', `${UPGRADES.length}`);
-  check(UPGRADES.every((u) => u.price >= 4 && u.price <= 10), 'every upgrade costs $4–10', UPGRADES.map((u) => u.price).join(','));
+  // hearts are the dear exception (round 11): a scoring card is $4–10, a heart up to $15
+  const heart = (u) => u.id === 'extra-life' || u.id === 'spare-heart';
+  check(UPGRADES.every((u) => u.price >= 4 && u.price <= (heart(u) ? 15 : 10)), 'every upgrade costs $4–10 (a heart up to $15)', UPGRADES.map((u) => u.price).join(','));
   // Shop cards are one fixed size (from review): a name fits one line and the
   // rule two, so a reroll never makes the grid jump.
   check(UPGRADES.every((u) => u.name.length <= 14 && u.text.length <= 46), 'every card fits its fixed size (name ≤ 14, rule ≤ 46 characters)', UPGRADES.filter((u) => u.name.length > 14 || u.text.length > 46).map((u) => u.id).join(',') || 'all fit');

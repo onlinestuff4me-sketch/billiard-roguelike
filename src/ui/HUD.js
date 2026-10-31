@@ -23,6 +23,7 @@
 import * as THREE from 'three';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+export const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.7-9.4-9.4C1.2 7.6 3.3 4 6.8 4c2.2 0 3.7 1.3 5.2 3.1C13.5 5.3 15 4 17.2 4c3.5 0 5.6 3.6 4.2 7.1-1.8 4.7-9.4 9.4-9.4 9.4Z"/></svg>';
 
 function el(tag, className, parent) {
   const node = document.createElement(tag);
@@ -625,7 +626,8 @@ export class HUD {
     if (lifeKey !== cache.lives) {
       cache.lives = lifeKey;
       this.livesRow.textContent = '';
-      for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow);
+      // RED HEARTS (round 11): full while you have them, an outline once lost
+      for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow).innerHTML = HEART;
     }
     // While a moment counts the wallet itself (collecting, spending), the
     // HUD leaves its figure alone; unlocking repaints it with the real one.
