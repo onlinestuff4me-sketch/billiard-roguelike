@@ -2005,37 +2005,10 @@
       .tp-row.here { cursor: pointer; color: #02050b; border: 1.5px solid var(--cyan); background: var(--cyan); box-shadow: 0 0 14px rgba(34, 232, 255, 0.45); }
       .tp-row.here:active { transform: scale(0.98); }
       .tp-row:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-      /* RUN | TABLES (round 11): two ways to play, one tab each */
-      .play-tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; padding: 3px; gap: 3px; border-radius: 12px; background: rgba(8, 18, 30, 0.85); border: 1px solid rgba(34, 232, 255, 0.25); }
-      .play-tab { min-height: 38px; border: 0; border-radius: 9px; background: none; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
-      .play-tab[aria-selected="true"] { color: #02050b; background: var(--cyan); box-shadow: 0 0 12px rgba(34, 232, 255, 0.4); }
-      .play-pane { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1 1 auto; min-height: 0; }
-      .play-pane[hidden] { display: none; }
-      .play-rule span { white-space: nowrap; }
       .play-rule { margin: 0; text-align: center; text-wrap: balance; font-size: clamp(11px, 3.2vw, 13px); letter-spacing: 0.06em; color: var(--muted); }
       .star-key { display: flex; justify-content: center; gap: 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
       .star-key b { color: var(--cyan); font-weight: 400; text-shadow: 0 0 6px rgba(34, 232, 255, 0.8); }
-      .run-now { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 22px; }
-      .run-now:empty { display: none; }
-      .run-hearts { display: flex; gap: 4px; }
-      .run-hearts .life { width: 20px; height: 20px; color: rgba(255, 59, 92, 0.45); }
-      .run-hearts .life svg { display: block; width: 100%; height: 100%; overflow: visible; }
-      .run-hearts .life path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
-      .run-hearts .life.on { color: #ff3b5c; filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.75)); }
-      .run-hearts .life.on path { fill: currentColor; }
-      .run-cash { font-family: var(--font-num); font-size: 16px; font-weight: 700; color: var(--amber); }
-      /* the run's tables as numbered tiles (round 12: dots beside the hearts
-         read as more lives) */
-      .run-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; width: 100%; max-width: 330px; }
-      .run-path span { display: grid; place-items: center; height: 24px; border-radius: 5px; border: 1.5px solid rgba(34, 232, 255, 0.2); font-family: var(--font-num); font-size: 11px; font-weight: 700; color: rgba(233, 248, 255, 0.3); font-variant-numeric: tabular-nums; }
-      .run-path .done { border-color: var(--cyan); background: var(--cyan); color: #02050b; box-shadow: 0 0 8px rgba(34, 232, 255, 0.5); }
-      .run-path .here { border: 2px solid var(--cyan); color: var(--cyan); box-shadow: 0 0 10px rgba(34, 232, 255, 0.8); }
-      .run-best { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
-      .run-best:empty { display: none; }
-      /* the run's block sits as one group in the middle of the screen */
-      #pane-run { justify-content: center; gap: 12px; padding-bottom: 8%; }
-      .menu-btn.run-new { margin-top: 10px; }
-      .menu-btn.run-new.confirm { color: var(--amber); border-color: var(--amber); }
+      #set-newrun.confirm { color: var(--amber); border-color: var(--amber); }
       .tp-row .tp-stars { font-size: 11px; letter-spacing: 1px; color: var(--cyan); }
       .tp-row .tp-stars i { font-style: normal; opacity: 0.22; }
       .tp-row .tp-stars i.on { opacity: 1; text-shadow: 0 0 6px rgba(34, 232, 255, 0.8); }
@@ -2633,26 +2606,14 @@
               <button id="play-back" class="play-back" type="button" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>
               <h2 class="menu-sub">Play</h2>
             </div>
-            <!-- TWO WAYS TO PLAY (round 11): a RUN is the twelve in a row with
-                 hearts and a shop; TABLES is any one table on its own, for stars -->
-            <div class="play-tabs" role="tablist" aria-label="How to play">
-              <button id="tab-run" class="play-tab" role="tab" type="button" aria-selected="true" aria-controls="pane-run">Run</button>
-              <button id="tab-tables" class="play-tab" role="tab" type="button" aria-selected="false" aria-controls="pane-tables">Tables</button>
-            </div>
-            <div class="play-pane" id="pane-run" role="tabpanel" aria-labelledby="tab-run">
-              <p class="play-rule"><span>12 tables in a row</span> · <span>3 hearts</span> · <span>a shop between</span></p>
-              <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-text"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
-              <div class="run-now" id="run-now"><span class="run-hearts" id="run-hearts"></span><span class="run-cash" id="run-cash"></span></div>
-              <div class="run-path" id="run-path" aria-hidden="true"></div>
-              <p class="run-best" id="run-best"></p>
-              <button id="play-newrun" class="menu-btn run-new" type="button">New run</button>
-            </div>
-            <div class="play-pane" id="pane-tables" role="tabpanel" aria-labelledby="tab-tables" hidden>
-              <p class="play-rule"><span>Replay any table a run has reached,</span> <span>for up to three stars</span></p>
-              <div class="star-key" aria-label="Stars: beat the target, every ball down, every ball in order"><span><b>★</b> Target</span><span><b>★</b> Every ball</span><span><b>★</b> In order</span></div>
-              <ol class="table-path" id="table-path" aria-label="The twelve tables"></ol>
-              <p class="stars-total" id="stars-total"></p>
-            </div>
+            <!-- THE PLAY SCREEN (round 14, from review: no tabs): one big
+                 button for the run, held at the top, and under it the tables
+                 a run has unlocked, to replay for stars -->
+            <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-text"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
+            <p class="play-rule">Replay tables you unlocked during a run.</p>
+            <div class="star-key" aria-label="Stars: beat the target, every ball down, every ball in order"><span><b>★</b> Target</span><span><b>★</b> Every ball</span><span><b>★</b> In order</span></div>
+            <ol class="table-path" id="table-path" aria-label="The twelve tables"></ol>
+            <p class="stars-total" id="stars-total"></p>
           </div>
 
           <!-- ACHIEVEMENTS (from review): what each one asks, and which are done. -->
@@ -2694,6 +2655,7 @@
             <button id="set-cue-maxStyle" class="menu-btn" type="button">Full power: Flash</button>
             <button id="set-cue-strikeStyle" class="menu-btn" type="button">Strike: Snap</button>
             <button id="set-tutorial" class="menu-btn" type="button">Replay tutorial</button>
+            <button id="set-newrun" class="menu-btn" type="button">New run</button>
             <button id="set-modes" class="menu-btn" type="button">Modes</button>
             <button id="set-back" class="menu-btn primary" type="button">Done</button>
             <p class="menu-foot" id="set-tutorial-state"></p>

@@ -1114,15 +1114,17 @@ export class Moments {
       this._verdict = { row, fill, to: (d.roomScore / scale) * 100 };
     }
     // A HEART LOST IS SAID ON THE RESULT ITSELF (round 13: "should we be
-    // clearer about the fact you've lost a life?"): missing the target costs
-    // one, whether the table ran out of shots or was cleared short of it. The
-    // line is in place from the start (invisible), with the run's hearts; the
-    // one lost breaks here as it breaks in the corner.
+    // clearer about the fact you've lost a life?"): balls left standing cost
+    // one (round 14; the target only pays). The line is in place from the
+    // start (invisible), with the run's hearts; the one lost breaks here as it
+    // breaks in the corner.
     this._heartLoss = null;
-    if (d.target && !d.beaten && !d.single) {
+    if (!d.filled && !d.single) {
       const loss = el('div', 'mo-heartloss', panel);
       const max = Math.max(this.hud.livesRow?.children.length || 3, d.livesFrom || 0);
-      el('span', 'k', loss).textContent = d.lives > 0 ? 'Target missed · −1 heart' : 'Target missed · last heart';
+      const left = Math.max(0, (d.rack || 0) - (d.ballsDown || 0));
+      const balls = left ? `${left} ball${left === 1 ? '' : 's'} left` : 'Balls left';
+      el('span', 'k', loss).textContent = d.lives > 0 ? `${balls} · −1 heart` : `${balls} · last heart`;
       const row = el('span', 'hearts', loss);
       const hearts = [];
       for (let i = 0; i < max; i++) {
@@ -1270,8 +1272,9 @@ export class Moments {
     // the target, the bar and the verdict already landed with the total
     if (!live()) return;
 
-    // a table played on its own has no hearts to lose
-    if (!d.beaten && !d.single) {
+    // a table played on its own has no hearts to lose; a heart goes for balls
+    // left standing (round 14), not for the target
+    if (!d.filled && !d.single) {
       const pip = this.hud.lifeNode((d.livesFrom || 1) - 1);
       const hl = this._heartLoss;
       if (hl) {

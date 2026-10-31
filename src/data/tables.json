@@ -4,10 +4,10 @@
   "tables": [
     {
       "id": "first-target",
-      "name": "Beat the Target",
+      "name": "Clear the Table",
       "intro": {
-        "title": "Table 1 · Beat the Target",
-        "sub": "Sink balls to score points. Beat the target to clear the table."
+        "title": "Table 1 · Clear the Table",
+        "sub": "Sink every ball to clear it. Beat the target for points and cash."
       },
       "spawn": {
         "x": 0,

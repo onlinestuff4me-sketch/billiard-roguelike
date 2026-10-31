@@ -261,29 +261,24 @@ squares with 30 px icons in the same cyan; only the badge is orange (13 px
 type). Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
 
 **Play** takes a first visit (the lessons not yet done) straight into the
-lessons. Anyone else gets **the play screen** (round 11): **‹ Back**, then
-two tabs, one per way to play. The tab last used is remembered.
+lessons. Anyone else gets **the play screen** (round 14, from review: no
+tabs). **‹ Back**, then one big button held at the top for the run:
+**Continue** (Table N small under it) or **Start a run** (Table 1), the black
+play triangle beside, one shimmer each time the screen opens. Under it,
+"Replay tables you unlocked during a run.", the star key (**★ Target**, **★
+Every ball**, **★ In order**), and the tables: an **open** row has the play
+arrow, its stars and its best; a **locked** one is dim with a padlock. Only
+the list scrolls; the total shows under it (★ 6 of 36). **New run** (ending a
+saved run, asking once) is in **Settings**.
 
-- **RUN**: "12 tables in a row · 3 hearts · a shop between". A big
-  **Continue** (Table N small under it, the black play triangle beside, one
-  shimmer as it shows), or **New run · Table 1** when none is saved. Under it
-  the run as it stands: its **hearts** and **cash**, the **path** of twelve
-  dots (behind you lit, where you are ringed), and **Best run**. **New run ·
-  from Table 1** sits at the bottom; with a run saved it asks once ("Tap
-  again: your Table N run ends"). Rewarded by the run's score against your
-  best, reaching Table 12 (§8.4c), and the achievements.
-- **TABLES**: "Any table on its own, for up to three stars", with a key: **★
-  Target** (beat it), **★ Every ball** (all down), **★ In order** (all down,
-  in number order). The rows are every name whole on one line: an **open**
-  table has the play arrow, its stars and its best; a **locked** one is dim
-  with a padlock. A table opens once the one before it has its target star
-  or every ball down, in either way of playing, or once a run has reached it.
-  The total shows under the list (★ 6 of 36). A table played on its own
-  (`startReplay`) starts fresh, has no hearts, shop or cash (the corner hides
-  them), and leaves the saved run alone. Its result lights the stars it
-  earned under the title, and ends on **Next table** (once open), **Play
-  again** or **Back to tables**. Stars are kept once earned
-  (`lightline-table-best-v1`: score, cleared, stars).
+**What each way to play is for** (from review): a **run** is how you get
+further and unlock tables; **replaying** a table is how you go back for its
+stars, a higher score and achievements (leaderboards to come). A table
+replayed (`startReplay`) starts fresh, has no hearts, shop or cash (the corner
+shows its STARS), leaves the saved run alone, and its card reads "Table N ·
+Replay". Its result lights the stars it earned and ends on **Next table**
+(once unlocked), **Play again** or **Back to tables**. Stars are kept once
+earned (`lightline-table-best-v1`: score, cleared, stars).
 
 **Hearts** (round 11): lives are red hearts, full while you have them and an
 outline once lost. The shop sells two, each costing cash and a shot: **Extra
@@ -293,15 +288,20 @@ and every table has 1 fewer shot). A heart bought beats in the corner. Once a
 heart is lost, **Extra Life is always on the shelf** (it takes the last rolled
 place).
 
-**Round 13 (from review): runs unlock tables.** A table opens on the Tables
-tab once a run has reached it (`lightline-reached-v1`), and only then: runs
-are for getting further, the Tables tab for going back for stars and scores.
-A replayed table's card reads "Table N · Replay". **A heart lost is said on
-the result itself:** missing the target (out of shots, or every ball down
-short of it) adds a pink line under the target, "Target missed · −1 heart"
+**Runs unlock tables** (round 13): a table opens to replay once a run has
+reached it (`lightline-reached-v1`), and only then.
+
+**A HEART IS LOST FOR BALLS LEFT STANDING** (round 14, from review: "the
+criteria for losing a life must be simpler and easier to control than
+points"). A table that runs out of shots with balls on it costs a heart;
+every ball down keeps your hearts, whatever the score. The **target only
+pays**: points, and the cash for beating it. A ball out of turn comes back,
+so a table with a prescribed order is only cleared in that order. The result
+says it on the panel: a pink line under the target, "3 balls left · −1 heart"
 ("· last heart" on the last), with the run's hearts, and the one lost breaks
 there as it breaks in the corner. The run-over panel comes in as the result
-goes, with no bare table between.
+goes. Table 1 is **Clear the Table**: "Sink every ball to clear it. Beat the
+target for points and cash."
 
 **Round 12, a design pass:** the end of a table no longer opens the old **exit
 doors** (two boxes on the top rail from when you shot into a door for a

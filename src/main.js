@@ -52,7 +52,7 @@ import { RoomManager, TABLES } from './systems/RoomManager.js';
 import { Achievements, ACHIEVEMENTS } from './systems/Achievements.js';
 import { Rules } from './systems/Rules.js';
 import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
-import { HUD, HOLD, HEART } from './ui/HUD.js';
+import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
 import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
@@ -2161,6 +2161,8 @@ function tableResult(result) {
     runScore: result.runScore,
     target: result.target,
     beaten: result.beaten,
+    rack: rules.mission?.rack || 0,
+    ballsDown: rules.ballsDown || 0,
     payout: result.payout,
     earned: result.earned,
     cashFrom: result.cashFrom,
@@ -3026,7 +3028,7 @@ function replayChoices(n) {
         hud.hideScorecard();
         openMenu();
         startRun();
-        showPlayPanel('tables');
+        showPlayPanel();
       }
     }
   ];
@@ -5229,59 +5231,20 @@ const TP_ICON = {
 };
 
 /**
- * THE PLAY SCREEN (round 11): two ways to play, a tab each.
- *
- *   RUN     the twelve tables in a row: 3 hearts, a shop between, upgrades
- *           that carry; lose every heart and it is over. Continue (or New
- *           run), where the run is, and the best run.
- *   TABLES  any open table on its own, as often as you like: no hearts, no
- *           shop. Each pays up to three stars, and a star opens the next.
+ * THE PLAY SCREEN (round 14, from review: no tabs). One big button held at
+ * the top for the run: Continue (Table N under it) or Start a run, with one
+ * shimmer each time the screen opens. Under it, the tables a run has
+ * unlocked, to replay on their own for stars: each open row has the play
+ * arrow, its stars and its best; a locked one is dim with a padlock. New run
+ * (ending a saved run) is in Settings.
  */
-const PLAY_TAB_KEY = 'lightline-play-tab-v1';
-function showPlayPanel(tab) {
-  let want = tab;
-  if (!want) {
-    try {
-      want = localStorage.getItem(PLAY_TAB_KEY) || 'run';
-    } catch {
-      want = 'run';
-    }
-  }
+function showPlayPanel() {
   const run = loadRun();
-  const best = loadBest();
   const t = run ? TABLES[run.level - 1] : null;
+  $('play-continue-main').textContent = run ? 'Continue' : 'Start a run';
+  $('play-continue-sub').textContent = `Table ${run ? run.level : 1}`;
+  $('play-continue').setAttribute('aria-label', run ? `Continue the run at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a run at Table 1');
 
-  // RUN: Continue big, the table small under it (from review)
-  $('play-continue-main').textContent = run ? 'Continue' : 'New run';
-  $('play-continue-sub').textContent = run ? `Table ${run.level}` : 'Table 1';
-  $('play-continue').setAttribute('aria-label', run ? `Continue the run at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a new run at Table 1');
-  const hearts = $('run-hearts');
-  hearts.textContent = '';
-  $('run-cash').textContent = run ? `$${run.cash ?? 0}` : '';
-  if (run) {
-    const max = RULES.lives.max + ((run.owned || []).includes('spare-heart') ? 1 : 0);
-    for (let i = 0; i < max; i++) {
-      const h = document.createElement('span');
-      h.className = `life${i < (run.lives ?? max) ? ' on' : ''}`;
-      h.innerHTML = HEART;
-      hearts.appendChild(h);
-    }
-    hearts.setAttribute('aria-label', `${run.lives} hearts left`);
-  }
-  const runPath = $('run-path');
-  runPath.textContent = '';
-  for (let n = 1; n <= TABLES.length; n++) {
-    const pip = document.createElement('span');
-    pip.textContent = n;
-    if (run && n < run.level) pip.className = 'done';
-    else if (run && n === run.level) pip.className = 'here';
-    runPath.appendChild(pip);
-  }
-  $('run-best').textContent = best.score ? `Best run ${best.score.toLocaleString()}` : '';
-  $('play-newrun').hidden = !run;
-  showNewRunState();
-
-  // TABLES: every open table, with its stars and best
   const bests = loadTableBests();
   const path = $('table-path');
   path.textContent = '';
@@ -5303,38 +5266,21 @@ function showPlayPanel(tab) {
       row.querySelector('.tp-best').innerHTML = `<span class="tp-stars" aria-hidden="true">${mark(s.t)}${mark(s.a)}${mark(s.o)}</span>${top ? `<span>${top.toLocaleString()}</span>` : ''}`;
       row.addEventListener('click', () => play(() => startReplay(n)));
     }
-    row.setAttribute('aria-label', `Table ${n} · ${tb.name}${open ? ` · ${starCount(s)} of 3 stars` : ' · locked'}${top && open ? ` · best ${top}` : ''}`);
+    row.setAttribute('aria-label', `Table ${n} · ${tb.name}${open ? ` · replay · ${starCount(s)} of 3 stars` : ' · locked'}${top && open ? ` · best ${top}` : ''}`);
     li.appendChild(row);
     path.appendChild(li);
   });
   $('stars-total').textContent = `★ ${stars} of ${TABLES.length * 3}`;
 
   showPanel('play');
-  setPlayTab(want === 'tables' ? 'tables' : 'run');
-}
-
-function setPlayTab(tab) {
-  const tables = tab === 'tables';
-  $('tab-run').setAttribute('aria-selected', String(!tables));
-  $('tab-tables').setAttribute('aria-selected', String(tables));
-  $('pane-run').hidden = tables;
-  $('pane-tables').hidden = !tables;
-  try {
-    localStorage.setItem(PLAY_TAB_KEY, tables ? 'tables' : 'run');
-  } catch {
-    /* private mode */
-  }
-  if (!tables) {
-    // one shimmer across Continue each time it shows (from review)
-    const go = $('play-continue');
-    go.classList.remove('shine');
-    void go.offsetWidth;
-    go.classList.add('shine');
-    return;
-  }
+  // one shimmer across the run's button each time this opens (from review)
+  const go = $('play-continue');
+  go.classList.remove('shine');
+  void go.offsetWidth;
+  go.classList.add('shine');
   // EVERY NAME ON ONE LINE, WHOLE: one that still does not fit a narrow
   // phone comes down a size or two until it does
-  for (const name of $('table-path').querySelectorAll('.tp-name')) {
+  for (const name of path.querySelectorAll('.tp-name')) {
     name.style.fontSize = '';
     let size = parseFloat(getComputedStyle(name).fontSize);
     while (name.scrollWidth > name.clientWidth + 0.5 && size > 8) {
@@ -5433,14 +5379,12 @@ $('play-continue').addEventListener('click', () => play(loadRun() ? resumeRun : 
 // NEW RUN, in Settings (from review): starting over throws the saved run
 // away, so with one saved it asks once, naming what ends.
 function showNewRunState() {
-  const btn = $('play-newrun');
+  const btn = $('set-newrun');
   btn.classList.remove('confirm');
-  btn.textContent = 'New run · from Table 1';
+  btn.textContent = 'New run';
 }
-$('tab-run').addEventListener('click', () => setPlayTab('run'));
-$('tab-tables').addEventListener('click', () => setPlayTab('tables'));
-$('play-newrun').addEventListener('click', () => {
-  const btn = $('play-newrun');
+$('set-newrun').addEventListener('click', () => {
+  const btn = $('set-newrun');
   const run = loadRun();
   if (run && !btn.classList.contains('confirm')) {
     btn.classList.add('confirm');
@@ -5465,6 +5409,7 @@ $('ach-back').addEventListener('click', () => {
 $('btn-settings').addEventListener('click', () => {
   showPanel('settings');
   showTutorialState();
+  showNewRunState();
 });
 $('set-back').addEventListener('click', () => showPanel('main'));
 // MODES. Each mode is its own built page, so choosing one is a navigation and
@@ -5738,10 +5683,12 @@ if (typeof window !== 'undefined') {
   };
 
   window.__demo = {
-    /** End the room as if it went well (or, with `fail`, ran out of shots). */
-    clear(fail = false) {
+    /** End the room as if it went well (or, with `fail`, ran out of shots; with `weak`, every ball down short of the target). */
+    clear(fail = false, weak = false) {
       // A failed table is a weak one: short of its target, with no shots left.
-      const shots = fail
+      const shots = weak
+        ? [{ pts: 35, mult: 1 }, { pts: 25, mult: 1 }, { pts: 45, mult: 1 }]
+        : fail
         ? [{ pts: 35, mult: 2 }, { pts: 45, mult: 2 }]
         : [
             { pts: 35, mult: 3 },
@@ -5760,8 +5707,9 @@ if (typeof window !== 'undefined') {
         failRoom();
       } else {
         rules.ballsDown = rules.mission.rack;
-        rules.strokesUsed = 3;
-        rules.strokesLeft = 2;
+        rules.strokesUsed = weak ? 5 : 3;
+        rules.strokesLeft = weak ? 0 : 2;
+        if (weak) rules.orderBroken = true;
         completeRoom();
       }
     },

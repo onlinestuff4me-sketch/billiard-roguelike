@@ -248,6 +248,7 @@ console.log('\nfreeze frame charges\n');
   check(targetFor(8) > targetFor(1) * 2, 'and the target grows table by table', `${targetFor(1)} → ${targetFor(8)}`);
   r.roomScore = 1005;
   r.strokesLeft = 2;
+  r.ballsDown = r.mission.rack; // every ball down: the hearts are kept
   r.cash = 7;
   r.roomScore -= 2 * r.val('savedStroke'); // endRoom adds the saved shots back
   const res = r.endRoom();
@@ -265,7 +266,14 @@ console.log('\nfreeze frame charges\n');
   m.cash = 30;
   m.roomScore = 100;
   const miss = m.endRoom();
-  check(!miss.beaten && miss.lives === RULES.lives.start - 1, 'missing the target costs a life');
+  check(!miss.beaten && miss.lives === RULES.lives.start - 1, 'balls left standing cost a heart');
+  // (round 14) every ball down keeps your hearts, even short of the target
+  const k = fresh();
+  k.strokesLeft = 0;
+  k.roomScore = 100;
+  k.ballsDown = k.mission.rack;
+  const kept = k.endRoom();
+  check(!kept.beaten && kept.filled && kept.lives === RULES.lives.start, 'every ball down keeps your hearts, even short of the target');
   check(miss.payout.length === 1 && miss.payout[0].id === 'interest' && miss.payout[0].amount === RULES.cash.interestCap, 'and pays only interest, capped', JSON.stringify(miss.payout));
   check(m.gainLife() && m.lives === RULES.lives.start && !m.gainLife(), 'an extra life refills one, never past the cap');
 }

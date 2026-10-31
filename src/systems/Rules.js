@@ -272,7 +272,13 @@ export class Rules {
     const earned = payout.reduce((n, p) => n + p.amount, 0);
     this.cash += earned;
     const livesFrom = this.lives;
-    if (!beaten) this.lives = Math.max(0, this.lives - 1);
+    // A HEART IS LOST FOR BALLS LEFT STANDING (round 14, from review: "the
+    // criteria for losing a life must be simpler and easier to control than
+    // points"). Every ball down keeps your hearts, whatever the score; the
+    // target only decides points and cash. A ball out of turn comes back, so
+    // a table whose order is prescribed is only filled in that order.
+    const filled = this.filled;
+    if (!filled) this.lives = Math.max(0, this.lives - 1);
     // Once the room is banked, `roomScore` is already inside `runScore`. The
     // HUD adds the two together while a room is live, so it has to be told to
     // stop — otherwise the running total doubles the instant a room ends.
@@ -287,6 +293,7 @@ export class Rules {
       runScore: this.runScore,
       target: this.target,
       beaten,
+      filled,
       payout,
       earned,
       cashFrom,
