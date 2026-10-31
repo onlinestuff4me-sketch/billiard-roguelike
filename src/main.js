@@ -2857,7 +2857,10 @@ function spawnZ() {
  * the mission — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
-  hud.holdAchievements(false);
+  // an achievement held through the score screen and the shop shows once the
+  // table is in play: after its card when it has one (round 12: it sat on
+  // the card), straight away when not
+  const release = () => hud.holdAchievements(false);
   // EVERY ONE OF THESE INTRODUCES A RULE, so every one of them waits to be
   // read. They are not reports on something the player just watched; they are
   // the terms of the room, and a rule that scrolled past unread is a rule the
@@ -2868,11 +2871,11 @@ function showRoomBanner() {
   const t = rooms.authored;
   // Not behind the title screen: the boot racks Table 1 under the menu, and a
   // card there would sit under it with a Play button of its own.
-  if (t?.intro && menuOpen) return;
+  if (t?.intro && menuOpen) return release();
   if (t?.intro && game.skipIntroCard) {
     game.skipIntroCard = false;
     hud.setRule(t.name, true);
-    return;
+    return release();
   }
   if (t?.intro) {
     hud.setRule(null);
@@ -2892,9 +2895,11 @@ function showRoomBanner() {
       .then(() => {
         game.introUp = false;
         hud.setRule(t.name, true);
+        release();
       });
     return;
   }
+  release();
   const lesson = TUTORIAL.lessons[game.level];
   if (lesson) {
     hud.showBanner(lesson.title, lesson.sub, HOLD);

@@ -1717,9 +1717,9 @@ export class Moments {
     el('small', '', num).textContent = 'Table';
     const digits = el('div', 'mo-digits', num);
     const oldN = el('b', 'old', digits);
-    oldN.textContent = String(from).padStart(2, '0');
+    oldN.textContent = String(from);
     const newN = el('b', 'new', digits);
-    newN.textContent = String(to).padStart(2, '0');
+    newN.textContent = String(to);
     const note = this._note ? el('em', '', num) : null;
     if (note) {
       note.textContent = this._note;
