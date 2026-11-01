@@ -479,7 +479,12 @@ export class Moments {
           }
           acts.dataset.picked = '1';
           b.classList.add('picked');
-          a.pick();
+          // an action can be called off (a dialog answered No): the buttons wake up again
+          Promise.resolve(a.pick()).then((went) => {
+            if (went !== false) return;
+            delete acts.dataset.picked;
+            b.classList.remove('picked');
+          });
         });
         this.anim(b, [{ transform: 'translateY(18px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
       });
@@ -506,6 +511,47 @@ export class Moments {
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+  }
+
+  /**
+   * ARE YOU SURE (round 17, from review): a question over everything, with
+   * Yes and No and a box to stop asking. Resolves { yes, dontAsk }.
+   */
+  confirm({ title, text, yes = 'Yes', no = 'No', dontAskLabel = 'Don’t ask me again' }) {
+    return new Promise((resolve) => {
+      const veil = el('div', 'mo-confirm', this.root);
+      veil.setAttribute('role', 'dialog');
+      veil.setAttribute('aria-modal', 'true');
+      const box = el('div', 'mo-confirm-box', veil);
+      const h = el('div', 'mo-confirm-title', box);
+      h.textContent = title;
+      h.id = 'mo-confirm-title';
+      veil.setAttribute('aria-labelledby', h.id);
+      el('p', 'mo-confirm-text', box).textContent = text;
+      const label = el('label', 'mo-confirm-check', box);
+      const check = el('input', '', label);
+      check.type = 'checkbox';
+      el('span', '', label).textContent = dontAskLabel;
+      const row = el('div', 'mo-confirm-acts', box);
+      const noB = el('button', 'mo-runbtn primary', row);
+      noB.type = 'button';
+      noB.textContent = no;
+      const yesB = el('button', 'mo-runbtn danger', row);
+      yesB.type = 'button';
+      yesB.textContent = yes;
+      // taps stay in the dialog; the checkbox still works
+      for (const type of ['pointerdown', 'pointerup']) veil.addEventListener(type, (e) => e.stopPropagation());
+      const done = (yesPicked) => {
+        const dontAsk = check.checked;
+        this.anim(veil, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 }).then(() => veil.remove());
+        resolve({ yes: yesPicked, dontAsk });
+      };
+      noB.addEventListener('click', (e) => { e.preventDefault(); done(false); });
+      yesB.addEventListener('click', (e) => { e.preventDefault(); done(true); });
+      this.anim(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      this.anim(box, [{ transform: 'translateY(12px) scale(0.96)' }, { transform: 'none' }], { duration: 220, easing: OUT });
+      noB.focus({ preventScroll: true });
+    });
   }
 
   /**

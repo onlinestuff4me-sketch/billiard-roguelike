@@ -2220,6 +2220,39 @@ function runFinale() {
   });
 }
 
+/**
+ * QUIT RUN (round 17, from review): a dialog asks first, unless the player
+ * ticked "Don't ask me again". Returns false when they stay.
+ */
+const QUIT_ASK_KEY = 'lightline-quit-noask-v1';
+async function quitRun() {
+  let ask = true;
+  try {
+    ask = localStorage.getItem(QUIT_ASK_KEY) !== '1';
+  } catch {
+    /* private mode: always ask */
+  }
+  if (ask) {
+    const r = await moments.confirm({
+      title: 'Quit this run?',
+      text: 'You’ll go back to the main menu and lose this run’s progress.',
+      yes: 'Yes, quit',
+      no: 'No, keep playing'
+    });
+    if (r.dontAsk) {
+      try {
+        localStorage.setItem(QUIT_ASK_KEY, '1');
+      } catch {
+        /* private mode */
+      }
+    }
+    if (!r.yes) return false;
+  }
+  clearRun();
+  leaveRunEnd(goHome);
+  return true;
+}
+
 /** The same table again, a fresh rack: a run goes on only past a cleared table. */
 function retryTable() {
   game.introUp = false;
@@ -2276,14 +2309,7 @@ function showRoomResult(data, shownRun) {
       // ends the run (asking once) and goes home
       actions: [
         { name: 'Try again', detail: `Table ${game.level}`, primary: true, pick: retryTable },
-        {
-          name: 'Quit run',
-          confirm: 'Tap again to end the run',
-          pick: () => {
-            clearRun();
-            leaveRunEnd(goHome);
-          }
-        }
+        { name: 'Quit run', pick: quitRun }
       ],
       nextLabel: 'Clear it to go on'
     };
@@ -5385,6 +5411,8 @@ function resetFirstTime() {
   Tutorial.reset();
   try {
     for (const t of Object.values(TEACH)) localStorage.removeItem(t.key);
+    // and Quit run asks again (round 17)
+    localStorage.removeItem(QUIT_ASK_KEY);
   } catch {
     /* private mode */
   }

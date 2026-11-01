@@ -296,7 +296,10 @@ the next table only past a **cleared** table, every ball down within its
 shots. A table left with balls on it costs a heart and is played again, a
 fresh rack, from **Try again** under its result ("Clear it to go on"; round
 16: the one big button, with the play triangle, and under it a quieter **Quit
-run** that asks once, "Tap again to end the run", then goes home); its
+run**: round 17, a dialog asks "Quit this run? You'll go back to the main
+menu and lose this run's progress." with **No, keep playing**, **Yes, quit**
+and a "Don't ask me again" box, `lightline-quit-noask-v1`, which Replay
+tutorial clears); its
 points don't bank and it pays nothing. Out of hearts, the run is over.
 
 **A HEART IS LOST FOR BALLS LEFT STANDING** (round 14, from review: "the
