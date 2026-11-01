@@ -2269,7 +2269,24 @@ function showRoomResult(data, shownRun) {
   // CLEAR IT TO GO ON (round 15, from review): balls left cost a heart and
   // the same table is played again, a fresh rack, until it is cleared
   if (!game.replay && !data.filled && data.lives > 0) {
-    data = { ...data, choices: [{ name: 'Try again', detail: `Table ${game.level}`, color: '#22e8ff', pick: retryTable }], nextLabel: 'Clear it to go on' };
+    data = {
+      ...data,
+      choices: [],
+      // (round 16) Try again is the one big button; Quit run, smaller,
+      // ends the run (asking once) and goes home
+      actions: [
+        { name: 'Try again', detail: `Table ${game.level}`, primary: true, pick: retryTable },
+        {
+          name: 'Quit run',
+          confirm: 'Tap again to end the run',
+          pick: () => {
+            clearRun();
+            leaveRunEnd(goHome);
+          }
+        }
+      ],
+      nextLabel: 'Clear it to go on'
+    };
   }
   if (game.replay) {
     const n = game.replay;
@@ -2297,6 +2314,7 @@ function showRoomResult(data, shownRun) {
       // a replay ends on its own choices; a table left with balls on it is
       // played again (round 15); a cleared one goes on to the shop
       choices: game.replay || !data.filled ? data.choices : [],
+      actions: data.actions,
       shownRun,
       onTotal: () => (game.scoreHold = null),
       // the hearts let go here too: a table beaten loses none, and a heart

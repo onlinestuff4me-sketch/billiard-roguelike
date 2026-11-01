@@ -294,7 +294,9 @@ reached it (`lightline-reached-v1`), and only then.
 **CLEAR IT TO GO ON** (round 15, from review): a run goes on to the shop and
 the next table only past a **cleared** table, every ball down within its
 shots. A table left with balls on it costs a heart and is played again, a
-fresh rack, from **Try again** under its result ("Clear it to go on"); its
+fresh rack, from **Try again** under its result ("Clear it to go on"; round
+16: the one big button, with the play triangle, and under it a quieter **Quit
+run** that asks once, "Tap again to end the run", then goes home); its
 points don't bank and it pays nothing. Out of hearts, the run is over.
 
 **A HEART IS LOST FOR BALLS LEFT STANDING** (round 14, from review: "the

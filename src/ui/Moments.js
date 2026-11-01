@@ -455,6 +455,37 @@ export class Moments {
       next.style.bottom = 'auto';
     }
     el('div', 'mo-next-label', next).textContent = d.nextLabel || (d.choices?.length > 1 ? 'Pick your next table' : 'Next table');
+    // BIG ACTIONS (round 16): one main button, big, with the play triangle,
+    // and quieter ones under it; one that asks first takes a second tap
+    if (d.actions) {
+      const acts = el('div', 'mo-runacts in-next', next);
+      d.actions.forEach((a, i) => {
+        const b = el('button', `mo-runbtn${a.primary ? ' primary' : ''}`, acts);
+        b.type = 'button';
+        const text = el('span', 'mo-runbtn-text', b);
+        const name = el('span', 'mo-runbtn-name', text);
+        name.textContent = a.name;
+        if (a.detail) el('span', 'mo-runbtn-detail', text).textContent = a.detail;
+        if (a.primary) el('span', 'mo-runbtn-go', b).innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+        absorb(b);
+        b.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!live() || acts.dataset.picked) return;
+          if (a.confirm && !b.classList.contains('confirm')) {
+            b.classList.add('confirm');
+            name.textContent = a.confirm;
+            return;
+          }
+          acts.dataset.picked = '1';
+          b.classList.add('picked');
+          a.pick();
+        });
+        this.anim(b, [{ transform: 'translateY(18px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
+      });
+      this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+      return;
+    }
     const list = el('div', 'mo-choices', next);
     (d.choices || []).forEach((choice, i) => {
       const button = el('button', 'mo-choice', list);
