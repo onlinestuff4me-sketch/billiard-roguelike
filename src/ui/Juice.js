@@ -184,6 +184,51 @@ export class Juice {
     }
   }
 
+  /**
+   * A Bomb Shot goes off: a fireball the size of the blast, a ring racing out
+   * to its edge, and shards. Drawn on the top layer so the ability's tint
+   * never swallows it. Always on while Bomb Shot is on trial.
+   */
+  blast({ x, z, radius }) {
+    const p = this.toPx(x, z);
+    const r = Math.abs(this.toPx(x + radius, z).x - p.x);
+    const box = el('div', 'jc-burst jc-blast', this.root);
+    box.style.left = `${p.x}px`;
+    box.style.top = `${p.y}px`;
+    const ball = el('div', 'jc-core', box);
+    ball.style.width = ball.style.height = `${r * 2}px`;
+    ball.style.background = 'radial-gradient(circle, #ffffff 0%, #ffe2a8 18%, #ff8a1e 42%, rgba(255, 60, 20, 0.5) 62%, transparent 72%)';
+    this.anim(ball, [
+      { transform: 'translate(-50%,-50%) scale(0.15)', opacity: 1 },
+      { transform: 'translate(-50%,-50%) scale(1)', opacity: 0.95, offset: 0.3 },
+      { transform: 'translate(-50%,-50%) scale(1.15)', opacity: 0 }
+    ], { duration: 620, easing: OUT });
+    const ring = el('div', 'jc-blast-ring', box);
+    ring.style.width = ring.style.height = `${r * 2}px`;
+    this.anim(ring, [
+      { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 1, borderWidth: '10px' },
+      { transform: 'translate(-50%,-50%) scale(1.35)', opacity: 0, borderWidth: '1px' }
+    ], { duration: 520, easing: OUT });
+    if (!this.reducedMotion) {
+      const n = 22;
+      for (let i = 0; i < n; i++) {
+        const line = el('i', '', box);
+        const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
+        const len = r * (0.5 + Math.random() * 0.6);
+        line.style.width = `${len}px`;
+        line.style.height = `${2 + Math.random() * 3}px`;
+        line.style.background = `linear-gradient(90deg, transparent, ${i % 3 ? ORANGE : '#ffffff'})`;
+        const deg = (a * 180) / Math.PI;
+        this.anim(line, [
+          { transform: `rotate(${deg}deg) translateX(${r * 0.2}px) scaleX(0.2)`, opacity: 1 },
+          { transform: `rotate(${deg}deg) translateX(${r * 0.7}px) scaleX(1)`, opacity: 1, offset: 0.4 },
+          { transform: `rotate(${deg}deg) translateX(${r * 1.3}px) scaleX(0.3)`, opacity: 0 }
+        ], { duration: 560, easing: OUT });
+      }
+    }
+    setTimeout(() => box.remove(), 800);
+  }
+
   /* ---------------------------------------------------------------- *
    * 2. POWER TRAIL
    * ---------------------------------------------------------------- */

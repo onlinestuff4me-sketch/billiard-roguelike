@@ -2003,6 +2003,7 @@ game.on = {
     fx.shockwave(x, z, PALETTE.scoreMult, radius * 1.4, 0.55);
     fx.shockwave(x, z, '#ffffff', radius * 0.9, 0.35);
     fx.burst(x, z, 46, PALETTE.scoreMultHot, 18, 1.2);
+    juice.blast({ x, z, radius });
     juice.flash(0.5, 140);
     audio.playerDeath?.();
   },
