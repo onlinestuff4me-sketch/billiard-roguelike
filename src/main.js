@@ -1248,13 +1248,23 @@ function juiceStrike(aim, shown) {
 let cutInQueue = Promise.resolve();
 function abilityCutIn(opts) {
   if (!juice.on('cutin')) return;
-  const held = hud._achHold;
-  if (!held) hud.holdAchievements(true);
-  cutInQueue = cutInQueue
-    .then(() => juice.cutIn(opts))
-    .then(() => {
-      if (!held && !menuOpen && game.state === 'playing' && !game.introUp) hud.holdAchievements(false);
-    });
+  if (!hud._achHold) {
+    hud.holdAchievements(true);
+    game.achHeldByCutIn = true;
+  }
+  cutInQueue = cutInQueue.then(() => juice.cutIn(opts)).then(releaseCutInHold);
+}
+/**
+ * Let a held achievement show once the cut-in is gone, but not over a
+ * freeze's own words (FREEZE FRAME · re-aim from here): then it waits for
+ * the stroke to resume (resumeStroke).
+ */
+function releaseCutInHold() {
+  if (!game.achHeldByCutIn) return;
+  if (menuOpen || game.state !== 'playing' || game.introUp) return;
+  if (game.midStroke && game.phase === 'aim') return;
+  game.achHeldByCutIn = false;
+  hud.holdAchievements(false);
 }
 
 /**
@@ -1532,6 +1542,7 @@ function beginStroke() {
 function resumeStroke() {
   game.phase = 'resolve';
   game.settleTimer = 0;
+  releaseCutInHold();
 }
 
 /**
@@ -2454,6 +2465,7 @@ function showRoomResult(data, shownRun) {
     // AN ACHIEVEMENT NEVER SITS ON THE SCORE SCREEN (from review): the one
     // up fades as the screen comes in, and any earned from here on (the
     // table's result, a buy in the shop) wait for the next table to open
+    game.achHeldByCutIn = false;
     hud.holdAchievements(true);
     moments.clear({
       ...data,
@@ -3147,6 +3159,7 @@ function resetRunState() {
   game.replay = null;
   hud.setSingle(null);
   game.skipIntroCard = false;
+  game.achHeldByCutIn = false;
   introSeq++;
   boons.reset();
   boons.recompute();
