@@ -662,8 +662,10 @@ top-down camera, eased on real time); the aim is never rotated.
 ### 8.5d Shot abilities (on trial, juice batch 2)
 
 What a shot can carry besides a heading and a power (`SHOT` in config,
-`game.shot`, set from the **shot tray** above the shots counter,
-`src/ui/ShotTray.js`). Each is played by the same physics the aim preview
+`game.shot`, set from the **shot tray**, `src/ui/ShotTray.js`). The tray
+sits in the bottom band between Shots and Freeze frame, never on the felt
+(it first sat over the bottom-left pocket), and steps away while the balls
+roll so the points boxes have the spot. Each is played by the same physics the aim preview
 plays, so the drawn line still shows exactly what happens (checked: 1,008
 real shots across plain, curve, follow, draw, side and bomb, all as drawn).
 
@@ -676,9 +678,13 @@ real shots across plain, curve, follow, draw, side and bomb, all as drawn).
   appears; the cue ball's heading turns as it rolls, strongest at first,
   until it touches anything. The preview draws the bending leg as one line.
 - **Bomb Shot** (rare $8, 1 charge a table): the first ball the cue ball
-  hits blows up, throwing every ball within 6.5 units outward.
+  hits blows up, throwing every ball within 6.5 units outward. The blast
+  is a fireball the size of its reach, a ring and shards, drawn on the
+  top layer: the 3D burst alone was lost under the orange tint.
 
 A curve or bomb shot plays with the ability tint and its cut-in (§8.5c).
+Cut-ins play one at a time, and an achievement earned by the same act (the
+first Freeze) waits until its cut-in has gone, so the two never stack.
 
 ### 8.6 Smaller beats (today's treatment)
 
