@@ -37,6 +37,14 @@ export class Engine {
      */
     this.presentScale = 1;
     this.presentTarget = 1;
+    /**
+     * FAST-FORWARD, a third factor: once the last ball is down and only the
+     * cue ball is rolling, the table runs quicker to its stop. The physics
+     * still takes the same fixed steps, so nothing it does changes, only the
+     * wait before the clear.
+     */
+    this.rush = 1;
+    this.rushTarget = 1;
 
     /** Real-time seconds left of hit-stop. */
     this.hitStopRemaining = 0;
@@ -81,6 +89,11 @@ export class Engine {
   /** Set the presenter's target speed (1 = normal). Eased, never snapped, except into a stop. */
   setPresentScale(scale) {
     this.presentTarget = Math.max(0, scale);
+  }
+
+  /** Fast-forward the table (1 is normal). */
+  setRush(scale) {
+    this.rushTarget = Math.max(1, scale);
   }
 
   get inBulletTime() {
@@ -142,6 +155,8 @@ export class Engine {
     this.hitStopRemaining = 0;
     this.presentScale = 1;
     this.presentTarget = 1;
+    this.rush = 1;
+    this.rushTarget = 1;
     this.camera.position.set(this.basePosition.x, this.basePosition.y, this.basePosition.z);
     this.view.x = 0;
     this.view.z = 0;
@@ -230,7 +245,13 @@ export class Engine {
       if (Math.abs(this.presentScale - this.presentTarget) < 0.003) this.presentScale = this.presentTarget;
     }
 
-    const dt = rawDt * this.timeScale * this.presentScale;
+    if (this.rush !== this.rushTarget) {
+      const k = 1 - Math.exp(-rawDt / 0.35);
+      this.rush += (this.rushTarget - this.rush) * k;
+      if (Math.abs(this.rush - this.rushTarget) < 0.01) this.rush = this.rushTarget;
+    }
+
+    const dt = rawDt * this.timeScale * this.presentScale * this.rush;
     this.elapsed += dt;
     return { dt, rawDt, frozen: false };
   }

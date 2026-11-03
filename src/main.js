@@ -6262,6 +6262,10 @@ function frame(now) {
   const rawFrame = (now - last) / 1000;
   last = now;
 
+  // THE LAST BALL IS DOWN: only the cue ball rolls on, so the table runs at
+  // 3x to its stop (Engine.rush). Same fixed steps, so the same outcome (a
+  // late scratch is still a scratch), just sooner.
+  engine.setRush(game.midStroke && game.phase === 'resolve' && !game.enemies.some((b) => b.alive && b.number > 0) ? 3 : 1);
   const { dt, rawDt } = engine.update(rawFrame);
   gridUniforms.uTime.value += rawDt;
   input.update(rawDt);
