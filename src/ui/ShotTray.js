@@ -1,12 +1,14 @@
 /**
  * ShotTray.js — what a shot can carry (juice batch 2, on trial).
  *
- * A small tray above the shots counter, shown only for what the run owns:
+ * A small tray in the bottom band, between Shots and Freeze frame, shown only
+ * for what the run owns and only while aiming (the points boxes take that spot
+ * once the balls roll):
  *
  *   SPIN    a cue-ball face; tap or drag the dot to set follow (top), draw
  *           (bottom) and side spin (left, right). Resets after each shot.
  *   CURVE   arms a Curve Shot (charges per table); a bend bar appears under
- *           the tray: drag it left or right for how much the shot curves.
+ *           the buttons: drag it left or right for how much the shot curves.
  *   BOMB    arms a Bomb Shot (charges per table): the first ball hit blows up.
  *
  * The tray only sets `game.shot`; the physics and the aim preview read it
@@ -33,9 +35,10 @@ export class ShotTray {
     this.root = el('div', 'shot-tray', layer);
     const stop = (e) => e.stopPropagation();
     this.root.addEventListener('pointerdown', stop);
+    this.row = el('div', 'st-row', this.root);
 
     // SPIN: the cue ball's face, and the dot where the cue meets it
-    this.spin = el('div', 'st-spin', this.root);
+    this.spin = el('div', 'st-spin', this.row);
     this.spin.setAttribute('role', 'slider');
     this.spin.setAttribute('aria-label', 'Spin');
     el('i', 'st-cross', this.spin);
@@ -67,11 +70,13 @@ export class ShotTray {
     this.curveBtn = this._ability('curve', 'Curve');
     this.bombBtn = this._ability('bomb', 'Bomb');
 
-    // CURVE'S BEND: a bar to drag left or right
-    this.bend = el('div', 'st-bend', layer);
-    this.bend.addEventListener('pointerdown', stop);
-    el('small', '', this.bend).textContent = 'Bend';
+    // CURVE'S BEND: a bar to drag left or right, under the buttons
+    this.bend = el('div', 'st-bend', this.root);
     this.bendTrack = el('div', 'st-track', this.bend);
+    this.bendTrack.setAttribute('role', 'slider');
+    this.bendTrack.setAttribute('aria-label', 'Bend');
+    el('small', 'st-l', this.bendTrack).textContent = '◀';
+    el('small', 'st-r', this.bendTrack).textContent = '▶';
     el('i', 'st-mid', this.bendTrack);
     this.bendKnob = el('b', 'st-knob', this.bendTrack);
     const setBend = (e) => {
@@ -95,7 +100,7 @@ export class ShotTray {
   }
 
   _ability(kind, label) {
-    const b = el('button', `st-ab ${kind}`, this.root);
+    const b = el('button', `st-ab ${kind}`, this.row);
     b.type = 'button';
     b.innerHTML = `${ICON[kind]}<small>${label}</small><em></em>`;
     b.addEventListener('click', (e) => {
@@ -119,6 +124,13 @@ export class ShotTray {
     this.onChange?.();
   }
 
+  /** Shown only while a shot is being lined up. */
+  setAiming(on) {
+    if (this._aiming === on) return;
+    this._aiming = on;
+    this.root.classList.toggle('away', !on);
+  }
+
   /** Show what the run owns; mark what is armed. */
   paint() {
     const g = this.game;
@@ -138,7 +150,7 @@ export class ShotTray {
     this.bombBtn.classList.toggle('armed', !!s.bomb);
     this.bombBtn.disabled = !s.bomb && !(a.bomb > 0);
     this.bombBtn.querySelector('em').textContent = `${a.bomb || 0}`;
-    this.bend.hidden = this.root.hidden || !s.curve;
+    this.bend.hidden = !s.curve;
     this.bendKnob.style.left = `${50 + (s.curve || 0) * 50}%`;
   }
 }

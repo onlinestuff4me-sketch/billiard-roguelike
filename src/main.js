@@ -6262,6 +6262,7 @@ function frame(now) {
   feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.practice && !game.headless && game.state !== 'dead');
   feed.update(rawDt);
   fitScoreFeed();
+  tray.setAiming(game.state === 'playing' && game.phase === 'aim' && !game.introUp && !menuOpen);
   juice.update(dt, rawDt, { cue: game.phase === 'resolve' && player.alive ? player : null, now: performance.now() / 1000 });
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
