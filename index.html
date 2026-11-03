@@ -2626,6 +2626,27 @@
       .jc-finish.slam .jc-finish-word { text-shadow: 4px 4px 0 #ff8a1e, 0 0 28px #22e8ff; }
       .jc-finish-sub { position: absolute; left: 50%; top: 55%; padding: 6px 22px; background: #e9f8ff; color: #02050b; font-family: var(--font-display); font-size: 15px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; }
       @media (prefers-reduced-motion: reduce) { .jc-flash { display: none; } }
+      /* SHOT TRAY (juice batch 2): spin, curve, bomb, above the shots counter */
+      .shot-tray { position: absolute; left: var(--hud-pad); bottom: calc(var(--hud-pad) + 74px); z-index: 9; display: flex; align-items: flex-end; gap: 8px; pointer-events: auto; }
+      .shot-tray[hidden], .st-bend[hidden], .shot-tray [hidden] { display: none; }
+      .st-spin { position: relative; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 38% 34%, #ffffff, #cfe9f3 60%, #9cc1cf); box-shadow: 0 0 0 2px rgba(34, 232, 255, 0.5), 0 0 12px rgba(34, 232, 255, 0.35); touch-action: none; cursor: pointer; }
+      .st-spin.on { box-shadow: 0 0 0 2px #22e8ff, 0 0 16px rgba(34, 232, 255, 0.7); }
+      .st-cross { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 49%, rgba(2, 5, 11, 0.25) 49% 51%, transparent 51%), linear-gradient(0deg, transparent 49%, rgba(2, 5, 11, 0.25) 49% 51%, transparent 51%); border-radius: 50%; }
+      .st-dot { position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #ff2e7e; box-shadow: 0 0 0 2px #ffffff, 0 0 8px #ff2e7e; }
+      .st-label { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+      .st-ab { position: relative; display: grid; justify-items: center; gap: 1px; width: 52px; height: 52px; padding: 6px 0 0; border-radius: 12px; border: 1.5px solid rgba(34, 232, 255, 0.45); background: rgba(8, 18, 30, 0.85); color: #22e8ff; font: inherit; cursor: pointer; }
+      .st-ab svg { width: 22px; height: 22px; }
+      .st-ab small { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+      .st-ab em { position: absolute; right: -6px; top: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #e9f8ff; color: #02050b; font: 700 11px/18px var(--font-num); font-style: normal; text-align: center; }
+      .st-ab.bomb { color: #ff8a1e; border-color: rgba(255, 138, 30, 0.5); }
+      .st-ab.armed { color: #02050b; background: #22e8ff; box-shadow: 0 0 16px rgba(34, 232, 255, 0.7); }
+      .st-ab.bomb.armed { background: #ff8a1e; box-shadow: 0 0 16px rgba(255, 138, 30, 0.7); }
+      .st-ab:disabled { opacity: 0.35; cursor: default; }
+      .st-bend { position: absolute; left: 50%; bottom: calc(var(--hud-pad) + 74px); transform: translateX(-12%); z-index: 9; width: 46%; display: grid; gap: 4px; pointer-events: auto; }
+      .st-bend small { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #22e8ff; text-align: center; }
+      .st-track { position: relative; height: 26px; border-radius: 13px; background: rgba(8, 18, 30, 0.9); border: 1.5px solid rgba(34, 232, 255, 0.55); touch-action: none; cursor: ew-resize; }
+      .st-mid { position: absolute; left: 50%; top: 4px; bottom: 4px; width: 1.5px; background: rgba(34, 232, 255, 0.35); }
+      .st-knob { position: absolute; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #22e8ff; box-shadow: 0 0 10px #22e8ff; }
 
       /* ---------------- TYPE (Lightline) ----------------
          Display face for names, number face for figures. Kept in one block so

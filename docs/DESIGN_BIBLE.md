@@ -659,6 +659,27 @@ the aim or the score.
 Camera moves go through `engine.view` (offsets and a zoom over the fixed
 top-down camera, eased on real time); the aim is never rotated.
 
+### 8.5d Shot abilities (on trial, juice batch 2)
+
+What a shot can carry besides a heading and a power (`SHOT` in config,
+`game.shot`, set from the **shot tray** above the shots counter,
+`src/ui/ShotTray.js`). Each is played by the same physics the aim preview
+plays, so the drawn line still shows exactly what happens (checked: 1,008
+real shots across plain, curve, follow, draw, side and bomb, all as drawn).
+
+- **Spin** (shop card, rare $8): a cue-ball face; tap or drag the dot. Top
+  is follow, bottom is draw: after the first ball, the cue ball runs on or
+  comes back along the shot's line. Left and right are side spin: off each
+  rail the ball is turned by up to 16°, fading by a third a rail. It resets
+  after each shot.
+- **Curve Shot** (rare $9, 2 charges a table): arm it and a Bend bar
+  appears; the cue ball's heading turns as it rolls, strongest at first,
+  until it touches anything. The preview draws the bending leg as one line.
+- **Bomb Shot** (rare $8, 1 charge a table): the first ball the cue ball
+  hits blows up, throwing every ball within 6.5 units outward.
+
+A curve or bomb shot plays with the ability tint and its cut-in (§8.5c).
+
 ### 8.6 Smaller beats (today's treatment)
 
 | Beat | Treatment |

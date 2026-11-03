@@ -27,6 +27,7 @@ import {
   RENDER,
   TIME,
   TRAJECTORY,
+  SHOT,
   FOCUS,
   PLAYER,
   PHYSICS,
@@ -56,6 +57,7 @@ import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
 import { Juice } from './ui/Juice.js';
+import { ShotTray } from './ui/ShotTray.js';
 import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
@@ -1008,6 +1010,10 @@ player.aimRenderer.onSpark = (x, z) => fx.burst(x, z, 2, Math.random() < 0.5 ? P
 
 /** The shared context every system reads from. */
 const game = {
+  // WHAT THE NEXT SHOT CARRIES (SHOT in config; set by the shot tray)
+  shot: { curve: 0, follow: 0, side: 0, bomb: false },
+  // what the run owns, and this table's charges
+  abilities: { spin: false, curveOwned: false, bombOwned: false, curve: 0, bomb: 0 },
   scene,
   camera,
   engine,
@@ -1071,6 +1077,11 @@ game.ballInk = PALETTE.ballInk;
 // A handle for the console and for automated smoke runs. Read-only in spirit:
 // nothing in the game reads it back.
 if (typeof window !== 'undefined') window.__game = game;
+
+/** The shot tray: spin, Curve Shot, Bomb Shot (juice batch 2). */
+const tray = new ShotTray(uiLayer, game, () => {
+  game.aimDirty = true;
+});
 
 const rooms = new RoomManager(game, {
   onRoomClear: handleRoomClear,
@@ -1227,6 +1238,36 @@ function juiceStrike(aim, shown) {
     juice.startTrail(power, maxed);
     if (maxed) juice.slam('Full power!!');
   }, at);
+}
+
+/**
+ * A SHOT'S MODIFIERS ARE SPENT AS IT IS STRUCK: a curve or a bomb uses a
+ * charge (and says so, with its cut-in), and spin goes back to center.
+ */
+function spendShotMods() {
+  const s = game.shot;
+  const a = game.abilities;
+  if (s.curve) {
+    a.curve = Math.max(0, a.curve - 1);
+    juice.tint(true, '#22e8ff');
+    juice.cutIn({ name: 'Curve shot!', line: '“Bend to my will.”', color: '#22e8ff', icon: 'curve' });
+  }
+  if (s.bomb) {
+    a.bomb = Math.max(0, a.bomb - 1);
+    juice.tint(true, '#ff8a1e');
+    juice.cutIn({ name: 'Bomb shot!', line: '“I don’t aim. I smash.”', color: '#ff8a1e', icon: 'bomb' });
+  }
+  game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
+  tray.paint();
+}
+
+/** A table's ability charges, refilled as it opens. */
+function refillAbilities() {
+  const a = game.abilities;
+  a.curve = a.curveOwned ? SHOT.curveCharges : 0;
+  a.bomb = a.bombOwned ? SHOT.bombCharges : 0;
+  game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
+  tray.paint();
 }
 
 /**
@@ -1935,6 +1976,18 @@ game.on = {
     }
 
     removeBall(ball, pocket);
+  },
+
+  /** A Bomb Shot goes off (PhysicsSystem.blast): light, a boom, and a shove. */
+  bomb({ x, z, radius }) {
+    engine.shake(22);
+    engine.zoomPunch(FEEL.zoomPunch * 2);
+    gridPulse(x, z, 1.4);
+    fx.shockwave(x, z, PALETTE.scoreMult, radius * 1.4, 0.55);
+    fx.shockwave(x, z, '#ffffff', radius * 0.9, 0.35);
+    fx.burst(x, z, 46, PALETTE.scoreMultHot, 18, 1.2);
+    juice.flash(0.5, 140);
+    audio.playerDeath?.();
   },
 
   /** The cue ball down a pocket. The stroke pays nothing. */
@@ -2768,6 +2821,7 @@ const strictOrder = {
  * first meet it.
  */
 function beginMission() {
+  refillAbilities();
   // The room's own mission (an authored table's rack, shots and target, or
   // the ramp's), with the run's extra shots and the strict-order mode on top.
   rules.beginRoom(game.level, {
@@ -3065,6 +3119,8 @@ function tableCard(t, release) {
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
   endPractice();
+  game.abilities = { spin: false, curveOwned: false, bombOwned: false, curve: 0, bomb: 0 };
+  game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
   juice.release();
   juice.tint(false);
   game.replay = null;
@@ -4562,7 +4618,7 @@ function playAim(dir, power) {
   const paths = bodies.map((b) => ({ body: b, pts: [b.x, b.z], breaks: [], done: false, v0: Math.hypot(b.vx, b.vz) }));
   try {
     player.scratchGuard = 0;
-    player.launchMotion({ dirX: dir.x, dirZ: dir.z, power });
+    player.launchMotion({ dirX: dir.x, dirZ: dir.z, power, mods: shotMods() });
     let still = 0;
     const max = Math.ceil(RULES.strokeTimeout / SIM_H);
     for (; rec.steps < max; rec.steps++) {
@@ -4610,6 +4666,8 @@ function playAim(dir, power) {
 }
 
 /** A path's corners as the drawn segments: collinear runs merged, portal legs left out. */
+/** True while the shot being drawn curves (only then is a small turn a bend, not a rail). */
+let pathBend = false;
 function pathSegments(pts, breaks, from = 0, to = pts.length / 2 - 1) {
   const segs = [];
   let bounce = 0;
@@ -4640,8 +4698,11 @@ function pathSegments(pts, breaks, from = 0, to = pts.length / 2 - 1) {
       if (Math.abs(ux * dz - uz * dx) < 1e-6 && ux * dx + uz * dz > 0) continue;
       const cx = pts[(i - 1) * 2];
       const cz = pts[(i - 1) * 2 + 1];
-      segs.push({ ax, az, bx: cx, bz: cz, bounce, kind: 'rail' });
-      bounce += 1;
+      // A CURVE TURNS A LITTLE EVERY STEP (Curve Shot): that is one bending
+      // leg, not a rail per step. A rail turns it by far more than this.
+      const bend = pathBend && Math.abs(ux * dz - uz * dx) < 0.07 && ux * dx + uz * dz > 0;
+      segs.push({ ax, az, bx: cx, bz: cz, bounce, kind: bend ? 'curve' : 'rail' });
+      if (!bend) bounce += 1;
       ax = cx;
       az = cz;
     }
@@ -4678,6 +4739,7 @@ const segsLength = (segs) => segs.reduce((t, g) => t + Math.hypot(g.bx - g.ax, g
  */
 function simulateAim(dir, power) {
   const rec = playAim(dir, power);
+  pathBend = !!game.shot.curve;
   const [cue, ...balls] = rec.paths;
   const first = rec.cueHits[0] || null;
   const end = cue.pts.length / 2 - 1;
@@ -4689,7 +4751,7 @@ function simulateAim(dir, power) {
     segments: approach,
     hit: first ? { body: first.body, x: first.x, z: first.z, nx: first.nx, nz: first.nz, bounces: first.bounces } : null,
     caromDir: first ? { x: first.nx, z: first.nz } : null,
-    bounces: Math.max(0, approach.length - 1),
+    bounces: approach.length ? approach[approach.length - 1].bounce : 0,
     totalDistance: segsLength(approach),
     hitSpeed: first ? first.speed : null,
     endSpeed: first ? first.speed : 0,
@@ -4706,7 +4768,7 @@ function simulateAim(dir, power) {
       if (rec.scratch && !scratchedFirst) segments[segments.length - 1].kind = 'pocket';
       cuePath = {
         segments,
-        bounces: Math.max(0, segments.length - 1),
+        bounces: segments[segments.length - 1].bounce,
         portals: cue.breaks.filter((b) => b > split).length,
         pocket: rec.scratch && !scratchedFirst ? rec.scratch.pocket : null,
         hits: [],
@@ -4760,7 +4822,13 @@ let aimMemo = null;
 
 /** The table the shot is played from: where everything is and how it moves. */
 const tableKey = () =>
-  `${player.x},${player.z},${player.vx},${player.vz},${game.enemies.map((b) => (b.alive ? `${b.x},${b.z},${b.vx},${b.vz}` : '-')).join(';')}`;
+  `${player.x},${player.z},${player.vx},${player.vz},${game.enemies.map((b) => (b.alive ? `${b.x},${b.z},${b.vx},${b.vz}` : '-')).join(';')}|${shotMods().key}`;
+
+/** The modifiers the next shot carries, as the physics reads them. */
+function shotMods() {
+  const s = game.shot;
+  return { curve: s.curve || 0, follow: s.follow || 0, side: s.side || 0, bomb: !!s.bomb, key: `${s.curve || 0},${s.follow || 0},${s.side || 0},${s.bomb ? 1 : 0}` };
+}
 const aimKey = () => `${player.aimDir.x},${player.aimDir.z},${player.aimPower}|${tableKey()}`;
 
 function playedAim() {
@@ -4917,8 +4985,9 @@ const input = new InputManager(stage, {
       const turn = Math.acos(clamp((shown.dir.x * aim.dirX + shown.dir.z * aim.dirZ) / dl, -1, 1));
       if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
     }
-    player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : aim, game);
+    player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power, mods: shotMods() } : { ...aim, mods: shotMods() }, game);
     juiceStrike(aim, shown);
+    spendShotMods();
     // THE STICK GETS THERE FIRST. The table holds still for the few frames the
     // cue takes to snap into the ball, so the ball leaves when it is hit, not
     // when the thumb lets go.
@@ -5793,6 +5862,20 @@ if (typeof window !== 'undefined') {
     playShot: (deg, power) => {
       const th = (deg * Math.PI) / 180;
       return simulateAim({ x: Math.sin(th), z: -Math.cos(th) }, power).rec.steps;
+    },
+    /** Own the shot abilities (juice batch 2) for a capture: e.g. { spin: true, curve: true, bomb: true }. */
+    abilities(own = { spin: true, curve: true, bomb: true }) {
+      const a = game.abilities;
+      a.spin = !!own.spin;
+      a.curveOwned = !!own.curve;
+      a.bombOwned = !!own.bomb;
+      refillAbilities();
+    },
+    /** Arm the next shot: { curve, follow, side, bomb }. */
+    arm(mods) {
+      Object.assign(game.shot, mods);
+      tray.paint();
+      game.aimDirty = true;
     },
     /** Earn an achievement now, as play would. */
     unlock: (id) => achievements.unlock(id),

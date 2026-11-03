@@ -87,6 +87,36 @@ export const FOCUS = {
 /* ------------------------------------------------------------------ *
  * PLAYER — the cue ball
  * ------------------------------------------------------------------ */
+/**
+ * SHOT MODIFIERS (juice batch 2, on trial): what a shot can carry besides a
+ * heading and a power. All of them are played by the same physics the aim
+ * preview plays, so the drawn line still shows exactly what happens.
+ *
+ *   curve   Curve Shot: the cue ball's heading turns as it rolls, until it
+ *           touches anything (masse). -1..1, left to right.
+ *   spin    follow (top, +) or draw (back, -) after the first ball it hits,
+ *           and side spin (english) that bends it off each rail.
+ *   bomb    the first ball the cue ball hits blows up, throwing every ball
+ *           near it outward.
+ */
+export const SHOT = {
+  /** Turn rate of a full curve at the start, radians per second. */
+  curveRate: 1.6,
+  /** ...fading with this time constant (seconds), so the bend is strongest early. */
+  curveFade: 1.1,
+  /** Follow or draw: speed added along the shot's line after the first hit, as a share of the impact speed. */
+  follow: 0.55,
+  /** Side spin: degrees the cue ball is turned off a rail at full english; it fades a third each rail. */
+  sideDeg: 16,
+  sideFade: 0.62,
+  /** The blast: radius (table units) and the speed it gives a ball at its center. */
+  bombRadius: 6.5,
+  bombSpeed: 20,
+  /** Charges of each ability a table starts with, when owned. */
+  curveCharges: 2,
+  bombCharges: 1
+};
+
 export const PLAYER = {
   radius: 0.62,
   maxHp: 100,

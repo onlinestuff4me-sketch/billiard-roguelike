@@ -596,5 +596,7 @@ export class Juice {
 }
 
 const ICONS = {
+  curve: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 40c0-17 12-27 28-27" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><path d="M30 6l9 7-9 7" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  bomb: '<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="21" cy="28" r="14" fill="currentColor"/><path d="M30 16l6-6M36 10l3-3M38 15l4-1M33 6l1-4" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/></svg>',
   freeze: '<svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M24 4v40M6.7 14l34.6 20M6.7 34l34.6-20"/><path d="M18 8l6 5 6-5M18 40l6-5 6 5M5 21l8 0-2 7M43 27l-8 0 2-7M9 37l3-8 6 1M39 11l-3 8-6-1"/></g></svg>'
 };
