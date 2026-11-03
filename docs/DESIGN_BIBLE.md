@@ -636,10 +636,27 @@ number showing there all table long.
 ### 8.5c Juice (on trial, from four reference clips)
 
 Twelve big-moment effects from the reference clips, built as switchable
-versions in `src/ui/Juice.js` for review (`lightline-juice-v1`, a
+versions in `src/ui/Juice.js` for review (`lightline-juice-v2`, a
 {key: version} map; `off` turns one off). The clips are comic style; here
 the same beats are drawn in light. All presentation: none changes a shot,
 the aim or the score.
+
+**The picks (review round 1), now the defaults (`JUICE_DEFAULTS`):** the
+strike's lines on an ordinary shot and its flash at full power; the streak
+trail; the lean while charging and the push gathering over the last
+quarter; scanlines for Freeze and halftone dots for Curve and Bomb; the big
+slam; the panel cut-in; the slam finish. Off: pocket beam, charge glow, pull
+back, follow the last ball, banner sweep.
+
+- **A cut-in never covers the play.** It takes the top, the bottom or the
+  middle of the table, whichever is clear of the cue ball, the ball nearest
+  it and, on a shot just struck, the line the cue ball runs to its first hit.
+- **The finish carries its news.** What the clear earns (an achievement, the
+  Strict Order unlock) is stamped in under CLEAR!, one line after another,
+  instead of a banner or toast the slam would cover.
+- **The bomb is a fire front**, not a glow: a small flash at the ball hit,
+  then a ring of fire runs out to the blast's reach at the pace the balls are
+  thrown, flames on its edge, a wake behind it, embers past it.
 
 | Key | Moment | Versions |
 | --- | --- | --- |
