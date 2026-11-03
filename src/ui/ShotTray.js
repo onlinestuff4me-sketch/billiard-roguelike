@@ -7,8 +7,10 @@
  *
  *   SPIN    a cue-ball face; tap or drag the dot to set follow (top), draw
  *           (bottom) and side spin (left, right). Resets after each shot.
- *   CURVE   arms a Curve Shot (charges per table); a bend bar appears under
- *           the buttons: drag it left or right for how much the shot curves.
+ *   CURVE   arms a Curve Shot for this shot (charges per table). Aim and let
+ *           go as usual: the shot then HOLDS (review round 3: "I need to see
+ *           it in real time") and the bend bar takes the bottom band; drag it
+ *           and the aim line bends live, then Shoot (or ✕ to aim again).
  *   BOMB    arms a Bomb Shot (charges per table): the first ball hit blows up.
  *
  * The tray only sets `game.shot`; the physics and the aim preview read it
@@ -70,20 +72,42 @@ export class ShotTray {
     this.curveBtn = this._ability('curve', 'Curve');
     this.bombBtn = this._ability('bomb', 'Bomb');
 
-    // CURVE'S BEND: a bar to drag left or right, under the buttons
-    this.bend = el('div', 'st-bend', this.root);
-    this.bendTrack = el('div', 'st-track', this.bend);
+    // CURVE'S BEND: shown only while a curve shot is held (see main.js
+    // holdForBend): a wide bar across the bottom band, with ✕ and Shoot
+    this.bend = el('div', 'st-bendhold', layer);
+    this.bend.hidden = true;
+    this.bend.addEventListener('pointerdown', stop);
+    this.cancelBtn = el('button', 'st-cancel', this.bend);
+    this.cancelBtn.type = 'button';
+    this.cancelBtn.setAttribute('aria-label', 'Aim again');
+    this.cancelBtn.textContent = '✕';
+    const mid = el('div', 'st-bendmid', this.bend);
+    el('small', 'st-bendlabel', mid).textContent = 'Drag to bend the shot';
+    this.bendTrack = el('div', 'st-track', mid);
     this.bendTrack.setAttribute('role', 'slider');
     this.bendTrack.setAttribute('aria-label', 'Bend');
     el('small', 'st-l', this.bendTrack).textContent = '◀';
     el('small', 'st-r', this.bendTrack).textContent = '▶';
     el('i', 'st-mid', this.bendTrack);
     this.bendKnob = el('b', 'st-knob', this.bendTrack);
+    this.shootBtn = el('button', 'st-shoot', this.bend);
+    this.shootBtn.type = 'button';
+    this.shootBtn.textContent = 'Shoot';
+    this.onShoot = null;
+    this.onCancel = null;
+    this.shootBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.onShoot?.();
+    });
+    this.cancelBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.onCancel?.();
+    });
     const setBend = (e) => {
       const r = this.bendTrack.getBoundingClientRect();
       let v = ((e.clientX - r.left) / r.width) * 2 - 1;
       v = Math.max(-1, Math.min(1, v));
-      if (Math.abs(v) < 0.1) v = v < 0 ? -0.1 : 0.1;
+      if (Math.abs(v) < 0.06) v = 0;
       this.game.shot.curve = Math.round(v * 20) / 20;
       this.paint();
       this.onChange?.();
@@ -96,6 +120,7 @@ export class ShotTray {
     });
     this.bendTrack.addEventListener('pointermove', (e) => bending && setBend(e));
     this.bendTrack.addEventListener('pointerup', () => (bending = false));
+    this.bendTrack.addEventListener('pointercancel', () => (bending = false));
     this.paint();
   }
 
@@ -107,8 +132,10 @@ export class ShotTray {
       e.preventDefault();
       const g = this.game;
       if (kind === 'curve') {
-        if (g.shot.curve) g.shot.curve = 0;
-        else if ((g.abilities.curve || 0) > 0) g.shot.curve = 0.6;
+        if (g.shot.curveArmed) {
+          g.shot.curveArmed = false;
+          g.shot.curve = 0;
+        } else if ((g.abilities.curve || 0) > 0) g.shot.curveArmed = true;
       } else if (g.shot.bomb) g.shot.bomb = false;
       else if ((g.abilities.bomb || 0) > 0) g.shot.bomb = true;
       this.paint();
@@ -122,6 +149,12 @@ export class ShotTray {
     this.game.shot.follow = Math.round(follow * 20) / 20;
     this.paint();
     this.onChange?.();
+  }
+
+  /** A curve shot is held for its bend (true) or not. */
+  setHolding(on) {
+    this.holding = !!on;
+    this.paint();
   }
 
   /** Shown only while a shot is being lined up. */
@@ -141,16 +174,19 @@ export class ShotTray {
     this.spin.hidden = !a.spin;
     this.curveBtn.hidden = !a.curveOwned;
     this.bombBtn.hidden = !a.bombOwned;
-    this.dot.style.left = `${50 + (s.side || 0) * 40}%`;
-    this.dot.style.top = `${50 - (s.follow || 0) * 40}%`;
+    // the dot stays inside the face (review: it ran over the rim)
+    this.dot.style.left = `${50 + (s.side || 0) * 30}%`;
+    this.dot.style.top = `${50 - (s.follow || 0) * 30}%`;
     this.spin.classList.toggle('on', !!(s.side || s.follow));
-    this.curveBtn.classList.toggle('armed', !!s.curve);
-    this.curveBtn.disabled = !s.curve && !(a.curve > 0);
+    this.curveBtn.classList.toggle('armed', !!s.curveArmed);
+    this.curveBtn.disabled = !s.curveArmed && !(a.curve > 0);
     this.curveBtn.querySelector('em').textContent = `${a.curve || 0}`;
     this.bombBtn.classList.toggle('armed', !!s.bomb);
     this.bombBtn.disabled = !s.bomb && !(a.bomb > 0);
     this.bombBtn.querySelector('em').textContent = `${a.bomb || 0}`;
-    this.bend.hidden = !s.curve;
+    this.bend.hidden = !this.holding;
+    this.root.classList.toggle('held', !!this.holding);
     this.bendKnob.style.left = `${50 + (s.curve || 0) * 50}%`;
+    this.bendTrack.setAttribute('aria-valuenow', String(s.curve || 0));
   }
 }

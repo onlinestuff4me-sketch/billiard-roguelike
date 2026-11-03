@@ -204,7 +204,8 @@ export class Juice {
       core.style.background = `radial-gradient(circle, #ffffff 0%, ${color} 35%, transparent 70%)`;
       this.anim(core, [{ transform: 'translate(-50%,-50%) scale(0.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.6)', opacity: 0 }], { duration: 320, easing: OUT });
       if (power > 0.85) this.flash(0.55, 140);
-      this.fx.shockwave(x, z, color, 4 + 3 * power, 0.35);
+      // no shockwave ring here (review round 3: an orange circle hung on the
+      // cue ball through the slow-motion)
     }
   }
 

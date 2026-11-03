@@ -1011,7 +1011,7 @@ player.aimRenderer.onSpark = (x, z) => fx.burst(x, z, 2, Math.random() < 0.5 ? P
 /** The shared context every system reads from. */
 const game = {
   // WHAT THE NEXT SHOT CARRIES (SHOT in config; set by the shot tray)
-  shot: { curve: 0, follow: 0, side: 0, bomb: false },
+  shot: { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false },
   // what the run owns, and this table's charges
   abilities: { spin: false, curveOwned: false, bombOwned: false, curve: 0, bomb: 0 },
   scene,
@@ -1163,6 +1163,80 @@ function multCallout() {
 }
 
 /**
+ * Strike `aim` (a release, or a held curve shot's Shoot). THE SHOT THE LINE
+ * PLAYED, to the last bit: the drawn preview is a record of this exact heading
+ * and power, so that is what is struck.
+ */
+function strikeShot(aim) {
+  // ...when it is the shot being released: a line drawn for some other aim
+  // (an old one, or none since) is no promise about this release
+  let shown = drawnShot();
+  game.drawnShot = null;
+  if (shown) {
+    const dl = Math.hypot(aim.dirX, aim.dirZ) || 1;
+    const turn = Math.acos(clamp((shown.dir.x * aim.dirX + shown.dir.z * aim.dirZ) / dl, -1, 1));
+    if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
+  }
+  player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power, mods: shotMods() } : { ...aim, mods: shotMods() }, game);
+  juiceStrike(aim, shown);
+  spendShotMods();
+  // THE STICK GETS THERE FIRST. The table holds still for the few frames the
+  // cue takes to snap into the ball, so the ball leaves when it is hit, not
+  // when the thumb lets go.
+  if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
+    // The table also holds the frame of contact, longer the harder: briefly
+    // on the snap (picked in review, with this freeze), longer on impact.
+    const power = aim.power ?? 1;
+    const [f0, f1] = TRAJECTORY.strikeFreeze;
+    const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : f0 + f1 * power;
+    engine.hitStop(TRAJECTORY.stickStrike + hold);
+  }
+  // A release either opens a stroke or resumes the one a freeze interrupted.
+  // Resuming keeps the ladder, the budget and every other ball's velocity.
+  if (game.midStroke) resumeStroke();
+  else beginStroke();
+  moments.unfreeze();
+}
+
+/**
+ * A CURVE SHOT, HELD FOR ITS BEND (review round 3: "I need to be able to see
+ * that in real time"). The aim and power are locked where the thumb let go,
+ * the line stays drawn, and the bend bar takes the bottom band: dragging it
+ * bends the line live. Shoot strikes the held shot; ✕ goes back to aiming.
+ */
+function holdForBend(aim) {
+  const shown = drawnShot();
+  game.bendHold = { aim: shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : { ...aim } };
+  game.shot.curve = game.shot.curve || 0;
+  tray.setHolding(true);
+  game.aimDirty = true;
+}
+function shootHeld() {
+  const h = game.bendHold;
+  if (!h) return;
+  game.bendHold = null;
+  tray.setHolding(false);
+  // the line drawn for the held aim, with its bend, is the promise
+  if (!drawnShot()) refreshPrediction();
+  strikeShot(h.aim);
+}
+function cancelHeld() {
+  if (!game.bendHold) return;
+  game.bendHold = null;
+  game.shot.curve = 0;
+  tray.setHolding(false);
+  player.cancelAim();
+  game.drawnShot = null;
+}
+/** Drop a held shot without striking it (a table changes, a menu opens). */
+function clearHeld() {
+  game.bendHold = null;
+  tray.setHolding(false);
+}
+tray.onShoot = shootHeld;
+tray.onCancel = cancelHeld;
+
+/**
  * The moment the draw runs out.
  *
  * Power no longer decides whether anything breaks — nothing breaks from being
@@ -1304,17 +1378,19 @@ function releaseCutInHold() {
 function spendShotMods() {
   const s = game.shot;
   const a = game.abilities;
-  if (s.curve) {
+  // a curve shot struck with no bend costs nothing
+  if (s.curveArmed && s.curve) {
     a.curve = Math.max(0, a.curve - 1);
     juice.tint(true, '#22e8ff', 'ability');
-    abilityCutIn({ name: 'Curve shot!', line: '“Bend to my will.”', color: '#22e8ff', icon: 'curve', struck: true });
+    abilityCutIn({ name: 'Curve shot!', line: `${a.curve} left`, color: '#22e8ff', icon: 'curve', struck: true });
   }
   if (s.bomb) {
     a.bomb = Math.max(0, a.bomb - 1);
-    juice.tint(true, '#ff8a1e', 'ability');
-    abilityCutIn({ name: 'Bomb shot!', line: '“I don’t aim. I smash.”', color: '#ff8a1e', icon: 'bomb', struck: true });
+    // no tint for the bomb (review round 3): the only orange is the blast,
+    // from where it goes off
+    abilityCutIn({ name: 'Bomb shot!', line: `${a.bomb} left`, color: '#ff8a1e', icon: 'bomb', struck: true });
   }
-  game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
+  game.shot = { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false };
   tray.paint();
 }
 
@@ -1323,8 +1399,8 @@ function refillAbilities() {
   const a = game.abilities;
   a.curve = a.curveOwned ? SHOT.curveCharges : 0;
   a.bomb = a.bombOwned ? SHOT.bombCharges : 0;
-  game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
-  tray.paint();
+  game.shot = { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false };
+  clearHeld();
 }
 
 /**
@@ -1799,7 +1875,7 @@ function tryFreeze() {
   }
   game.phase = 'aim';
   // the cut-in first, so the achievement this earns waits behind it
-  abilityCutIn({ name: 'Freeze frame!', line: '“Time stops for me.”' });
+  abilityCutIn({ name: 'Freeze frame!', line: `${rules.freezeCharges} left` });
   if (game.practice) practiceFroze();
   else achievements.unlock('freeze');
   // The cue ball stops where it is; it is about to be re-aimed from here.
@@ -1815,7 +1891,8 @@ function tryFreeze() {
     moments.freeze({
       cue: { x: player.x, z: player.z },
       balls: game.enemies.filter((b) => b.alive && Math.hypot(b.vx, b.vz) > 0.3).map((b) => ({ x: b.x, z: b.z, vx: b.vx, vz: b.vz })),
-      left: rules.freezeCharges
+      left: rules.freezeCharges,
+      label: !juice.on('cutin')
     });
   } else {
     audio.focusEnter?.();
@@ -3196,7 +3273,8 @@ function tableCard(t, release) {
 function resetRunState() {
   endPractice();
   game.abilities = { spin: false, curveOwned: false, bombOwned: false, curve: 0, bomb: 0 };
-  game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
+  game.shot = { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false };
+  clearHeld();
   juice.release();
   juice.tint(false);
   game.replay = null;
@@ -4989,6 +5067,8 @@ const input = new InputManager(stage, {
   isEnabled: () =>
     game.running &&
     player.alive &&
+    // a held curve shot: the bend bar has the thumb now
+    !game.bendHold &&
     game.state !== 'modal' &&
     // a table's intro card is up: the first tap starts the table, not a shot
     !game.introUp &&
@@ -5052,36 +5132,13 @@ const input = new InputManager(stage, {
     }
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
-    // THE SHOT THE LINE PLAYED, to the last bit: the drawn preview is a record
-    // of this exact heading and power, so that is what is struck.
-    // ...when it is the shot being released: a line drawn for some other aim
-    // (an old one, or none since) is no promise about this release
-    let shown = drawnShot();
-    game.drawnShot = null;
-    if (shown) {
-      const dl = Math.hypot(aim.dirX, aim.dirZ) || 1;
-      const turn = Math.acos(clamp((shown.dir.x * aim.dirX + shown.dir.z * aim.dirZ) / dl, -1, 1));
-      if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
+    // A CURVE SHOT HOLDS (review round 3): letting go locks the aim, and the
+    // bend is set on the held line before it is struck (holdForBend)
+    if (game.shot.curveArmed && !game.headless) {
+      holdForBend(aim);
+      return;
     }
-    player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power, mods: shotMods() } : { ...aim, mods: shotMods() }, game);
-    juiceStrike(aim, shown);
-    spendShotMods();
-    // THE STICK GETS THERE FIRST. The table holds still for the few frames the
-    // cue takes to snap into the ball, so the ball leaves when it is hit, not
-    // when the thumb lets go.
-    if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
-      // The table also holds the frame of contact, longer the harder: briefly
-      // on the snap (picked in review, with this freeze), longer on impact.
-      const power = aim.power ?? 1;
-      const [f0, f1] = TRAJECTORY.strikeFreeze;
-      const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : f0 + f1 * power;
-      engine.hitStop(TRAJECTORY.stickStrike + hold);
-    }
-    // A release either opens a stroke or resumes the one a freeze interrupted.
-    // Resuming keeps the ladder, the budget and every other ball's velocity.
-    if (game.midStroke) resumeStroke();
-    else beginStroke();
-    moments.unfreeze();
+    strikeShot(aim);
   },
   onFlick: (aim) => {
     uiLayer.classList.remove('aiming');
@@ -5653,6 +5710,7 @@ function showTutorialState() {
 function openMenu() {
   menuOpen = true;
   introSeq++;
+  clearHeld();
   juice.release();
   juice.clear();
   juice.tint(false);
@@ -5918,6 +5976,7 @@ if (typeof window !== 'undefined') {
       if (tutorial.active) tutorial.stop();
       game.tutorialGuard = null;
       moments.closeIntro();
+      clearHeld();
       juice.release();
       juice.clear();
       introSeq++;
@@ -5960,6 +6019,7 @@ if (typeof window !== 'undefined') {
     /** Arm the next shot: { curve, follow, side, bomb }. */
     arm(mods) {
       Object.assign(game.shot, mods);
+      if (mods.curve) game.shot.curveArmed = true;
       tray.paint();
       game.aimDirty = true;
     },
@@ -6292,6 +6352,9 @@ function endStroke() {
   }
   if (game.feedSettling) return;
   game.feedSettling = true;
+  // THE LAST SHOT OF A TABLE COUNTS QUICKER (review round 3), so CLEAR! lands
+  // sooner: the tally into the top number runs at 1.8x
+  if (!game.enemies.some((b) => b.alive && b.number > 0)) feed.speed = Math.max(feed.speed, 1.8);
   feed.settle(rules.strokeResult(), () => {
     game.feedSettling = false;
     if (game.midStroke) finishStroke();
@@ -6388,6 +6451,16 @@ function frame(now) {
           player.hideTrajectory();
           game.aimFoul = null;
         }
+      }
+    } else if (game.bendHold) {
+      // A HELD CURVE SHOT: the locked aim, redrawn as the bend changes
+      const a = game.bendHold.aim;
+      player.aimDir.x = a.dirX;
+      player.aimDir.z = a.dirZ;
+      player.aimPower = a.power ?? 1;
+      if (game.aimDirty || !game.drawnShot) {
+        game.aimDirty = false;
+        refreshPrediction();
       }
     } else if (game.aimDirty && input.isAiming) {
       // an aim the frame loop does not own (a frozen stroke): played here

@@ -1675,7 +1675,7 @@ export class Moments {
    * @param {{x:number,z:number,vx:number,vz:number}[]} o.balls  the ones still rolling
    * @param {number} o.left  charges left after this one
    */
-  freeze({ cue, balls, left }) {
+  freeze({ cue, balls, left, label: showLabel = true }) {
     this.unfreeze(true);
     const style = this.variant('freeze');
     const C = this.toPx(cue.x, cue.z);
@@ -1684,9 +1684,12 @@ export class Moments {
     this._freeze = state;
     this.audio.freezeOn?.();
 
-    const label = el('div', 'mo-freeze-label', root);
-    el('b', '', label).textContent = 'Freeze frame';
-    el('small', '', label).textContent = `Re-aim from here · no shot spent · ${left} left`;
+    // the cut-in says it when juice is on (review round 3: one banner, not two)
+    if (showLabel) {
+      const label = el('div', 'mo-freeze-label', root);
+      el('b', '', label).textContent = 'Freeze frame';
+      el('small', '', label).textContent = `Re-aim from here · no shot spent · ${left} left`;
+    }
 
     // THE FLASH: the frame is taken.
     const flash = el('div', 'mo-flash', root);

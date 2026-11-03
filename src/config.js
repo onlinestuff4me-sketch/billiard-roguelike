@@ -100,8 +100,11 @@ export const FOCUS = {
  *           near it outward.
  */
 export const SHOT = {
-  /** Turn rate of a full curve at the start, radians per second. */
-  curveRate: 1.6,
+  /**
+   * Turn rate of a full curve at the start, radians per second (review round
+   * 3: "dramatic enough to see in the aiming lines"; it was 1.6).
+   */
+  curveRate: 2.6,
   /** ...fading with this time constant (seconds), so the bend is strongest early. */
   curveFade: 1.1,
   /** Follow or draw: speed added along the shot's line after the first hit, as a share of the impact speed. */

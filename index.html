@@ -2648,7 +2648,9 @@
       .st-spin.on { box-shadow: 0 0 0 2px #22e8ff, 0 0 16px rgba(34, 232, 255, 0.7); }
       .st-cross { position: absolute; inset: 0; background: linear-gradient(90deg, transparent 49%, rgba(2, 5, 11, 0.25) 49% 51%, transparent 51%), linear-gradient(0deg, transparent 49%, rgba(2, 5, 11, 0.25) 49% 51%, transparent 51%); border-radius: 50%; }
       .st-dot { position: absolute; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: #ff2e7e; box-shadow: 0 0 0 2px #ffffff, 0 0 8px #ff2e7e; }
-      .st-label { position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%); font-size: 7px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(2, 5, 11, 0.55); pointer-events: none; }
+      /* the label sits above the face, never on it (review: the dot ran over it) */
+      .st-label { position: absolute; left: 50%; top: -13px; transform: translateX(-50%); font-size: 8px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted, #7fa3b8); pointer-events: none; }
+      .st-spin { overflow: visible; }
       .st-ab { position: relative; display: grid; justify-items: center; align-content: center; gap: 1px; width: 44px; height: 44px; padding: 0; border-radius: 11px; border: 1.5px solid rgba(34, 232, 255, 0.45); background: rgba(8, 18, 30, 0.85); color: #22e8ff; font: inherit; cursor: pointer; }
       .st-ab svg { width: 19px; height: 19px; }
       .st-ab small { font-size: 8px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -2657,12 +2659,19 @@
       .st-ab.armed { color: #02050b; background: #22e8ff; box-shadow: 0 0 16px rgba(34, 232, 255, 0.7); }
       .st-ab.bomb.armed { background: #ff8a1e; box-shadow: 0 0 16px rgba(255, 138, 30, 0.7); }
       .st-ab:disabled { opacity: 0.35; cursor: default; }
-      .st-bend { width: 100%; }
-      .st-track { position: relative; height: 18px; border-radius: 9px; background: rgba(8, 18, 30, 0.9); border: 1.5px solid rgba(34, 232, 255, 0.55); touch-action: none; cursor: ew-resize; }
-      .st-track small { position: absolute; top: 50%; transform: translateY(-50%); font-size: 7px; color: rgba(34, 232, 255, 0.6); pointer-events: none; }
-      .st-l { left: 5px; } .st-r { right: 5px; }
-      .st-mid { position: absolute; left: 50%; top: 3px; bottom: 3px; width: 1.5px; background: rgba(34, 232, 255, 0.35); }
-      .st-knob { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #22e8ff; box-shadow: 0 0 10px #22e8ff; }
+      /* A HELD CURVE SHOT (review round 3): the bend bar takes the whole bottom band, with ✕ and Shoot */
+      .shot-tray.held { opacity: 0; pointer-events: none; }
+      .st-bendhold { position: absolute; left: var(--hud-pad); right: var(--hud-pad); bottom: calc(var(--hud-pad) + 2px); z-index: 12; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; background: rgba(2, 5, 11, 0.94); border: 1.5px solid rgba(34, 232, 255, 0.6); border-radius: 14px; box-shadow: 0 0 22px rgba(34, 232, 255, 0.25); pointer-events: auto; }
+      .st-bendhold[hidden] { display: none; }
+      .st-bendmid { display: grid; gap: 5px; min-width: 0; }
+      .st-bendlabel { font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: #22e8ff; text-align: center; }
+      .st-cancel { width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid rgba(127, 163, 184, 0.6); background: rgba(13, 29, 45, 0.9); color: #e9f8ff; font: 700 18px/1 system-ui, sans-serif; cursor: pointer; }
+      .st-shoot { height: 44px; padding: 0 16px; border-radius: 12px; border: 0; background: #22e8ff; color: #02050b; font: 900 13px/1 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; box-shadow: 0 0 16px rgba(34, 232, 255, 0.6); cursor: pointer; }
+      .st-track { position: relative; height: 30px; border-radius: 15px; background: rgba(8, 18, 30, 0.95); border: 1.5px solid rgba(34, 232, 255, 0.55); touch-action: none; cursor: ew-resize; }
+      .st-track small { position: absolute; top: 50%; transform: translateY(-50%); font-size: 9px; color: rgba(34, 232, 255, 0.6); pointer-events: none; }
+      .st-l { left: 8px; } .st-r { right: 8px; }
+      .st-mid { position: absolute; left: 50%; top: 5px; bottom: 5px; width: 2px; margin-left: -1px; background: rgba(34, 232, 255, 0.4); }
+      .st-knob { position: absolute; top: 50%; width: 24px; height: 24px; margin: -12px 0 0 -12px; border-radius: 50%; background: #22e8ff; box-shadow: 0 0 12px #22e8ff; }
 
       /* ---------------- TYPE (Lightline) ----------------
          Display face for names, number face for figures. Kept in one block so
