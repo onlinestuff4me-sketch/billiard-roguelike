@@ -1685,8 +1685,8 @@ export class Moments {
     this.audio.freezeOn?.();
 
     // the cut-in says it when juice is on (review round 3: one banner, not two)
-    if (showLabel) {
-      const label = el('div', 'mo-freeze-label', root);
+    const label = showLabel ? el('div', 'mo-freeze-label', root) : null;
+    if (label) {
       el('b', '', label).textContent = 'Freeze frame';
       el('small', '', label).textContent = `Re-aim from here · no shot spent · ${left} left`;
     }
@@ -1732,7 +1732,7 @@ export class Moments {
         this.anim(arrow, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: delay + 160 });
       }
     }
-    this.anim(label, [{ opacity: 0, transform: 'translate(-50%, 10px) scale(1.3)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)', filter: 'blur(0)' }], { duration: 380, delay: 120, easing: OUT });
+    if (label) this.anim(label, [{ opacity: 0, transform: 'translate(-50%, 10px) scale(1.3)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)', filter: 'blur(0)' }], { duration: 380, delay: 120, easing: OUT });
   }
 
   /** The re-aimed shot is away: time starts again. */
