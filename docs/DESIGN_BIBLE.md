@@ -648,6 +648,11 @@ quarter; scanlines for Freeze and halftone dots for Curve and Bomb; the big
 slam; the panel cut-in; the slam finish. Off: pocket beam, charge glow, pull
 back, follow the last ball, banner sweep.
 
+- **One banner per ability, saying what is left.** The cut-in replaces the
+  freeze's own top banner, and its line is "N left" (Freeze, Curve, Bomb)
+  instead of a quote. A Bomb Shot has no tint: the only orange is the blast.
+  No shockwave ring on the full-power strike (it hung on the cue ball).
+- **The last shot of a table tallies at 1.8x**, so CLEAR! lands sooner.
 - **A cut-in never covers the play.** It takes the top, the bottom or the
   middle of the table, whichever is clear of the cue ball, the ball nearest
   it and, on a shot just struck, the line the cue ball runs to its first hit.
@@ -691,9 +696,13 @@ real shots across plain, curve, follow, draw, side and bomb, all as drawn).
   comes back along the shot's line. Left and right are side spin: off each
   rail the ball is turned by up to 16°, fading by a third a rail. It resets
   after each shot.
-- **Curve Shot** (rare $9, 2 charges a table): arm it and a Bend bar
-  appears; the cue ball's heading turns as it rolls, strongest at first,
-  until it touches anything. The preview draws the bending leg as one line.
+- **Curve Shot** (rare $9, 2 charges a table): tap Curve before aiming,
+  then aim and let go as usual: the shot **holds** (review round 3: "I need
+  to see it in real time"). The line stays drawn and a bend bar takes the
+  bottom band; dragging it bends the line live, and Shoot strikes the held
+  shot (✕ goes back to aiming). The cue ball's heading turns as it rolls,
+  strongest at first (curveRate 2.6, strong enough to read in the line),
+  until it touches anything. A charge is spent only on a shot with a bend.
 - **Bomb Shot** (rare $8, 1 charge a table): the first ball the cue ball
   hits blows up, throwing every ball within 6.5 units outward. The blast
   is a fireball the size of its reach, a ring and shards, drawn on the
