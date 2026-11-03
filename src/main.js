@@ -1246,8 +1246,38 @@ function juiceStrike(aim, shown) {
  * gone, so the two never stack on the top band.
  */
 let cutInQueue = Promise.resolve();
+/**
+ * What a cut-in must not cover (review): the cue ball, the ball nearest it,
+ * and, on a shot just struck, the line the cue ball runs to its first hit.
+ */
+function cutInAvoid(struck) {
+  const pts = [{ x: player.x, z: player.z }];
+  let near = null;
+  let nd = Infinity;
+  for (const b of game.enemies) {
+    if (!b.alive || !(b.number > 0)) continue;
+    const d = Math.hypot(b.x - player.x, b.z - player.z);
+    if (d < nd) {
+      nd = d;
+      near = b;
+    }
+  }
+  if (near) pts.push({ x: near.x, z: near.z });
+  const rec = struck ? (drawnShot() || playedAim())?.rec : null;
+  const cue = rec?.paths?.[0]?.pts;
+  if (cue) {
+    const hit = rec.cueHits[0];
+    for (let i = 0; i + 1 < cue.length; i += 6) {
+      pts.push({ x: cue[i], z: cue[i + 1] });
+      if (hit && Math.hypot(cue[i] - hit.x, cue[i + 1] - hit.z) < 0.6) break;
+    }
+    if (hit) pts.push({ x: hit.x, z: hit.z }, { x: hit.bx, z: hit.bz });
+  }
+  return pts;
+}
 function abilityCutIn(opts) {
   if (!juice.on('cutin')) return;
+  opts = { ...opts, avoid: opts.avoid || cutInAvoid(opts.struck) };
   if (!hud._achHold) {
     hud.holdAchievements(true);
     game.achHeldByCutIn = true;
@@ -1276,13 +1306,13 @@ function spendShotMods() {
   const a = game.abilities;
   if (s.curve) {
     a.curve = Math.max(0, a.curve - 1);
-    juice.tint(true, '#22e8ff');
-    abilityCutIn({ name: 'Curve shot!', line: '“Bend to my will.”', color: '#22e8ff', icon: 'curve' });
+    juice.tint(true, '#22e8ff', 'ability');
+    abilityCutIn({ name: 'Curve shot!', line: '“Bend to my will.”', color: '#22e8ff', icon: 'curve', struck: true });
   }
   if (s.bomb) {
     a.bomb = Math.max(0, a.bomb - 1);
-    juice.tint(true, '#ff8a1e');
-    abilityCutIn({ name: 'Bomb shot!', line: '“I don’t aim. I smash.”', color: '#ff8a1e', icon: 'bomb' });
+    juice.tint(true, '#ff8a1e', 'ability');
+    abilityCutIn({ name: 'Bomb shot!', line: '“I don’t aim. I smash.”', color: '#ff8a1e', icon: 'bomb', struck: true });
   }
   game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
   tray.paint();
@@ -2012,11 +2042,10 @@ game.on = {
     engine.shake(22);
     engine.zoomPunch(FEEL.zoomPunch * 2);
     gridPulse(x, z, 1.4);
-    fx.shockwave(x, z, PALETTE.scoreMult, radius * 1.4, 0.55);
-    fx.shockwave(x, z, '#ffffff', radius * 0.9, 0.35);
-    fx.burst(x, z, 46, PALETTE.scoreMultHot, 18, 1.2);
+    // the fire front is drawn by juice.blast; no full-screen flash, which read
+    // as the whole table glowing at once (review)
+    fx.burst(x, z, 30, PALETTE.scoreMultHot, 14, 0.9);
     juice.blast({ x, z, radius });
-    juice.flash(0.5, 140);
     audio.playerDeath?.();
   },
 
@@ -2259,6 +2288,12 @@ function completeRoom() {
   game.state = 'cleared';
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
+  // THE FINISH CARRIES ITS OWN NEWS (review: CLEAR! covered "All in order").
+  // What this clear earns, an achievement or an unlock, is stamped in under
+  // CLEAR! instead of popping up somewhere the slam then covers.
+  const finishing = momentsOn() && !game.headless && !!juice.on('finish');
+  const lines = [];
+  if (finishing) game.finishLines = lines;
   recordTable(result, true);
   gridPulse(0, 0, 1);
   if (!momentsOn()) audio.roomClear();
@@ -2268,13 +2303,15 @@ function completeRoom() {
   // not a difficulty setting, it is a trap with a menu entry.
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
-    hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
+    if (finishing) lines.push({ kicker: 'Unlocked', title: 'All in order', sub: 'Strict Order is in Modes now' });
+    else hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
+  game.finishLines = null;
   openExits();
   const data = { ...tableResult(result), filled: true };
   // THE FINISH (juice): "CLEAR!" before the result
-  if (momentsOn() && !game.headless && juice.on('finish')) {
-    juice.finish({ title: 'Clear!', sub: `Table ${game.level}` }).then(() => {
+  if (finishing) {
+    juice.finish({ title: 'Clear!', sub: `Table ${game.level}`, lines }).then(() => {
       juice.release();
       showRoomResult(data, shownRun);
     });
@@ -2533,6 +2570,12 @@ const shopRun = { owned: [], bought: [], held: null };
 const achievements = new Achievements();
 achievements.onUnlock = (a) => {
   if (game.headless) return;
+  // earned by the clear itself: said on the finish screen (completeRoom)
+  if (game.finishLines) {
+    game.finishLines.push({ kicker: 'Achievement', title: a.name, sub: a.text });
+    audio.boonPick?.();
+    return;
+  }
   hud.achievement(a, { all: openAchievementsInRun });
   audio.boonPick?.();
 };

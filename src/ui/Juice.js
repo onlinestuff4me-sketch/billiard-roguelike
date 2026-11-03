@@ -2,22 +2,24 @@
  * Juice.js — the big-moment layer (review: "juice ideas", batch 1).
  *
  * Twelve effects drawn from the reference clips, each with versions to compare
- * in review, chosen in `lightline-juice-v1` (localStorage, a {key: version}
+ * in review, chosen in `lightline-juice-v2` (localStorage, a {key: version}
  * map; 'off' turns one off). Comic style in the clips, drawn in light here:
  * cyan lines, scanlines for halftone, glowing bands.
  *
- *   strike     the strike burst: lines out of the cue ball      lines | flash
+ *   strike     the strike burst: lines out of the cue ball      both | lines | flash
  *   trail      behind a hard shot                               streak | sparks
  *   beam       a ball dropping                                  pillar | rings
  *   charge     pulling back for power                           rails | pulse
- *   tint       the table while an ability plays                 scan | dots
- *   push       the camera while pulling back                    push | lean
+ *   tint       the table while an ability plays                 both | scan | dots
+ *   push       the camera while pulling back                    both | push | lean
  *   pull       the camera on a full-power shot                  swoop | out
  *   follow     the camera on the last ball                      drift | punch
  *   banner     a table's rule                                   band | bandOnly
  *   slam       full power, said                                 big | small
  *   cutin      an ability, named                                panel | strip
- *   finish     the last ball down, before the result            bands | slam
+ *   finish     the last ball down, before the result            slam | bands
+ *
+ * Defaults are the review's picks (JUICE_DEFAULTS).
  *
  * Everything here is presentation: it never changes a shot, the aim or the
  * score. DOM effects run on WAAPI (so a capture can step them); camera moves
@@ -26,20 +28,41 @@
 
 import * as THREE from 'three';
 
-const KEY = 'lightline-juice-v1';
+const KEY = 'lightline-juice-v2';
 export const JUICE_OPTIONS = {
-  strike: ['lines', 'flash'],
+  strike: ['both', 'lines', 'flash'],
   trail: ['streak', 'sparks'],
   beam: ['pillar', 'rings'],
   charge: ['rails', 'pulse'],
-  tint: ['scan', 'dots'],
-  push: ['push', 'lean'],
+  tint: ['both', 'scan', 'dots'],
+  push: ['both', 'push', 'lean'],
   pull: ['swoop', 'out'],
   follow: ['drift', 'punch'],
   banner: ['band', 'bandOnly'],
   slam: ['big', 'small'],
   cutin: ['panel', 'strip'],
-  finish: ['bands', 'slam']
+  finish: ['slam', 'bands']
+};
+/**
+ * THE PICKS (review, juice batches 1 and 2). "Both" means each version in its
+ * own place: the strike's lines on an ordinary shot and its flash at full
+ * power; the lean while charging and the push near full; scanlines for
+ * Freeze and halftone dots for Curve and Bomb. Off: pocket beam, charge glow,
+ * pull back, follow the last ball, banner sweep.
+ */
+export const JUICE_DEFAULTS = {
+  strike: 'both',
+  trail: 'streak',
+  beam: 'off',
+  charge: 'off',
+  tint: 'both',
+  push: 'both',
+  pull: 'off',
+  follow: 'off',
+  banner: 'off',
+  slam: 'big',
+  cutin: 'panel',
+  finish: 'slam'
 };
 
 const CYAN = '#22e8ff';
@@ -93,7 +116,7 @@ export class Juice {
       saved = {};
     }
     this.settings = {};
-    for (const [k, opts] of Object.entries(JUICE_OPTIONS)) this.settings[k] = saved[k] === 'off' || opts.includes(saved[k]) ? saved[k] : opts[0];
+    for (const [k, opts] of Object.entries(JUICE_OPTIONS)) this.settings[k] = saved[k] === 'off' || opts.includes(saved[k]) ? saved[k] : JUICE_DEFAULTS[k];
   }
 
   /** Which version of `key` is on, or null when it is off. */
@@ -143,8 +166,9 @@ export class Juice {
 
   /** The cue meets the ball: lines burst out of it, more and longer the harder. */
   strike({ x, z, dirX = 0, dirZ = -1, power = 1, maxed = false }) {
-    const style = this.on('strike');
+    let style = this.on('strike');
     if (!style || this.reducedMotion) return;
+    if (style === 'both') style = maxed ? 'flash' : 'lines';
     const p = this.toPx(x, z);
     const box = el('div', 'jc-burst', this.root);
     box.style.left = `${p.x}px`;
@@ -185,9 +209,12 @@ export class Juice {
   }
 
   /**
-   * A Bomb Shot goes off: a fireball the size of the blast, a ring racing out
-   * to its edge, and shards. Drawn on the top layer so the ability's tint
-   * never swallows it. Always on while Bomb Shot is on trial.
+   * A Bomb Shot goes off (review: "an explosion that bursts out at the moment
+   * of impact and radiates out, sweeping the balls in its fiery wake"). A
+   * small white-hot flash at the ball, then a ring of fire that runs out to
+   * the blast's reach at the pace the balls are thrown, flames riding its
+   * edge and a glowing wake behind it, then embers. No full-table glow.
+   * Drawn on the top layer so the ability's tint never swallows it.
    */
   blast({ x, z, radius }) {
     const p = this.toPx(x, z);
@@ -195,38 +222,64 @@ export class Juice {
     const box = el('div', 'jc-burst jc-blast', this.root);
     box.style.left = `${p.x}px`;
     box.style.top = `${p.y}px`;
-    const ball = el('div', 'jc-core', box);
-    ball.style.width = ball.style.height = `${r * 2}px`;
-    ball.style.background = 'radial-gradient(circle, #ffffff 0%, #ffe2a8 18%, #ff8a1e 42%, rgba(255, 60, 20, 0.5) 62%, transparent 72%)';
-    this.anim(ball, [
-      { transform: 'translate(-50%,-50%) scale(0.15)', opacity: 1 },
-      { transform: 'translate(-50%,-50%) scale(1)', opacity: 0.95, offset: 0.3 },
-      { transform: 'translate(-50%,-50%) scale(1.15)', opacity: 0 }
-    ], { duration: 620, easing: OUT });
+    const GO = 560; // the ring's run to the edge, ms
+    const ease = 'cubic-bezier(0.2, 0.7, 0.35, 1)';
+    // 1. the impact: white-hot and small
+    const core = el('div', 'jc-core', box);
+    core.style.width = core.style.height = `${r * 0.6}px`;
+    core.style.background = 'radial-gradient(circle, #ffffff 0%, #fff1c9 30%, #ffb35c 55%, rgba(255, 138, 30, 0) 72%)';
+    this.anim(core, [
+      { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 1 },
+      { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0.35 },
+      { transform: 'translate(-50%,-50%) scale(0.7)', opacity: 0 }
+    ], { duration: 300, easing: 'ease-out' });
+    // 2. the wake: a glow that fills in behind the ring and burns down
+    const wake = el('div', 'jc-core', box);
+    wake.style.width = wake.style.height = `${r * 2}px`;
+    wake.style.background = 'radial-gradient(circle, rgba(255, 90, 20, 0.05) 0%, rgba(255, 110, 30, 0.32) 55%, rgba(255, 160, 60, 0.5) 68%, rgba(255, 138, 30, 0) 72%)';
+    this.anim(wake, [
+      { transform: 'translate(-50%,-50%) scale(0.08)', opacity: 0.9 },
+      { transform: 'translate(-50%,-50%) scale(0.92)', opacity: 0.85, offset: 0.62 },
+      { transform: 'translate(-50%,-50%) scale(1.02)', opacity: 0 }
+    ], { duration: GO + 260, easing: ease });
+    // 3. the fire front
     const ring = el('div', 'jc-blast-ring', box);
     ring.style.width = ring.style.height = `${r * 2}px`;
     this.anim(ring, [
-      { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 1, borderWidth: '10px' },
-      { transform: 'translate(-50%,-50%) scale(1.35)', opacity: 0, borderWidth: '1px' }
-    ], { duration: 520, easing: OUT });
+      { transform: 'translate(-50%,-50%) scale(0.08)', opacity: 1, borderWidth: '16px' },
+      { transform: 'translate(-50%,-50%) scale(0.8)', opacity: 1, borderWidth: '9px', offset: 0.6 },
+      { transform: 'translate(-50%,-50%) scale(1.04)', opacity: 0, borderWidth: '3px' }
+    ], { duration: GO, easing: ease });
     if (!this.reducedMotion) {
-      const n = 22;
+      // flames riding the front, flickering
+      const n = 20;
       for (let i = 0; i < n; i++) {
-        const line = el('i', '', box);
-        const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.3;
-        const len = r * (0.5 + Math.random() * 0.6);
-        line.style.width = `${len}px`;
-        line.style.height = `${2 + Math.random() * 3}px`;
-        line.style.background = `linear-gradient(90deg, transparent, ${i % 3 ? ORANGE : '#ffffff'})`;
+        const f = el('i', 'jc-flame', box);
+        const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
         const deg = (a * 180) / Math.PI;
-        this.anim(line, [
-          { transform: `rotate(${deg}deg) translateX(${r * 0.2}px) scaleX(0.2)`, opacity: 1 },
-          { transform: `rotate(${deg}deg) translateX(${r * 0.7}px) scaleX(1)`, opacity: 1, offset: 0.4 },
-          { transform: `rotate(${deg}deg) translateX(${r * 1.3}px) scaleX(0.3)`, opacity: 0 }
-        ], { duration: 560, easing: OUT });
+        const len = r * (0.22 + Math.random() * 0.18);
+        f.style.width = `${len}px`;
+        f.style.height = `${5 + Math.random() * 5}px`;
+        this.anim(f, [
+          { transform: `rotate(${deg}deg) translateX(${r * 0.05}px) scaleX(0.4)`, opacity: 1 },
+          { transform: `rotate(${deg}deg) translateX(${r * 0.72}px) scaleX(1.1)`, opacity: 1, offset: 0.6 },
+          { transform: `rotate(${deg}deg) translateX(${r * 0.98}px) scaleX(0.5)`, opacity: 0 }
+        ], { duration: GO + Math.random() * 80, easing: ease });
+      }
+      // embers thrown past the edge
+      for (let i = 0; i < 16; i++) {
+        const e = el('i', 'jc-ember', box);
+        const a = Math.random() * Math.PI * 2;
+        const deg = (a * 180) / Math.PI;
+        const far = r * (1.05 + Math.random() * 0.45);
+        this.anim(e, [
+          { transform: `rotate(${deg}deg) translateX(${r * 0.3}px)`, opacity: 0 },
+          { transform: `rotate(${deg}deg) translateX(${r * 0.9}px)`, opacity: 1, offset: 0.4 },
+          { transform: `rotate(${deg}deg) translateX(${far}px)`, opacity: 0 }
+        ], { duration: GO + 380, delay: 80, easing: 'ease-out' });
       }
     }
-    setTimeout(() => box.remove(), 800);
+    setTimeout(() => box.remove(), GO + 600);
   }
 
   /* ---------------------------------------------------------------- *
@@ -408,10 +461,16 @@ export class Juice {
    * 5. ABILITY TINT
    * ---------------------------------------------------------------- */
 
-  /** An ability's shot: the table goes into its color until the stroke ends. */
-  tint(on, color = ICE) {
-    const style = this.on('tint');
+  /**
+   * An ability's shot: the table goes into its color until the stroke ends.
+   * `kind` is 'freeze' or 'ability' (Curve, Bomb): with both on, Freeze
+   * gets scanlines and the abilities halftone dots.
+   */
+  tint(on, color = ICE, kind = 'freeze') {
+    let style = this.on('tint');
+    if (style === 'both') style = kind === 'freeze' ? 'scan' : 'dots';
     if (on && style) {
+      if (this.tintEl && !this.tintEl.classList.contains(style)) this.tintEl.className = `jc-tint ${style}`;
       if (!this.tintEl) {
         this.tintEl = el('div', `jc-tint ${style}`, this.root);
         this.anim(this.tintEl, [{ opacity: 0 }, { opacity: 1 }], { duration: 220 });
@@ -441,6 +500,13 @@ export class Juice {
       return;
     }
     const k = Math.max(0, Math.min(1, level));
+    if (style === 'both') {
+      // the lean all the way, and the push gathering over the last quarter
+      const t = Math.max(0, Math.min(1, (k - 0.75) / 0.25));
+      const p = t * t * (3 - 2 * t);
+      this.want = { x: cue.x * 0.3 * p, z: cue.z * 0.3 * p, zoom: 1 + 0.035 * k + 0.045 * p, rate: 6 };
+      return;
+    }
     this.want = style === 'push' ? { x: cue.x * 0.3 * k, z: cue.z * 0.3 * k, zoom: 1 + 0.08 * k, rate: 6 } : { x: 0, z: 0, zoom: 1 + 0.035 * k, rate: 6 };
   }
 
@@ -584,7 +650,14 @@ export class Juice {
    * 11. ABILITY CUT-IN
    * ---------------------------------------------------------------- */
 
-  cutIn({ name, line, color = ICE, icon = 'freeze' }) {
+  /**
+   * An ability, named. `avoid` is world points the panel must stay clear of
+   * (from review: never over the cue ball or the ball nearest it, nor the
+   * line the cue ball is about to run): it takes the top, the bottom or the
+   * middle of the table, whichever is clear, and else the one with the most
+   * room.
+   */
+  cutIn({ name, line, color = ICE, icon = 'freeze', avoid = [] }) {
     const style = this.on('cutin');
     if (!style) return Promise.resolve();
     const box = el('div', `jc-cut ${style}`, this.root);
@@ -594,6 +667,7 @@ export class Juice {
     const words = el('div', 'jc-cut-words', box);
     el('b', '', words).textContent = name;
     if (line && style === 'panel') el('span', '', words).textContent = line;
+    this._placeCut(box, style, avoid);
     const from = style === 'panel' ? 'translateX(110%) skewY(-5deg)' : 'translate(-50%, 140%)';
     const at = style === 'panel' ? 'translateX(0) skewY(-5deg)' : 'translate(-50%, 0)';
     const to = style === 'panel' ? 'translateX(-110%) skewY(-5deg)' : 'translate(-50%, 140%)';
@@ -604,14 +678,46 @@ export class Juice {
       .then(() => box.remove());
   }
 
+  /** Put the cut-in where nothing it must not cover is (see cutIn). */
+  _placeCut(box, style, avoid) {
+    const t = this.tableRect();
+    const h = box.getBoundingClientRect().height || (style === 'panel' ? 110 : 44);
+    // a ball's radius on screen and a little air, plus what the panel's slant
+    // adds at its ends
+    const pad = 22 + (style === 'panel' ? 0.045 * (box.getBoundingClientRect().width || t.width) : 0);
+    const ys = avoid.filter(Boolean).map((p) => this.toPx(p.x, p.z).y);
+    const spots = [t.top + t.height * 0.04, t.top + t.height * 0.96 - h, t.top + (t.height - h) / 2];
+    let best = spots[0];
+    let bestRoom = -Infinity;
+    for (const top of spots) {
+      const room = ys.length ? Math.min(...ys.map((y) => (y < top ? top - y : y > top + h ? y - top - h : -1))) : Infinity;
+      if (room >= pad) {
+        best = top;
+        break;
+      }
+      if (room > bestRoom) {
+        bestRoom = room;
+        best = top;
+      }
+    }
+    box.style.top = `${Math.round(best)}px`;
+    box.style.bottom = 'auto';
+  }
+
   /* ---------------------------------------------------------------- *
    * 12. FINISH SCREEN
    * ---------------------------------------------------------------- */
 
-  finish({ title = 'Clear!', sub = '' } = {}) {
+  /**
+   * The last ball down, before the result. `lines` are what the clear earned
+   * ({ kicker, title, sub }: an achievement, an unlock): CLEAR! moves up to
+   * make room and each is stamped in under it, one after another, so the slam
+   * never covers them (review).
+   */
+  finish({ title = 'Clear!', sub = '', lines = [] } = {}) {
     const style = this.on('finish');
     if (!style) return Promise.resolve();
-    const box = el('div', `jc-finish ${style}`, this.root);
+    const box = el('div', `jc-finish ${style}${lines.length ? ' has-lines' : ''}`, this.root);
     if (style === 'bands') {
       for (let i = 0; i < 4; i++) {
         const s = el('i', `s${i}`, box);
@@ -635,8 +741,27 @@ export class Juice {
       { duration: 360, delay: style === 'bands' ? 180 : 60, easing: 'ease-out' }
     );
     if (plate) this.anim(plate, [{ transform: 'translate(-50%, 0) rotate(-7deg) translateX(-60px)', opacity: 0 }, { transform: 'translate(-50%, 0) rotate(-7deg)', opacity: 1 }], { duration: 260, delay: style === 'bands' ? 520 : 400, easing: OUT });
+    const list = lines.length ? el('div', 'jc-finish-lines', box) : null;
+    const first = (style === 'bands' ? 520 : 400) + 340;
+    lines.slice(0, 3).forEach((ln, i) => {
+      const card = el('div', 'jc-finish-line', list);
+      if (ln.kicker) el('small', '', card).textContent = ln.kicker;
+      el('b', '', card).textContent = ln.title;
+      if (ln.sub) el('span', '', card).textContent = ln.sub;
+      this.anim(
+        card,
+        [
+          { transform: 'scale(1.9) rotate(-3deg)', opacity: 0 },
+          { transform: 'scale(0.96) rotate(-3deg)', opacity: 1, offset: 0.7 },
+          { transform: 'scale(1) rotate(-3deg)', opacity: 1 }
+        ],
+        { duration: 300, delay: first + 520 * i, easing: 'ease-out' }
+      );
+    });
+    // long enough to read each line once it lands
+    const hold = (style === 'bands' ? 950 : 750) + Math.min(3, lines.length) * 900;
     return w
-      .then(() => new Promise((r) => setTimeout(r, style === 'bands' ? 950 : 750)))
+      .then(() => new Promise((r) => setTimeout(r, hold)))
       .then(() => this.anim(box, [{ opacity: 1 }, { opacity: 0 }], { duration: 260 }))
       .then(() => box.remove());
   }

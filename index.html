@@ -2576,8 +2576,10 @@
       .jc-burst { position: absolute; width: 0; height: 0; }
       .jc-burst i { position: absolute; left: 0; top: 0; transform-origin: 0 50%; border-radius: 2px; filter: drop-shadow(0 0 3px rgba(34, 232, 255, 0.9)); }
       .jc-core { position: absolute; left: 0; top: 0; width: 90px; height: 90px; border-radius: 50%; }
-      .jc-blast i { filter: drop-shadow(0 0 4px rgba(255, 138, 30, 0.95)); }
-      .jc-blast-ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 6px solid #ffb35c; box-shadow: 0 0 18px #ff8a1e, inset 0 0 18px #ff8a1e; box-sizing: border-box; }
+
+      .jc-blast-ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 10px solid #ff8a1e; box-shadow: 0 0 22px #ff6a1e, 0 0 6px #ffd27a, inset 0 0 26px #ff8a1e; box-sizing: border-box; }
+      .jc-blast .jc-flame { position: absolute; left: 0; top: 0; transform-origin: 0 50%; border-radius: 50%; background: radial-gradient(ellipse at 70% 50%, #fff3c4 0%, #ffb347 35%, #ff5a1e 70%, rgba(255, 60, 20, 0) 100%); filter: drop-shadow(0 0 4px #ff6a1e); }
+      .jc-blast .jc-ember { position: absolute; left: 0; top: 0; width: 4px; height: 4px; margin: -2px; transform-origin: 0 50%; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 6px #ff8a1e; }
       .jc-pillar { position: absolute; width: 22px; height: 30vh; transform-origin: 50% 100%;
         background: linear-gradient(0deg, #ffffff 0%, var(--c) 18%, color-mix(in srgb, var(--c) 40%, transparent) 60%, transparent 100%);
         border-radius: 12px 12px 4px 4px; filter: drop-shadow(0 0 10px var(--c)) drop-shadow(0 0 22px var(--c)); }
@@ -2627,6 +2629,14 @@
         font-size: clamp(48px, 17vmin, 84px); color: #ffffff; letter-spacing: 0.02em; text-shadow: 4px 4px 0 #02050b, 0 0 28px #22e8ff; }
       .jc-finish.slam .jc-finish-word { text-shadow: 4px 4px 0 #ff8a1e, 0 0 28px #22e8ff; }
       .jc-finish-sub { position: absolute; left: 50%; top: 55%; padding: 6px 22px; background: #e9f8ff; color: #02050b; font-family: var(--font-display); font-size: 15px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; }
+      /* the finish with news: CLEAR! up top, then each line stamped in under it */
+      .jc-finish.has-lines .jc-finish-word { top: 27%; }
+      .jc-finish.has-lines .jc-finish-sub { top: 36%; }
+      .jc-finish-lines { position: absolute; left: 8%; right: 8%; top: 47%; display: grid; gap: 12px; justify-items: center; }
+      .jc-finish-line { display: grid; justify-items: center; gap: 2px; padding: 10px 18px 12px; min-width: 70%; background: rgba(2, 5, 11, 0.92); border: 2px solid #ffc266; box-shadow: 0 0 22px rgba(255, 194, 102, 0.45); text-align: center; }
+      .jc-finish-line small { font-size: 11px; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: #ffc266; }
+      .jc-finish-line b { font-family: var(--font-display); font-size: clamp(20px, 6.4vmin, 28px); font-weight: 900; text-transform: uppercase; color: #ffffff; text-shadow: 0 0 14px #ffc266; line-height: 1.05; }
+      .jc-finish-line span { font-size: 14px; font-weight: 600; color: rgba(233, 248, 255, 0.86); }
       @media (prefers-reduced-motion: reduce) { .jc-flash { display: none; } }
       /* SHOT TRAY (juice batch 2): spin, curve, bomb, above the shots counter */
       /* THE SHOT TRAY sits in the bottom band between Shots and Freeze frame, never on the felt; it steps away while the balls roll (the points boxes use that spot) */
