@@ -2161,6 +2161,8 @@ function tableResult(result) {
     runScore: result.runScore,
     target: result.target,
     beaten: result.beaten,
+    rack: rules.mission?.rack || 0,
+    ballsDown: rules.ballsDown || 0,
     payout: result.payout,
     earned: result.earned,
     cashFrom: result.cashFrom,
@@ -2171,10 +2173,123 @@ function tableResult(result) {
   };
 }
 
-/** No lives left: the run is over once the table's moment has shown why. */
+/**
+ * NO LIVES LEFT (round 10): the run is over once the table's moment has shown
+ * why. Its own panel says how far the run got and what it scored against your
+ * best, and nothing starts again until you pick New run or Home.
+ */
 function runOver() {
+  clearRun();
+  engine.shake(14);
+  engine.zoomPunch(FEEL.zoomPunch * 1.4);
+  moments.runEnd({
+    kind: 'over',
+    level: game.level,
+    tables: TABLES.length,
+    runScore: rules.runScore,
+    bestBefore: game.bestBefore || 0,
+    actions: [
+      { name: 'New run', detail: 'Table 1', primary: true, pick: () => leaveRunEnd(startRun) },
+      { name: 'Home', pick: () => leaveRunEnd(goHome) }
+    ]
+  });
+}
+
+/**
+ * THROUGH TABLE 12 (round 10): the run's end is marked before the shop. Keep
+ * going and the shop opens as ever, then new tables without end; Finish run
+ * ends it here, its score banked.
+ */
+function runFinale() {
+  return moments.runEnd({
+    kind: 'complete',
+    level: game.level,
+    tables: TABLES.length,
+    runScore: rules.runScore,
+    bestBefore: game.bestBefore || 0,
+    actions: [
+      { name: 'Keep going', detail: `Table ${game.level + 1} · new every time`, primary: true, resume: true },
+      {
+        name: 'Finish run',
+        pick: () => {
+          clearRun();
+          leaveRunEnd(goHome);
+        }
+      }
+    ]
+  });
+}
+
+/**
+ * QUIT RUN (round 17, from review): a dialog asks first, unless the player
+ * ticked "Don't ask me again". Returns false when they stay.
+ */
+const QUIT_ASK_KEY = 'lightline-quit-noask-v1';
+async function quitRun() {
+  let ask = true;
+  try {
+    ask = localStorage.getItem(QUIT_ASK_KEY) !== '1';
+  } catch {
+    /* private mode: always ask */
+  }
+  if (ask) {
+    const r = await moments.confirm({
+      title: 'Quit this run?',
+      text: 'You’ll go back to the main menu and lose this run’s progress.',
+      yes: 'Yes, quit',
+      no: 'No, keep playing'
+    });
+    if (r.dontAsk) {
+      try {
+        localStorage.setItem(QUIT_ASK_KEY, '1');
+      } catch {
+        /* private mode */
+      }
+    }
+    if (!r.yes) return false;
+  }
+  clearRun();
+  leaveRunEnd(goHome);
+  return true;
+}
+
+/** The same table again, a fresh rack: a run goes on only past a cleared table. */
+function retryTable() {
+  game.introUp = false;
+  moments.closeIntro();
+  game.chain.count = 0;
+  game.launchHits = 0;
+  boons.clearFields();
+  fx.clearTexts();
+  hud.setDoors([]);
+  hud.hideScorecard();
   moments.closeClear();
-  game.on.playerDeath();
+  game.scoreHold = null;
+  rooms.generate(game.level);
+  callPocket(null);
+  beginMission();
+  player.placeAt(rooms.layout.spawn.x, spawnZ());
+  game.state = 'playing';
+  game.phase = 'aim';
+  game.midStroke = false;
+  input.setHeading(0, -1);
+  saveRun();
+  // its card was read the first time; the rule chip goes straight to the corner
+  game.skipIntroCard = true;
+  showRoomBanner();
+}
+
+/** Off the end-of-run panel, to a new run or home. */
+function leaveRunEnd(next) {
+  moments.closeClear();
+  hud.hideScorecard();
+  next();
+}
+
+/** To the home screen, a table racked behind it as at boot. */
+function goHome() {
+  openMenu();
+  startRun();
 }
 
 /**
@@ -2183,7 +2298,26 @@ function runOver() {
  */
 function showRoomResult(data, shownRun) {
   // a replayed table is on its own: no shop, no run to end
-  if (game.replay) data = { ...data, lives: Math.max(1, data.lives), choices: replayChoices(game.replay), nextLabel: 'Replay' };
+  // (round 11) it pays stars, not cash, and costs no heart
+  // CLEAR IT TO GO ON (round 15, from review): balls left cost a heart and
+  // the same table is played again, a fresh rack, until it is cleared
+  if (!game.replay && !data.filled && data.lives > 0) {
+    data = {
+      ...data,
+      choices: [],
+      // (round 16) Try again is the one big button; Quit run, smaller,
+      // ends the run (asking once) and goes home
+      actions: [
+        { name: 'Try again', detail: `Table ${game.level}`, primary: true, pick: retryTable },
+        { name: 'Quit run', pick: quitRun }
+      ],
+      nextLabel: 'Clear it to go on'
+    };
+  }
+  if (game.replay) {
+    const n = game.replay;
+    data = { ...data, lives: Math.max(1, data.lives), payout: [], single: true, stars: game.lastStars, onStarsShown: () => hud.setSingle(loadTableBests()[n]?.stars || {}), choices: replayChoices(n), nextLabel: 'What next' };
+  }
   if (!momentsOn()) {
     flushAchievements();
     hud.showScorecard(data);
@@ -2203,13 +2337,22 @@ function showRoomResult(data, shownRun) {
     moments.clear({
       ...data,
       // The exits are replaced by the shop: the next table is a button in it.
-      choices: game.replay ? data.choices : [],
+      // a replay ends on its own choices; a table left with balls on it is
+      // played again (round 15); a cleared one goes on to the shop
+      choices: game.replay || !data.filled ? data.choices : [],
+      actions: data.actions,
       shownRun,
       onTotal: () => (game.scoreHold = null),
-      onCashLanded: () => (game.cashHold = null),
+      // the hearts let go here too: a table beaten loses none, and a heart
+      // bought in the shop has to show in the corner (round 11)
+      onCashLanded: () => {
+        game.cashHold = null;
+        game.livesHold = null;
+      },
       onLifeLost: () => (game.livesHold = null),
       // no lives left: the moment ends on the last life breaking, not the shop
-      shop: data.lives > 0 && !game.replay ? openShop() : null,
+      shop: data.lives > 0 && !game.replay && data.filled ? openShop() : null,
+      finale: data.lives > 0 && !game.replay && data.filled && game.level === TABLES.length ? runFinale : null,
       onRunOver: data.lives > 0 ? null : runOver
     });
   };
@@ -2225,9 +2368,15 @@ function showRoomResult(data, shownRun) {
  * (from review); the target decides the cash and whether a life is lost.
  */
 function recordTable(result, cleared) {
+  // the shot an Extra Life cost is paid once this table is over
+  game.shotDebt = 0;
   if (game.headless) return;
-  saveBest(cleared ? game.level : 0, rules.runScore);
-  saveTableBest(game.level, result.roomScore, cleared);
+  // a table played on its own is not a run: its score is not a run's best
+  if (!game.replay) saveBest(cleared ? game.level : 0, rules.runScore);
+  const stars = { t: !!result.beaten, a: !!cleared, o: !!cleared && !rules.orderBroken };
+  const before = loadTableBests()[game.level]?.stars || {};
+  game.lastStars = { ...stars, was: { ...before } };
+  saveTableBest(game.level, result.roomScore, cleared, stars);
   // earned on the last pot already; this only catches a clear no pot made
   if (cleared) for (const id of tableAchievementIds()) achievements.unlock(id);
 }
@@ -2302,7 +2451,15 @@ function openShop() {
     const chosen = (curated || []).map((id) => UPGRADES.find((u) => u.id === id)).filter((u) => u && !skip.has(u.id)).slice(0, S.slots - held.length);
     curated = null;
     for (const u of chosen) skip.add(u.id);
-    return held.concat(chosen.map((u) => card(u)), rollShelf(skip, S.slots - held.length - chosen.length).map((u) => card(u)));
+    const items = held.concat(chosen.map((u) => card(u)), rollShelf(skip, S.slots - held.length - chosen.length).map((u) => card(u)));
+    // A HEART IS ALWAYS ON OFFER once one is lost (round 12): Extra Life
+    // takes the last rolled place on the shelf
+    const life = UPGRADES.find((u) => u.id === 'extra-life');
+    if (rules.lives < rules.livesMax && !items.some((it) => it.id === life.id)) {
+      const at = items.map((it) => !it.held).lastIndexOf(true);
+      if (at >= 0) items[at] = card(life);
+    }
+    return items;
   };
   const ctx = () => ({ rules, game, player, boons });
   const api = {
@@ -2407,6 +2564,13 @@ function failRoom() {
 }
 
 function openExits(title, sub) {
+  // THE SHOP REPLACED THE EXIT DOORS (round 12): with the moments on, the
+  // table ends without them; they drew two boxes on the top rail that meant
+  // nothing. The plain scorecard (moments off) still picks a door.
+  if (momentsOn()) {
+    rooms.cleared = true;
+    return;
+  }
   rooms.openExits();
 }
 
@@ -2559,7 +2723,8 @@ function beginMission() {
   rules.beginRoom(game.level, {
     ...rooms.mission,
     strictOrder: strictOrder.on,
-    strokes: rooms.mission.strokes + (game.strokeBonus || 0)
+    // a heart bought in the shop is paid for with a shot on the next table
+    strokes: Math.max(1, rooms.mission.strokes + (game.strokeBonus || 0) - (game.shotDebt || 0))
   });
 }
 
@@ -2771,7 +2936,10 @@ function spawnZ() {
  * the mission — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
-  hud.holdAchievements(false);
+  // an achievement held through the score screen and the shop shows once the
+  // table is in play: after its card when it has one (round 12: it sat on
+  // the card), straight away when not
+  const release = () => hud.holdAchievements(false);
   // EVERY ONE OF THESE INTRODUCES A RULE, so every one of them waits to be
   // read. They are not reports on something the player just watched; they are
   // the terms of the room, and a rule that scrolled past unread is a rule the
@@ -2782,23 +2950,24 @@ function showRoomBanner() {
   const t = rooms.authored;
   // Not behind the title screen: the boot racks Table 1 under the menu, and a
   // card there would sit under it with a Play button of its own.
-  if (t?.intro && menuOpen) return;
+  if (t?.intro && menuOpen) return release();
   if (t?.intro && game.skipIntroCard) {
     game.skipIntroCard = false;
     hud.setRule(t.name, true);
-    return;
+    return release();
   }
   if (t?.intro) {
     hud.setRule(null);
     game.introUp = true;
     moments
       .tableIntro({
-        kicker: `Table ${game.level}`,
+        // a replay says so (round 13): no hearts or shop, played for stars
+        kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
         name: t.name,
         rule: t.intro.sub,
         // the same facts on every card (from review): number, name, rule, balls, shots.
         // The target lives on the score bar, where it reads as points.
-        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`],
+        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, ...(game.shotDebt ? [`−${game.shotDebt} shot: Extra Life`] : [])],
         // the name IS the rule, so the card and the corner chip say the same thing
         chip: t.name,
         chipTo: () => hud.ruleChip
@@ -2806,9 +2975,11 @@ function showRoomBanner() {
       .then(() => {
         game.introUp = false;
         hud.setRule(t.name, true);
+        release();
       });
     return;
   }
+  release();
   const lesson = TUTORIAL.lessons[game.level];
   if (lesson) {
     hud.showBanner(lesson.title, lesson.sub, HOLD);
@@ -2817,13 +2988,14 @@ function showRoomBanner() {
   const c = rules.mission;
   // The mission holds until it is tapped away. It is the terms of the room,
   // not a report on something already watched, and it decides every shot.
-  hud.showBanner(`Room ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
+  hud.showBanner(`Table ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
 }
 
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
   endPractice();
   game.replay = null;
+  hud.setSingle(null);
   game.skipIntroCard = false;
   boons.reset();
   boons.recompute();
@@ -2848,6 +3020,8 @@ function resetRunState() {
   rules.paidStreak = 0;
   rules.cash = RULES.cash.start;
   rules.lives = RULES.lives.start;
+  rules.livesMax = RULES.lives.max;
+  game.shotDebt = 0;
   game.cashHold = null;
   game.livesHold = null;
   game.freezeHold = null;
@@ -2858,6 +3032,8 @@ function resetRunState() {
 
 function startRun() {
   resetRunState();
+  // what this run has to beat to be a new best (kept with the saved run)
+  game.bestBefore = loadBest().score;
   game.graceTimer = TUTORIAL.graceSeconds;
   game.tutorialGuard = null;
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
@@ -2882,6 +3058,7 @@ function startReplay(n) {
   game.tutorialGuard = null;
   game.replay = n;
   game.level = n;
+  hud.setSingle(loadTableBests()[n]?.stars || {});
   rooms.runSeed = (Math.random() * 0xffffffff) >>> 0;
   rooms.generate(game.level);
   callPocket(null);
@@ -2891,9 +3068,24 @@ function startReplay(n) {
   showRoomBanner();
 }
 
-/** How a replayed table ends: again, or back to the tables. */
+/** How a table played on its own ends: the next one (once open), again, or back to the tables. */
 function replayChoices(n) {
+  const next = n < TABLES.length && tableUnlocked(n + 1);
   return [
+    ...(next
+      ? [
+          {
+            name: 'Next table',
+            detail: `Table ${n + 1}`,
+            color: '#22e8ff',
+            pick: () => {
+              moments.closeClear();
+              hud.hideScorecard();
+              startReplay(n + 1);
+            }
+          }
+        ]
+      : []),
     {
       name: 'Play again',
       detail: `Table ${n}`,
@@ -2918,6 +3110,36 @@ function replayChoices(n) {
     }
   ];
 }
+
+/**
+ * RUNS UNLOCK TABLES (round 13, from review): a table opens to be replayed on
+ * its own once a run has reached it, and only then. Runs are for getting
+ * further; the Tables tab is for going back for stars and scores. Table 1 is
+ * always open.
+ */
+const REACHED_KEY = 'lightline-reached-v1';
+function tablesReached() {
+  try {
+    const v = localStorage.getItem(REACHED_KEY);
+    if (v !== null) return Number(v) || 1;
+  } catch {
+    return 1;
+  }
+  // first time: what this device had already reached before the key existed
+  return Math.max(1, loadRun()?.level || 0, loadBest().table || 0);
+}
+function noteReached(level) {
+  try {
+    localStorage.setItem(REACHED_KEY, String(Math.max(level, tablesReached())));
+  } catch {
+    /* private mode */
+  }
+}
+function tableUnlocked(n) {
+  return n <= 1 || n <= tablesReached();
+}
+
+const starCount = (s) => (s?.t ? 1 : 0) + (s?.a ? 1 : 0) + (s?.o ? 1 : 0);
 
 /* ------------------------------------------------------------------ *
  * Input wiring
@@ -4946,10 +5168,13 @@ function loadTableBests() {
   }
 }
 
-function saveTableBest(level, score, cleared) {
+function saveTableBest(level, score, cleared, stars = {}) {
   const all = loadTableBests();
   const was = all[level] || { score: 0, cleared: false };
-  all[level] = { score: Math.max(was.score, score), cleared: was.cleared || cleared };
+  // STARS (round 11), kept once earned: t beat the target, a every ball
+  // down, o every ball down in order
+  const s = was.stars || {};
+  all[level] = { score: Math.max(was.score, score), cleared: was.cleared || cleared, stars: { t: !!(s.t || stars.t), a: !!(s.a || stars.a), o: !!(s.o || stars.o) } };
   try {
     localStorage.setItem(TABLE_BEST_KEY, JSON.stringify(all));
   } catch {
@@ -4999,6 +5224,8 @@ function saveRun() {
   // not the table racked behind the menu at boot: that would overwrite the
   // run a player is coming back to
   if (menuOpen || game.headless || tutorial.running || game.practice || game.replay) return;
+  // a run that reaches a table opens it on the Tables tab
+  if (game.level <= TABLES.length) noteReached(game.level);
   const data = {
     v: 1,
     level: game.level,
@@ -5010,7 +5237,9 @@ function saveRun() {
     paidStreak: rules.paidStreak || 0,
     owned: shopRun.owned.map((u) => u.id),
     held: shopRun.held?.id || null,
-    boons: boons.owned.map((o) => ({ id: o.def.id, rank: o.rank, rarity: o.rarity }))
+    boons: boons.owned.map((o) => ({ id: o.def.id, rank: o.rank, rarity: o.rarity })),
+    bestBefore: game.bestBefore || 0,
+    shotDebt: game.shotDebt || 0
   };
   try {
     localStorage.setItem(RUN_KEY, JSON.stringify(data));
@@ -5044,6 +5273,7 @@ function resumeRun() {
     return;
   }
   resetRunState();
+  game.bestBefore = d.bestBefore ?? loadBest().score;
   game.graceTimer = TUTORIAL.graceSeconds;
   game.tutorialGuard = null;
   rooms.runSeed = d.seed >>> 0;
@@ -5061,6 +5291,7 @@ function resumeRun() {
   rules.runScore = d.runScore || 0;
   rules.cash = d.cash ?? rules.cash;
   rules.lives = d.lives ?? rules.lives;
+  game.shotDebt = d.shotDebt || 0;
   rules.paidStreak = d.paidStreak || 0;
   rooms.generate(game.level);
   callPocket(null);
@@ -5076,44 +5307,50 @@ const TP_ICON = {
   lock: '<svg viewBox="0 0 16 16"><path d="M4.5 7.5h7v5.5h-7Zm1.5 0V5.5a2 2 0 0 1 4 0v2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>'
 };
 
-/** The play screen: Continue (or New run), the tables, Modes. */
+/**
+ * THE PLAY SCREEN (round 14, from review: no tabs). One big button held at
+ * the top for the run: Continue (Table N under it) or Start a run, with one
+ * shimmer each time the screen opens. Under it, the tables a run has
+ * unlocked, to replay on their own for stars: each open row has the play
+ * arrow, its stars and its best; a locked one is dim with a padlock. New run
+ * (ending a saved run) is in Settings.
+ */
 function showPlayPanel() {
   const run = loadRun();
-  const best = loadBest();
   const t = run ? TABLES[run.level - 1] : null;
-  // "Continue" big, the table small under it (from review)
-  $('play-continue-main').textContent = run ? 'Continue' : 'New run';
-  $('play-continue-sub').textContent = run ? `Table ${run.level}` : '';
-  $('play-continue').setAttribute('aria-label', run ? `Continue at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a new run');
-  // ROWS, NOT BOXES (from review): room for the whole name and the table's
-  // best. Two looks and no words: a table you can play has the play arrow
-  // (the run you left is the lit one; any you have cleared replay), and one
-  // you have not reached is dim with a padlock and does nothing.
+  $('play-continue-main').textContent = run ? 'Continue' : 'Start a run';
+  $('play-continue-sub').textContent = `Table ${run ? run.level : 1}`;
+  $('play-continue').setAttribute('aria-label', run ? `Continue the run at Table ${run.level}${t ? `, ${t.name}` : ''}` : 'Start a run at Table 1');
+
   const bests = loadTableBests();
   const path = $('table-path');
   path.textContent = '';
-  let hereRow = null;
+  let stars = 0;
   TABLES.forEach((tb, i) => {
     const n = i + 1;
-    const here = n === run?.level;
-    const cleared = !here && (n <= best.table || bests[n]?.cleared);
+    const open = tableUnlocked(n);
     const li = document.createElement('li');
-    const row = document.createElement(here || cleared ? 'button' : 'div');
-    row.className = `tp-row ${here ? 'here' : cleared ? 'cleared' : 'locked'}`;
-    if (row.tagName === 'BUTTON') row.type = 'button';
-    row.innerHTML = `<span class="tp-num"><span class="tp-icon" aria-hidden="true">${here || cleared ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b></span><span class="tp-name"></span><span class="tp-best"></span>`;
+    const row = document.createElement(open ? 'button' : 'div');
+    row.className = `tp-row ${open ? 'open' : 'locked'}`;
+    if (open) row.type = 'button';
+    row.innerHTML = `<span class="tp-num"><span class="tp-icon" aria-hidden="true">${open ? TP_ICON.play : TP_ICON.lock}</span><b>${n}</b></span><span class="tp-name"></span><span class="tp-best"></span>`;
     row.querySelector('.tp-name').textContent = tb.name;
+    const s = bests[n]?.stars || {};
+    stars += starCount(s);
     const top = bests[n]?.score;
-    if (top && !row.classList.contains('locked')) row.querySelector('.tp-best').innerHTML = `<small>Best</small><span>${top.toLocaleString()}</span>`;
-    row.setAttribute('aria-label', `Table ${n} · ${tb.name}${here ? ' · continue' : cleared ? ' · replay' : ' · locked'}${top ? ` · best ${top}` : ''}`);
-    if (here) row.addEventListener('click', () => play(resumeRun));
-    else if (cleared) row.addEventListener('click', () => play(() => startReplay(n)));
+    if (open) {
+      const mark = (on) => `<i class="${on ? 'on' : ''}">★</i>`;
+      row.querySelector('.tp-best').innerHTML = `<span class="tp-stars" aria-hidden="true">${mark(s.t)}${mark(s.a)}${mark(s.o)}</span>${top ? `<span>${top.toLocaleString()}</span>` : ''}`;
+      row.addEventListener('click', () => play(() => startReplay(n)));
+    }
+    row.setAttribute('aria-label', `Table ${n} · ${tb.name}${open ? ` · replay · ${starCount(s)} of 3 stars` : ' · locked'}${top && open ? ` · best ${top}` : ''}`);
     li.appendChild(row);
     path.appendChild(li);
-    if (here) hereRow = li;
   });
+  $('stars-total').textContent = `★ ${stars} of ${TABLES.length * 3}`;
+
   showPanel('play');
-  // one shimmer across Continue each time this opens (from review)
+  // one shimmer across the run's button each time this opens (from review)
   const go = $('play-continue');
   go.classList.remove('shine');
   void go.offsetWidth;
@@ -5128,8 +5365,6 @@ function showPlayPanel() {
       name.style.fontSize = `${size}px`;
     }
   }
-  // the run you left is in view, even when the list scrolls
-  hereRow?.scrollIntoView({ block: 'nearest' });
 }
 
 /**
@@ -5176,6 +5411,8 @@ function resetFirstTime() {
   Tutorial.reset();
   try {
     for (const t of Object.values(TEACH)) localStorage.removeItem(t.key);
+    // and Quit run asks again (round 17)
+    localStorage.removeItem(QUIT_ASK_KEY);
   } catch {
     /* private mode */
   }
@@ -5305,7 +5542,6 @@ $('mode-strict').addEventListener('click', () => {
 });
 $('mode-back').addEventListener('click', () => {
   showPanel('settings');
-  showNewRunState();
 });
 $('set-mute').addEventListener('click', () => {
   muted = !muted;
@@ -5526,10 +5762,12 @@ if (typeof window !== 'undefined') {
   };
 
   window.__demo = {
-    /** End the room as if it went well (or, with `fail`, ran out of shots). */
-    clear(fail = false) {
+    /** End the room as if it went well (or, with `fail`, ran out of shots; with `weak`, every ball down short of the target). */
+    clear(fail = false, weak = false) {
       // A failed table is a weak one: short of its target, with no shots left.
-      const shots = fail
+      const shots = weak
+        ? [{ pts: 35, mult: 1 }, { pts: 25, mult: 1 }, { pts: 45, mult: 1 }]
+        : fail
         ? [{ pts: 35, mult: 2 }, { pts: 45, mult: 2 }]
         : [
             { pts: 35, mult: 3 },
@@ -5548,8 +5786,9 @@ if (typeof window !== 'undefined') {
         failRoom();
       } else {
         rules.ballsDown = rules.mission.rack;
-        rules.strokesUsed = 3;
-        rules.strokesLeft = 2;
+        rules.strokesUsed = weak ? 5 : 3;
+        rules.strokesLeft = weak ? 0 : 2;
+        if (weak) rules.orderBroken = true;
         completeRoom();
       }
     },
@@ -5965,7 +6204,9 @@ function frame(now) {
         layout: rooms.layout ? rooms.layout.name : '',
         phase: game.phase,
         midStroke: game.midStroke,
-        cleared: game.state === 'cleared',
+        // MISSION COMPLETE only when every ball is down (round 10: an
+        // out-of-shots table said it too)
+        cleared: game.state === 'cleared' && rules.filled,
         // What the drawn line would be refused for, if anything.
         aimFoul: game.aimFoul,
         // a table about the order shows "NEXT n" all table long

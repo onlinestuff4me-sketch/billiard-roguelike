@@ -56,7 +56,7 @@ export class BoonModal {
     this.cards.textContent = '';
 
     this.title.textContent = 'Choose an Upgrade';
-    this.subtitle.textContent = `Room ${context.level ?? '?'} · pick one`;
+    this.subtitle.textContent = `Table ${context.level ?? '?'} · pick one`;
 
     if (!offers.length) {
       const empty = el('div', 'boon-empty', this.cards);

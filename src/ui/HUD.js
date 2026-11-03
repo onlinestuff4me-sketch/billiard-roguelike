@@ -23,6 +23,7 @@
 import * as THREE from 'three';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+export const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.6-4.7-9.4-9.4C1.2 7.6 3.3 4 6.8 4c2.2 0 3.7 1.3 5.2 3.1C13.5 5.3 15 4 17.2 4c3.5 0 5.6 3.6 4.2 7.1-1.8 4.7-9.4 9.4-9.4 9.4Z"/></svg>';
 
 function el(tag, className, parent) {
   const node = document.createElement(tag);
@@ -58,8 +59,12 @@ export class HUD {
     // target costs a life; cash is spent in the shop between tables.
     const hpBlock = el('div', 'hud-hp', top);
     this.hpBlock = hpBlock;
-    el('div', 'hud-label', hpBlock).textContent = 'Lives';
+    this.hpLabel = el('div', 'hud-label', hpBlock);
+    this.hpLabel.textContent = 'Lives';
     this.livesRow = el('div', 'lives-row', hpBlock);
+    // A TABLE ON ITS OWN (round 12): no hearts or cash to carry, so the corner
+    // shows the stars this table holds, the ones it is played for
+    this.singleStars = el('div', 'single-stars', hpBlock);
     // THE WALLET: one boxed figure, always in this corner, during play, the
     // table's result and the shop alike.
     this.cashValue = el('div', 'cash-value', hpBlock);
@@ -458,7 +463,7 @@ export class HUD {
   showScorecard(data) {
     this.cardStatus.textContent = data.filled ? 'Mission complete' : 'Out of shots';
     this.cardStatus.classList.toggle('failed', !data.filled);
-    this.cardTitle.textContent = `Room ${String(data.level).padStart(2, '0')}`;
+    this.cardTitle.textContent = `Table ${data.level}`;
 
     this.cardLines.textContent = '';
     for (const entry of data.ledger || []) {
@@ -482,7 +487,7 @@ export class HUD {
 
     this.cardTotals.textContent = '';
     const room = el('div', 'card-total', this.cardTotals);
-    el('span', 'card-k', room).textContent = 'Room';
+    el('span', 'card-k', room).textContent = 'Table';
     el('span', 'card-v', room).textContent = data.roomScore.toLocaleString();
     const run = el('div', 'card-total run', this.cardTotals);
     el('span', 'card-k', run).textContent = 'Run';
@@ -607,6 +612,13 @@ export class HUD {
    * @param {number} rawDt real seconds (HUD animation is never slowed)
    */
   /** The node of the life that is about to go, for the moment to break. */
+  /** Playing one table on its own: the corner shows its stars (null: a run). */
+  setSingle(stars) {
+    this.root.classList.toggle('single', !!stars);
+    this.hpLabel.textContent = stars ? 'Stars' : 'Lives';
+    this.singleStars.innerHTML = stars ? ['t', 'a', 'o'].map((k) => `<i class="${stars[k] ? 'on' : ''}">★</i>`).join('') : '';
+  }
+
   lifeNode(index) {
     return this.livesRow.children[index] || null;
   }
@@ -625,7 +637,8 @@ export class HUD {
     if (lifeKey !== cache.lives) {
       cache.lives = lifeKey;
       this.livesRow.textContent = '';
-      for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow);
+      // RED HEARTS (round 11): full while you have them, an outline once lost
+      for (let i = 0; i < (s.livesMax || 3); i++) el('span', `life${i < s.lives ? ' on' : ''}`, this.livesRow).innerHTML = HEART;
     }
     // While a moment counts the wallet itself (collecting, spending), the
     // HUD leaves its figure alone; unlocking repaints it with the real one.

@@ -681,7 +681,7 @@ export const RULES = {
     interestCap: 5
   },
 
-  /** LIVES replace hull. Missing a table's target costs one; none left ends the run. */
+  /** LIVES (hearts). A table that ends with balls standing costs one; none left ends the run. The target only pays. */
   lives: { start: 3, max: 3 },
 
 

@@ -147,6 +147,8 @@ export class Rules {
     this.cash = RULES.cash.start;
     /** LIVES: missing a table's target costs one; none left ends the run. */
     this.lives = RULES.lives.start;
+    /** How many hearts the run can hold (Spare Heart adds one). */
+    this.livesMax = RULES.lives.max;
     /** This table's points target (RULES.target). */
     this.target = targetFor(1);
     /** Consecutive shots this table that paid (the Hot Streak upgrade). */
@@ -250,7 +252,10 @@ export class Rules {
         amount: sweepRate
       });
     }
-    this.runScore += this.roomScore;
+    // CLEAR IT TO GO ON (round 15, from review): a table left with balls on
+    // it is played again, so its points don't bank and it pays nothing.
+    const cleared = this.filled;
+    if (cleared) this.runScore += this.roomScore;
 
     // THE TARGET, then the PAYOUT. Interest is on what you held coming in, so
     // saving is what earns it; beating the target pays, and beating it by more
@@ -258,19 +263,25 @@ export class Rules {
     const C = RULES.cash;
     const beaten = this.roomScore >= this.target;
     const payout = [];
-    if (beaten) {
+    if (beaten && cleared) {
       payout.push({ id: 'beaten', label: 'Beat the target', detail: '', rule: '', count: 1, amount: C.beaten });
       if (saved > 0) payout.push({ id: 'shots', label: 'Unused shots', detail: `${saved} × $${C.perShotLeft}`, rule: `$${C.perShotLeft} each`, count: saved, amount: saved * C.perShotLeft });
       const over = Math.min(C.overCap, Math.floor((this.roomScore / Math.max(1, this.target) - 1) / C.overStep + 1e-9));
       if (over > 0) payout.push({ id: 'over', label: 'Over the target', detail: `${Math.round((this.roomScore / this.target - 1) * 100)}% · $1 per ${Math.round(C.overStep * 100)}%`, rule: `$1 per ${Math.round(C.overStep * 100)}%, max $${C.overCap}`, count: over, amount: over });
     }
-    const interest = Math.min(C.interestCap, Math.floor(this.cash / C.interestPer));
+    const interest = cleared ? Math.min(C.interestCap, Math.floor(this.cash / C.interestPer)) : 0;
     if (interest > 0) payout.push({ id: 'interest', label: 'Interest', detail: `on $${this.cash} · $1 per $${C.interestPer}`, rule: `$1 per $${C.interestPer}, max $${C.interestCap}`, count: interest, amount: interest });
     const cashFrom = this.cash;
     const earned = payout.reduce((n, p) => n + p.amount, 0);
     this.cash += earned;
     const livesFrom = this.lives;
-    if (!beaten) this.lives = Math.max(0, this.lives - 1);
+    // A HEART IS LOST FOR BALLS LEFT STANDING (round 14, from review: "the
+    // criteria for losing a life must be simpler and easier to control than
+    // points"). Every ball down keeps your hearts, whatever the score; the
+    // target only decides points and cash. A ball out of turn comes back, so
+    // a table whose order is prescribed is only filled in that order.
+    const filled = this.filled;
+    if (!filled) this.lives = Math.max(0, this.lives - 1);
     // Once the room is banked, `roomScore` is already inside `runScore`. The
     // HUD adds the two together while a room is live, so it has to be told to
     // stop — otherwise the running total doubles the instant a room ends.
@@ -285,6 +296,7 @@ export class Rules {
       runScore: this.runScore,
       target: this.target,
       beaten,
+      filled,
       payout,
       earned,
       cashFrom,
@@ -692,8 +704,8 @@ export class Rules {
 
   /** An extra life, up to the cap. Returns false when already full. */
   gainLife(n = 1) {
-    if (this.lives >= RULES.lives.max) return false;
-    this.lives = Math.min(RULES.lives.max, this.lives + n);
+    if (this.lives >= this.livesMax) return false;
+    this.lives = Math.min(this.livesMax, this.lives + n);
     return true;
   }
 
@@ -744,7 +756,7 @@ export class Rules {
       target: this.target,
       cash: this.cash,
       lives: this.lives,
-      livesMax: RULES.lives.max,
+      livesMax: this.livesMax,
       freezeCharges: this.freezeCharges,
       banks: this.shownBanks,
       ballsTouched: this.shownTouched,

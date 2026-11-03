@@ -204,19 +204,14 @@
         color: var(--muted);
       }
 
-      /* LIVES: three pips, lit while you have them. CASH under them, in heat. */
-      .lives-row { display: flex; gap: 6px; margin-top: 4px; min-height: 14px; }
-      .lives-row .life {
-        width: clamp(10px, 2.8vmin, 14px);
-        height: clamp(10px, 2.8vmin, 14px);
-        border-radius: 50%;
-        border: 1.5px solid rgba(34, 232, 255, 0.35);
-      }
-      .lives-row .life.on {
-        background: radial-gradient(circle at 35% 35%, #e9f8ff 0%, #22e8ff 55%, #0b8fa6 100%);
-        border-color: #22e8ff;
-        box-shadow: 0 0 8px rgba(34, 232, 255, 0.7);
-      }
+      /* LIVES: red hearts (round 11), full while you have them, an outline
+         once lost. CASH under them, in heat. */
+      .lives-row { display: flex; gap: 4px; margin-top: 3px; min-height: 16px; }
+      .lives-row .life { width: clamp(14px, 4vmin, 19px); height: clamp(14px, 4vmin, 19px); color: rgba(255, 59, 92, 0.45); }
+      .lives-row .life svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .lives-row .life path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+      .lives-row .life.on { color: #ff3b5c; filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.75)); }
+      .lives-row .life.on path { fill: currentColor; }
       .cash-value {
         margin-top: 5px;
         font-family: var(--font-num);
@@ -1315,6 +1310,15 @@
       .mo-target .stamp { padding: 4px 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; opacity: 0; }
       .mo-target.beaten .stamp { background: var(--ll-you); }
       .mo-target.missed .stamp { background: var(--ll-void); }
+      /* a heart lost, said on the result (round 13) */
+      .mo-heartloss { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 10px 0 2px; padding: 7px 10px; border: 1px solid rgba(255, 59, 92, 0.55); border-radius: 8px; background: rgba(255, 59, 92, 0.1); }
+      .mo-heartloss .k { font-size: 13px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #ff5c78; }
+      .mo-heartloss .hearts { display: flex; gap: 3px; }
+      .mo-heartloss .life { width: 18px; height: 18px; color: rgba(255, 59, 92, 0.45); }
+      .mo-heartloss .life svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .mo-heartloss .life path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
+      .mo-heartloss .life.on { color: #ff3b5c; filter: drop-shadow(0 0 5px rgba(255, 59, 92, 0.75)); }
+      .mo-heartloss .life.on path { fill: currentColor; }
       .mo-vs { grid-column: 1 / -1; position: relative; height: 10px; background: rgba(30, 79, 107, 0.55); }
       .mo-vs .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ll-you); box-shadow: 0 0 10px rgba(34, 232, 255, 0.6); }
       .mo-target.missed .mo-vs .fill { background: var(--ll-void); box-shadow: 0 0 10px rgba(255, 46, 126, 0.6); }
@@ -1411,6 +1415,69 @@
       .mo-total .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
       .mo-total .v { font-size: 40px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; transform-origin: 100% 60%; display: inline-block; }
       .mo-total.slam .v { text-shadow: 0 0 20px var(--ll-you); }
+
+      /* THE END OF A RUN (round 10): the path of tables, the run's score
+         against your best, and what next. Pink when the lives ran out, cyan
+         when the twelve are done. */
+      .mo-runend {
+        --edge: var(--ll-you);
+        position: absolute; left: 50%; top: calc(9% + 16px); width: min(90%, 360px);
+        padding: 18px 18px 16px; isolation: isolate; transform: translateX(-50%);
+        filter: drop-shadow(0 0 18px color-mix(in srgb, var(--edge) 35%, transparent));
+      }
+      .mo-runend.over { --edge: var(--ll-void); }
+      .mo-runend::before {
+        content: ''; position: absolute; inset: 0; z-index: -1;
+        background: linear-gradient(180deg, rgba(6, 18, 28, 0.97), rgba(2, 5, 11, 0.97));
+        border: 2px solid var(--edge);
+        clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+      }
+      .mo-runend .mo-kicker { color: var(--edge); text-shadow: 0 0 14px var(--edge); }
+      /* STARS on a table played on its own (round 11) */
+      .mo-stars { display: flex; justify-content: center; gap: 18px; margin-top: 8px; }
+      .mo-star { display: grid; justify-items: center; gap: 1px; color: rgba(34, 232, 255, 0.25); }
+      .mo-star b { font-size: 26px; line-height: 1; display: inline-block; }
+      .mo-star small { font-size: 9px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+      .mo-star.had { color: rgba(34, 232, 255, 0.55); }
+      .mo-star.on { color: var(--ll-you); text-shadow: 0 0 12px var(--ll-you); }
+      .mo-star.new small { color: var(--ll-you); }
+      .mo-path { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; margin: 16px 0 8px; }
+      .mo-pip { display: grid; place-items: center; height: 24px; border-radius: 5px; border: 1.5px solid rgba(34, 232, 255, 0.2); font-family: var(--font-num); font-size: 11px; font-weight: 700; line-height: 1; color: rgba(233, 248, 255, 0.3); font-variant-numeric: tabular-nums; }
+      .mo-pip.done { border-color: var(--ll-you); background: var(--ll-you); color: #02050b; box-shadow: 0 0 8px rgba(34, 232, 255, 0.6); }
+      .mo-pip.fell { border-color: var(--ll-void); color: var(--ll-void); background: rgba(255, 46, 126, 0.16); box-shadow: 0 0 10px rgba(255, 46, 126, 0.6); }
+      .mo-reach { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+      .mo-runscore { display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px; padding: 0 4px; }
+      .mo-runscore .k { font-size: 14px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+      .mo-runscore .v { font-family: var(--font-num); font-size: 40px; font-weight: 800; line-height: 1; color: var(--ll-pts); font-variant-numeric: tabular-nums; display: inline-block; transform-origin: 100% 60%; }
+      .mo-runbest { display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px; padding: 0 4px; color: var(--muted); }
+      .mo-runbest .k { font-size: 12px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase; }
+      .mo-runbest .v { font-family: var(--font-num); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .mo-newbest { justify-self: end; display: block; width: max-content; margin: 8px 4px 0 auto; padding: 4px 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #02050b; background: var(--ll-hot); opacity: 0; }
+      .mo-runacts { display: grid; gap: 8px; margin-top: 18px; }
+      .mo-runbtn {
+        display: flex; justify-content: center; align-items: center; gap: 14px; min-height: 48px; padding: 8px 14px;
+        font: inherit; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+        color: var(--ll-you); background: rgba(8, 18, 30, 0.6); border: 1.5px solid rgba(34, 232, 255, 0.55); border-radius: 10px; cursor: pointer;
+      }
+      .mo-runbtn-text { display: grid; justify-items: center; line-height: 1.05; }
+      .mo-runbtn-detail { margin-top: 3px; font-size: 11px; letter-spacing: 0.2em; opacity: 0.72; }
+      .mo-runbtn.primary { min-height: 64px; color: #02050b; background: var(--ll-you); border-color: transparent; box-shadow: 0 0 22px rgba(34, 232, 255, 0.45); }
+      .mo-runbtn.primary .mo-runbtn-name { font-size: 22px; }
+      .mo-runbtn-go { display: grid; place-items: center; width: 28px; height: 40px; }
+      .mo-runbtn-go svg { display: block; width: 26px; height: 26px; }
+      .mo-runbtn:active { transform: scale(0.97); }
+      .mo-runbtn.picked { filter: brightness(1.25); }
+      .mo-runacts.in-next { width: 100%; max-width: 330px; margin-top: 4px; }
+      /* ARE YOU SURE (round 17) */
+      .mo-confirm { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; padding: 0 7%; background: rgba(2, 5, 11, 0.72); pointer-events: auto; }
+      .mo-confirm-box { width: min(100%, 340px); display: grid; gap: 14px; padding: 20px 18px 18px; background: linear-gradient(180deg, rgba(6, 18, 28, 0.98), rgba(2, 5, 11, 0.98)); border: 2px solid var(--ll-hot); border-radius: 14px; box-shadow: 0 0 24px rgba(255, 194, 102, 0.25); }
+      .mo-confirm-title { font-family: var(--font-display); font-size: 20px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; color: var(--ll-hot); }
+      .mo-confirm-text { margin: 0; text-align: center; font-size: 15px; line-height: 1.4; color: rgba(233, 248, 255, 0.85); }
+      .mo-confirm-check { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 36px; font-size: 13px; letter-spacing: 0.04em; color: var(--muted); cursor: pointer; }
+      .mo-confirm-check input { width: 20px; height: 20px; accent-color: var(--ll-you); }
+      .mo-confirm-acts { display: grid; gap: 8px; }
+      .mo-runbtn.danger { color: var(--ll-hot); border-color: rgba(255, 194, 102, 0.7); }
+      .mo-runbtn.confirm { color: var(--ll-hot); border-color: var(--ll-hot); }
 
       .mo-next { position: absolute; inset: auto 0 calc(var(--hud-pad) + 60px) 0; display: grid; justify-items: center; gap: 6px; padding: 0 9%; }
       .mo-next-label { font-size: 12px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ll-you); text-shadow: 0 0 10px var(--ll-you); }
@@ -1935,20 +2002,34 @@
       .tp-row .tp-best small { font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.7; }
       /* locked: flat, dim, a padlock, nothing to press */
       .tp-row.locked { border: 1px solid rgba(234, 246, 255, 0.08); background: rgba(8, 18, 30, 0.35); color: rgba(234, 246, 255, 0.3); }
-      /* cleared: a lit button with the play arrow; tap to replay */
-      .tp-row.cleared {
+      /* open: a lit button with the play arrow; tap to play it on its own */
+      .tp-row.open {
         cursor: pointer;
         color: var(--bone);
         border: 1.5px solid rgba(34, 232, 255, 0.55);
         background: rgba(8, 18, 30, 0.85);
       }
-      .tp-row.cleared .tp-icon { color: var(--cyan); }
-      .tp-row.cleared .tp-best { color: var(--cyan); }
-      .tp-row.cleared:active { transform: scale(0.98); background: rgba(34, 232, 255, 0.12); }
+      .tp-row.open .tp-icon { color: var(--cyan); }
+      .tp-row.open .tp-best { color: var(--cyan); }
+      .tp-row.open:active { transform: scale(0.98); background: rgba(34, 232, 255, 0.12); }
       /* where the run you left is: solid, with the play arrow (Continue) */
       .tp-row.here { cursor: pointer; color: #02050b; border: 1.5px solid var(--cyan); background: var(--cyan); box-shadow: 0 0 14px rgba(34, 232, 255, 0.45); }
       .tp-row.here:active { transform: scale(0.98); }
       .tp-row:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+      .play-rule { margin: 0; text-align: center; text-wrap: balance; font-size: clamp(11px, 3.2vw, 13px); letter-spacing: 0.06em; color: var(--muted); }
+      .star-key { display: flex; justify-content: center; gap: 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+      .star-key b { color: var(--cyan); font-weight: 400; text-shadow: 0 0 6px rgba(34, 232, 255, 0.8); }
+      #set-newrun.confirm { color: var(--amber); border-color: var(--amber); }
+      .tp-row .tp-stars { font-size: 11px; letter-spacing: 1px; color: var(--cyan); }
+      .tp-row .tp-stars i { font-style: normal; opacity: 0.22; }
+      .tp-row .tp-stars i.on { opacity: 1; text-shadow: 0 0 6px rgba(34, 232, 255, 0.8); }
+      .stars-total { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cyan); }
+      /* playing one table on its own: no hearts and no cash to show */
+      .hud.single .hud-hp .lives-row, .hud.single .cash-value { display: none; }
+      .single-stars { display: none; gap: 3px; margin-top: 2px; font-size: clamp(16px, 4.6vmin, 21px); line-height: 1; color: rgba(34, 232, 255, 0.25); }
+      .hud.single .single-stars { display: flex; }
+      .single-stars i { font-style: normal; }
+      .single-stars i.on { color: var(--cyan); text-shadow: 0 0 8px rgba(34, 232, 255, 0.8); }
       .ach-list {
         list-style: none;
         margin: 0;
@@ -2536,9 +2617,13 @@
               <button id="play-back" class="play-back" type="button" aria-label="Back"><span aria-hidden="true">‹</span> Back</button>
               <h2 class="menu-sub">Play</h2>
             </div>
+            <!-- THE PLAY SCREEN (round 14, from review: no tabs): one big
+                 button for the run, held at the top, and under it the tables
+                 a run has unlocked, to replay for stars -->
             <button id="play-continue" class="menu-btn primary play-big" type="button"><span class="pb-text"><span class="pb-main" id="play-continue-main">Continue</span><span class="pb-sub" id="play-continue-sub"></span></span><span class="pb-go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span></button>
-            <p class="menu-label">The tables</p>
-            <ol class="table-path" id="table-path" aria-label="The twelve tables of a run"></ol>
+            <p class="play-rule">Replay tables you’ve unlocked</p>
+            <ol class="table-path" id="table-path" aria-label="The twelve tables"></ol>
+            <p class="stars-total" id="stars-total"></p>
           </div>
 
           <!-- ACHIEVEMENTS (from review): what each one asks, and which are done. -->

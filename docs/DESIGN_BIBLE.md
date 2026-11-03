@@ -261,25 +261,66 @@ squares with 30 px icons in the same cyan; only the badge is orange (13 px
 type). Sound lives in Settings. Nothing else, for a first visit or a returning player alike.
 
 **Play** takes a first visit (the lessons not yet done) straight into the
-lessons. Anyone else gets **the play screen**: **‹ Back** and a big
-**Continue · Table N**, one line with a round play arrow (a sheen crosses it
-now and then), or **New run** when there is none, held at the top; under them **the tables**, the only part that
-scrolls. **New run** (abandon the saved run and start at Table 1; with a run
-saved it asks once, naming the table that ends) and **Modes** are at the
-bottom of **Settings** (from review), and Modes' Done goes back there.
+lessons. Anyone else gets **the play screen** (round 14, from review: no
+tabs). **‹ Back**, then one big button held at the top for the run:
+**Continue** (Table N small under it) or **Start a run** (Table 1), the black
+play triangle beside, one shimmer each time the screen opens. Under it, the
+one line "Replay tables you've unlocked" and the tables (the star key is on a
+replayed table's result, not here): an **open** row has the play
+arrow, its stars and its best; a **locked** one is dim with a padlock. Only
+the list scrolls; the total shows under it (★ 6 of 36). **New run** (ending a
+saved run, asking once) is in **Settings**.
 
-**The tables are rows**, every name whole on one line (the icon and number share one
-tight cell, BEST sits over its number, and a name that still does not fit a
-narrow phone comes down a size) (from review: room for the whole name and the
-table's best score, `lightline-table-best-v1`), and say their state by look,
-not words: a table you can play has a **play arrow** by its number (the saved
-run's table is solid cyan and is Continue; a cleared one is a lit row and
-**replays** it), and a table not yet cleared is dim with a **padlock** and does
-nothing. Clearing a table means sinking every ball on it (the target decides
-the cash and whether a life is lost). The list scrolls, with the
-saved run's table kept in view. A replay (`startReplay`) is one table on its
-own from a fresh start: no shop after it, the saved run untouched, a missed
-target costs nothing, and it ends on **Play again** or **Back to tables**.
+**What each way to play is for** (from review): a **run** is how you get
+further and unlock tables; **replaying** a table is how you go back for its
+stars, a higher score and achievements (leaderboards to come). A table
+replayed (`startReplay`) starts fresh, has no hearts, shop or cash (the corner
+shows its STARS), leaves the saved run alone, and its card reads "Table N ·
+Replay". Its result lights the stars it earned and ends on **Next table**
+(once unlocked), **Play again** or **Back to tables**. Stars are kept once
+earned (`lightline-table-best-v1`: score, cleared, stars).
+
+**Hearts** (round 11): lives are red hearts, full while you have them and an
+outline once lost. The shop sells two, each costing cash and a shot: **Extra
+Life** (rare, $10: +1 heart now, the next table has 1 fewer shot, and its
+card says so) and **Spare Heart** (epic, $15: one more heart slot, filled,
+and every table has 1 fewer shot). A heart bought beats in the corner. Once a
+heart is lost, **Extra Life is always on the shelf** (it takes the last rolled
+place).
+
+**Runs unlock tables** (round 13): a table opens to replay once a run has
+reached it (`lightline-reached-v1`), and only then.
+
+**CLEAR IT TO GO ON** (round 15, from review): a run goes on to the shop and
+the next table only past a **cleared** table, every ball down within its
+shots. A table left with balls on it costs a heart and is played again, a
+fresh rack, from **Try again** under its result ("Clear it to go on"; round
+16: the one big button, with the play triangle, and under it a quieter **Quit
+run**: round 17, a dialog asks "Quit this run? You'll go back to the main
+menu and lose this run's progress." with **No, keep playing**, **Yes, quit**
+and a "Don't ask me again" box, `lightline-quit-noask-v1`, which Replay
+tutorial clears); its
+points don't bank and it pays nothing. Out of hearts, the run is over.
+
+**A HEART IS LOST FOR BALLS LEFT STANDING** (round 14, from review: "the
+criteria for losing a life must be simpler and easier to control than
+points"). A table that runs out of shots with balls on it costs a heart;
+every ball down keeps your hearts, whatever the score. The **target only
+pays**: points, and the cash for beating it. A ball out of turn comes back,
+so a table with a prescribed order is only cleared in that order. The result
+says it on the panel: a pink line under the target, "3 balls left · −1 heart"
+("· last heart" on the last), with the run's hearts, and the one lost breaks
+there as it breaks in the corner. The run-over panel comes in as the result
+goes. Table 1 is **Clear the Table**: "Sink every ball to clear it. Beat the
+target for points and cash."
+
+**Round 12, a design pass:** the end of a table no longer opens the old **exit
+doors** (two boxes on the top rail from when you shot into a door for a
+reward; the shop replaced them). A run's tables are **numbered tiles**, never
+dots, since dots beside the hearts read as lives. The result that ends a run
+reserves no cash rows. The shop's result leaves completely (it fades as it
+flies up). A table played on its own shows **STARS** in the hearts' corner,
+and they light once the result has shown them.
 
 **Continue** (`saveRun`/`resumeRun` in main.js): the run is saved as each
 table begins (`lightline-run-v1`: the table, run score, cash, lives, freeze
@@ -541,6 +582,28 @@ sees what they bought working.
 
 **Rule this taught:** a delayed animation holds its first frame (`fill:
 'both'`). Without it, an element shows, vanishes and then animates in.
+
+### 8.4c The end of a run (round 10)
+
+It must say how far the run got and what it scored, and then wait. Nothing
+starts again until the player chooses.
+
+- **Out of lives.** The table's result plays as ever, and the last life breaks
+  in the corner. Then the result steps aside and one panel, edged in hazard
+  pink, comes in: **RUN OVER**, "Out of lives on Table N". Under it is the
+  **path**, one pip per authored table: the tables behind you are lit, and the
+  one you fell on is a pink ×. Then the **run score** counts up against your
+  **best run**. If it beat it, the line reads "Old best" and a gold **NEW
+  BEST** stamp lands. Two buttons follow: **New run** (big, the play
+  triangle beside it) and **Home**. The saved run is cleared.
+- **Through Table 12.** After Table 12's result (with lives left), the same
+  panel comes in edged in cyan: **RUN COMPLETE**, "All 12 tables", every pip
+  lit, and the score against your best. **Keep going** (the play triangle)
+  puts the result back and opens the shop as usual, and new tables follow
+  without end. **Finish run** ends the run there.
+- The best that counts is the one from **before this run started**. It is
+  kept with the saved run, because each table already writes the run's score
+  into the best as it goes.
 
 ### 8.5 Next table
 

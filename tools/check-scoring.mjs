@@ -248,6 +248,7 @@ console.log('\nfreeze frame charges\n');
   check(targetFor(8) > targetFor(1) * 2, 'and the target grows table by table', `${targetFor(1)} → ${targetFor(8)}`);
   r.roomScore = 1005;
   r.strokesLeft = 2;
+  r.ballsDown = r.mission.rack; // every ball down: the hearts are kept
   r.cash = 7;
   r.roomScore -= 2 * r.val('savedStroke'); // endRoom adds the saved shots back
   const res = r.endRoom();
@@ -265,8 +266,17 @@ console.log('\nfreeze frame charges\n');
   m.cash = 30;
   m.roomScore = 100;
   const miss = m.endRoom();
-  check(!miss.beaten && miss.lives === RULES.lives.start - 1, 'missing the target costs a life');
-  check(miss.payout.length === 1 && miss.payout[0].id === 'interest' && miss.payout[0].amount === RULES.cash.interestCap, 'and pays only interest, capped', JSON.stringify(miss.payout));
+  check(!miss.beaten && miss.lives === RULES.lives.start - 1, 'balls left standing cost a heart');
+  // (round 14) every ball down keeps your hearts, even short of the target
+  const k = fresh();
+  k.strokesLeft = 0;
+  k.roomScore = 100;
+  k.ballsDown = k.mission.rack;
+  const kept = k.endRoom();
+  check(!kept.beaten && kept.filled && kept.lives === RULES.lives.start, 'every ball down keeps your hearts, even short of the target');
+  check(kept.payout.every((p) => p.id === 'interest'), 'and short of the target pays only interest', JSON.stringify(kept.payout));
+  // (round 15) a table left with balls on it is played again: it pays nothing and banks no points
+  check(miss.payout.length === 0 && miss.runScore === 0, 'and pays nothing and banks no points (it is played again)', JSON.stringify(miss.payout));
   check(m.gainLife() && m.lives === RULES.lives.start && !m.gainLife(), 'an extra life refills one, never past the cap');
 }
 
@@ -312,7 +322,9 @@ console.log('\nfreeze frame charges\n');
   const owned = new Set(UPGRADES.filter((u) => !u.stack).map((u) => u.id));
   check(rollShelf(owned, 4).every((u) => u.stack), 'and never one the run already owns, unless it stacks');
   check(UPGRADES.length >= 20, 'the pool is large enough to be a roguelike', `${UPGRADES.length}`);
-  check(UPGRADES.every((u) => u.price >= 4 && u.price <= 10), 'every upgrade costs $4–10', UPGRADES.map((u) => u.price).join(','));
+  // hearts are the dear exception (round 11): a scoring card is $4–10, a heart up to $15
+  const heart = (u) => u.id === 'extra-life' || u.id === 'spare-heart';
+  check(UPGRADES.every((u) => u.price >= 4 && u.price <= (heart(u) ? 15 : 10)), 'every upgrade costs $4–10 (a heart up to $15)', UPGRADES.map((u) => u.price).join(','));
   // Shop cards are one fixed size (from review): a name fits one line and the
   // rule two, so a reroll never makes the grid jump.
   check(UPGRADES.every((u) => u.name.length <= 14 && u.text.length <= 46), 'every card fits its fixed size (name ≤ 14, rule ≤ 46 characters)', UPGRADES.filter((u) => u.name.length > 14 || u.text.length > 46).map((u) => u.id).join(',') || 'all fit');

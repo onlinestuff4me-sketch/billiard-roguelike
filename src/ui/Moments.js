@@ -18,6 +18,7 @@
 
 import * as THREE from 'three';
 import { MOMENTS, ARENA, TRAJECTORY } from '../config.js';
+import { HEART } from './HUD.js';
 
 const el = (tag, cls, parent) => {
   const node = document.createElement(tag);
@@ -424,6 +425,13 @@ export class Moments {
       act.hidden = true;
       return;
     }
+    // THROUGH THE LAST AUTHORED TABLE (round 10): the run's end is marked
+    // before the shop, and the run goes on only if you choose to
+    if (d.finale) {
+      act.hidden = true;
+      const pick = await d.finale();
+      if (!live() || !pick?.resume) return;
+    }
     // THE SHOP replaces the exits: GO TO SHOP, or NEXT TABLE to skip it.
     if (d.shop) {
       this.skip = false;
@@ -440,7 +448,49 @@ export class Moments {
     act.remove();
     this._actBtn = null;
     const next = el('div', 'mo-next', root);
+    // under the result, never over it (a result with stars is taller)
+    const L = root.querySelector('.mo-ledger')?.getBoundingClientRect();
+    if (L) {
+      next.style.top = `${L.bottom - root.getBoundingClientRect().top + 12}px`;
+      next.style.bottom = 'auto';
+    }
     el('div', 'mo-next-label', next).textContent = d.nextLabel || (d.choices?.length > 1 ? 'Pick your next table' : 'Next table');
+    // BIG ACTIONS (round 16): one main button, big, with the play triangle,
+    // and quieter ones under it; one that asks first takes a second tap
+    if (d.actions) {
+      const acts = el('div', 'mo-runacts in-next', next);
+      d.actions.forEach((a, i) => {
+        const b = el('button', `mo-runbtn${a.primary ? ' primary' : ''}`, acts);
+        b.type = 'button';
+        const text = el('span', 'mo-runbtn-text', b);
+        const name = el('span', 'mo-runbtn-name', text);
+        name.textContent = a.name;
+        if (a.detail) el('span', 'mo-runbtn-detail', text).textContent = a.detail;
+        if (a.primary) el('span', 'mo-runbtn-go', b).innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+        absorb(b);
+        b.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!live() || acts.dataset.picked) return;
+          if (a.confirm && !b.classList.contains('confirm')) {
+            b.classList.add('confirm');
+            name.textContent = a.confirm;
+            return;
+          }
+          acts.dataset.picked = '1';
+          b.classList.add('picked');
+          // an action can be called off (a dialog answered No): the buttons wake up again
+          Promise.resolve(a.pick()).then((went) => {
+            if (went !== false) return;
+            delete acts.dataset.picked;
+            b.classList.remove('picked');
+          });
+        });
+        this.anim(b, [{ transform: 'translateY(18px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
+      });
+      this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+      return;
+    }
     const list = el('div', 'mo-choices', next);
     (d.choices || []).forEach((choice, i) => {
       const button = el('button', 'mo-choice', list);
@@ -461,6 +511,183 @@ export class Moments {
       this.anim(button, [{ transform: from, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, delay: 90 * i, easing: BACK });
     });
     this.anim(next, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+  }
+
+  /**
+   * ARE YOU SURE (round 17, from review): a question over everything, with
+   * Yes and No and a box to stop asking. Resolves { yes, dontAsk }.
+   */
+  confirm({ title, text, yes = 'Yes', no = 'No', dontAskLabel = 'Don’t ask me again' }) {
+    return new Promise((resolve) => {
+      const veil = el('div', 'mo-confirm', this.root);
+      veil.setAttribute('role', 'dialog');
+      veil.setAttribute('aria-modal', 'true');
+      const box = el('div', 'mo-confirm-box', veil);
+      const h = el('div', 'mo-confirm-title', box);
+      h.textContent = title;
+      h.id = 'mo-confirm-title';
+      veil.setAttribute('aria-labelledby', h.id);
+      el('p', 'mo-confirm-text', box).textContent = text;
+      const label = el('label', 'mo-confirm-check', box);
+      const check = el('input', '', label);
+      check.type = 'checkbox';
+      el('span', '', label).textContent = dontAskLabel;
+      const row = el('div', 'mo-confirm-acts', box);
+      const noB = el('button', 'mo-runbtn primary', row);
+      noB.type = 'button';
+      noB.textContent = no;
+      const yesB = el('button', 'mo-runbtn danger', row);
+      yesB.type = 'button';
+      yesB.textContent = yes;
+      // taps stay in the dialog; the checkbox still works
+      for (const type of ['pointerdown', 'pointerup']) veil.addEventListener(type, (e) => e.stopPropagation());
+      const done = (yesPicked) => {
+        const dontAsk = check.checked;
+        this.anim(veil, [{ opacity: 1 }, { opacity: 0 }], { duration: 160 }).then(() => veil.remove());
+        resolve({ yes: yesPicked, dontAsk });
+      };
+      noB.addEventListener('click', (e) => { e.preventDefault(); done(false); });
+      yesB.addEventListener('click', (e) => { e.preventDefault(); done(true); });
+      this.anim(veil, [{ opacity: 0 }, { opacity: 1 }], { duration: 160 });
+      this.anim(box, [{ transform: 'translateY(12px) scale(0.96)' }, { transform: 'none' }], { duration: 220, easing: OUT });
+      noB.focus({ preventScroll: true });
+    });
+  }
+
+  /**
+   * THE END OF A RUN (round 10). The result panel steps aside and one panel
+   * says how far the run got: the twelve tables as a path (the ones behind
+   * you lit, the one you fell on marked), the run's score counted up against
+   * your best, and what to do next. Nothing starts again until you choose.
+   *
+   * @param {object} d
+   * @param {'over'|'complete'} d.kind  out of lives, or through Table 12
+   * @param {number} d.level       the table the run ended on (or finished)
+   * @param {number} d.tables      how many authored tables there are
+   * @param {number} d.runScore
+   * @param {number} d.bestBefore  the best run before this one (0: none yet)
+   * @param {{name:string,detail?:string,primary?:boolean,pick:Function}[]} d.actions
+   */
+  async runEnd(d) {
+    const root = this._clearRoot || el('div', 'mo-clear', this.root);
+    if (!this._clearRoot) {
+      this._clearRoot = root;
+      this.setFilter('clear', 'brightness(0.42) saturate(0.7)', 380);
+    }
+    const id = this._clear;
+    const live = () => this._clear === id && this._clearRoot === root;
+    this.skip = false;
+    // the result steps aside (the ledger, its Skip, the cash under it), and
+    // comes back if the run goes on
+    const aside = [...root.querySelectorAll('.mo-ledger, .mo-act, .mo-actrow, .mo-next')].filter((n) => !n.hidden);
+    for (const old of aside) {
+      old.style.pointerEvents = 'none';
+      this.anim(old, [{ opacity: 1, translate: '0 0' }, { opacity: 0, translate: '0 -24px' }], { duration: 260, easing: IN });
+    }
+    // (round 13) the panel comes in as the result goes, so the bare table
+    // never shows between them
+    await this.wait(60);
+    if (!live()) return null;
+
+    const over = d.kind === 'over';
+    const panel = el('div', `mo-runend ${over ? 'over' : 'complete'}`, root);
+    const head = el('div', 'mo-head', panel);
+    el('div', 'mo-kicker', head).textContent = over ? 'Run over' : 'Run complete';
+    el('div', 'mo-title', head).textContent = over ? `Out of lives on Table ${d.level}` : `All ${d.tables} tables`;
+
+    // THE PATH: one pip per table; behind you lit, where it ended marked
+    const path = el('div', 'mo-path', panel);
+    const reached = Math.min(d.level, d.tables);
+    const pips = [];
+    for (let n = 1; n <= d.tables; n++) {
+      const state = n < reached || (!over && n === reached) ? 'done' : n === reached ? 'fell' : 'ahead';
+      // NUMBERED TILES, not dots (round 12): dots next to hearts read as lives
+      const pip = el('span', `mo-pip ${state}`, path);
+      pip.textContent = n;
+      pips.push(pip);
+    }
+    const reach = el('div', 'mo-reach', panel);
+    reach.textContent = over
+      ? d.level > d.tables
+        ? `Reached Table ${d.level}`
+        : `Reached Table ${d.level} of ${d.tables}`
+      : 'From here every table is new';
+
+    const score = el('div', 'mo-runscore', panel);
+    el('span', 'k', score).textContent = 'Run score';
+    const scoreV = el('span', 'v', score);
+    scoreV.textContent = '0';
+    const best = el('div', 'mo-runbest', panel);
+    const newBest = d.runScore > d.bestBefore && d.bestBefore > 0;
+    el('span', 'k', best).textContent = newBest ? 'Old best' : 'Best run';
+    el('span', 'v', best).textContent = fmt(Math.max(d.bestBefore, newBest ? d.bestBefore : d.runScore));
+    const stamp = newBest ? el('span', 'mo-newbest', panel) : null;
+    if (stamp) stamp.textContent = 'New best';
+
+    const acts = el('div', 'mo-runacts', panel);
+    let picked;
+    const chosen = new Promise((resolve) => (picked = resolve));
+    const buttons = (d.actions || []).map((a) => {
+      const b = el('button', `mo-runbtn${a.primary ? ' primary' : ''}`, acts);
+      b.type = 'button';
+      const text = el('span', 'mo-runbtn-text', b);
+      el('span', 'mo-runbtn-name', text).textContent = a.name;
+      if (a.detail) el('span', 'mo-runbtn-detail', text).textContent = a.detail;
+      if (a.primary) el('span', 'mo-runbtn-go', b).innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5v15L19 12Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+      absorb(b);
+      b.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!live() || acts.dataset.picked) return;
+        acts.dataset.picked = '1';
+        b.classList.add('picked');
+        a.pick?.();
+        picked(a);
+        // GOING ON: this panel goes and the result comes back where it was
+        if (a.resume) {
+          this.anim(panel, [{ opacity: 1 }, { opacity: 0, translate: '0 18px' }], { duration: 220, easing: IN }).then(() => panel.remove());
+          for (const old of aside) {
+            old.style.pointerEvents = '';
+            this.anim(old, [{ opacity: 0, translate: '0 -24px' }, { opacity: 1, translate: '0 0' }], { duration: 260, delay: 120, easing: OUT });
+          }
+        }
+      });
+      b.style.opacity = '0';
+      return b;
+    });
+
+    // IN: the panel drops in, the path fills along, the score counts up
+    await this.anim(panel, [{ opacity: 0, transform: 'translateX(-50%) translateY(18px) scale(0.97)' }, { opacity: 1, transform: 'translateX(-50%)' }], { duration: 320, easing: OUT });
+    if (over) this.audio.playerDeath?.();
+    else this.audio.roomClear?.();
+    for (const [i, pip] of pips.entries()) {
+      if (pip.classList.contains('ahead')) continue;
+      this.anim(pip, [{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.35)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 240, delay: i * 55, easing: OUT });
+    }
+    await this.wait(Math.min(reached, d.tables) * 55 + 200);
+    if (!live()) return null;
+    const t0 = performance.now();
+    const span = this.skip ? 0 : Math.min(1100, 300 + d.runScore / 4);
+    await new Promise((resolve) => {
+      const step = () => {
+        const k = span ? Math.min(1, (performance.now() - t0) / span) : 1;
+        scoreV.textContent = fmt(d.runScore * (1 - (1 - k) ** 3));
+        if (k < 1 && live()) requestAnimationFrame(step);
+        else resolve();
+      };
+      step();
+    });
+    if (!live()) return null;
+    this.audio.scoreSlam?.();
+    this.anim(scoreV, [{ transform: 'scale(1.35)', color: '#ffffff' }, { transform: 'scale(1)' }], { duration: 320, easing: OUT });
+    if (stamp) {
+      this.audio.scoreLock?.();
+      await this.anim(stamp, [{ transform: 'scale(2.2) rotate(-8deg)', opacity: 0 }, { transform: 'scale(1) rotate(-4deg)', opacity: 1 }], { duration: 260, easing: BACK });
+    }
+    await this.wait(260);
+    if (!live()) return null;
+    buttons.forEach((b, i) => this.anim(b, [{ transform: 'translateY(14px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, delay: 90 * i, easing: BACK }));
+    return chosen;
   }
 
   /**
@@ -605,7 +832,8 @@ export class Moments {
       if (!live()) return;
       act.disabled = true;
       // the result flies up and away
-      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, 0)' }, { transform: 'translate(-50%, -115%)' }], { duration: 360, easing: IN });
+      // (round 12: and fades as it goes, so no edge of it is left over the corner)
+      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -115%)', opacity: 0 }], { duration: 360, easing: IN });
       if (!live()) return;
       const first = !panel;
       if (first) panel = this._buildShop(root, shop, live);
@@ -626,7 +854,7 @@ export class Moments {
       move(next, right, false);
       inShop = false;
       await this.wait(200);
-      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, -115%)' }, { transform: 'translate(-50%, 0)' }], { duration: 420, easing: OUT });
+      if (ledger) await this.anim(ledger, [{ transform: 'translate(-50%, -115%)', opacity: 0 }, { transform: 'translate(-50%, 0)', opacity: 1 }], { duration: 420, easing: OUT });
       act.disabled = false;
       await fadeIn(act);
     });
@@ -751,6 +979,7 @@ export class Moments {
           if (it.sold) {
             this.anim(c, [{ filter: 'brightness(1.8)' }, { filter: 'none' }], { duration: 320, easing: OUT });
             if (it.id === 'freeze-charge') this._pulseFreeze();
+            if (it.id === 'extra-life' || it.id === 'spare-heart') this._pulseHearts();
           }
           spendTo(before, buy);
           renderTools();
@@ -807,6 +1036,17 @@ export class Moments {
     const r = node.getBoundingClientRect();
     const L = this.layer.getBoundingClientRect();
     return { node, x: r.left - L.left + r.width / 2, y: r.top - L.top + r.height / 2 };
+  }
+
+  /** A heart bought (round 11): the hearts in the corner take it with a beat. */
+  _pulseHearts() {
+    // the HUD paints the new heart on its next frame; beat once it is there
+    requestAnimationFrame(() => {
+      const row = this.hud.livesRow;
+      const last = row?.querySelector('.life.on:last-of-type') || [...(row?.querySelectorAll('.life.on') || [])].pop();
+      if (!last) return;
+      last.animate([{ transform: 'scale(2)', filter: 'drop-shadow(0 0 12px #ff3b5c)' }, { transform: 'scale(0.9)', offset: 0.6 }, { transform: 'scale(1)', filter: 'none' }], { duration: 520, easing: OUT });
+    });
   }
 
   _pulseFreeze() {
@@ -908,7 +1148,25 @@ export class Moments {
     const head = el('div', 'mo-head', panel);
     const kicker = el('div', 'mo-kicker', head);
     kicker.textContent = d.filled ? 'Table clear' : 'Out of shots';
-    el('div', 'mo-title', head).textContent = `Room ${String(d.level).padStart(2, '0')}`;
+    el('div', 'mo-title', head).textContent = `Table ${d.level}`;
+    // A TABLE ON ITS OWN PAYS STARS (round 11): three, dim until the result
+    // lights the ones this play earned
+    const starEls = d.stars
+      ? (() => {
+          const row = el('div', 'mo-stars', head);
+          return [
+            ['t', 'Target'],
+            ['a', 'Every ball'],
+            ['o', 'In order']
+          ].map(([k, label]) => {
+            const s = el('span', 'mo-star', row);
+            el('b', '', s).textContent = '★';
+            el('small', '', s).textContent = label;
+            if (d.stars.was?.[k]) s.classList.add('had');
+            return { s, earned: !!d.stars[k], fresh: !!d.stars[k] && !d.stars.was?.[k] };
+          });
+        })()
+      : null;
     const list = el('div', 'mo-rows', panel);
     const rule = el('div', 'mo-rule', panel);
     const total = el('div', 'mo-total', panel);
@@ -932,11 +1190,35 @@ export class Moments {
       tick.style.left = `${(d.target / scale) * 100}%`;
       this._verdict = { row, fill, to: (d.roomScore / scale) * 100 };
     }
+    // A HEART LOST IS SAID ON THE RESULT ITSELF (round 13: "should we be
+    // clearer about the fact you've lost a life?"): balls left standing cost
+    // one (round 14; the target only pays). The line is in place from the
+    // start (invisible), with the run's hearts; the one lost breaks here as it
+    // breaks in the corner.
+    this._heartLoss = null;
+    if (!d.filled && !d.single) {
+      const loss = el('div', 'mo-heartloss', panel);
+      const max = Math.max(this.hud.livesRow?.children.length || 3, d.livesFrom || 0);
+      const left = Math.max(0, (d.rack || 0) - (d.ballsDown || 0));
+      const balls = left ? `${left} ball${left === 1 ? '' : 's'} left` : 'Balls left';
+      el('span', 'k', loss).textContent = d.lives > 0 ? `${balls} · −1 heart` : `${balls} · last heart`;
+      const row = el('span', 'hearts', loss);
+      const hearts = [];
+      for (let i = 0; i < max; i++) {
+        const h = el('span', `life${i < (d.livesFrom || 0) ? ' on' : ''}`, row);
+        h.innerHTML = HEART;
+        hearts.push(h);
+      }
+      loss.style.opacity = '0';
+      this._heartLoss = { loss, lost: hearts[(d.livesFrom || 1) - 1] };
+    }
     // CASH EARNED sits right under the verdict, in the same panel, so the
     // reward reads as the result of beating the target. Every line is in
     // place from the start (invisible), so the panel never grows.
     this._pay = null;
-    if (d.target && (d.payout || []).length) {
+    // (round 12) not on the result that ends the run: no cash is coming, and
+    // its reserved rows left an empty band at the foot of the panel
+    if (d.target && (d.payout || []).length && d.lives > 0) {
       const box = el('div', 'mo-pay2', panel);
       el('div', 'mo-pay-k', box).textContent = 'Cash earned';
       // read like Gambonanza's results: a count, the reason with its rule,
@@ -1044,6 +1326,18 @@ export class Moments {
     await this.wait(620);
     if (!live()) return;
     if (d.target) await this._clearVerdict(panel, d, live, root);
+    if (starEls && live()) {
+      for (const st of starEls) {
+        if (!st.earned) continue;
+        st.s.classList.add('on');
+        if (st.fresh) st.s.classList.add('new');
+        this.audio.scoreLock?.();
+        await this.anim(st.s.querySelector('b'), [{ transform: 'scale(0.2) rotate(-30deg)', opacity: 0.3 }, { transform: 'scale(1.6) rotate(8deg)', opacity: 1, offset: 0.6 }, { transform: 'scale(1)', opacity: 1 }], { duration: 320, easing: OUT });
+        if (!live()) return;
+      }
+      // the corner's stars take what the result just showed
+      d.onStarsShown?.();
+    }
   }
 
   /**
@@ -1055,12 +1349,26 @@ export class Moments {
     // the target, the bar and the verdict already landed with the total
     if (!live()) return;
 
-    if (!d.beaten) {
+    // a table played on its own has no hearts to lose; a heart goes for balls
+    // left standing (round 14), not for the target
+    if (!d.filled && !d.single) {
       const pip = this.hud.lifeNode((d.livesFrom || 1) - 1);
-      if (pip) {
-        this.engine.shake?.(8);
-        await this.anim(pip, [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.8)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.4)', opacity: 0 }], { duration: 520, easing: OUT });
+      const hl = this._heartLoss;
+      if (hl) {
+        hl.loss.style.opacity = '1';
+        await this.anim(hl.loss, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 200, easing: OUT });
       }
+      this.engine.shake?.(8);
+      const breakIt = [{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.8)', opacity: 1, offset: 0.35 }, { transform: 'scale(0.4)', opacity: 0 }];
+      if (hl?.lost) {
+        // no fill: once it has broken it stays as an outline, the way it does in the corner
+        hl.lost.animate(breakIt, { duration: this.skip ? 0 : 520, easing: OUT }).finished.then(() => {
+          hl.lost.classList.remove('on');
+          hl.lost.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 });
+        }, () => hl.lost.classList.remove('on'));
+      }
+      if (pip) await this.anim(pip, breakIt, { duration: 520, easing: OUT });
+      else await this.wait(520);
       d.onLifeLost?.();
       await this.wait(300);
       if (!live()) return;
@@ -1518,15 +1826,15 @@ export class Moments {
     );
     root.classList.add('covered');
     await swap();
-    // THE COUNT: the room you finished, then it rolls over to the next one
+    // THE COUNT: the table you finished, then it rolls over to the next one
     // and holds there, big, so the step is felt before the table arrives.
     const num = el('div', 'mo-roomnum', root);
-    el('small', '', num).textContent = 'Room';
+    el('small', '', num).textContent = 'Table';
     const digits = el('div', 'mo-digits', num);
     const oldN = el('b', 'old', digits);
-    oldN.textContent = String(from).padStart(2, '0');
+    oldN.textContent = String(from);
     const newN = el('b', 'new', digits);
-    newN.textContent = String(to).padStart(2, '0');
+    newN.textContent = String(to);
     const note = this._note ? el('em', '', num) : null;
     if (note) {
       note.textContent = this._note;
