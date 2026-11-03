@@ -1757,6 +1757,8 @@ function tryFreeze() {
     return false;
   }
   game.phase = 'aim';
+  // the cut-in first, so the achievement this earns waits behind it
+  abilityCutIn({ name: 'Freeze frame!', line: '“Time stops for me.”' });
   if (game.practice) practiceFroze();
   else achievements.unlock('freeze');
   // The cue ball stops where it is; it is about to be re-aimed from here.
@@ -1768,7 +1770,6 @@ function tryFreeze() {
   engine.shake(4);
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
   juice.tint(true);
-  abilityCutIn({ name: 'Freeze frame!', line: '“Time stops for me.”' });
   if (momentsOn()) {
     moments.freeze({
       cue: { x: player.x, z: player.z },
