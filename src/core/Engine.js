@@ -54,6 +54,14 @@ export class Engine {
     this.realElapsed = 0; // wall-clock seconds
 
     this._lastAppliedZoom = 1;
+
+    /**
+     * A PRESENTATION VIEW on top of the fixed top-down camera (juice: push in,
+     * pull back, follow the last ball). Offsets in table units and a zoom
+     * factor, eased toward a target by whoever owns the moment; the aim is
+     * never rotated, only framed.
+     */
+    this.view = { x: 0, z: 0, zoom: 1 };
   }
 
   /* ---------------------------------------------------------------- *
@@ -135,6 +143,9 @@ export class Engine {
     this.presentScale = 1;
     this.presentTarget = 1;
     this.camera.position.set(this.basePosition.x, this.basePosition.y, this.basePosition.z);
+    this.view.x = 0;
+    this.view.z = 0;
+    this.view.zoom = 1;
   }
 
   /** Momentary ortho-zoom compression, released over ~170 ms. */
@@ -158,9 +169,9 @@ export class Engine {
       this.shakeAmplitude = 0;
     }
     this.camera.position.set(
-      this.basePosition.x + offsetX,
+      this.basePosition.x + offsetX + this.view.x,
       this.basePosition.y,
-      this.basePosition.z + offsetZ
+      this.basePosition.z + offsetZ + this.view.z
     );
 
     if (Math.abs(this.zoom - 1) > 0.0004) {
@@ -168,10 +179,11 @@ export class Engine {
     } else {
       this.zoom = 1;
     }
-    if (Math.abs(this.zoom - this._lastAppliedZoom) > 0.0002) {
-      this.camera.zoom = this.zoom;
+    const applied = this.zoom * this.view.zoom;
+    if (Math.abs(applied - this._lastAppliedZoom) > 0.0002) {
+      this.camera.zoom = applied;
       this.camera.updateProjectionMatrix();
-      this._lastAppliedZoom = this.zoom;
+      this._lastAppliedZoom = applied;
     }
   }
 

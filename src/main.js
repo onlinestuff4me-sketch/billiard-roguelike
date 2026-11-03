@@ -55,6 +55,7 @@ import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
+import { Juice } from './ui/Juice.js';
 import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
@@ -946,6 +947,8 @@ const audio = new AudioManager();
 const player = new Player(scene);
 const fx = createFX();
 const hud = new HUD(uiLayer, { camera, stage });
+/** The big-moment layer: bursts, beams, camera moves, slams (src/ui/Juice.js). */
+const juice = new Juice({ layer: uiLayer, camera, engine, fx, scene, arena: ARENA, reducedMotion });
 /**
  * THE SCORE PRESENTER. Every number a stroke earns is shown one at a time,
  * beside its cause, and flown into the POINTS or MULT box. See ScoreFeed.js.
@@ -1160,6 +1163,11 @@ let wasMaxed = false;
 function noteAimPower(aim) {
   // The same threshold the ring and the stick use, so everything lands at once.
   const maxed = (aim?.charge ?? 0) >= TRAJECTORY.fullDraw;
+  if (!game.headless && aim) {
+    const level = clamp((aim.charge ?? 0) / TRAJECTORY.fullDraw, 0, 1);
+    juice.charge(aim.valid ? level : null);
+    juice.pushIn(aim.valid ? level : null, player);
+  }
   if (maxed && !wasMaxed) {
     const p = player;
     const style = TRAJECTORY.maxStyle || 'flash';
@@ -1196,6 +1204,29 @@ function noteAimPower(aim) {
     }
   }
   wasMaxed = maxed;
+}
+
+/**
+ * THE STRIKE, AS A MOMENT (juice): when the stick meets the ball, the burst,
+ * the trail, and on a full-power shot the camera's pull back and the slam.
+ */
+function juiceStrike(aim, shown) {
+  juice.charge(null);
+  if (game.headless) return;
+  const power = shown ? shown.power : aim.power ?? 1;
+  const maxed = (aim.charge ?? 0) >= TRAJECTORY.fullDraw;
+  const x = player.x;
+  const z = player.z;
+  const dirX = shown ? shown.dir.x : aim.dirX;
+  const dirZ = shown ? shown.dir.z : aim.dirZ;
+  const at = TRAJECTORY.aimStyle === 'cue' ? TRAJECTORY.stickStrike * 1000 : 0;
+  if (maxed) juice.pullBack({ x, z });
+  else juice.pushIn(null);
+  setTimeout(() => {
+    juice.strike({ x, z, dirX, dirZ, power, maxed });
+    juice.startTrail(power, maxed);
+    if (maxed) juice.slam('Full power!!');
+  }, at);
 }
 
 /**
@@ -1519,6 +1550,7 @@ feed.onTally = (paid, from) => {
 };
 
 function finishStroke() {
+  juice.tint(false);
   game.midStroke = false;
   game.phase = 'aim';
   game.settleTimer = 0;
@@ -1677,6 +1709,8 @@ function tryFreeze() {
   engine.zoomPunch();
   engine.shake(4);
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
+  juice.tint(true);
+  juice.cutIn({ name: 'Freeze frame!', line: '“Time stops for me.”' });
   if (momentsOn()) {
     moments.freeze({
       cue: { x: player.x, z: player.z },
@@ -1882,6 +1916,11 @@ game.on = {
     }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
     gridPulse(pocket.x, pocket.z, 1);
+    if (!game.headless && !tutorial.running) {
+      const last = game.midStroke && rules.filled;
+      juice.beam({ x: pocket.x, z: pocket.z, kind: last ? 'last' : rules.mult > 1 ? 'mult' : 'pot' });
+      if (last) juice.followLast({ x: pocket.x, z: pocket.z });
+    }
 
     engine.zoomPunch();
     engine.shake(10);
@@ -2149,7 +2188,17 @@ function completeRoom() {
     hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
   openExits();
-  showRoomResult({ ...tableResult(result), filled: true }, shownRun);
+  const data = { ...tableResult(result), filled: true };
+  // THE FINISH (juice): "CLEAR!" before the result
+  if (momentsOn() && !game.headless && juice.on('finish')) {
+    juice.finish({ title: 'Clear!', sub: `Table ${game.level}` }).then(() => {
+      juice.release();
+      showRoomResult(data, shownRun);
+    });
+    return;
+  }
+  juice.release();
+  showRoomResult(data, shownRun);
 }
 
 /** What the end-of-table moment and card show: the ledger, the target, the payout. */
@@ -2560,6 +2609,7 @@ function failRoom() {
   }
 
   openExits();
+  juice.release();
   showRoomResult({ ...tableResult(result), filled: false }, shownRun);
 }
 
@@ -2769,6 +2819,7 @@ function advanceRoom() {
   }
 
   const swap = () => {
+    juice.release();
     hud.root.classList.remove('practicing');
     game.level += 1;
     game.introUp = false;
@@ -2956,27 +3007,23 @@ function showRoomBanner() {
     hud.setRule(t.name, true);
     return release();
   }
-  if (t?.intro) {
+  if (t?.intro && juice.on('banner') && !game.headless) {
     hud.setRule(null);
     game.introUp = true;
-    moments
-      .tableIntro({
-        // a replay says so (round 13): no hearts or shop, played for stars
-        kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
-        name: t.name,
-        rule: t.intro.sub,
-        // the same facts on every card (from review): number, name, rule, balls, shots.
-        // The target lives on the score bar, where it reads as points.
-        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, ...(game.shotDebt ? [`−${game.shotDebt} shot: Extra Life`] : [])],
-        // the name IS the rule, so the card and the corner chip say the same thing
-        chip: t.name,
-        chipTo: () => hud.ruleChip
-      })
-      .then(() => {
+    const band = juice.banner({ kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`, title: t.name, sub: t.intro.sub, hold: 1300 });
+    if (juice.on('banner') === 'bandOnly') {
+      band.then(() => {
         game.introUp = false;
         hud.setRule(t.name, true);
         release();
       });
+      return;
+    }
+    band.then(() => tableCard(t, release));
+    return;
+  }
+  if (t?.intro) {
+    tableCard(t, release);
     return;
   }
   release();
@@ -2991,9 +3038,35 @@ function showRoomBanner() {
   hud.showBanner(`Table ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
 }
 
+/** A table's own card: its number, name, rule, balls and shots; tapped away. */
+function tableCard(t, release) {
+  hud.setRule(null);
+  game.introUp = true;
+  moments
+    .tableIntro({
+      // a replay says so (round 13): no hearts or shop, played for stars
+      kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
+      name: t.name,
+      rule: t.intro.sub,
+      // the same facts on every card (from review): number, name, rule, balls, shots.
+      // The target lives on the score bar, where it reads as points.
+      stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, ...(game.shotDebt ? [`−${game.shotDebt} shot: Extra Life`] : [])],
+      // the name IS the rule, so the card and the corner chip say the same thing
+      chip: t.name,
+      chipTo: () => hud.ruleChip
+    })
+    .then(() => {
+      game.introUp = false;
+      hud.setRule(t.name, true);
+      release();
+    });
+}
+
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
   endPractice();
+  juice.release();
+  juice.tint(false);
   game.replay = null;
   hud.setSingle(null);
   game.skipIntroCard = false;
@@ -4812,6 +4885,8 @@ const input = new InputManager(stage, {
     }
   },
   onAimCancel: () => {
+    juice.charge(null);
+    juice.pushIn(null);
     game.drawnShot = null;
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
@@ -4843,6 +4918,7 @@ const input = new InputManager(stage, {
       if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
     }
     player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : aim, game);
+    juiceStrike(aim, shown);
     // THE STICK GETS THERE FIRST. The table holds still for the few frames the
     // cue takes to snap into the ball, so the ball leaves when it is hit, not
     // when the thumb lets go.
@@ -5426,6 +5502,8 @@ function showTutorialState() {
 
 function openMenu() {
   menuOpen = true;
+  juice.release();
+  juice.tint(false);
   hud.holdAchievements(false);
   input.cancel();
   tutorial.stop();
@@ -6073,6 +6151,7 @@ function frame(now) {
   feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.practice && !game.headless && game.state !== 'dead');
   feed.update(rawDt);
   fitScoreFeed();
+  juice.update(dt, rawDt, { cue: game.phase === 'resolve' && player.alive ? player : null, now: performance.now() / 1000 });
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
   // The boxes cover the bottom of the felt, where the preview draws where a

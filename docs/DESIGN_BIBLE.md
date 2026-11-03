@@ -633,6 +633,32 @@ and the name, as a chip, lifts off the card and arcs to the top-right corner,
 under the mission, where it stays for the table. A table whose idea is order (Table 2) also keeps the next
 number showing there all table long.
 
+### 8.5c Juice (on trial, from four reference clips)
+
+Twelve big-moment effects from the reference clips, built as switchable
+versions in `src/ui/Juice.js` for review (`lightline-juice-v1`, a
+{key: version} map; `off` turns one off). The clips are comic style; here
+the same beats are drawn in light. All presentation: none changes a shot,
+the aim or the score.
+
+| Key | Moment | Versions |
+| --- | --- | --- |
+| strike | the stick meets the ball: lines burst from it, by power | lines · flash |
+| trail | a hard shot (70%+): light behind the cue ball | streak · sparks |
+| beam | a ball drops: cyan, orange with Mult, gold for the last | pillar · rings |
+| charge | pulling back: the table edge glows, orange near full | rails · pulse |
+| tint | an ability's shot (Freeze): the table in its color | scan · dots |
+| push | pulling back: the view leans in | push · lean |
+| pull | a full-power strike: punch in, pull out, settle | swoop · out |
+| follow | the last ball: the view goes to its pocket | drift · punch |
+| banner | a table's rule on a slanted band | band (then card) · bandOnly |
+| slam | full power, said | big · small |
+| cutin | an ability, named, with a line | panel · strip |
+| finish | the last ball down: CLEAR! before the result | bands · slam |
+
+Camera moves go through `engine.view` (offsets and a zoom over the fixed
+top-down camera, eased on real time); the aim is never rotated.
+
 ### 8.6 Smaller beats (today's treatment)
 
 | Beat | Treatment |
