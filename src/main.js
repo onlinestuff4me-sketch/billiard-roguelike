@@ -1241,6 +1241,23 @@ function juiceStrike(aim, shown) {
 }
 
 /**
+ * An ability's cut-in, one at a time (Curve and Bomb on one shot play in
+ * turn). An achievement earned by the same act waits until the cut-in has
+ * gone, so the two never stack on the top band.
+ */
+let cutInQueue = Promise.resolve();
+function abilityCutIn(opts) {
+  if (!juice.on('cutin')) return;
+  const held = hud._achHold;
+  if (!held) hud.holdAchievements(true);
+  cutInQueue = cutInQueue
+    .then(() => juice.cutIn(opts))
+    .then(() => {
+      if (!held && !menuOpen && game.state === 'playing' && !game.introUp) hud.holdAchievements(false);
+    });
+}
+
+/**
  * A SHOT'S MODIFIERS ARE SPENT AS IT IS STRUCK: a curve or a bomb uses a
  * charge (and says so, with its cut-in), and spin goes back to center.
  */
@@ -1250,12 +1267,12 @@ function spendShotMods() {
   if (s.curve) {
     a.curve = Math.max(0, a.curve - 1);
     juice.tint(true, '#22e8ff');
-    juice.cutIn({ name: 'Curve shot!', line: '“Bend to my will.”', color: '#22e8ff', icon: 'curve' });
+    abilityCutIn({ name: 'Curve shot!', line: '“Bend to my will.”', color: '#22e8ff', icon: 'curve' });
   }
   if (s.bomb) {
     a.bomb = Math.max(0, a.bomb - 1);
     juice.tint(true, '#ff8a1e');
-    juice.cutIn({ name: 'Bomb shot!', line: '“I don’t aim. I smash.”', color: '#ff8a1e', icon: 'bomb' });
+    abilityCutIn({ name: 'Bomb shot!', line: '“I don’t aim. I smash.”', color: '#ff8a1e', icon: 'bomb' });
   }
   game.shot = { curve: 0, follow: 0, side: 0, bomb: false };
   tray.paint();
@@ -1751,7 +1768,7 @@ function tryFreeze() {
   engine.shake(4);
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
   juice.tint(true);
-  juice.cutIn({ name: 'Freeze frame!', line: '“Time stops for me.”' });
+  abilityCutIn({ name: 'Freeze frame!', line: '“Time stops for me.”' });
   if (momentsOn()) {
     moments.freeze({
       cue: { x: player.x, z: player.z },
