@@ -686,6 +686,13 @@ A curve or bomb shot plays with the ability tint and its cut-in (§8.5c).
 Cut-ins play one at a time, and an achievement earned by the same act (the
 first Freeze) waits until its cut-in has gone, so the two never stack.
 
+**After the last ball** (from the clips): once every ball is down, only the
+cue ball rolls on, and that wait could run for seconds before the clear. The
+table now runs at 3x until it stops (`Engine.rush`). The physics still takes
+the same fixed steps, so a late scratch is still a scratch; only the wait is
+shorter. The Follow-the-last-ball camera leans toward the pocket and comes
+home rather than holding there.
+
 ### 8.6 Smaller beats (today's treatment)
 
 | Beat | Treatment |
