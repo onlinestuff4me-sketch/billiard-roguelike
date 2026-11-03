@@ -465,13 +465,25 @@ export class Juice {
     this.timeline = { t: 0, keys, end: 2.4 };
   }
 
-  /** The last ball drops: the view goes to its pocket and stays for the clear. */
+  /**
+   * The last ball drops: the view leans to its pocket, then comes home. It
+   * never holds there: the cue ball can roll on for seconds before the clear,
+   * and a view parked on a corner hid most of the table (from the clips).
+   */
   followLast({ x, z }) {
     const style = this.on('follow');
     if (!style || this.reducedMotion) return;
     this.timeline = null;
-    if (style === 'drift') this.hold = { x: x * 0.55, z: z * 0.55, zoom: 1.22, rate: 3.2 };
-    else {
+    if (style === 'drift') {
+      this.timeline = {
+        t: 0,
+        keys: [
+          { at: 0, x: x * 0.28, z: z * 0.28, zoom: 1.12, rate: 3.2 },
+          { at: 1.6, x: 0, z: 0, zoom: 1, rate: 2.2 }
+        ],
+        end: 3.4
+      };
+    } else {
       this.timeline = {
         t: 0,
         keys: [
