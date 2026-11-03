@@ -3041,6 +3041,7 @@ function spawnZ() {
  * the mission — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
+  const seq = ++introSeq;
   // an achievement held through the score screen and the shop shows once the
   // table is in play: after its card when it has one (round 12: it sat on
   // the card), straight away when not
@@ -3067,13 +3068,14 @@ function showRoomBanner() {
     const band = juice.banner({ kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`, title: t.name, sub: t.intro.sub, hold: 1300 });
     if (juice.on('banner') === 'bandOnly') {
       band.then(() => {
+        if (seq !== introSeq) return;
         game.introUp = false;
         hud.setRule(t.name, true);
         release();
       });
       return;
     }
-    band.then(() => tableCard(t, release));
+    band.then(() => seq === introSeq && !menuOpen && tableCard(t, release));
     return;
   }
   if (t?.intro) {
@@ -3126,6 +3128,7 @@ function resetRunState() {
   game.replay = null;
   hud.setSingle(null);
   game.skipIntroCard = false;
+  introSeq++;
   boons.reset();
   boons.recompute();
   hud.setBuild(boons.owned);
@@ -5268,6 +5271,9 @@ const $ = (id) => document.getElementById(id);
  * background can never drift out of sync with how the game currently looks.
  */
 let menuOpen = true;
+/** Bumped whenever a table's intro is overtaken (a menu, a new table): a
+ * band still sweeping then never opens its now-stale card. */
+let introSeq = 0;
 let attractTimer = 0;
 
 let muted = false;
@@ -5571,7 +5577,9 @@ function showTutorialState() {
 
 function openMenu() {
   menuOpen = true;
+  introSeq++;
   juice.release();
+  juice.clear();
   juice.tint(false);
   hud.holdAchievements(false);
   input.cancel();
@@ -5835,6 +5843,9 @@ if (typeof window !== 'undefined') {
       if (tutorial.active) tutorial.stop();
       game.tutorialGuard = null;
       moments.closeIntro();
+      juice.release();
+      juice.clear();
+      introSeq++;
       game.introUp = false;
       game.level = level;
       rooms.generate(level);

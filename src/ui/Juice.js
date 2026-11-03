@@ -438,6 +438,11 @@ export class Juice {
     }
   }
 
+  /** Take down any message still on screen (a menu opens, a table is swapped). */
+  clear() {
+    for (const n of [...this.root.children]) if (/^jc-(band-wrap|slam|cut|finish)\b/.test(n.className)) n.remove();
+  }
+
   /** Back to the plain top-down view (a table ends, a menu opens). */
   release() {
     this.hold = null;
