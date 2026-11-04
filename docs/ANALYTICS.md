@@ -1,0 +1,105 @@
+# Anonymous gameplay stats
+
+The game records anonymous sessions so we can see where players stall, churn,
+succeed and fail. A dashboard at `/dashboard.html` tells that story.
+
+Until storage is provisioned, all of it is a no-op: the first send gets a
+"not configured" answer, and the game stops sending for the rest of that page
+load. Nothing breaks, and nothing slows down.
+
+## Turning it on (about 5 minutes, in the Vercel dashboard)
+
+1. **Add storage.** Open the `billiard-roguelike` project on vercel.com, go to
+   **Storage**, click **Create Database** (or **Browse Marketplace**), pick
+   **Upstash → Upstash for Redis**, and choose the free plan and a region near
+   your players. When it asks which projects to connect, pick
+   `billiard-roguelike` and tick all three environments.
+   That adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` to the project. (The
+   older direct Upstash integration names them `UPSTASH_REDIS_REST_URL` and
+   `UPSTASH_REDIS_REST_TOKEN`; either pair works.)
+2. **Set the dashboard token.** Go to **Settings → Environment Variables**, add
+   `STATS_TOKEN` with a long random value (for example the output of
+   `openssl rand -hex 24`), for Production (and Preview if you want it there).
+3. *(Optional)* `ANALYTICS_SALT`: any random string. It salts the hash used
+   for the per-minute rate limit. If it is unset, `STATS_TOKEN` is used.
+4. **Redeploy** (Deployments → ⋯ → Redeploy), because environment variables
+   only reach new deployments.
+5. Open `https://billiard-roguelike.vercel.app/dashboard.html#token=<STATS_TOKEN>`
+   once. The page keeps the token in that browser's localStorage and removes it
+   from the address bar. **Lock** forgets it.
+
+`/dashboard.html?demo=1` shows the dashboard over made-up data, with no setup.
+
+The free Upstash plan (256 MB, 500k commands a month) covers a few thousand
+sessions a month comfortably: each ~10 s batch costs about 15 commands.
+Data expires after 400 days.
+
+## What is recorded
+
+| | |
+|---|---|
+| Identity | A random id in localStorage (`lightline-anon-id`), and a new random session id on each page load. Returning-player detection uses that id plus a visit count. |
+| Device | Viewport size, pixel ratio, touch or mouse, browser and OS **family** (e.g. "Safari · iOS"; never the raw user agent), and the referring site's host name. |
+| Lifecycle | Page load and boot time; tab hidden/visible (for idle and away time); leaving (on `pagehide`); JavaScript errors (message, file, line); a reload of a session that was mid-table or mid-lesson. |
+| Lessons | Each lesson's start, pass, skip or quit, its time, shots and aim cancels; the tutorial's start, completion or skip. |
+| Play | Home screen, Play, run start/continue, table replays; each table's start (number, name, rack, shots, target) and end (cleared or failed, score against target, balls down, shots, time, hearts lost); run over / complete, Try again, Quit run; the shop opening, purchases and rerolls; freeze frames; achievements; settings changed. |
+| Shots | One compact event per shot: power, time spent aiming, aim cancels before it, balls potted, foul, scratch, freezes used, points paid. |
+
+**Never recorded:** names, anything typed, precise location, the raw user
+agent, IP addresses. The server hashes the IP with a daily salt only to keep a
+60-second rate-limit counter, and stores nothing else about it.
+
+**Off when:** the player turns *Anonymous stats* off in Settings (remembered),
+the browser sends Do Not Track or Global Privacy Control, the page is opened
+from a file, or the browser is automated (except under
+`tools/check-analytics.mjs`). The home screen says, under Play, that stats
+are anonymous and can be turned off.
+
+## How it fits together
+
+```
+src/analytics/Analytics.js   the client: queue, batch every 10 s, sendBeacon on hide
+src/main.js                  one-line calls, each ending in `// analytics`
+api/events.js                POST: validate, rate-limit, store
+api/stats.js                 GET, behind STATS_TOKEN: the report, a session, a player
+api/_lib/schema.js           the event whitelist and field rules
+api/_lib/store.js            Upstash Redis over REST (no npm package)
+api/_lib/metrics.js          every number on the dashboard, and the narrative
+api/_lib/demo.js             made-up sessions for ?demo=1 and the tests
+public/dashboard.html        the dashboard (self-contained, works on a phone)
+tools/check-analytics.mjs    npm run analytics: the end-to-end check
+```
+
+The tutorial is observed by wrapping its methods from `Analytics.js`, so
+`Tutorial.js` is untouched. If a later refactor renames those methods, the
+wrapping is silently skipped and only lesson events go missing.
+
+### Definitions the dashboard uses
+
+- **New player**: first seen in the range, and had no game progress saved
+  before stats existed (`prior` covers friends who played before this shipped).
+- **Active time**: a session's wall time minus the stretches the tab was hidden.
+- **Funnel** (first sessions of new players): loaded → pressed Play → started
+  lesson 1 → through the lessons (finished or skipped) → reached table 1 →
+  cleared table 1 → reached table 3 → run over or complete. Each step is capped
+  at the one before it.
+- **D1**: came back on the next calendar day. **Back within 7d**: any session
+  on days 1–7. Only players whose window has fully passed are counted.
+- **Stall**: 90 s or more with no event while the tab is visible, or 5 aim
+  cancels in a row with no shot.
+- **Churn point**: where a player was at the last action of their last
+  session, once they have been gone 24 hours.
+- **Rage reload**: a reload mid-table or mid-lesson within 30 s of the last
+  action.
+
+## Checking it
+
+```
+npm run build && npm run analytics
+```
+
+This serves `dist/` with the real `/api` handlers over an in-memory stand-in
+for Upstash, plays boot → Play → lesson 1 → a cancelled aim → a shot → leaving
+the page in headless Chromium, and checks the events, their order and fields,
+storage, the stats report, the no-op and opt-out paths, the metrics' arithmetic,
+and the dashboard at phone and desktop sizes.
