@@ -346,6 +346,41 @@ async function main() {
     const stored = (redis.kv.get('ll:e:junk1234567890ab') || []).map((s) => JSON.parse(s));
     check(stored.length === 1 && !('nested' in stored[0]) && !('bad key' in stored[0]) && stored[0].ok.length === 200, '…with the junk stripped', JSON.stringify(stored[0]).slice(0, 80));
 
+    /* ---------------- 2b. the run: skip the lessons, table 1, its end ---------------- */
+    console.log('\nthe run');
+    const pr = await ctx.newPage();
+    pr.on('pageerror', (e) => errors.push(String(e.message)));
+    await pr.goto(url + '/', { waitUntil: 'load' });
+    await pr.waitForTimeout(1200);
+    const sid2 = (await pr.evaluate(() => window.__analytics.state())).sid;
+    await pr.click('#btn-play');
+    await pr.waitForTimeout(1500);
+    await pr.click('#coach-skip');
+    await pr.waitForTimeout(1500);
+    // the table's end as the game banks it (completeRoom / failRoom → rules.endRoom),
+    // called directly: playing a table out is not what this check is about
+    await pr.evaluate(() => window.__game.rules.endRoom());
+    await pr.waitForTimeout(300);
+    await pr.evaluate(() => window.__analytics.flush());
+    await pr.waitForTimeout(800);
+    const evs2 = log.map((x) => { try { return JSON.parse(x.body); } catch { return null; } }).filter((b) => b?.sid === sid2).flatMap((b) => b.events);
+    const n2 = evs2.map((e) => e.e);
+    console.log(`    ${n2.join(' → ')}`);
+    const want2 = ['play_pressed', 'tut_start', 'lesson_start', 'lesson_skip', 'tut_skip', 'run_start', 'table_start', 'table_end', 'heart_lost'];
+    let at2 = -1;
+    const miss2 = want2.filter((name) => {
+      const i = n2.indexOf(name, at2 + 1);
+      if (i < 0) return true;
+      at2 = i;
+      return false;
+    });
+    check(!miss2.length, 'skip → run → table 1 → its end, in order', miss2.join(', '));
+    const tsr = evs2.find((e) => e.e === 'table_start') || {};
+    check(tsr.lv === 1 && typeof tsr.name === 'string' && tsr.target > 0 && tsr.rack > 0 && tsr.shots > 0, 'table_start names the table, its rack, shots and target', JSON.stringify(tsr));
+    const ter = evs2.find((e) => e.e === 'table_end') || {};
+    check(ter.lv === 1 && ter.cleared === 0 && Number.isFinite(ter.score) && ter.target === tsr.target && ter.lost === 1, 'table_end: failed, score against target, a heart lost', JSON.stringify(ter));
+    await pr.close();
+
     /* ---------------- 3. no-op without storage; opt-out ---------------- */
     console.log('\nno-op');
     delete process.env.KV_REST_API_URL;
@@ -364,7 +399,9 @@ async function main() {
     await page2.evaluate(() => window.__analytics.flush());
     await page2.waitForTimeout(400);
     check(log.length - before === 1, 'nothing more is sent after the refusal', `${log.length - before} requests`);
-    check((await page2.evaluate(() => window.__game?.tutorial?.lesson?.id)) === 'angle' && !errs2.length, 'the game plays on regardless', errs2.join(' | '));
+    // (lessons on a first visit, the play screen once they are done or skipped)
+    const went = await page2.evaluate(() => !!window.__game?.tutorial?.lesson || !document.getElementById('menu-play').hidden);
+    check(went && !errs2.length, 'the game plays on regardless', errs2.join(' | '));
     await page2.close();
 
     process.env.KV_REST_API_URL = `${url}/__redis`;

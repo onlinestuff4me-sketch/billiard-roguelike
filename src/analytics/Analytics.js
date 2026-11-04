@@ -22,8 +22,11 @@
  * HOW IT IS WIRED
  *
  *   main.js calls `analytics.attach({...})` once and then makes one-line calls
- *   at each hook point, each marked `// analytics`. The tutorial is observed by
- *   wrapping its methods here, so Tutorial.js is not touched at all.
+ *   at each hook point, each marked `// analytics`. Where an object's method
+ *   says the same thing, it is wrapped here instead of adding a line to
+ *   main.js (fewer lines for a parallel branch to collide with): the tutorial's
+ *   lessons, rules.endRoom (a table's end), moments.runEnd (the run's end).
+ *   Try again and Quit run are read from the sequence (see tableStart, menu).
  *
  *   Off when: the player opts out in Settings, Do Not Track or Global Privacy
  *   Control is on, the page is not served over http(s), or the browser is
@@ -443,26 +446,21 @@ function watchTutorial(t) {
     closeLesson('lesson_complete');
   });
   wrap(t, '_resolveShot', () => finishShot());
-  // _finish is both "played to the end" (finishedAll) and Skip.
-  wrap(
-    t,
-    '_finish',
-    function after(state) {
-      if (game().headless) return;
-      const ms = S.tutAt ? now() - S.tutAt : undefined;
-      if (state.all) push('tut_complete', { ms });
-      else {
-        if (S.lesson) closeLesson('lesson_skip');
-        push('tut_skip', { ms, ls: state.ls, li: state.li });
-      }
-      S.tutAt = null;
-      S.lesson = null;
-    },
-    function before() {
-      this.__llFinishing = true;
-      return { all: !!this.finishedAll, ls: S.lesson?.id, li: S.lesson?.idx };
+  // _finish is both "played to the end" (finishedAll) and Skip. Recorded
+  // BEFORE it runs: it hands over to startRun, whose events come after.
+  wrap(t, '_finish', null, function before() {
+    this.__llFinishing = true;
+    if (game().headless) return;
+    const ms = S.tutAt ? now() - S.tutAt : undefined;
+    if (this.finishedAll) push('tut_complete', { ms });
+    else {
+      const L = S.lesson;
+      if (L) closeLesson('lesson_skip');
+      push('tut_skip', { ms, ls: L?.id, li: L?.idx });
     }
-  );
+    S.tutAt = null;
+    S.lesson = null;
+  });
   // stop() while a lesson is live and NOT on the way out through _finish:
   // the player left the tutorial some other way (the menu).
   wrap(
@@ -555,6 +553,29 @@ const api = {
     enable();
     installPageHooks();
     watchTutorial(deps.tutorial);
+    // a table's end: completeRoom and failRoom both bank through endRoom
+    const endRoom = deps.rules?.endRoom;
+    if (typeof endRoom === 'function') {
+      deps.rules.endRoom = function (...args) {
+        const out = endRoom.apply(this, args);
+        safe(() => api.tableEnd(out, !!out?.filled));
+        return out;
+      };
+    }
+    // the end of a run: the panel that says so
+    const runEnd = deps.moments?.runEnd;
+    if (typeof runEnd === 'function') {
+      deps.moments.runEnd = function (opts, ...rest) {
+        safe(() => {
+          if (!inGame()) return;
+          finishShot();
+          S.runEnded = true;
+          push(opts?.kind === 'complete' ? 'run_complete' : 'run_over', { lv: opts?.level, run: opts?.runScore });
+          set(MID_KEY, null, 'session');
+        });
+        return runEnd.call(this, opts, ...rest);
+      };
+    }
     const ach = deps.achievements;
     if (ach) {
       const prev = ach.onUnlock;
@@ -579,7 +600,10 @@ const api = {
   menu() {
     if (game().headless) return;
     finishShot();
-    if (S.table && !S.table.ended) push('table_abandon', { lv: S.table.lv, shots: S.table.shots, ms: now() - S.table.at });
+    const T = S.table;
+    if (T && !T.ended) push('table_abandon', { lv: T.lv, shots: T.shots, ms: now() - T.at });
+    // from a failed table's result, with hearts left, the only way home is Quit run
+    else if (T && T.ended && !T.cleared && !S.runEnded && !T.replay) push('quit_run', { lv: T.lv });
     S.table = null;
     push('menu_open');
     set(MID_KEY, null, 'session');
@@ -622,8 +646,12 @@ const api = {
     const g = game();
     const rules = S.deps?.rules;
     const rooms = S.deps?.rooms;
-    const retry = S.table && S.table.lv === g.level ? (S.table.retry || 0) + 1 : 0;
-    S.table = { lv: g.level, at: now(), shots: 0, cancels: 0, retry, ended: false };
+    const prev = S.table;
+    // the same table again, straight after failing it: Try again
+    const retry = prev && prev.lv === g.level && prev.ended && !prev.cleared ? (prev.retry || 0) + 1 : 0;
+    if (retry) push('try_again', { lv: g.level });
+    if (!prev || !retry) S.runEnded = false;
+    S.table = { lv: g.level, at: now(), shots: 0, cancels: 0, retry, ended: false, cleared: false, replay: !!g.replay };
     push('table_start', {
       lv: g.level,
       name: rooms?.authored?.name || rooms?.layout?.name,
@@ -663,7 +691,10 @@ const api = {
       replay: g.replay ? 1 : undefined
     });
     if (lost) push('heart_lost', { lv: g.level, lives: result.lives });
-    if (T) T.ended = true;
+    if (T) {
+      T.ended = true;
+      T.cleared = !!cleared;
+    }
     set(MID_KEY, null, 'session');
   },
 

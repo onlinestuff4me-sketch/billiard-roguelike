@@ -2184,7 +2184,6 @@ function tableResult(result) {
  * best, and nothing starts again until you pick New run or Home.
  */
 function runOver() {
-  analytics.ev('run_over', { run: rules.runScore }); // analytics
   clearRun();
   engine.shake(14);
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
@@ -2207,7 +2206,6 @@ function runOver() {
  * ends it here, its score banked.
  */
 function runFinale() {
-  analytics.ev('run_complete', { run: rules.runScore }); // analytics
   return moments.runEnd({
     kind: 'complete',
     level: game.level,
@@ -2255,7 +2253,6 @@ async function quitRun() {
     }
     if (!r.yes) return false;
   }
-  analytics.ev('quit_run'); // analytics
   clearRun();
   leaveRunEnd(goHome);
   return true;
@@ -2263,7 +2260,6 @@ async function quitRun() {
 
 /** The same table again, a fresh rack: a run goes on only past a cleared table. */
 function retryTable() {
-  analytics.ev('try_again'); // analytics
   game.introUp = false;
   moments.closeIntro();
   game.chain.count = 0;
@@ -2377,7 +2373,6 @@ function showRoomResult(data, shownRun) {
  * (from review); the target decides the cash and whether a life is lost.
  */
 function recordTable(result, cleared) {
-  analytics.tableEnd(result, cleared); // analytics
   // the shot an Extra Life cost is paid once this table is over
   game.shotDebt = 0;
   if (game.headless) return;
@@ -4830,7 +4825,6 @@ const input = new InputManager(stage, {
     }
   },
   onAimCancel: () => {
-    analytics.aimCancel(); // analytics
     game.drawnShot = null;
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
@@ -4838,6 +4832,7 @@ const input = new InputManager(stage, {
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
     player.cancelAim();
+    analytics.aimCancel(); // analytics
   },
   onRelease: (aim) => {
     analytics.shot(aim); // analytics
@@ -5133,6 +5128,7 @@ const tutorial = new Tutorial({
   finish: startRun
 });
 if (typeof window !== 'undefined') game.tutorial = tutorial;
+analytics.attach({ game, tutorial, rules, rooms, moments, achievements, isMenu: () => menuOpen }); // analytics
 const menuMain = document.getElementById('menu-main');
 const menuSettings = document.getElementById('menu-settings');
 const menuModes = document.getElementById('menu-modes');
@@ -5144,7 +5140,6 @@ const $ = (id) => document.getElementById(id);
  * background can never drift out of sync with how the game currently looks.
  */
 let menuOpen = true;
-analytics.attach({ game, tutorial, rules, rooms, achievements, isMenu: () => menuOpen }); // analytics
 let attractTimer = 0;
 
 let muted = false;

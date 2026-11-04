@@ -70,9 +70,13 @@ public/dashboard.html        the dashboard (self-contained, works on a phone)
 tools/check-analytics.mjs    npm run analytics: the end-to-end check
 ```
 
-The tutorial is observed by wrapping its methods from `Analytics.js`, so
-`Tutorial.js` is untouched. If a later refactor renames those methods, the
-wrapping is silently skipped and only lesson events go missing.
+Where an object already announces a moment, `Analytics.js` wraps it instead
+of adding a line to `main.js`: the tutorial's lessons (so `Tutorial.js` is
+untouched), `rules.endRoom` (a table's end) and `moments.runEnd` (a run's
+end). Try again and Quit run are read from the event sequence. If a later
+refactor renames one of those methods, its wrapping is silently skipped and
+only those events go missing. Merging this branch into `lightline-scoring`
+adds no conflicts beyond the ones `main` already has with it.
 
 ### Definitions the dashboard uses
 
