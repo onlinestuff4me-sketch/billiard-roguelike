@@ -1156,6 +1156,7 @@ export class Moments {
     // buttons at the foot dismiss it, as before.
     if (d.finish && d.filled) {
       head.classList.add('clear-slam');
+      panel.classList.add('has-clear');
       kicker.textContent = 'Clear!';
       this.anim(kicker, [
         { transform: 'rotate(-5deg) scale(3)', opacity: 0, filter: 'blur(8px)' },

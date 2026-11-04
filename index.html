@@ -1410,6 +1410,14 @@
       /* CLEAR! heads the result (review round 4): the slam, then its news, then the score */
       .mo-head.clear-slam .mo-kicker { font-family: var(--font-display); font-size: clamp(40px, 13vmin, 58px); font-weight: 900; letter-spacing: 0.02em; color: #ffffff; text-shadow: 4px 4px 0 #ff8a1e, 0 0 26px #22e8ff; transform: rotate(-5deg); }
       .mo-news { display: grid; gap: 6px; margin: 2px 0 10px; }
+      /* room for CLEAR! (review round 5: it was cramped by the top edge, with
+         space to spare under the buttons): the panel sits lower, the slam has
+         air above it, and the sections are spaced more evenly */
+      .mo-ledger.has-clear { top: calc(14% + 16px); padding-top: 22px; }
+      .mo-ledger.has-clear .mo-head { margin-bottom: 14px; }
+      .mo-ledger.has-clear .mo-head .mo-title { margin-top: 10px; }
+      .mo-ledger.has-clear .mo-news { margin: 0 0 16px; }
+      .mo-ledger.has-clear .mo-rows { margin-bottom: 4px; }
       .mo-news-row { display: grid; justify-items: center; gap: 1px; padding: 6px 10px 7px; border: 1.5px solid #ffc266; background: rgba(2, 5, 11, 0.85); box-shadow: 0 0 16px rgba(255, 194, 102, 0.35); text-align: center; }
       .mo-news-row b { font-family: var(--font-display); font-size: 16px; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; color: #ffffff; text-shadow: 0 0 10px #ffc266; line-height: 1.1; }
       .mo-news-row span { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ffc266; }
