@@ -2358,6 +2358,21 @@ function doorLabelText(door) {
 const cssHex = (value) => `#${value.toString(16).padStart(6, '0')}`;
 
 /**
+ * ONE LINE PER PIECE OF NEWS (review round 4: "In Order" and "All in order"
+ * read as the same thing twice). An unlock that comes with the achievement
+ * for the same feat folds into that achievement's line.
+ */
+function mergeNews(lines) {
+  const out = [];
+  for (const ln of lines) {
+    const same = out.find((o) => o.title.toLowerCase().replace(/^all /, '') === ln.title.toLowerCase().replace(/^all /, ''));
+    if (same) same.sub = [same.sub, ln.sub].filter(Boolean).join(' · ');
+    else out.push({ ...ln });
+  }
+  return out;
+}
+
+/**
  * The mission is filled. Pay for every stroke left in the budget — the skill
  * income — put the scorecard up, and open the exits.
  */
@@ -2390,20 +2405,15 @@ function completeRoom() {
   // CLEAR! with the rest of the news
   if (finishing) {
     const said = new Set(lines.map((l) => l.title));
-    const earned = (game.strokeAch || []).filter((a) => !said.has(a.name)).map((a) => ({ kicker: 'Achievement', title: a.name, sub: a.text }));
+    const earned = (game.strokeAch || []).filter((a) => !said.has(a.name)).map((a) => ({ kicker: 'Achievement', title: a.name, sub: '' }));
     lines.unshift(...earned);
     hud.holdAchievements(true);
   }
   openExits();
   const data = { ...tableResult(result), filled: true };
-  // THE FINISH (juice): "CLEAR!" before the result
-  if (finishing) {
-    juice.finish({ title: 'Clear!', sub: `Table ${game.level}`, lines }).then(() => {
-      juice.release();
-      showRoomResult(data, shownRun);
-    });
-    return;
-  }
+  // THE FINISH (juice): CLEAR! heads the result itself, with its news under
+  // it (Moments.clear, d.finish); one screen, dismissed by its buttons
+  if (finishing) data.finish = { lines: mergeNews(lines) };
   juice.release();
   showRoomResult(data, shownRun);
 }
@@ -2661,7 +2671,7 @@ achievements.onUnlock = (a) => {
   (game.strokeAch ||= []).push(a);
   // earned by the clear itself: said on the finish screen (completeRoom)
   if (game.finishLines) {
-    game.finishLines.push({ kicker: 'Achievement', title: a.name, sub: a.text });
+    game.finishLines.push({ kicker: 'Achievement', title: a.name, sub: '' });
     audio.boonPick?.();
     return;
   }

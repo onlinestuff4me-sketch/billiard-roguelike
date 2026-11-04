@@ -210,20 +210,20 @@ export class Juice {
   }
 
   /**
-   * A Bomb Shot goes off (review round 3: "have the explosion spread out as
-   * the blast travels with the balls that get pushed out"). A small white-hot
-   * flash at the ball hit; then every ball the blast throws carries its own
-   * fire, a comet of flame streaming behind it and shedding embers, and the
-   * fire front is a ring that grows with the farthest of them, so the blast
-   * spreads exactly as far and as fast as the balls do. It burns down as they
-   * slow. Drawn on the top layer; no tint, no full-screen glow.
+   * A Bomb Shot goes off (review round 4: "I just want the explosion to
+   * radiate out with the ball that gets propelled"). The round 3 fireball, a
+   * ring of fire with flames on its edge and a glowing wake inside, but its
+   * size is no longer on a timer: every frame it is as big as the farthest
+   * ball the blast threw has travelled, so the explosion grows outward WITH
+   * the balls. Each thrown ball also trails a short flame. It burns out about
+   * a second after it goes off. No tint, no full-screen glow.
    */
   blast({ x, z, radius, balls = [] }) {
     this._endBlast();
     const p = this.toPx(x, z);
     const r = Math.abs(this.toPx(x + radius, z).x - p.x);
     const box = el('div', 'jc-blastfx', this.root);
-    // 1. the impact: white-hot and small
+    // the impact: white-hot and small
     const core = el('div', 'jc-core', box);
     core.style.left = `${p.x}px`;
     core.style.top = `${p.y}px`;
@@ -234,13 +234,19 @@ export class Juice {
       { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0.35 },
       { transform: 'translate(-50%,-50%) scale(0.8)', opacity: 0 }
     ], { duration: 320, easing: 'ease-out' });
-    // 2. the fire front, sized every frame to the farthest thrown ball
+    // the fireball: a glowing wake and a ring of fire, sized each frame
+    const wake = el('div', 'jc-blast-wake', box);
     const ring = el('div', 'jc-blast-ring', box);
-    ring.style.left = `${p.x}px`;
-    ring.style.top = `${p.y}px`;
-    // 3. each thrown ball's own fire
+    const flames = [];
+    if (!this.reducedMotion) {
+      const n = 18;
+      for (let i = 0; i < n; i++) {
+        const f = el('i', 'jc-flame', box);
+        flames.push({ el: f, a: (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.3, len: 0.5 + Math.random() * 0.5, ph: Math.random() * 6 });
+      }
+    }
     const riders = balls.filter(Boolean).map((b) => ({ b, el: el('div', 'jc-ballfire', box), last: 0 }));
-    this._blast = { box, ring, cx: x, cz: z, p, riders, t: 0, life: 1, peak: 0 };
+    this._blast = { box, ring, wake, flames, riders, cx: x, cz: z, r, t: 0, gt: 0, peak: r * 0.3 };
   }
 
   _endBlast() {
@@ -251,69 +257,51 @@ export class Juice {
   }
 
   /**
-   * The blast's fire, kept with the balls it threw. It burns down on GAME time
-   * (gt): the table runs slow while a number shows, and a ball crawling there
-   * still has its full speed on paper.
+   * The fireball, kept as big as the balls it threw have gone. It burns down
+   * on game time and real time both (the table runs slow while a number
+   * shows, and a ball crawling there keeps its full speed on paper).
    */
   _updateBlast(rawDt, dt = rawDt) {
     const bl = this._blast;
     if (!bl) return;
     bl.t += rawDt;
-    bl.gt = (bl.gt || 0) + dt;
+    bl.gt += dt;
+    const burn = this._burn(bl);
     const c = this.toPx(bl.cx, bl.cz);
     let far = 0;
-    let fastest = 0;
     for (const rd of bl.riders) {
       const b = rd.b;
-      // a ball that has dropped is out of the blast (its last speed lingers)
-      if (b.alive === false) {
-        rd.el.style.opacity = '0';
-        continue;
-      }
-      const sp = Math.hypot(b.vx || 0, b.vz || 0);
-      fastest = Math.max(fastest, sp);
       const q = this.toPx(b.x, b.z);
+      // a ball that has dropped still counts for how far the blast reached
       far = Math.max(far, Math.hypot(q.x - c.x, q.y - c.y));
-      const k = Math.max(0, Math.min(1, sp / 14)) * this._burn(bl);
-      if (sp < 0.6 || k < 0.05) {
+      const sp = b.alive === false ? 0 : Math.hypot(b.vx || 0, b.vz || 0);
+      const k = Math.min(1, sp / 14) * burn;
+      if (k < 0.05) {
         rd.el.style.opacity = '0';
         continue;
       }
-      // the comet points back along the ball's travel, longer the faster
       const back = this.toPx(b.x - (b.vx || 0) * 0.1, b.z - (b.vz || 0) * 0.1);
       const ang = Math.atan2(back.y - q.y, back.x - q.x);
-      const len = 18 + 70 * k;
-      Object.assign(rd.el.style, {
-        left: `${q.x}px`,
-        top: `${q.y}px`,
-        width: `${len}px`,
-        opacity: String(Math.min(1, 0.35 + k)),
-        transform: `rotate(${ang}rad) translateY(-50%)`
-      });
-      // embers shed along the way
-      rd.last += rawDt;
-      if (rd.last > 0.05 && !this.reducedMotion) {
-        rd.last = 0;
-        const e = el('i', 'jc-ember', bl.box);
-        e.style.left = `${q.x + (Math.random() - 0.5) * 10}px`;
-        e.style.top = `${q.y + (Math.random() - 0.5) * 10}px`;
-        this.anim(e, [{ transform: 'scale(1)', opacity: 1 }, { transform: `translate(${(Math.random() - 0.5) * 24}px, ${(Math.random() - 0.5) * 24}px) scale(0.2)`, opacity: 0 }], { duration: 420, easing: 'ease-out' }).then(() => e.remove());
-      }
+      Object.assign(rd.el.style, { left: `${q.x}px`, top: `${q.y}px`, width: `${14 + 40 * k}px`, opacity: String(Math.min(1, 0.3 + k)), transform: `rotate(${ang}rad) translateY(-50%)` });
     }
-    // the front grows with the farthest ball, and burns down as they slow
-    bl.peak = Math.max(bl.peak, far);
-    const heat = Math.max(0, Math.min(1, fastest / 10)) * this._burn(bl);
-    bl.life = bl.t < 0.25 ? 1 : Math.min(bl.life, 0.1 + heat);
-    const size = Math.max(10, bl.peak) * 2;
-    Object.assign(bl.ring.style, {
-      left: `${c.x}px`,
-      top: `${c.y}px`,
-      width: `${size}px`,
-      height: `${size}px`,
-      opacity: String(Math.max(0, bl.life - 0.15)),
-      borderWidth: `${3 + 9 * heat}px`
-    });
-    if ((bl.t > 0.4 && (fastest < 1.2 || this._burn(bl) <= 0)) || bl.t > 2) this._endBlast();
+    // it only grows, with the farthest ball, up to a bit past the blast's reach
+    bl.peak = Math.min(bl.r * 1.4, Math.max(bl.peak, far));
+    const R = bl.peak;
+    const size = R * 2;
+    Object.assign(bl.wake.style, { left: `${c.x}px`, top: `${c.y}px`, width: `${size}px`, height: `${size}px`, opacity: String(0.9 * burn) });
+    Object.assign(bl.ring.style, { left: `${c.x}px`, top: `${c.y}px`, width: `${size}px`, height: `${size}px`, opacity: String(burn), borderWidth: `${3 + 11 * burn}px` });
+    for (const f of bl.flames) {
+      const flick = 0.75 + 0.25 * Math.sin(bl.t * 30 + f.ph);
+      const len = R * 0.32 * f.len * flick * (0.4 + 0.6 * burn);
+      Object.assign(f.el.style, {
+        left: `${c.x}px`,
+        top: `${c.y}px`,
+        width: `${len}px`,
+        opacity: String(burn),
+        transform: `rotate(${f.a}rad) translateX(${R * 0.9}px) translateY(-50%)`
+      });
+    }
+    if ((bl.t > 0.3 && burn <= 0) || bl.t > 2) this._endBlast();
   }
 
   /** How much fire is left: out a second after the blast, by game or real time. */

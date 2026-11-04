@@ -128,7 +128,7 @@ export class HUD {
     this.freezeLabel.textContent = 'Freeze frame';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
     this.freezeCall = el('div', 'freeze-call', freezeBlock);
-    this.freezeCall.textContent = 'Freeze';
+    this.freezeCall.textContent = 'Tap to freeze';
     /** set by the game: what a press on the button does */
     this.onFreeze = null;
     freezeBlock.addEventListener('pointerdown', (e) => {
