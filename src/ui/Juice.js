@@ -260,13 +260,17 @@ export class Juice {
     let fastest = 0;
     for (const rd of bl.riders) {
       const b = rd.b;
+      // a ball that has dropped is out of the blast (its last speed lingers)
+      if (b.alive === false) {
+        rd.el.style.opacity = '0';
+        continue;
+      }
       const sp = Math.hypot(b.vx || 0, b.vz || 0);
       fastest = Math.max(fastest, sp);
       const q = this.toPx(b.x, b.z);
       far = Math.max(far, Math.hypot(q.x - c.x, q.y - c.y));
-      const alive = b.alive !== false && sp > 0.6;
       const k = Math.max(0, Math.min(1, sp / 14));
-      if (!alive) {
+      if (sp < 0.6) {
         rd.el.style.opacity = '0';
         continue;
       }
@@ -304,7 +308,7 @@ export class Juice {
       opacity: String(Math.max(0, bl.life - 0.15)),
       borderWidth: `${3 + 9 * heat}px`
     });
-    if ((bl.t > 0.4 && fastest < 1.2) || bl.t > 3) this._endBlast();
+    if ((bl.t > 0.4 && fastest < 1.2) || bl.t > 2.5) this._endBlast();
   }
 
   /* ---------------------------------------------------------------- *
