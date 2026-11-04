@@ -58,6 +58,7 @@ import { Moments } from './ui/Moments.js';
 import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
+import { analytics } from './analytics/Analytics.js'; // analytics
 import { Tutorial } from './systems/Tutorial.js';
 
 const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
@@ -1540,6 +1541,7 @@ function finishStroke() {
 
   flushAchievements();
   const summary = rules.endStroke();
+  analytics.strokeEnd(summary); // analytics
   // FREEZE FRAME CHARGES, earned by the shot that just paid: each lands as an
   // ice plate flying into the meter, and the meter holds its old value until
   // the plate lands (from review: every change is telegraphed).
@@ -1669,6 +1671,7 @@ function tryFreeze() {
   game.phase = 'aim';
   if (game.practice) practiceFroze();
   else achievements.unlock('freeze');
+  analytics.freeze(); // analytics
   // The cue ball stops where it is; it is about to be re-aimed from here.
   player.vx = 0;
   player.vz = 0;
@@ -1840,6 +1843,7 @@ game.on = {
     // order it would refuse the very pot a lesson is asking for, leaving the
     // board unpassable for anyone who had turned the mode on.
     const foul = tutorial.running ? null : rules.foulReason(ball.number);
+    analytics.pot(ball.number, foul); // analytics
     if (foul) {
       rules.scratch('foul');
       feed.voidShot();
@@ -1904,6 +1908,7 @@ game.on = {
     if (p.scratchGuard > 0) return;
     p.scratchGuard = 0.6;
     rules.scratch();
+    analytics.scratch(); // analytics
     feed.voidShot();
     engine.shake(14);
     engine.zoomPunch();
@@ -2179,6 +2184,7 @@ function tableResult(result) {
  * best, and nothing starts again until you pick New run or Home.
  */
 function runOver() {
+  analytics.ev('run_over', { run: rules.runScore }); // analytics
   clearRun();
   engine.shake(14);
   engine.zoomPunch(FEEL.zoomPunch * 1.4);
@@ -2201,6 +2207,7 @@ function runOver() {
  * ends it here, its score banked.
  */
 function runFinale() {
+  analytics.ev('run_complete', { run: rules.runScore }); // analytics
   return moments.runEnd({
     kind: 'complete',
     level: game.level,
@@ -2248,6 +2255,7 @@ async function quitRun() {
     }
     if (!r.yes) return false;
   }
+  analytics.ev('quit_run'); // analytics
   clearRun();
   leaveRunEnd(goHome);
   return true;
@@ -2255,6 +2263,7 @@ async function quitRun() {
 
 /** The same table again, a fresh rack: a run goes on only past a cleared table. */
 function retryTable() {
+  analytics.ev('try_again'); // analytics
   game.introUp = false;
   moments.closeIntro();
   game.chain.count = 0;
@@ -2368,6 +2377,7 @@ function showRoomResult(data, shownRun) {
  * (from review); the target decides the cash and whether a life is lost.
  */
 function recordTable(result, cleared) {
+  analytics.tableEnd(result, cleared); // analytics
   // the shot an Extra Life cost is paid once this table is over
   game.shotDebt = 0;
   if (game.headless) return;
@@ -2437,6 +2447,7 @@ function flushAchievements() {
 }
 
 function openShop() {
+  analytics.ev('shop_open', { cash: rules.cash }); // analytics
   const S = RULES.shop;
   let rerolls = 0;
   const card = (u, held = false) => ({ id: u.id, name: u.name, text: u.text, rarity: u.rarity, price: u.price, sold: false, held, u });
@@ -2469,6 +2480,7 @@ function openShop() {
     reroll() {
       if (!rules.spend(api.rerollPrice())) return false;
       rerolls += 1;
+      analytics.ev('reroll'); // analytics
       // a held card stays put through a reroll
       const keep = api.items.filter((it) => it.held && !it.sold);
       api.items = keep.concat(shelf(false).filter((it) => !keep.some((k) => k.id === it.id)).slice(0, S.slots - keep.length));
@@ -2490,6 +2502,7 @@ function openShop() {
       }
       applyUpgrade(item.u, ctx());
       achievements.unlock('buy');
+      analytics.ev('buy', { item: item.id, price: item.price }); // analytics
       if (!item.u.consumable) shopRun.owned.push(item.u);
       shopRun.bought.push(item.name);
       audio.boonPick?.();
@@ -2527,6 +2540,7 @@ function openShop() {
       return true;
     },
     next() {
+      analytics.ev('shop_next', { bought: shopRun.bought.length }); // analytics
       const held = shopRun.held ? `Held · ${shopRun.held.name}` : '';
       const bought = shopRun.bought.length ? `Bought · ${shopRun.bought.join(' · ')}` : '';
       game.rewardNote = [bought, held].filter(Boolean).join('   ');
@@ -2726,6 +2740,7 @@ function beginMission() {
     // a heart bought in the shop is paid for with a shot on the next table
     strokes: Math.max(1, rooms.mission.strokes + (game.strokeBonus || 0) - (game.shotDebt || 0))
   });
+  analytics.tableStart(); // analytics
 }
 
 function openBoonModal(phase) {
@@ -3031,6 +3046,7 @@ function resetRunState() {
 }
 
 function startRun() {
+  analytics.ev('run_start'); // analytics
   resetRunState();
   // what this run has to beat to be a new best (kept with the saved run)
   game.bestBefore = loadBest().score;
@@ -3053,6 +3069,7 @@ function startRun() {
  * Play again or Back to tables.
  */
 function startReplay(n) {
+  analytics.ev('replay_start', { lv: n }); // analytics
   resetRunState();
   game.graceTimer = TUTORIAL.graceSeconds;
   game.tutorialGuard = null;
@@ -4786,6 +4803,7 @@ const input = new InputManager(stage, {
   // The ball is what the cursor aims from.
   getAnchor: () => ({ x: player.x, z: player.z }),
   onAimStart: () => {
+    analytics.aimStart(); // analytics
     uiLayer.classList.add('aiming');
     const h = input.heading;
     aimStartDir = { x: h.x, z: h.z };
@@ -4812,6 +4830,7 @@ const input = new InputManager(stage, {
     }
   },
   onAimCancel: () => {
+    analytics.aimCancel(); // analytics
     game.drawnShot = null;
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
@@ -4821,6 +4840,7 @@ const input = new InputManager(stage, {
     player.cancelAim();
   },
   onRelease: (aim) => {
+    analytics.shot(aim); // analytics
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
     hud.setPad(null);
@@ -4861,6 +4881,7 @@ const input = new InputManager(stage, {
     moments.unfreeze();
   },
   onFlick: (aim) => {
+    analytics.shot(aim, 'flick'); // analytics
     uiLayer.classList.remove('aiming');
     hud.setPad(null);
     // THERE IS NO FREE MOVE.
@@ -5123,6 +5144,7 @@ const $ = (id) => document.getElementById(id);
  * background can never drift out of sync with how the game currently looks.
  */
 let menuOpen = true;
+analytics.attach({ game, tutorial, rules, rooms, achievements, isMenu: () => menuOpen }); // analytics
 let attractTimer = 0;
 
 let muted = false;
@@ -5272,6 +5294,7 @@ function resumeRun() {
     startRun();
     return;
   }
+  analytics.ev('run_resume', { lv: d.level }); // analytics
   resetRunState();
   game.bestBefore = d.bestBefore ?? loadBest().score;
   game.graceTimer = TUTORIAL.graceSeconds;
@@ -5429,6 +5452,7 @@ function openMenu() {
   hud.holdAchievements(false);
   input.cancel();
   tutorial.stop();
+  analytics.menu(); // analytics
   bootVeil.classList.remove('hidden');
   uiLayer.classList.add('attract');
   showTutorialState();
@@ -5451,6 +5475,7 @@ function play(start) {
 // A first visit goes straight into the lessons; anyone else gets the play
 // screen, with Continue for the run they left.
 $('btn-play').addEventListener('click', () => {
+  analytics.ui('play_pressed', { tut: Tutorial.completed ? 1 : 0 }); // analytics
   if (!Tutorial.completed) play(() => tutorial.start());
   else showPlayPanel();
 });

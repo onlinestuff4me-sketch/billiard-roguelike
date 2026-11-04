@@ -2086,6 +2086,16 @@
       .ach-toast button { font: inherit; cursor: pointer; border-radius: 8px; color: var(--bone); }
       .ach-toast .ach-all { padding: 8px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; border: 1px solid rgba(255, 179, 64, 0.6); background: rgba(255, 179, 64, 0.12); white-space: nowrap; }
       .ach-toast .ach-x { width: 34px; height: 34px; padding: 0; font-size: 20px; line-height: 1; border: 0; background: transparent; opacity: 0.75; }
+      /* analytics: the privacy note under Play */
+      .menu-privacy {
+        max-width: 30em;
+        margin: clamp(10px, 2.4vmin, 16px) auto 0;
+        font-size: clamp(9px, 2.2vmin, 11px);
+        line-height: 1.35;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        text-align: center;
+      }
       .menu-foot {
         margin: 4px 0 0;
         font-size: clamp(9px, 2.3vmin, 11px);
@@ -2606,6 +2616,8 @@
             </h1>
             <p class="menu-eyebrow">Billiard Roguelike</p>
             <button id="btn-play" class="menu-btn primary" type="button">Play</button>
+            <!-- analytics: the privacy note; the switch is in Settings -->
+            <p class="menu-privacy" id="menu-privacy">Anonymous gameplay stats help improve the game. No personal data. Turn off in Settings.</p>
           </div>
 
           <!-- THE PLAY SCREEN (from review): for a returning player, Back and
@@ -2667,6 +2679,7 @@
             <button id="set-tutorial" class="menu-btn" type="button">Replay tutorial</button>
             <button id="set-newrun" class="menu-btn" type="button">New run</button>
             <button id="set-modes" class="menu-btn" type="button">Modes</button>
+            <button id="set-stats" class="menu-btn" type="button">Anonymous stats: On</button>
             <button id="set-back" class="menu-btn primary" type="button">Done</button>
             <p class="menu-foot" id="set-tutorial-state"></p>
           </div>
