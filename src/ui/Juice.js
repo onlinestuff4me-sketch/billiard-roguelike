@@ -250,11 +250,16 @@ export class Juice {
     this.anim(bl.box, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }).then(() => bl.box.remove());
   }
 
-  /** The blast's fire, kept with the balls it threw (real time). */
-  _updateBlast(rawDt) {
+  /**
+   * The blast's fire, kept with the balls it threw. It burns down on GAME time
+   * (gt): the table runs slow while a number shows, and a ball crawling there
+   * still has its full speed on paper.
+   */
+  _updateBlast(rawDt, dt = rawDt) {
     const bl = this._blast;
     if (!bl) return;
     bl.t += rawDt;
+    bl.gt = (bl.gt || 0) + dt;
     const c = this.toPx(bl.cx, bl.cz);
     let far = 0;
     let fastest = 0;
@@ -269,8 +274,8 @@ export class Juice {
       fastest = Math.max(fastest, sp);
       const q = this.toPx(b.x, b.z);
       far = Math.max(far, Math.hypot(q.x - c.x, q.y - c.y));
-      const k = Math.max(0, Math.min(1, sp / 14));
-      if (sp < 0.6) {
+      const k = Math.max(0, Math.min(1, sp / 14)) * Math.max(0, 1 - (bl.gt || 0) / 0.9);
+      if (sp < 0.6 || k < 0.05) {
         rd.el.style.opacity = '0';
         continue;
       }
@@ -297,8 +302,9 @@ export class Juice {
     }
     // the front grows with the farthest ball, and burns down as they slow
     bl.peak = Math.max(bl.peak, far);
-    const heat = Math.max(0, Math.min(1, fastest / 10));
-    bl.life = bl.t < 0.25 ? 1 : Math.min(bl.life, 0.2 + heat);
+    const burn = Math.max(0, 1 - bl.gt / 0.9);
+    const heat = Math.max(0, Math.min(1, fastest / 10)) * burn;
+    bl.life = bl.t < 0.25 ? 1 : Math.min(bl.life, 0.1 + heat);
     const size = Math.max(10, bl.peak) * 2;
     Object.assign(bl.ring.style, {
       left: `${c.x}px`,
@@ -308,7 +314,7 @@ export class Juice {
       opacity: String(Math.max(0, bl.life - 0.15)),
       borderWidth: `${3 + 9 * heat}px`
     });
-    if ((bl.t > 0.4 && fastest < 1.2) || bl.t > 2.5) this._endBlast();
+    if ((bl.t > 0.4 && (fastest < 1.2 || bl.gt > 0.95)) || bl.t > 2.5) this._endBlast();
   }
 
   /* ---------------------------------------------------------------- *
@@ -802,7 +808,7 @@ export class Juice {
 
   /** @param {number} dt game time  @param {number} rawDt real time */
   update(dt, rawDt, { cue, now }) {
-    this._updateBlast(rawDt);
+    this._updateBlast(rawDt, dt);
     this._updateTrail(dt, cue);
     this._updateCharge(now);
     this._updateCamera(rawDt);
