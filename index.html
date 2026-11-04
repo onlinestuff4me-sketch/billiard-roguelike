@@ -570,7 +570,8 @@
       .hud.has-freeze .hud-freeze, .hud.freeze-lit .hud-freeze { opacity: 1; }
       /* THE FREEZE BUTTON: lit, and pressable, only while a freeze is possible. */
       .freeze-call { display: none; font-family: var(--font-display); font-size: clamp(10px, 2.8vmin, 13px); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #02050b; background: #bff4ff; padding: 5px 9px 4px; clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
-      .hud-freeze.armed { pointer-events: auto; cursor: pointer; min-width: 84px; min-height: 58px; box-shadow: inset 0 0 0 2px #bff4ff, 0 0 22px rgba(111, 227, 255, 0.7); animation: freeze-armed 0.9s ease-in-out infinite; }
+      .hud-freeze.armed { pointer-events: auto; cursor: pointer; min-width: 84px; min-height: 58px; box-shadow: inset 0 0 0 2px #bff4ff, 0 0 22px rgba(111, 227, 255, 0.7); }
+      /* lit, but no pulse (review round 3: "we don't need to pulse the freeze button") */
       .hud-freeze.armed .freeze-call { display: block; }
       /* armed, it is a button and says so in one word: the label above it
          would make it twice as wide as the corner it lives in */
@@ -2577,9 +2578,11 @@
       .jc-burst i { position: absolute; left: 0; top: 0; transform-origin: 0 50%; border-radius: 2px; filter: drop-shadow(0 0 3px rgba(34, 232, 255, 0.9)); }
       .jc-core { position: absolute; left: 0; top: 0; width: 90px; height: 90px; border-radius: 50%; }
 
-      .jc-blast-ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 10px solid #ff8a1e; box-shadow: 0 0 22px #ff6a1e, 0 0 6px #ffd27a, inset 0 0 26px #ff8a1e; box-sizing: border-box; }
-      .jc-blast .jc-flame { position: absolute; left: 0; top: 0; transform-origin: 0 50%; border-radius: 50%; background: radial-gradient(ellipse at 70% 50%, #fff3c4 0%, #ffb347 35%, #ff5a1e 70%, rgba(255, 60, 20, 0) 100%); filter: drop-shadow(0 0 4px #ff6a1e); }
-      .jc-blast .jc-ember { position: absolute; left: 0; top: 0; width: 4px; height: 4px; margin: -2px; transform-origin: 0 50%; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 6px #ff8a1e; }
+      .jc-blastfx { position: absolute; inset: 0; pointer-events: none; }
+      .jc-blast-ring { position: absolute; border-radius: 50%; border: 10px solid #ff8a1e; box-shadow: 0 0 22px #ff6a1e, 0 0 6px #ffd27a, inset 0 0 26px rgba(255, 138, 30, 0.8); box-sizing: border-box; transform: translate(-50%, -50%); }
+      /* each thrown ball's comet of fire, streaming back along its travel */
+      .jc-ballfire { position: absolute; height: 18px; transform-origin: 0 0; border-radius: 9px; background: linear-gradient(90deg, #fff6d6 0%, #ffb347 22%, #ff5a1e 58%, rgba(255, 60, 20, 0) 100%); filter: drop-shadow(0 0 6px #ff6a1e); }
+      .jc-blastfx .jc-ember { position: absolute; width: 5px; height: 5px; margin: -2.5px; border-radius: 50%; background: #ffd27a; box-shadow: 0 0 6px #ff8a1e; }
       .jc-pillar { position: absolute; width: 22px; height: 30vh; transform-origin: 50% 100%;
         background: linear-gradient(0deg, #ffffff 0%, var(--c) 18%, color-mix(in srgb, var(--c) 40%, transparent) 60%, transparent 100%);
         border-radius: 12px 12px 4px 4px; filter: drop-shadow(0 0 10px var(--c)) drop-shadow(0 0 22px var(--c)); }

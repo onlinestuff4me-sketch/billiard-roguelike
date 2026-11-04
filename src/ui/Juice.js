@@ -210,77 +210,101 @@ export class Juice {
   }
 
   /**
-   * A Bomb Shot goes off (review: "an explosion that bursts out at the moment
-   * of impact and radiates out, sweeping the balls in its fiery wake"). A
-   * small white-hot flash at the ball, then a ring of fire that runs out to
-   * the blast's reach at the pace the balls are thrown, flames riding its
-   * edge and a glowing wake behind it, then embers. No full-table glow.
-   * Drawn on the top layer so the ability's tint never swallows it.
+   * A Bomb Shot goes off (review round 3: "have the explosion spread out as
+   * the blast travels with the balls that get pushed out"). A small white-hot
+   * flash at the ball hit; then every ball the blast throws carries its own
+   * fire, a comet of flame streaming behind it and shedding embers, and the
+   * fire front is a ring that grows with the farthest of them, so the blast
+   * spreads exactly as far and as fast as the balls do. It burns down as they
+   * slow. Drawn on the top layer; no tint, no full-screen glow.
    */
-  blast({ x, z, radius }) {
+  blast({ x, z, radius, balls = [] }) {
+    this._endBlast();
     const p = this.toPx(x, z);
     const r = Math.abs(this.toPx(x + radius, z).x - p.x);
-    const box = el('div', 'jc-burst jc-blast', this.root);
-    box.style.left = `${p.x}px`;
-    box.style.top = `${p.y}px`;
-    const GO = 560; // the ring's run to the edge, ms
-    const ease = 'cubic-bezier(0.2, 0.7, 0.35, 1)';
+    const box = el('div', 'jc-blastfx', this.root);
     // 1. the impact: white-hot and small
     const core = el('div', 'jc-core', box);
-    core.style.width = core.style.height = `${r * 0.6}px`;
+    core.style.left = `${p.x}px`;
+    core.style.top = `${p.y}px`;
+    core.style.width = core.style.height = `${r * 0.7}px`;
     core.style.background = 'radial-gradient(circle, #ffffff 0%, #fff1c9 30%, #ffb35c 55%, rgba(255, 138, 30, 0) 72%)';
     this.anim(core, [
       { transform: 'translate(-50%,-50%) scale(0.2)', opacity: 1 },
       { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, offset: 0.35 },
-      { transform: 'translate(-50%,-50%) scale(0.7)', opacity: 0 }
-    ], { duration: 300, easing: 'ease-out' });
-    // 2. the wake: a glow that fills in behind the ring and burns down
-    const wake = el('div', 'jc-core', box);
-    wake.style.width = wake.style.height = `${r * 2}px`;
-    wake.style.background = 'radial-gradient(circle, rgba(255, 90, 20, 0.05) 0%, rgba(255, 110, 30, 0.32) 55%, rgba(255, 160, 60, 0.5) 68%, rgba(255, 138, 30, 0) 72%)';
-    this.anim(wake, [
-      { transform: 'translate(-50%,-50%) scale(0.08)', opacity: 0.9 },
-      { transform: 'translate(-50%,-50%) scale(0.92)', opacity: 0.85, offset: 0.62 },
-      { transform: 'translate(-50%,-50%) scale(1.02)', opacity: 0 }
-    ], { duration: GO + 260, easing: ease });
-    // 3. the fire front
+      { transform: 'translate(-50%,-50%) scale(0.8)', opacity: 0 }
+    ], { duration: 320, easing: 'ease-out' });
+    // 2. the fire front, sized every frame to the farthest thrown ball
     const ring = el('div', 'jc-blast-ring', box);
-    ring.style.width = ring.style.height = `${r * 2}px`;
-    this.anim(ring, [
-      { transform: 'translate(-50%,-50%) scale(0.08)', opacity: 1, borderWidth: '16px' },
-      { transform: 'translate(-50%,-50%) scale(0.8)', opacity: 1, borderWidth: '9px', offset: 0.6 },
-      { transform: 'translate(-50%,-50%) scale(1.04)', opacity: 0, borderWidth: '3px' }
-    ], { duration: GO, easing: ease });
-    if (!this.reducedMotion) {
-      // flames riding the front, flickering
-      const n = 20;
-      for (let i = 0; i < n; i++) {
-        const f = el('i', 'jc-flame', box);
-        const a = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
-        const deg = (a * 180) / Math.PI;
-        const len = r * (0.22 + Math.random() * 0.18);
-        f.style.width = `${len}px`;
-        f.style.height = `${5 + Math.random() * 5}px`;
-        this.anim(f, [
-          { transform: `rotate(${deg}deg) translateX(${r * 0.05}px) scaleX(0.4)`, opacity: 1 },
-          { transform: `rotate(${deg}deg) translateX(${r * 0.72}px) scaleX(1.1)`, opacity: 1, offset: 0.6 },
-          { transform: `rotate(${deg}deg) translateX(${r * 0.98}px) scaleX(0.5)`, opacity: 0 }
-        ], { duration: GO + Math.random() * 80, easing: ease });
+    ring.style.left = `${p.x}px`;
+    ring.style.top = `${p.y}px`;
+    // 3. each thrown ball's own fire
+    const riders = balls.filter(Boolean).map((b) => ({ b, el: el('div', 'jc-ballfire', box), last: 0 }));
+    this._blast = { box, ring, cx: x, cz: z, p, riders, t: 0, life: 1, peak: 0 };
+  }
+
+  _endBlast() {
+    if (!this._blast) return;
+    const bl = this._blast;
+    this._blast = null;
+    this.anim(bl.box, [{ opacity: 1 }, { opacity: 0 }], { duration: 220 }).then(() => bl.box.remove());
+  }
+
+  /** The blast's fire, kept with the balls it threw (real time). */
+  _updateBlast(rawDt) {
+    const bl = this._blast;
+    if (!bl) return;
+    bl.t += rawDt;
+    const c = this.toPx(bl.cx, bl.cz);
+    let far = 0;
+    let fastest = 0;
+    for (const rd of bl.riders) {
+      const b = rd.b;
+      const sp = Math.hypot(b.vx || 0, b.vz || 0);
+      fastest = Math.max(fastest, sp);
+      const q = this.toPx(b.x, b.z);
+      far = Math.max(far, Math.hypot(q.x - c.x, q.y - c.y));
+      const alive = b.alive !== false && sp > 0.6;
+      const k = Math.max(0, Math.min(1, sp / 14));
+      if (!alive) {
+        rd.el.style.opacity = '0';
+        continue;
       }
-      // embers thrown past the edge
-      for (let i = 0; i < 16; i++) {
-        const e = el('i', 'jc-ember', box);
-        const a = Math.random() * Math.PI * 2;
-        const deg = (a * 180) / Math.PI;
-        const far = r * (1.05 + Math.random() * 0.45);
-        this.anim(e, [
-          { transform: `rotate(${deg}deg) translateX(${r * 0.3}px)`, opacity: 0 },
-          { transform: `rotate(${deg}deg) translateX(${r * 0.9}px)`, opacity: 1, offset: 0.4 },
-          { transform: `rotate(${deg}deg) translateX(${far}px)`, opacity: 0 }
-        ], { duration: GO + 380, delay: 80, easing: 'ease-out' });
+      // the comet points back along the ball's travel, longer the faster
+      const back = this.toPx(b.x - (b.vx || 0) * 0.1, b.z - (b.vz || 0) * 0.1);
+      const ang = Math.atan2(back.y - q.y, back.x - q.x);
+      const len = 18 + 70 * k;
+      Object.assign(rd.el.style, {
+        left: `${q.x}px`,
+        top: `${q.y}px`,
+        width: `${len}px`,
+        opacity: String(Math.min(1, 0.35 + k)),
+        transform: `rotate(${ang}rad) translateY(-50%)`
+      });
+      // embers shed along the way
+      rd.last += rawDt;
+      if (rd.last > 0.05 && !this.reducedMotion) {
+        rd.last = 0;
+        const e = el('i', 'jc-ember', bl.box);
+        e.style.left = `${q.x + (Math.random() - 0.5) * 10}px`;
+        e.style.top = `${q.y + (Math.random() - 0.5) * 10}px`;
+        this.anim(e, [{ transform: 'scale(1)', opacity: 1 }, { transform: `translate(${(Math.random() - 0.5) * 24}px, ${(Math.random() - 0.5) * 24}px) scale(0.2)`, opacity: 0 }], { duration: 420, easing: 'ease-out' }).then(() => e.remove());
       }
     }
-    setTimeout(() => box.remove(), GO + 600);
+    // the front grows with the farthest ball, and burns down as they slow
+    bl.peak = Math.max(bl.peak, far);
+    const heat = Math.max(0, Math.min(1, fastest / 10));
+    bl.life = bl.t < 0.25 ? 1 : Math.min(bl.life, 0.2 + heat);
+    const size = Math.max(10, bl.peak) * 2;
+    Object.assign(bl.ring.style, {
+      left: `${c.x}px`,
+      top: `${c.y}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+      opacity: String(Math.max(0, bl.life - 0.15)),
+      borderWidth: `${3 + 9 * heat}px`
+    });
+    if ((bl.t > 0.4 && fastest < 1.2) || bl.t > 3) this._endBlast();
   }
 
   /* ---------------------------------------------------------------- *
@@ -569,6 +593,7 @@ export class Juice {
 
   /** Back to the plain top-down view (a table ends, a menu opens). */
   release() {
+    this._endBlast();
     this.hold = null;
     this.timeline = null;
     this.want = { x: 0, z: 0, zoom: 1, rate: 6 };
@@ -773,6 +798,7 @@ export class Juice {
 
   /** @param {number} dt game time  @param {number} rawDt real time */
   update(dt, rawDt, { cue, now }) {
+    this._updateBlast(rawDt);
     this._updateTrail(dt, cue);
     this._updateCharge(now);
     this._updateCamera(rawDt);

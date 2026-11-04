@@ -1625,6 +1625,7 @@ function tableSettled() {
 
 /** Open a stroke: the ladder resets, the gold rings come back. */
 function beginStroke() {
+  game.strokeAch = [];
   game.midStroke = true;
   game.phase = 'resolve';
   game.strokeTimer = 0;
@@ -2115,14 +2116,14 @@ game.on = {
   },
 
   /** A Bomb Shot goes off (PhysicsSystem.blast): light, a boom, and a shove. */
-  bomb({ x, z, radius }) {
+  bomb({ x, z, radius, balls }) {
     engine.shake(22);
     engine.zoomPunch(FEEL.zoomPunch * 2);
     gridPulse(x, z, 1.4);
     // the fire front is drawn by juice.blast; no full-screen flash, which read
     // as the whole table glowing at once (review)
     fx.burst(x, z, 30, PALETTE.scoreMultHot, 14, 0.9);
-    juice.blast({ x, z, radius });
+    juice.blast({ x, z, radius, balls });
     audio.playerDeath?.();
   },
 
@@ -2384,6 +2385,15 @@ function completeRoom() {
     else hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
   }
   game.finishLines = null;
+  // AN ACHIEVEMENT NEVER SITS ON CLEAR! (review round 3): one the last shot
+  // earned, already shown at the pot, steps aside and is said again under
+  // CLEAR! with the rest of the news
+  if (finishing) {
+    const said = new Set(lines.map((l) => l.title));
+    const earned = (game.strokeAch || []).filter((a) => !said.has(a.name)).map((a) => ({ kicker: 'Achievement', title: a.name, sub: a.text }));
+    lines.unshift(...earned);
+    hud.holdAchievements(true);
+  }
   openExits();
   const data = { ...tableResult(result), filled: true };
   // THE FINISH (juice): "CLEAR!" before the result
@@ -2647,6 +2657,8 @@ const shopRun = { owned: [], bought: [], held: null };
 const achievements = new Achievements();
 achievements.onUnlock = (a) => {
   if (game.headless) return;
+  // kept for the finish screen, should this stroke clear the table
+  (game.strokeAch ||= []).push(a);
   // earned by the clear itself: said on the finish screen (completeRoom)
   if (game.finishLines) {
     game.finishLines.push({ kicker: 'Achievement', title: a.name, sub: a.text });
@@ -6369,9 +6381,10 @@ function frame(now) {
   last = now;
 
   // THE LAST BALL IS DOWN: only the cue ball rolls on, so the table runs at
-  // 3x to its stop (Engine.rush). Same fixed steps, so the same outcome (a
-  // late scratch is still a scratch), just sooner.
-  engine.setRush(game.midStroke && game.phase === 'resolve' && !game.enemies.some((b) => b.alive && b.number > 0) ? 3 : 1);
+  // 8x to its stop (Engine.rush; it was 3x, and the wait between the boxes
+  // and the tally was still long, review round 3). Same fixed steps, so the
+  // same outcome (a late scratch is still a scratch), just sooner.
+  engine.setRush(game.midStroke && game.phase === 'resolve' && !game.enemies.some((b) => b.alive && b.number > 0) ? 8 : 1);
   const { dt, rawDt } = engine.update(rawFrame);
   gridUniforms.uTime.value += rawDt;
   input.update(rawDt);

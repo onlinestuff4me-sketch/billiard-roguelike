@@ -1100,6 +1100,8 @@ export class PhysicsSystem {
   /** A bomb goes off at `center`: every other ball near it is thrown outward. */
   blast(center, game) {
     const R = SHOT.bombRadius;
+    // the balls it throws, so the fire can ride with them (review round 3)
+    const thrown = [center];
     for (const b of game.enemies || []) {
       if (b === center || !b.alive) continue;
       const dx = b.x - center.x;
@@ -1110,8 +1112,9 @@ export class PhysicsSystem {
       b.vx += (dx / d) * k;
       b.vz += (dz / d) * k;
       b.applyKnock(b.vx, b.vz);
+      thrown.push(b);
     }
-    game.on?.bomb?.({ x: center.x, z: center.z, radius: R });
+    game.on?.bomb?.({ x: center.x, z: center.z, radius: R, balls: thrown });
   }
 
   /** Bounce bookkeeping: budget, boon hooks and feedback. */
