@@ -664,7 +664,16 @@ back, follow the last ball, banner sweep.
   sheds embers, and the fire front is a ring that grows with the farthest of
   them. A ball that drops leaves the blast, and the fire is out a second
   after it goes off, whatever the slow-motion.
-- **The freeze button is lit while a freeze is possible, without a pulse.**
+- **The freeze box is FREEZE with its charges, nothing else** (round 5): a
+  solid white button while a freeze is possible, dimmed while a freeze frame
+  runs. A freeze frame lasts six seconds: a bar fills in the box, and with
+  no second shot by then the table rolls on from where it stopped (the clock
+  waits while a thumb aims; the practice table and lessons keep an
+  open-ended freeze).
+- **CLEAR! heads the result screen** (round 5): it slams in as the panel's
+  title, the clear's news is stamped under it (an unlock folded into the
+  achievement for the same feat, one line), then the score; the buttons at
+  the foot dismiss it. No separate finish screen.
 - **After the last ball the table runs at 8x** to the cue ball's stop (3x was
   still a long wait between the boxes and the tally), and an achievement the
   clearing shot earned is said under CLEAR!, never over it.
