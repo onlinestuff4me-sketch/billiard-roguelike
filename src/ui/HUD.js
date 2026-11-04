@@ -122,13 +122,17 @@ export class HUD {
     // thumb placement?"). The meter is the button: while the balls roll and a
     // charge is in hand it lights up and says FREEZE, and a tap on it stops
     // the table. Anywhere else, a tap only hurries the numbers along.
+    // ONE BOX, THREE STATES (review round 5): FREEZE, big, with the charges
+    // under it. While a freeze is possible it is a solid white button; while
+    // a freeze frame is running it is dimmed, and a bar fills inside it until
+    // the freeze ends on its own (main.js FREEZE.window); otherwise dim.
     const freezeBlock = el('div', 'hud-freeze', this.root);
     this.freezeBlock = freezeBlock;
-    this.freezeLabel = el('div', 'hud-label', freezeBlock);
-    this.freezeLabel.textContent = 'Freeze frame';
+    this.freezeLabel = el('div', 'freeze-word', freezeBlock);
+    this.freezeLabel.textContent = 'Freeze';
     this.freezeRow = el('div', 'freeze-row', freezeBlock);
-    this.freezeCall = el('div', 'freeze-call', freezeBlock);
-    this.freezeCall.textContent = 'Tap to freeze';
+    this.freezeTimer = el('div', 'freeze-timer', freezeBlock);
+    this.freezeFill = el('i', '', this.freezeTimer);
     /** set by the game: what a press on the button does */
     this.onFreeze = null;
     freezeBlock.addEventListener('pointerdown', (e) => {
@@ -761,6 +765,13 @@ export class HUD {
       cache.canFreeze = !!s.canFreeze;
       this.freezeBlock.classList.toggle('armed', cache.canFreeze);
     }
+    // a freeze frame running: the bar fills toward its end
+    const frozen = s.freezeLeft != null;
+    if (frozen !== cache.frozen) {
+      cache.frozen = frozen;
+      this.freezeBlock.classList.toggle('frozen', frozen);
+    }
+    if (frozen) this.freezeFill.style.transform = `scaleX(${Math.max(0, Math.min(1, 1 - s.freezeLeft))})`;
 
     // --- the multiplier, while a stroke is running ---
     const mult = s.midStroke ? s.multiplier : 0;

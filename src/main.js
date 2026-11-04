@@ -1646,7 +1646,24 @@ function beginStroke() {
 }
 
 /** Resume a frozen stroke. Same stroke, same ladder — no reset, no cost. */
+/** How long a freeze frame waits for its second shot, seconds (review round 5). */
+const FREEZE_WINDOW = 6;
+
+/**
+ * THE FREEZE RUNS OUT: no second shot was taken, so the table rolls on from
+ * where it stopped. The cue ball stays where the freeze left it.
+ */
+function endFreeze() {
+  game.freezeLeft = null;
+  player.cancelAim();
+  game.drawnShot = null;
+  resumeStroke();
+  moments.unfreeze();
+  juice.tint(false);
+}
+
 function resumeStroke() {
+  game.freezeLeft = null;
   game.phase = 'resolve';
   game.settleTimer = 0;
   releaseCutInHold();
@@ -1875,6 +1892,10 @@ function tryFreeze() {
     return false;
   }
   game.phase = 'aim';
+  // A FREEZE FRAME LASTS SIX SECONDS (review round 5): a bar fills in the
+  // Freeze box, and if no second shot is taken by then the table rolls on
+  // (not on the practice table or in a lesson, which teach it at their pace)
+  game.freezeLeft = game.practice || tutorial.active ? null : FREEZE_WINDOW;
   // the cut-in first, so the achievement this earns waits behind it
   abilityCutIn({ name: 'Freeze frame!', line: `${rules.freezeCharges} left` });
   if (game.practice) practiceFroze();
@@ -6411,6 +6432,20 @@ function frame(now) {
   feed.update(rawDt);
   fitScoreFeed();
   tray.setAiming(game.state === 'playing' && game.phase === 'aim' && !game.introUp && !menuOpen);
+  // the freeze frame's clock: real time, held while a thumb is aiming or a
+  // curve shot is held (the shot being lined up is the second shot)
+  // (on the wall clock: a frame's own time is capped, and a slow phone would
+  // stretch the six seconds)
+  const wall = performance.now();
+  const wallDt = Math.min(0.25, Math.max(0, (wall - (game.freezeWall || wall)) / 1000));
+  game.freezeWall = wall;
+  if (game.freezeLeft != null) {
+    if (!game.midStroke || game.phase !== 'aim' || game.state !== 'playing') game.freezeLeft = null;
+    else if (!input.isAiming && !game.bendHold) {
+      game.freezeLeft -= wallDt;
+      if (game.freezeLeft <= 0) endFreeze();
+    }
+  }
   juice.update(dt, rawDt, { cue: game.phase === 'resolve' && player.alive ? player : null, now: performance.now() / 1000 });
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
@@ -6571,7 +6606,9 @@ function frame(now) {
         ...(game.livesHold != null ? { lives: game.livesHold } : {}),
         ...(game.freezeHold != null ? { freezeCharges: game.freezeHold } : {}),
         // the FREEZE button is live while the balls roll and a charge is in hand
-        canFreeze: game.phase === 'resolve' && game.midStroke && rules.freezeCharges >= 1 && game.state === 'playing'
+        canFreeze: game.phase === 'resolve' && game.midStroke && rules.freezeCharges >= 1 && game.state === 'playing',
+        // a freeze frame running: how much of its window is left (0..1)
+        freezeLeft: game.freezeLeft != null ? game.freezeLeft / FREEZE_WINDOW : null
       },
       rawDt
     );

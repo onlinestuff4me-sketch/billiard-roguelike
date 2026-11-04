@@ -568,16 +568,20 @@
         transition: opacity 0.3s ease;
       }
       .hud.has-freeze .hud-freeze, .hud.freeze-lit .hud-freeze { opacity: 1; }
-      /* THE FREEZE BUTTON: one box, the same size and layout whether or not a
-         freeze is possible (review round 4: the switch between two designs was
-         jarring). Possible: it lights, and TAP TO FREEZE shows in its own
-         reserved line, so nothing moves. */
-      .hud-freeze { min-width: 96px; min-height: 58px; align-items: center; justify-content: center; border: 1.5px solid rgba(191, 244, 255, 0.16); transition: opacity 0.3s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
-      .freeze-call { display: block; visibility: hidden; font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #bff4ff; line-height: 1; }
-      .hud-freeze.armed { pointer-events: auto; cursor: pointer; background: rgba(16, 56, 74, 0.82); border-color: #bff4ff; box-shadow: 0 0 18px rgba(111, 227, 255, 0.55); }
-      .hud-freeze.armed .freeze-call { visibility: visible; }
-      .hud-freeze.armed .hud-label { color: #e9f8ff; }
+      /* THE FREEZE BOX (review round 5): FREEZE, big, the charges under it, nothing
+         else. A solid white button while a freeze is possible; dimmed while a
+         freeze frame runs, with a bar filling inside it to the freeze's end. */
+      .hud-freeze { min-width: 96px; min-height: 58px; align-items: center; justify-content: center; gap: 4px; padding: 7px 12px 8px; border: 1.5px solid rgba(191, 244, 255, 0.22); transition: opacity 0.3s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease; overflow: hidden; }
+      .freeze-word { font-family: var(--font-display); font-size: 19px; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1; color: rgba(191, 244, 255, 0.55); }
+      .hud-freeze.armed { pointer-events: auto; cursor: pointer; background: #f4fdff; border-color: #ffffff; box-shadow: 0 0 20px rgba(191, 244, 255, 0.75); }
+      .hud-freeze.armed .freeze-word { color: #02050b; }
+      .hud-freeze.armed .freeze-row .frz { border-color: #02050b; }
+      .hud-freeze.armed .freeze-row .frz.on { background: #02050b; box-shadow: none; }
+      .hud-freeze.armed .freeze-row .frz.half { background: linear-gradient(225deg, transparent 50%, #02050b 50%); }
       .hud-freeze.armed:active { transform: scale(0.96); }
+      .freeze-timer { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(191, 244, 255, 0.12); opacity: 0; transition: opacity 0.15s ease; }
+      .freeze-timer i { position: absolute; inset: 0; background: #bff4ff; box-shadow: 0 0 8px #bff4ff; transform: scaleX(0); transform-origin: 0 50%; }
+      .hud-freeze.frozen .freeze-timer { opacity: 1; }
       @keyframes freeze-armed { 50% { box-shadow: inset 0 0 0 2px #bff4ff, 0 0 34px rgba(111, 227, 255, 0.95); } }
       /* a diamond a gain just filled */
       .freeze-row .frz.fresh { animation: frz-fresh 0.9s cubic-bezier(0.2, 0.8, 0.2, 1); }
