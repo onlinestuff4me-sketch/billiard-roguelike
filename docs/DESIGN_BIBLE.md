@@ -659,9 +659,15 @@ back, follow the last ball, banner sweep.
 - **The finish carries its news.** What the clear earns (an achievement, the
   Strict Order unlock) is stamped in under CLEAR!, one line after another,
   instead of a banner or toast the slam would cover.
-- **The bomb is a fire front**, not a glow: a small flash at the ball hit,
-  then a ring of fire runs out to the blast's reach at the pace the balls are
-  thrown, flames on its edge, a wake behind it, embers past it.
+- **The bomb's fire rides the balls it throws** (review round 4): a small
+  flash at the ball hit, then each thrown ball carries a comet of flame and
+  sheds embers, and the fire front is a ring that grows with the farthest of
+  them. A ball that drops leaves the blast, and the fire is out a second
+  after it goes off, whatever the slow-motion.
+- **The freeze button is lit while a freeze is possible, without a pulse.**
+- **After the last ball the table runs at 8x** to the cue ball's stop (3x was
+  still a long wait between the boxes and the tally), and an achievement the
+  clearing shot earned is said under CLEAR!, never over it.
 
 | Key | Moment | Versions |
 | --- | --- | --- |
@@ -714,7 +720,7 @@ first Freeze) waits until its cut-in has gone, so the two never stack.
 
 **After the last ball** (from the clips): once every ball is down, only the
 cue ball rolls on, and that wait could run for seconds before the clear. The
-table now runs at 3x until it stops (`Engine.rush`). The physics still takes
+table now runs at 8x until it stops (`Engine.rush`). The physics still takes
 the same fixed steps, so a late scratch is still a scratch; only the wait is
 shorter. The Follow-the-last-ball camera leans toward the pocket and comes
 home rather than holding there.
