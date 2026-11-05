@@ -1169,6 +1169,7 @@ function multCallout() {
  * and power, so that is what is struck.
  */
 function strikeShot(aim) {
+  analytics.shot(aim); // analytics (here, not on release: a held curve shot can still be called off)
   // ...when it is the shot being released: a line drawn for some other aim
   // (an old one, or none since) is no promise about this release
   let shown = drawnShot();
@@ -5179,7 +5180,6 @@ const input = new InputManager(stage, {
     analytics.aimCancel(); // analytics
   },
   onRelease: (aim) => {
-    analytics.shot(aim); // analytics
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
     hud.setPad(null);
