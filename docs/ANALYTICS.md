@@ -38,13 +38,18 @@ stats off in Settings deletes the backlog.
 
 ## Keeping the bill under $1 a month
 
-Upstash pay-as-you-go bills $0.20 per 100,000 commands and $0.25 per GB
-stored. Two guardrails keep this project well under $1:
+**Use Upstash's Free plan.** It costs $0, needs no card, and allows
+500,000 commands and 256 MB a month. The code below stops at 350,000
+commands, so this project stays inside it. That is the only way to be
+*certain* of paying nothing for storage. See *Switching to the Free plan*.
 
-1. **In Upstash (the hard stop — please set it).** Upstash emails at 70%
-   and 90% of the budget, and at 100% it slows the database down instead of
-   charging more. By default a pay-as-you-go database has no ceiling. See
-   *Setting the $1 budget, step by step* below.
+On pay-as-you-go instead ($0.20 per 100,000 commands, $0.25 per GB), the two
+guardrails are:
+
+1. **In Upstash.** Its lowest allowed budget is **$20**, so it cannot hold
+   the bill to $1; set it to $20 anyway as a backstop against anything going
+   badly wrong. At the budget the database is stopped. (Database page →
+   **Usage** → **Change Budget**.)
 2. **In the code (keeps you far from that stop).** Every command the
    functions run is counted in Redis under `ll:budget:<YYYY-MM>`:
    - at **297,500 commands** (85%) new events stop being stored; the server
@@ -68,30 +73,34 @@ month runs out, nothing is lost for players who come back within 30 days.
 The functions themselves run on Vercel; on the Hobby plan their usage is
 included, and on Pro, Vercel's Spend Management (Settings → Billing) can cap it.
 
-## Setting the $1 budget, step by step
+## Switching to the Free plan, step by step
 
 Button names on these sites change from time to time; if one is worded a
-little differently, look for the closest match.
+little differently, look for the closest match. Nothing is stored in the
+current database yet, so replacing it loses nothing.
 
-1. Go to **vercel.com** and log in.
-2. Click your project, **billiard-roguelike**.
-3. Click **Storage** in the menu along the top of the project (on some
-   screens it is in a menu on the left).
-4. Click the name of your Upstash database in the list.
-5. On the database's page, find the button that opens it in Upstash. It is
-   usually at the top right and says **Open in Upstash** (or *Manage*, or
-   *Open in Upstash Console*). Click it. A new tab opens on Upstash's site,
-   already signed in. If Upstash asks you to sign in, choose
-   **Continue with Vercel**.
-6. In Upstash you are on the database's page. Click the **Usage** tab near
-   the top.
-7. Find the box showing the cost for this month and click **Change Budget**.
-8. Type **1**, then click **Save** (or *Update*).
+**First, try changing the plan in place:**
 
-If there is no Usage tab or no Change Budget button, the database may not be
-on the pay-as-you-go plan yet: on the database's page in Upstash, look for
-**Plan** or **Upgrade**, choose **Pay as You Go**, and then do steps 6–8.
-The cap in the code applies either way.
+1. Go to **vercel.com**, log in, and click the **billiard-roguelike** project.
+2. Click **Storage** (top menu, or the menu on the left).
+3. Click your Upstash database's name.
+4. Look for **Plan**, **Change Plan** or **Settings** on that page. If you
+   can choose **Free**, do so, confirm, and you are done.
+
+**If there is no way to pick Free there, make a new free database:**
+
+1. On the same **Storage** page, open the current Upstash database, find
+   **Settings**, and choose **Disconnect** (or *Remove from project*). Then
+   delete it (**Delete Database**, usually at the bottom of Settings).
+2. Back on **Storage**, click **Create Database** → **Upstash for Redis**.
+3. When it asks for a plan, choose **Free**. Pick a region near you (for
+   example *US West*). Click **Create** / **Continue**.
+4. When it asks which projects to connect, choose **billiard-roguelike**
+   with all environments ticked, and click **Connect**.
+5. Redeploy so the site picks up the new database: **Deployments** tab →
+   the **⋯** menu on the top deployment → **Redeploy**.
+
+Your `STATS_TOKEN` is not affected; keep it as it is.
 
 ## Telling our own play apart
 
