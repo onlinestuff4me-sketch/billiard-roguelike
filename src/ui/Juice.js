@@ -46,9 +46,10 @@ export const JUICE_OPTIONS = {
 /**
  * THE PICKS (review, juice batches 1 and 2). "Both" means each version in its
  * own place: the strike's lines on an ordinary shot and its flash at full
- * power; the lean while charging and the push near full; scanlines for
- * Freeze and halftone dots for Curve and Bomb. Off: pocket beam, charge glow,
- * pull back, follow the last ball, banner sweep.
+ * power; scanlines for Freeze and halftone dots for Curve and Bomb. Off:
+ * pocket beam, charge glow, pull back, follow the last ball, banner sweep,
+ * and the push in while aiming (from play on a phone: the zoom cut off parts
+ * of the table and threw the aim off).
  */
 export const JUICE_DEFAULTS = {
   strike: 'both',
@@ -56,7 +57,7 @@ export const JUICE_DEFAULTS = {
   beam: 'off',
   charge: 'off',
   tint: 'both',
-  push: 'both',
+  push: 'off',
   pull: 'off',
   follow: 'off',
   banner: 'off',

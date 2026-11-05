@@ -288,6 +288,18 @@ export class Moments {
         };
         sheet.src = m.sheet;
       }
+      // A NEW THING ON THE TABLE IS SHOWN AS IT LOOKS (from review): a crop
+      // of the real object above its one-line rule, so the words name a thing
+      // the player has already seen.
+      if (o.images?.length) {
+        const art = el('div', 'mo-intro-art', card);
+        for (const im of o.images) {
+          const img = el('img', '', art);
+          img.alt = '';
+          img.onerror = () => img.remove();
+          img.src = im;
+        }
+      }
       const rule = el('div', 'mo-intro-rule', card);
       rule.textContent = o.rule;
       const stats = el('div', 'mo-intro-stats', card);

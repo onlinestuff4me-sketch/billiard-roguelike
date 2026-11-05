@@ -7,7 +7,7 @@
       "name": "Clear the Table",
       "intro": {
         "title": "Table 1 · Clear the Table",
-        "sub": "Sink every ball to clear it. Beat the target for points and cash."
+        "sub": "Sink every ball. Beat the target."
       },
       "spawn": {
         "x": 0,
@@ -45,7 +45,7 @@
       "name": "In Order Pays More",
       "intro": {
         "title": "Table 2 · In Order Pays More",
-        "sub": "Sink them in order, 1 then 2 then 8, and each one pays more."
+        "sub": "In number order, each pays more."
       },
       "spawn": {
         "x": 0,
@@ -83,7 +83,7 @@
       "name": "Rails Add Mult",
       "intro": {
         "title": "Table 3 · Rails Add Mult",
-        "sub": "Every rail the cue ball touches before a ball drops adds Mult. Bank one in."
+        "sub": "Rails before a pot add Mult."
       },
       "spawn": {
         "x": 0,
@@ -129,7 +129,7 @@
       "name": "Two in One Shot",
       "intro": {
         "title": "Table 4 · Two in One Shot",
-        "sub": "Two down in one shot pays big, and saves a shot."
+        "sub": "Two balls in one shot pays big."
       },
       "spawn": {
         "x": 0,
@@ -171,7 +171,10 @@
       "name": "Orange Ring Pays ×2",
       "intro": {
         "title": "Table 5 · Orange Ring Pays ×2",
-        "sub": "The orange ring comes back every shot. Roll through it before a ball drops: that shot pays double."
+        "sub": "Pass through it: ×2 multiplier.",
+        "art": [
+          "double"
+        ]
       },
       "spawn": {
         "x": 0,
@@ -214,7 +217,10 @@
       "name": "Mines Void a Shot",
       "intro": {
         "title": "Table 6 · Mines Void a Shot",
-        "sub": "Red is a mine. Roll over it and the shot pays nothing. Go around."
+        "sub": "Hit a mine and the shot pays 0.",
+        "art": [
+          "mine"
+        ]
       },
       "spawn": {
         "x": 0,
@@ -267,7 +273,10 @@
       "name": "Tap to Freeze",
       "intro": {
         "title": "Table 7 · Tap to Freeze",
-        "sub": "Pick up the ice, then tap FREEZE while the table moves to stop it and aim again."
+        "sub": "Grab ice. Tap FREEZE to re-aim.",
+        "art": [
+          "freeze"
+        ]
       },
       "spawn": {
         "x": 0,
@@ -315,7 +324,10 @@
       "name": "Rings Teleport",
       "intro": {
         "title": "Table 8 · Rings Teleport",
-        "sub": "A ball into one ring comes out of the other. Same speed, same heading."
+        "sub": "In one ring, out the other.",
+        "art": [
+          "portal"
+        ]
       },
       "spawn": {
         "x": 0,
@@ -384,7 +396,11 @@
       "name": "Bumpers and Free Shots",
       "intro": {
         "title": "Table 9 · Bumpers and Free Shots",
-        "sub": "Bumpers kick back harder than a rail. The green ring with a + is a free extra shot."
+        "sub": "Bumpers kick. + ring: free shot.",
+        "art": [
+          "bumper",
+          "shot"
+        ]
       },
       "spawn": {
         "x": 0,
@@ -455,7 +471,7 @@
       "name": "The 8 Goes Last",
       "intro": {
         "title": "Table 10 · The 8 Goes Last",
-        "sub": "Sink every other ball first. Knock the 8 in early and it comes straight back."
+        "sub": "Sink the 8 last or it returns."
       },
       "spawn": {
         "x": 0,
@@ -504,7 +520,7 @@
       "name": "Two in One, 8 Last",
       "intro": {
         "title": "Table 11 · Two in One, 8 Last",
-        "sub": "One shot short: you'll need two down in one shot. Sink the 8 last."
+        "sub": "Two in one needed. 8 last."
       },
       "spawn": {
         "x": 0,
@@ -553,7 +569,7 @@
       "name": "Everything, 8 Last",
       "intro": {
         "title": "Table 12 · Everything, 8 Last",
-        "sub": "Everything you've learned, on one table. The 8 goes last."
+        "sub": "Everything at once. 8 last."
       },
       "spawn": {
         "x": 0,
