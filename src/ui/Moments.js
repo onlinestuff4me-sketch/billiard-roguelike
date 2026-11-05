@@ -288,6 +288,18 @@ export class Moments {
         };
         sheet.src = m.sheet;
       }
+      // A NEW THING ON THE TABLE IS SHOWN AS IT LOOKS (from review): a crop
+      // of the real object above its one-line rule, so the words name a thing
+      // the player has already seen.
+      if (o.images?.length) {
+        const art = el('div', 'mo-intro-art', card);
+        for (const im of o.images) {
+          const img = el('img', '', art);
+          img.alt = '';
+          img.onerror = () => img.remove();
+          img.src = im;
+        }
+      }
       const rule = el('div', 'mo-intro-rule', card);
       rule.textContent = o.rule;
       const stats = el('div', 'mo-intro-stats', card);
@@ -561,7 +573,7 @@ export class Moments {
    * your best, and what to do next. Nothing starts again until you choose.
    *
    * @param {object} d
-   * @param {'over'|'complete'} d.kind  out of lives, or through Table 12
+   * @param {'over'|'complete'} d.kind  out of lives, or through the last table
    * @param {number} d.level       the table the run ended on (or finished)
    * @param {number} d.tables      how many authored tables there are
    * @param {number} d.runScore

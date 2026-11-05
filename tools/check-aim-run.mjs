@@ -35,7 +35,7 @@ const arg = (name, fallback) => {
 const STEP = Number(arg('step', 4));
 const MODE = arg('mode', 'frame60');
 const POWERS = arg('powers', '0.5,0.75,1').split(',').map(Number);
-const TABLES = arg('tables', '1,2,3,4,5,6,7,8,9,10,11,12').split(',').map(Number);
+const TABLES = arg('tables', '1,2,3,4,5,6,7,8,9,10,11,12,13').split(',').map(Number);
 const FLOOR = Number(arg('floor', 100));
 
 const game = await openGame({ port: Number(arg('port', 4173)) });

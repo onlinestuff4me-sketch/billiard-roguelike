@@ -596,8 +596,8 @@ starts again until the player chooses.
   **best run**. If it beat it, the line reads "Old best" and a gold **NEW
   BEST** stamp lands. Two buttons follow: **New run** (big, the play
   triangle beside it) and **Home**. The saved run is cleared.
-- **Through Table 12.** After Table 12's result (with lives left), the same
-  panel comes in edged in cyan: **RUN COMPLETE**, "All 12 tables", every pip
+- **Through the last table.** After Table 13's result (with lives left), the same
+  panel comes in edged in cyan: **RUN COMPLETE**, "All 13 tables", every pip
   lit, and the score against your best. **Keep going** (the play triangle)
   puts the result back and opens the shop as usual, and new tables follow
   without end. **Finish run** ends the run there.
@@ -621,16 +621,20 @@ middle outward on the new table. About 3 s.
 
 ### 8.5b The table card
 
-Each of the first twelve tables (`src/data/tables.json`) opens on its own card,
+Each of the thirteen run tables (`src/data/tables.json`) opens on its own card,
 because a rule the player was never shown is a rule they do not have. The
 table dims; every card says the same things: **Table n**, the table's name,
-its rule in one sentence, then balls and shots (the target is on the score
+a picture of anything new on the table (a crop of the real object, from
+`public/mechanics/`), its rule in one line that fits a 360px-wide phone,
+then balls and shots (the target is on the score
 bar, where it reads as points). The name *is* the rule, short ("In Order Pays
 More", "Orange Ring Pays ×2"), so the card and the corner never disagree.
 Aiming is locked until the card is tapped away (`game.introUp`), through a
 full-width **Tap to play** button or anywhere else. On the tap the card fades
 and the name, as a chip, lifts off the card and arcs to the top-right corner,
-under the mission, where it stays for the table. A table whose idea is order (Table 2) also keeps the next
+under the mission, where it stays for the table. One new thing per table:
+bumpers (Table 9) and the free-shot ring (Table 10) were one table and were
+split, from review, so each gets its own card. A table whose idea is order (Table 2) also keeps the next
 number showing there all table long.
 
 ### 8.5c Juice (on trial, from four reference clips)

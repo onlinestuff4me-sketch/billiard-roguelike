@@ -2677,7 +2677,7 @@ function recordTable(result, cleared) {
 
 /** What clearing this table earns. */
 function tableAchievementIds() {
-  return game.level === 1 ? ['table1'] : game.level === 6 ? ['table6'] : game.level === 12 ? ['table12'] : [];
+  return game.level === 1 ? ['table1'] : game.level === 6 ? ['table6'] : game.level === TABLES.length ? ['table12'] : [];
 }
 
 /* ------------------------------------------------------------------ *
@@ -3309,6 +3309,7 @@ function tableCard(t, release) {
       kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
       name: t.name,
       rule: t.intro.sub,
+      images: (t.intro.art || []).map((a) => `./mechanics/${a}.png`),
       // the same facts on every card (from review): number, name, rule, balls, shots.
       // The target lives on the score bar, where it reads as points.
       stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, ...(game.shotDebt ? [`−${game.shotDebt} shot: Extra Life`] : [])],
