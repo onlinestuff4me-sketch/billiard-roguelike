@@ -38,12 +38,14 @@ stats off in Settings deletes the backlog.
 
 ## Keeping the bill under $1 a month
 
-**Use Upstash's Free plan.** It costs $0, needs no card, and allows
-500,000 commands and 256 MB a month. The code below stops at 350,000
-commands, so this project stays inside it. That is the only way to be
-*certain* of paying nothing for storage. See *Switching to the Free plan*.
+**The built-in limit is what keeps this under $1.** Upstash's own lowest
+budget is $20, so it cannot do it. Pay-as-you-go is fine: set Upstash's
+budget to $20 as a backstop for disasters, and the limit below keeps the
+real bill near $0.70 at most. (A Free-plan database would cost $0, but
+Upstash only offers Free when a database is first created, so it would mean
+replacing this one; see *Replacing it with a Free database* if you want to.)
 
-On pay-as-you-go instead ($0.20 per 100,000 commands, $0.25 per GB), the two
+On pay-as-you-go ($0.20 per 100,000 commands, $0.25 per GB), the two
 guardrails are:
 
 1. **In Upstash.** Its lowest allowed budget is **$20**, so it cannot hold
@@ -73,34 +75,29 @@ month runs out, nothing is lost for players who come back within 30 days.
 The functions themselves run on Vercel; on the Hobby plan their usage is
 included, and on Pro, Vercel's Spend Management (Settings → Billing) can cap it.
 
-## Switching to the Free plan, step by step
+## Replacing it with a Free database (optional)
 
-Button names on these sites change from time to time; if one is worded a
-little differently, look for the closest match. Nothing is stored in the
-current database yet, so replacing it loses nothing.
+Upstash cannot move a pay-as-you-go database back to Free, so this means
+making a new database and removing the old one. Vercel keeps these under
+**Integrations**, not under the project. Button names change from time to
+time; look for the closest match, and if you get stuck, a screenshot of the
+page is the quickest way to get help.
 
-**First, try changing the plan in place:**
+1. On **vercel.com**, in the **left sidebar** of your team (not inside the
+   project), click **Integrations**.
+2. Find **Upstash** and click **Manage**.
+3. Click **Projects** in the left menu of that page. Next to
+   **billiard-roguelike**, use the **⋯** menu to **Disconnect** it.
+4. Go back to the Upstash page from step 2, open **Settings**, and delete the
+   old database (**Delete**).
+5. Create the new one: in the project, **Storage** → **Create Database** →
+   **Upstash for Redis**. On the plan step choose **Free** (it may only be
+   offered if your Upstash account has no other free database). Connect it to
+   **billiard-roguelike** with every environment ticked.
+6. **Deployments** tab → **⋯** on the top deployment → **Redeploy**.
 
-1. Go to **vercel.com**, log in, and click the **billiard-roguelike** project.
-2. Click **Storage** (top menu, or the menu on the left).
-3. Click your Upstash database's name.
-4. Look for **Plan**, **Change Plan** or **Settings** on that page. If you
-   can choose **Free**, do so, confirm, and you are done.
-
-**If there is no way to pick Free there, make a new free database:**
-
-1. On the same **Storage** page, open the current Upstash database, find
-   **Settings**, and choose **Disconnect** (or *Remove from project*). Then
-   delete it (**Delete Database**, usually at the bottom of Settings).
-2. Back on **Storage**, click **Create Database** → **Upstash for Redis**.
-3. When it asks for a plan, choose **Free**. Pick a region near you (for
-   example *US West*). Click **Create** / **Continue**.
-4. When it asks which projects to connect, choose **billiard-roguelike**
-   with all environments ticked, and click **Connect**.
-5. Redeploy so the site picks up the new database: **Deployments** tab →
-   the **⋯** menu on the top deployment → **Redeploy**.
-
-Your `STATS_TOKEN` is not affected; keep it as it is.
+Do not add a card to the new database: adding one turns it into
+pay-as-you-go for good.
 
 ## Telling our own play apart
 
