@@ -116,7 +116,7 @@
       <span id="presets" class="seg" style="margin:0">
         <button data-days="1">24h</button><button data-days="7">7d</button><button data-days="14" class="on">14d</button><button data-days="30">30d</button><button data-days="90">90d</button>
       </span>
-      <input type="date" id="from" aria-label="From" /><input type="date" id="to" aria-label="To" />
+      <input type="date" id="from" aria-label="From (Pacific)" /><input type="date" id="to" aria-label="To (Pacific)" />
       <button id="apply">Apply</button>
       <button id="logout" title="Forget the token on this device">Lock</button>
     </div>
@@ -139,7 +139,16 @@
   const params = new URLSearchParams(location.search);
   const DEMO = params.has('demo');
   const TOKEN_KEY = 'lightline-stats-token';
-  const tz = new Date().getTimezoneOffset();
+  // EVERY TIME ON THIS PAGE IS PACIFIC, and says so ("PST", or "PDT" in summer)
+  const TZ = 'America/Los_Angeles';
+  const partsFmt = new Intl.DateTimeFormat('en-US', { timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  /** Minutes to add to Pacific wall time to get UTC (480 in winter). */
+  const offsetMin = (ts) => {
+    const p = Object.fromEntries(partsFmt.formatToParts(ts).map((x) => [x.type, x.value]));
+    return Math.round((Math.floor(ts / 1000) * 1000 - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second)) / 60000);
+  };
+  const zoneName = (ts = Date.now()) => new Intl.DateTimeFormat('en-US', { timeZone: TZ, timeZoneName: 'short' }).formatToParts(ts).find((x) => x.type === 'timeZoneName')?.value || 'PT';
+  const INTERNAL_KEY = 'lightline-internal';
   let token = '';
   try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch {}
   // a token in the URL hash (#token=...) is taken once and removed from the address bar
@@ -160,14 +169,17 @@
   };
   const fmtPct = (x) => (x == null ? '–' : (Math.round(x * 10) / 10) + '%');
   const fmtNum = (x, d = 0) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString(undefined, { maximumFractionDigits: d }));
-  const fmtWhen = (ts) => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const fmtTime = (ts) => new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
-  const isoDay = (ts) => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const fmtWhen = (ts) => new Date(ts).toLocaleString('en-US', { timeZone: TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+  const fmtTime = (ts) => new Date(ts).toLocaleTimeString('en-US', { timeZone: TZ, hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short' });
+  /** The Pacific calendar day of a timestamp, as YYYY-MM-DD. */
+  const isoDay = (ts) => new Date(ts - offsetMin(ts) * 60000).toISOString().slice(0, 10);
+  /** The instant Pacific midnight starts the day "YYYY-MM-DD". */
+  const dayFrom = (iso) => { const u = Date.parse(iso + 'T00:00:00Z'); return u + offsetMin(u + 12 * 36e5) * 60000; };
+  const dayStart = (ts) => dayFrom(isoDay(ts));
 
   async function api(qs) {
-    const url = '/api/stats?' + new URLSearchParams({ ...qs, tz: String(tz), ...(DEMO ? { demo: '1' } : {}) });
-    const res = await fetch(url, { headers: token && !DEMO ? { authorization: 'Bearer ' + token } : {} });
+    const url = '/api/stats?' + new URLSearchParams({ ...qs, tz: TZ, ...(DEMO ? { demo: '1' } : {}) });
+    const res = await fetch(url, { method: qs.mark ? 'POST' : 'GET', headers: token && !DEMO ? { authorization: 'Bearer ' + token } : {} });
     let body = null;
     try { body = await res.json(); } catch {}
     if (!res.ok || !body || !body.ok) {
@@ -211,9 +223,9 @@
     load();
   });
   $('apply').addEventListener('click', () => {
-    const f = $('from').valueAsNumber, t = $('to').valueAsNumber;
-    if (!isFinite(f) || !isFinite(t)) return;
-    range = { from: dayStart(f + tz * 60000), to: dayStart(t + tz * 60000) + DAY - 1 };
+    const f = $('from').value, t = $('to').value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
+    range = { from: dayFrom(f), to: dayFrom(isoDay(dayFrom(t) + 36 * 36e5)) - 1 };
     for (const b of $('presets').children) b.classList.remove('on');
     load();
   });
@@ -226,15 +238,21 @@
 
   /* ---------- load ---------- */
   let report = null;
+  let bodyCache = null;
+  let view = 'players';
   async function load() {
     if (!DEMO && !token) return gate();
     $('main').innerHTML = '<div class="card muted">Loading…</div>';
     try {
       const body = await api({ from: String(range.from), to: String(range.to) });
-      report = body.report;
+      bodyCache = body;
+      // whoever can open this page is us: this device's own play goes under internal
+      if (!body.demo) {
+        try { localStorage.setItem(INTERNAL_KEY, '1'); } catch {}
+      }
       $('demo-badge').hidden = !body.demo;
       $('controls').hidden = false;
-      render(report);
+      show();
     } catch (err) {
       if (err.status === 401) return gate('That token was not accepted.');
       $('controls').hidden = false;
@@ -243,13 +261,27 @@
     }
   }
 
+  function show() {
+    const body = bodyCache;
+    report = view === 'internal' && body.internal ? body.internal : body.report;
+    render(report, body);
+  }
+
   /* ---------- render ---------- */
   function kpi(v, l, s) {
     return `<div class="kpi"><div class="v">${v}</div><div class="l">${esc(l)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
   }
-  function render(r) {
+  function render(r, body) {
     const o = r.overview, n = r.narrative;
     const html = [];
+    const ni = body?.internal?.overview?.sessions || 0;
+    let thisDevice = false;
+    try { thisDevice = localStorage.getItem(INTERNAL_KEY) === '1'; } catch {}
+    html.push(`<div class="seg" id="view-mode" style="margin-bottom:12px">
+      <button data-v="players" class="${view === 'players' ? 'on' : ''}">Players</button>
+      <button data-v="internal" class="${view === 'internal' ? 'on' : ''}">Internal: you &amp; me · ${ni} session${ni === 1 ? '' : 's'}</button></div>
+      ${view === 'internal' ? '<p class="muted" style="margin:-4px 0 12px;font-size:14px">Our own play, kept apart: devices that opened this dashboard or the game with <b>?internal=1</b>, automated test browsers, preview and local builds, and players you marked internal below.</p>' : ''}
+      ${!body?.demo && thisDevice ? '<p class="muted" style="margin:-4px 0 12px;font-size:14px">This device is marked internal, so your own games here count under Internal. On your phone, open the game once at <b>/?internal=1</b>.</p>' : ''}`);
     html.push(`<section class="card story" aria-label="Summary"><div class="range">${esc(n.range)}${r.truncated ? ' · newest 2,500 sessions only' : ''}</div>
       ${n.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
       ${n.small ? '<p class="warn">Small sample: fewer than 10 players, so read the percentages as anecdotes.</p>' : ''}</section>`);
@@ -266,7 +298,7 @@
     </section>`);
 
     html.push(`<div class="grid">
-      <section class="card"><h2>Sessions per day</h2><div class="seg" id="daily-mode"><button class="on" data-k="sessions">Sessions</button><button data-k="players">Players</button><button data-k="newPlayers">New players</button><button data-k="table">Table</button></div><div class="chart" id="daily"></div></section>
+      <section class="card"><h2>Sessions per day (${esc(r.range.zone || zoneName())})</h2><div class="seg" id="daily-mode"><button class="on" data-k="sessions">Sessions</button><button data-k="players">Players</button><button data-k="newPlayers">New players</button><button data-k="table">Table</button></div><div class="chart" id="daily"></div></section>
       <section class="card funnel"><h2>Funnel</h2><div class="seg" id="funnel-mode"><button class="on" data-k="first">First sessions of new players</button><button data-k="all">All players in range</button></div><div id="funnel"></div></section>
     </div>`);
 
@@ -283,17 +315,18 @@
     html.push(`<div class="grid">
       <section class="card"><h2>Churn: last place before leaving</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.churn.churned} players gone 24h+, ${r.churn.notBackYet} not back yet or still active.</p>${list(r.churn.where.slice(0, 10), 'Nobody has churned yet (no player gone 24h+).')}</section>
       <section class="card"><h2>Stalls</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.stalls.idle} idle ${r.thresholds.stallMs / 1000}s+ while visible · ${r.stalls.cancels} runs of ${r.thresholds.stallCancels}+ aim cancels with no shot</p>${list(r.stalls.where, 'No stalls.')}</section>
+      <section class="card"><h2>Where players are</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">Approximate city, from Vercel's network. IP addresses are never stored.</p>${list((r.places || []).slice(0, 12), 'No locations yet.')}</section>
       <section class="card"><h2>Health</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.health.errors} errors in ${r.health.sessionsWithErrors} sessions · ${r.health.reloads} reloads, ${r.health.reloadsMid} mid-game, ${r.health.rageReloads} within ${r.thresholds.rageMs / 1000}s of the last action</p>${list(r.health.topErrors, 'No JavaScript errors.')}</section>
     </div>`);
 
     html.push(`<section class="card"><h2>Players</h2><input class="filter" id="user-filter" placeholder="Filter by id, device or place" aria-label="Filter players" /><div class="scroll"><table>
-      <thead><tr><th>Player</th><th>Last seen</th><th class="n">Sessions</th><th class="n">Play time</th><th class="n">Shots</th><th class="n">Furthest</th><th>Lessons</th><th>Last place</th><th>Device</th></tr></thead>
+      <thead><tr><th>Player</th><th>Last seen</th><th>City</th><th class="n">Sessions</th><th class="n">Play time</th><th class="n">Shots</th><th class="n">Furthest</th><th>Lessons</th><th>Last place</th><th>Device</th><th></th></tr></thead>
       <tbody id="users"></tbody></table></div></section>`);
     html.push(`<section class="card"><h2>Sessions</h2><input class="filter" id="sess-filter" placeholder="Filter by id, place or flag" aria-label="Filter sessions" /><div class="scroll"><table>
-      <thead><tr><th>Started</th><th>Player</th><th class="n">Active</th><th class="n">Events</th><th class="n">Shots</th><th class="n">Cancels</th><th class="n">Furthest</th><th>Ended at</th><th>Flags</th></tr></thead>
+      <thead><tr><th>Started</th><th>Player</th><th>City</th><th class="n">Active</th><th class="n">Events</th><th class="n">Shots</th><th class="n">Cancels</th><th class="n">Furthest</th><th>Ended at</th><th>Flags</th></tr></thead>
       <tbody id="sessions"></tbody></table></div><button id="sess-more" hidden style="margin-top:10px">Show more</button></section>`);
     const bu = r.budget;
-    html.push(`<footer>${bu ? `Storage this month: ${fmtNum(bu.used)} of ${fmtNum(bu.total)} commands (≈ $${(bu.used * 0.2 / 1e5).toFixed(2)} at most). New stats stop being stored at ${fmtNum(bu.ingest)} and wait on players’ devices until next month.<br>` : ''}Anonymous: a random id per browser, no personal data, no IP addresses. Times are in your time zone. Funnel steps are capped at the step before them; a player who skipped the lessons counts as through them.</footer>`);
+    html.push(`<footer>${bu ? `Storage this month: ${fmtNum(bu.used)} of ${fmtNum(bu.total)} commands (≈ $${(bu.used * 0.2 / 1e5).toFixed(2)} at most). New stats stop being stored at ${fmtNum(bu.ingest)} and wait on players’ devices until next month.<br>` : ''}Anonymous: a random id per browser, no personal data, no IP addresses. All times are Pacific (${esc(zoneName())}). Funnel steps are capped at the step before them; a player who skipped the lessons counts as through them.</footer>`);
     $('main').innerHTML = html.join('');
 
     // daily chart
@@ -322,21 +355,43 @@
     const drawUsers = () => {
       const q = ($('user-filter').value || '').toLowerCase();
       const rows = r.users.filter((u) => !q || [u.pid, u.device, u.lastState, u.tut].join(' ').toLowerCase().includes(q));
-      $('users').innerHTML = rows.map((u) => `<tr class="click" data-pid="${esc(u.pid)}"><td>${esc(u.pid.slice(0, 8))}${u.isNew ? ' <span class="flag">new</span>' : ''}${u.prior ? ' <span class="flag">pre-stats</span>' : ''}</td><td>${fmtWhen(u.lastSeen)}</td><td class="n">${u.sessions}${u.sessionsAllTime > u.sessions ? `<span class="muted">/${u.sessionsAllTime}</span>` : ''}</td><td class="n">${fmtMs(u.activeMs)}</td><td class="n">${u.shots}</td><td class="n">${u.maxTable || '–'}</td><td>${esc(u.tut)}</td><td>${esc(u.lastState)}</td><td class="muted">${esc(u.device)}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">No players.</td></tr>';
+      $('users').innerHTML = rows.map((u) => `<tr class="click" data-pid="${esc(u.pid)}"><td>${esc(u.pid.slice(0, 8))}${u.isNew ? ' <span class="flag">new</span>' : ''}${u.prior ? ' <span class="flag">pre-stats</span>' : ''}</td><td>${fmtWhen(u.lastSeen)}</td><td>${esc(u.place || '–')}</td><td class="n">${u.sessions}${u.sessionsAllTime > u.sessions ? `<span class="muted">/${u.sessionsAllTime}</span>` : ''}</td><td class="n">${fmtMs(u.activeMs)}</td><td class="n">${u.shots}</td><td class="n">${u.maxTable || '–'}</td><td>${esc(u.tut)}</td><td>${esc(u.lastState)}</td><td class="muted">${esc(u.device)}</td><td>${body?.demo ? '' : `<button class="mark" data-mark="${esc(u.pid)}" data-on="${view === 'internal' ? 0 : 1}" style="min-height:28px;padding:2px 8px;font-size:12px">${view === 'internal' ? 'Not internal' : 'Mark internal'}</button>`}</td></tr>`).join('') || '<tr><td colspan="11" class="muted">No players.</td></tr>';
     };
     let sessShown = 50;
     const drawSessions = () => {
       const q = ($('sess-filter').value || '').toLowerCase();
       const rows = r.sessions.filter((s) => !q || [s.sid, s.pid, s.endState, s.flags.join(' '), s.device].join(' ').toLowerCase().includes(q));
       $('sess-more').hidden = rows.length <= sessShown;
-      $('sessions').innerHTML = rows.slice(0, sessShown).map((s) => `<tr class="click" data-sid="${esc(s.sid)}"><td>${fmtWhen(s.start)}</td><td>${esc(s.pid.slice(0, 8))}${s.first ? ' <span class="flag">first</span>' : ''}</td><td class="n">${fmtMs(s.activeMs)}</td><td class="n">${s.events}</td><td class="n">${s.shots}</td><td class="n">${s.cancels}</td><td class="n">${s.maxTable || '–'}</td><td>${esc(s.endState)}</td><td>${s.flags.map((f) => `<span class="flag ${esc(f)}">${esc(f)}</span>`).join('')}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">No sessions.</td></tr>';
+      $('sessions').innerHTML = rows.slice(0, sessShown).map((s) => `<tr class="click" data-sid="${esc(s.sid)}"><td>${fmtWhen(s.start)}</td><td>${esc(s.pid.slice(0, 8))}${s.first ? ' <span class="flag">first</span>' : ''}</td><td>${esc(s.place || '–')}</td><td class="n">${fmtMs(s.activeMs)}</td><td class="n">${s.events}</td><td class="n">${s.shots}</td><td class="n">${s.cancels}</td><td class="n">${s.maxTable || '–'}</td><td>${esc(s.endState)}</td><td>${s.flags.map((f) => `<span class="flag ${esc(f)}">${esc(f)}</span>`).join('')}</td></tr>`).join('') || '<tr><td colspan="10" class="muted">No sessions.</td></tr>';
     };
     $('user-filter').addEventListener('input', drawUsers);
     $('sess-filter').addEventListener('input', drawSessions);
     $('sess-more').addEventListener('click', () => { sessShown += 100; drawSessions(); });
     drawUsers();
     drawSessions();
-    $('users').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-pid]'); if (tr) openPlayer(tr.dataset.pid); });
+    $('users').addEventListener('click', async (e) => {
+      const m = e.target.closest('button[data-mark]');
+      if (m) {
+        e.stopPropagation();
+        m.disabled = true;
+        m.textContent = 'Saving…';
+        try {
+          await api({ mark: m.dataset.mark, internal: m.dataset.on });
+          load();
+        } catch (err) {
+          m.textContent = err.message;
+        }
+        return;
+      }
+      const tr = e.target.closest('tr[data-pid]');
+      if (tr) openPlayer(tr.dataset.pid);
+    });
+    $('view-mode').addEventListener('click', (e) => {
+      const v = e.target.closest('button')?.dataset.v;
+      if (!v || v === view) return;
+      view = v;
+      show();
+    });
     $('sessions').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-sid]'); if (tr) openSession(tr.dataset.sid); });
   }
 
@@ -443,7 +498,8 @@
   function timeline(sessions) {
     const out = [];
     for (const s of sessions) {
-      out.push(`<li class="sess">Session ${esc(s.sid.slice(0, 8))} · ${fmtWhen(s.start)}</li>`);
+      const where = s.geo ? [s.geo.city, s.geo.region, s.geo.country].filter(Boolean).join(', ') : '';
+      out.push(`<li class="sess">Session ${esc(s.sid.slice(0, 8))} · ${fmtWhen(s.start)}${where ? ' · ' + esc(where) : ''}</li>`);
       let prev = null, hidden = false;
       for (const e of s.events) {
         if (prev != null && e.ts - prev >= IDLE && !hidden) out.push(`<li class="gap">… idle ${fmtMs(e.ts - prev)}</li>`);

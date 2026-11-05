@@ -16,6 +16,23 @@ import { budget, budgetKey, pipeline, redisConfig, writeCommands } from './_lib/
 
 const PER_MINUTE_PER_CLIENT = 60;
 
+/**
+ * WHERE, WITHOUT THE IP. Vercel's edge looks the address up and hands us only
+ * the result, in these headers; the address itself is never read or stored.
+ * Kept once per session (with the session's first batch).
+ */
+function geoOf(req) {
+  const h = (k) => {
+    try {
+      return decodeURIComponent(String(req.headers?.[k] || '')).slice(0, 60);
+    } catch {
+      return '';
+    }
+  };
+  const geo = { city: h('x-vercel-ip-city'), region: h('x-vercel-ip-country-region'), country: h('x-vercel-ip-country') };
+  return geo.city || geo.region || geo.country ? geo : null;
+}
+
 /** Set once this month's ingest budget is spent, so a warm instance stops asking Redis. */
 let overMonth = null;
 
@@ -79,7 +96,7 @@ export default async function handler(req, res) {
   if (overMonth === month) return over();
 
   try {
-    const { write, index } = writeCommands(batch);
+    const { write, index } = writeCommands(batch, geoOf(req));
     const ck = `ll:rl:c:${clientKey(req)}`;
     // charge the whole request up front (guard 3 + write 3, + index if new),
     // and start the client's 60 s rate-limit counter (INCR keeps SET's TTL)

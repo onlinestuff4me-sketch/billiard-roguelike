@@ -41,12 +41,10 @@ stats off in Settings deletes the backlog.
 Upstash pay-as-you-go bills $0.20 per 100,000 commands and $0.25 per GB
 stored. Two guardrails keep this project well under $1:
 
-1. **In Upstash (the hard stop — please set it).** From the Vercel project's
-   Storage tab, open the database in Upstash (**Open in Upstash** / the
-   database name), go to its **Usage** tab, click **Change Budget** under the
-   cost figure and set **$1**. Upstash emails at 70% and 90% of it, and at
-   100% it throttles the database instead of charging more. By default a
-   pay-as-you-go database has no ceiling.
+1. **In Upstash (the hard stop — please set it).** Upstash emails at 70%
+   and 90% of the budget, and at 100% it slows the database down instead of
+   charging more. By default a pay-as-you-go database has no ceiling. See
+   *Setting the $1 budget, step by step* below.
 2. **In the code (keeps you far from that stop).** Every command the
    functions run is counted in Redis under `ll:budget:<YYYY-MM>`:
    - at **297,500 commands** (85%) new events stop being stored; the server
@@ -70,12 +68,55 @@ month runs out, nothing is lost for players who come back within 30 days.
 The functions themselves run on Vercel; on the Hobby plan their usage is
 included, and on Pro, Vercel's Spend Management (Settings → Billing) can cap it.
 
+## Setting the $1 budget, step by step
+
+Button names on these sites change from time to time; if one is worded a
+little differently, look for the closest match.
+
+1. Go to **vercel.com** and log in.
+2. Click your project, **billiard-roguelike**.
+3. Click **Storage** in the menu along the top of the project (on some
+   screens it is in a menu on the left).
+4. Click the name of your Upstash database in the list.
+5. On the database's page, find the button that opens it in Upstash. It is
+   usually at the top right and says **Open in Upstash** (or *Manage*, or
+   *Open in Upstash Console*). Click it. A new tab opens on Upstash's site,
+   already signed in. If Upstash asks you to sign in, choose
+   **Continue with Vercel**.
+6. In Upstash you are on the database's page. Click the **Usage** tab near
+   the top.
+7. Find the box showing the cost for this month and click **Change Budget**.
+8. Type **1**, then click **Save** (or *Update*).
+
+If there is no Usage tab or no Change Budget button, the database may not be
+on the pay-as-you-go plan yet: on the database's page in Upstash, look for
+**Plan** or **Upgrade**, choose **Pay as You Go**, and then do steps 6–8.
+The cap in the code applies either way.
+
+## Telling our own play apart
+
+Everything we do ourselves is reported separately, under **Internal** on the
+dashboard (a switch at the top), so it never mixes into the player numbers.
+A session counts as internal when:
+
+- the device has opened the dashboard with the token (it marks itself);
+- the device opened the game once at
+  `https://billiard-roguelike.vercel.app/?internal=1`. Do this on your phone
+  and any other device you play on; `?internal=0` undoes it;
+- the browser was automated (tests, or Claude checking the site);
+- it ran anywhere but the live site (a preview deployment or a local copy);
+- or you pressed **Mark internal** next to that player on the dashboard
+  (for a device you forgot to mark; **Not internal** undoes it).
+
+A player with any internal session is internal throughout.
+
 ## What is recorded
 
 | | |
 |---|---|
 | Identity | A random id in localStorage (`lightline-anon-id`), and a new random session id on each page load. Returning-player detection uses that id plus a visit count. |
 | Device | Viewport size, pixel ratio, touch or mouse, browser and OS **family** (e.g. "Safari · iOS"; never the raw user agent), and the referring site's host name. |
+| Place | Approximate city, region and country, once per session. Vercel's network works this out from the connection and passes on only the result (`x-vercel-ip-city` and friends); the IP address itself is never read or stored. |
 | Lifecycle | Page load and boot time; tab hidden/visible (for idle and away time); leaving (on `pagehide`); JavaScript errors (message, file, line); a reload of a session that was mid-table or mid-lesson. |
 | Lessons | Each lesson's start, pass, skip or quit, its time, shots and aim cancels; the tutorial's start, completion or skip. |
 | Play | Home screen, Play, run start/continue, table replays; each table's start (number, name, rack, shots, target) and end (cleared or failed, score against target, balls down, shots, time, hearts lost); run over / complete, Try again, Quit run; the shop opening, purchases and rerolls; freeze frames; achievements; settings changed. |
@@ -115,6 +156,10 @@ only those events go missing. Merging this branch into `lightline-scoring`
 adds no conflicts beyond the ones `main` already has with it.
 
 ### Definitions the dashboard uses
+
+- **Time zone**: every date and time is Pacific, labeled PST (PDT from
+  March to November, when Pacific time is daylight time). Days start at
+  Pacific midnight.
 
 - **New player**: first seen in the range, and had no game progress saved
   before stats existed (`prior` covers friends who played before this shipped).

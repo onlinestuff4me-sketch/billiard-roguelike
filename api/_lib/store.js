@@ -94,7 +94,7 @@ const parseJSON = (s) => {
  *          whose answer (1) says this is the session's first batch
  *   index  only then: the ids, the indexes, the expiry
  */
-export function writeCommands(batch) {
+export function writeCommands(batch, geo = null) {
   const { pid, sid, events } = batch;
   const start = events[0].ts;
   const last = events[events.length - 1].ts;
@@ -114,6 +114,7 @@ export function writeCommands(batch) {
   ];
   const meta = events.find((e) => e.e === 'session_start');
   if (meta) index.push(['HSETNX', `ll:s:${sid}`, 'meta', JSON.stringify(meta)]);
+  if (geo) index.push(['HSETNX', `ll:s:${sid}`, 'geo', JSON.stringify(geo)]);
   return { write, index };
 }
 
@@ -140,6 +141,7 @@ export async function loadSessions(sids, cfg) {
       start: Number(h.start) || events[0].ts,
       last: Math.max(Number(h.last) || 0, events[events.length - 1].ts),
       meta: parseJSON(h.meta) || events.find((e) => e.e === 'session_start') || {},
+      geo: parseJSON(h.geo) || null,
       events
     });
   }

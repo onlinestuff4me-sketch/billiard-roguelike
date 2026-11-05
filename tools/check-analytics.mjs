@@ -58,6 +58,21 @@ function fakeRedis() {
         kv.set(a[0], String(a[1]));
         return 'OK';
       }
+      case 'SADD': {
+        const set = kv.get(a[0]) instanceof Set ? kv.get(a[0]) : kv.set(a[0], new Set()).get(a[0]);
+        const n = set.size;
+        a.slice(1).forEach((m) => set.add(String(m)));
+        return set.size - n;
+      }
+      case 'SREM': {
+        const set = kv.get(a[0]);
+        if (!(set instanceof Set)) return 0;
+        let n = 0;
+        for (const m of a.slice(1)) if (set.delete(String(m))) n++;
+        return n;
+      }
+      case 'SMEMBERS':
+        return kv.get(a[0]) instanceof Set ? [...kv.get(a[0])] : [];
       case 'GET':
         return kv.has(a[0]) ? String(kv.get(a[0])) : null;
       case 'INCRBY': {
@@ -173,6 +188,12 @@ async function startServer({ events, stats, redis, log }) {
       for await (const c of req) body += c;
       req.body = body;
       req.query = Object.fromEntries(url.searchParams);
+      if (url.pathname === '/api/events' && !req.headers['x-vercel-ip-city']) {
+        // what Vercel's edge adds to every request (the IP itself never reaches us)
+        req.headers['x-vercel-ip-city'] = 'San%20Francisco';
+        req.headers['x-vercel-ip-country-region'] = 'CA';
+        req.headers['x-vercel-ip-country'] = 'US';
+      }
       if (url.pathname === '/api/events') log.push({ at: Date.now(), body, ua: req.headers['user-agent'], type: req.headers['content-type'], purpose: req.headers['sec-purpose'] || '' });
       try {
         return await (url.pathname === '/api/events' ? events : stats)(req, res);
@@ -310,6 +331,7 @@ async function main() {
 
     const one = (n) => evs.find((e) => e.e === n) || {};
     const ss = one('session_start');
+    check(ss.wd === 1, 'an automated browser marks its session (so it is filed as internal)');
     check(typeof ss.vw === 'number' && typeof ss.vh === 'number' && (ss.touch === 0 || ss.touch === 1) && typeof ss.br === 'string' && typeof ss.os === 'string', 'session_start carries viewport, input and browser family', JSON.stringify({ vw: ss.vw, vh: ss.vh, touch: ss.touch, br: ss.br, os: ss.os }));
     check(ss.ret === 0 && ss.visits === 1, 'a first visit is not a returning player');
     const raw = JSON.stringify(batches);
@@ -338,8 +360,12 @@ async function main() {
     check(unauth.status === 401, '/api/stats without the token is refused', String(unauth.status));
     const res = await fetch(`${url}/api/stats?from=${Date.now() - 864e5}&to=${Date.now() + 1000}`, { headers: { authorization: `Bearer ${TOKEN}` } });
     const body = await res.json();
-    const rep = body.report;
-    check(res.ok && rep?.overview.players === 1 && rep.overview.sessions === 1, 'report counts one player, one session', JSON.stringify(rep?.overview).slice(0, 160));
+    check(res.ok && body.report?.overview.players === 0, 'our own (automated) session stays out of the players report', JSON.stringify(body.report?.overview).slice(0, 80));
+    const rep = body.internal;
+    check(rep?.overview.players === 1 && rep.overview.sessions === 1, '…and is in the internal report: one player, one session', JSON.stringify(rep?.overview).slice(0, 160));
+    check(rep?.users[0]?.place === 'San Francisco, CA, US' && rep.sessions[0]?.place === 'San Francisco, CA, US', 'each player and session has a city', rep?.users[0]?.place);
+    check(!JSON.stringify(body).match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/), 'and no IP address appears anywhere in the stats');
+    check(/\((PST|PDT)\)/.test(rep?.narrative.range || ''), 'the summary\'s dates say they are Pacific', rep?.narrative.range);
     const reached = rep?.funnel.first.filter((f) => f.n === 1).map((f) => f.id);
     check(reached?.join() === 'load,play,lesson1', 'funnel: load → Play → lesson 1, and no further', reached?.join());
     check(rep?.tutorial.lessons[0]?.id === 'angle' && rep.tutorial.lessons[0].endedHere === 1, 'the session is recorded as ending inside lesson 1');
@@ -365,8 +391,9 @@ async function main() {
     console.log('\nthe run');
     const pr = await ctx.newPage();
     pr.on('pageerror', (e) => errors.push(String(e.message)));
-    await pr.goto(url + '/', { waitUntil: 'load' });
+    await pr.goto(url + '/?internal=1', { waitUntil: 'load' });
     await pr.waitForTimeout(1200);
+    check((await pr.evaluate(() => window.__analytics.queue().find((e) => e.e === 'session_start')?.int)) === 1, 'opening the game with ?internal=1 marks the device internal');
     const sid2 = (await pr.evaluate(() => window.__analytics.state())).sid;
     await pr.click('#btn-play');
     await pr.waitForTimeout(1500);
@@ -474,6 +501,18 @@ async function main() {
     for (let i = 0; i < 80 && !limited; i++) limited = (await post({ ...junk, events: [{ e: 'boot', t: i }] })).status === 429;
     check(limited, 'the endpoint is rate-limited per client');
 
+    // the junk batches above are the only "real player"; file it under internal and back
+    const auth = { authorization: `Bearer ${TOKEN}` };
+    const statsNow = async () => (await fetch(`${url}/api/stats?from=${Date.now() - 864e5}&to=${Date.now() + 1000}`, { headers: auth })).json();
+    const s0 = await statsNow();
+    check(s0.report.overview.players === 1 && s0.internal.overview.players === 1, 'one player, and one of us, kept apart', `${s0.report.overview.players} / ${s0.internal.overview.players}`);
+    const mk = await fetch(`${url}/api/stats?mark=abcdef1234567890&internal=1`, { method: 'POST', headers: auth });
+    const s1 = await statsNow();
+    check(mk.ok && s1.report.overview.players === 0 && s1.internal.overview.players === 2, 'marking a player internal moves them out of the players report');
+    await fetch(`${url}/api/stats?mark=abcdef1234567890&internal=0`, { method: 'POST', headers: auth });
+    check((await statsNow()).report.overview.players === 1, 'and unmarking moves them back');
+    check((await fetch(`${url}/api/stats?mark=abcdef1234567890&internal=1`, { method: 'POST' })).status === 401, 'marking needs the token');
+
     /* ---------------- 4. metrics over demo data ---------------- */
     console.log('\nmetrics');
     const demo = await (await fetch(`${url}/api/stats?demo=1`)).json();
@@ -522,8 +561,14 @@ async function main() {
     await gp.goto(`${url}/dashboard.html#token=${TOKEN}`, { waitUntil: 'load' });
     await gp.waitForSelector('.story p');
     const story = await gp.textContent('.story');
-    // the played session plus the junk-validation batch above: two players
-    check(/2 players \(2 new/.test(story), 'with the token it shows the real report', story.slice(0, 90));
+    // players: only the junk-validation batch; everything the browser did is ours
+    check(/1 player \(1 new/.test(story) && /\((PST|PDT)\)/.test(story), 'with the token it shows the players report, dated in Pacific time', story.slice(0, 90));
+    const firstRow = await gp.textContent('#sessions tr');
+    check(/ (PST|PDT)/.test(firstRow), 'session times say PST', firstRow.slice(0, 60));
+    check(await gp.evaluate(() => localStorage.getItem('lightline-internal') === '1'), 'opening the dashboard marks this device internal');
+    await gp.click('#view-mode [data-v="internal"]');
+    const istory = await gp.textContent('.story');
+    check(/1 player\b/.test(istory), 'the Internal switch shows our own sessions on their own', istory.slice(0, 90));
     check(/Storage this month: [\d,]+ of 350,000 commands/.test(await gp.textContent('footer')), 'the dashboard shows this month\'s storage use against the budget', (await gp.textContent('footer')).slice(0, 90));
     await gctx.close();
 

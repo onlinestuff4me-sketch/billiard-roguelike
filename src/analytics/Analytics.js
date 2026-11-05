@@ -56,6 +56,14 @@ const PID_KEY = 'lightline-anon-id';
 const META_KEY = 'lightline-anon-meta';
 const OPTOUT_KEY = 'lightline-stats-optout';
 const FORCE_KEY = 'lightline-stats-force';
+/**
+ * INTERNAL DEVICES: ours, not players'. Set by opening the game once with
+ * ?internal=1 (and cleared with ?internal=0), or automatically by opening the
+ * stats dashboard with the token (same site, same storage). Their sessions
+ * carry `int: 1` and are reported separately. Automated browsers carry `wd: 1`
+ * and are treated the same way.
+ */
+const INTERNAL_KEY = 'lightline-internal';
 const MID_KEY = 'lightline-anon-mid';
 const LAST_KEY = 'lightline-anon-last';
 /** Keys the game itself writes, read once to tell a player from before analytics from a new one. */
@@ -322,6 +330,16 @@ function stopForPage() {
  * Enable / disable
  * ------------------------------------------------------------------ */
 
+function readInternalParam() {
+  try {
+    const v = new URLSearchParams(location.search).get('internal');
+    if (v === '1') set(INTERNAL_KEY, '1');
+    if (v === '0') set(INTERNAL_KEY, null);
+  } catch {
+    /* no query */
+  }
+}
+
 function allowedByEnvironment() {
   try {
     if (!/^https?:$/.test(location.protocol)) return false;
@@ -385,7 +403,15 @@ function startSession() {
     mob: ua.mob ? 1 : 0,
     ref,
     tutDone: get(PRIOR_KEYS[0]) === '1' ? 1 : 0,
-    host: location.host
+    host: location.host,
+    int: get(INTERNAL_KEY) === '1' ? 1 : undefined,
+    wd: (() => {
+      try {
+        return navigator.webdriver ? 1 : undefined;
+      } catch {
+        return undefined;
+      }
+    })()
   }, S.t0);
   push('boot', { ms: Math.round(performance.now()) });
 
@@ -422,6 +448,7 @@ function startSession() {
 
 function enable() {
   if (S.enabled || S.dead) return;
+  readInternalParam();
   if (!allowedByEnvironment() || optedOut()) return;
   S.enabled = true;
   startSession();
