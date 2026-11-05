@@ -10,7 +10,7 @@
  */
 
 import * as THREE from 'three';
-import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES, LAYER } from '../config.js';
+import { PLAYER, PHYSICS, FOCUS, PALETTE, TRAJECTORY, ARENA, RULES, LAYER, SHOT } from '../config.js';
 
 const clamp = (value, lo, hi) => Math.min(Math.max(value, lo), hi);
 
@@ -1084,7 +1084,10 @@ class AimRenderer {
       const L = Math.hypot(dx, dz) || 1;
       const ux = dx / L;
       const uz = dz / L;
-      this.lead.set([s], { y, width: TRAJECTORY.leadWidth, color: PALETTE.aim, opacity: 0.6 + 0.35 * power });
+      // the lead is the whole run to the first rail: one straight leg, or a
+      // bending one on a Curve Shot
+      const run = segments.filter((g) => !g.bounce);
+      this.lead.set(run.length ? run : [s], { y, width: TRAJECTORY.leadWidth, color: PALETTE.aim, opacity: 0.6 + 0.35 * power });
 
       if (style !== 'cue' && !this.strike) {
         this.cue.hide();
@@ -1259,7 +1262,7 @@ class AimRenderer {
     }
 
     // --- the rest of the cue's journey, past the first cushion ---
-    const past = segments.slice(1);
+    const past = quiet ? segments.filter((g) => g.bounce) : segments.slice(1);
     if (past.length) {
       this.reflections.set(past, {
         y,
@@ -1670,6 +1673,17 @@ export class Player {
     this.launchPower = power;
     this.iFrameTimer = PLAYER.iFrameGrace;
     this.pyreTimer = 0;
+    // WHAT THE SHOT CARRIES (SHOT in config): set here, so the preview,
+    // which launches through this same function, plays it too
+    const mods = aim.mods || {};
+    this.curve = mods.curve || 0;
+    this.curveT = 0;
+    this.follow = mods.follow || 0;
+    this.side = mods.side || 0;
+    this.bombShot = !!mods.bomb;
+    this.contacted = false;
+    this.shotDirX = aim.dirX;
+    this.shotDirZ = aim.dirZ;
     return { speed, power };
   }
 
@@ -1803,6 +1817,19 @@ export class Player {
 
     if (this.state === PLAYER_STATE.LAUNCHED && this.speed < PLAYER.settleSpeed) {
       this.endLaunch();
+    }
+
+    // CURVE SHOT: the heading turns as the ball rolls, strongest at first,
+    // until it touches anything. A pure turn: the speed is untouched.
+    if (this.curve && !this.contacted && this.state === PLAYER_STATE.LAUNCHED) {
+      const w = this.curve * SHOT.curveRate * Math.exp(-this.curveT / SHOT.curveFade);
+      const a = w * h;
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const vx = this.vx * c - this.vz * s;
+      this.vz = this.vx * s + this.vz * c;
+      this.vx = vx;
+      this.curveT += h;
     }
 
     this.drag =

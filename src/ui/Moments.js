@@ -1149,6 +1149,35 @@ export class Moments {
     const kicker = el('div', 'mo-kicker', head);
     kicker.textContent = d.filled ? 'Table clear' : 'Out of shots';
     el('div', 'mo-title', head).textContent = `Table ${d.level}`;
+    // CLEAR! IS THE RESULT'S OWN HEADLINE (review round 4: "combine them so
+    // it's like CLEAR and then achievements and scores come in under it"):
+    // it slams in as the panel's title, what the clear earned is stamped in
+    // under it, one compact line each, and the score follows below. The
+    // buttons at the foot dismiss it, as before.
+    if (d.finish && d.filled) {
+      head.classList.add('clear-slam');
+      panel.classList.add('has-clear');
+      kicker.textContent = 'Clear!';
+      this.anim(kicker, [
+        { transform: 'rotate(-5deg) scale(3)', opacity: 0, filter: 'blur(8px)' },
+        { transform: 'rotate(-5deg) scale(0.92)', opacity: 1, filter: 'blur(0)', offset: 0.6 },
+        { transform: 'rotate(-5deg) scale(1)', opacity: 1 }
+      ], { duration: 340, easing: 'ease-out' });
+      const news = (d.finish.lines || []).slice(0, 3);
+      if (news.length) {
+        const box = el('div', 'mo-news', panel);
+        news.forEach((ln, i) => {
+          const row = el('div', 'mo-news-row', box);
+          el('b', '', row).textContent = ln.title;
+          el('span', '', row).textContent = [ln.kicker, ln.sub].filter(Boolean).join(' · ');
+          this.anim(row, [
+            { transform: 'scale(1.6) rotate(-2deg)', opacity: 0 },
+            { transform: 'scale(0.97)', opacity: 1, offset: 0.7 },
+            { transform: 'none', opacity: 1 }
+          ], { duration: 280, delay: 380 + 260 * i, easing: 'ease-out' });
+        });
+      }
+    }
     // A TABLE ON ITS OWN PAYS STARS (round 11): three, dim until the result
     // lights the ones this play earned
     const starEls = d.stars
@@ -1675,7 +1704,7 @@ export class Moments {
    * @param {{x:number,z:number,vx:number,vz:number}[]} o.balls  the ones still rolling
    * @param {number} o.left  charges left after this one
    */
-  freeze({ cue, balls, left }) {
+  freeze({ cue, balls, left, label: showLabel = true }) {
     this.unfreeze(true);
     const style = this.variant('freeze');
     const C = this.toPx(cue.x, cue.z);
@@ -1684,9 +1713,12 @@ export class Moments {
     this._freeze = state;
     this.audio.freezeOn?.();
 
-    const label = el('div', 'mo-freeze-label', root);
-    el('b', '', label).textContent = 'Freeze frame';
-    el('small', '', label).textContent = `Re-aim from here · no shot spent · ${left} left`;
+    // the cut-in says it when juice is on (review round 3: one banner, not two)
+    const label = showLabel ? el('div', 'mo-freeze-label', root) : null;
+    if (label) {
+      el('b', '', label).textContent = 'Freeze frame';
+      el('small', '', label).textContent = `Re-aim from here · no shot spent · ${left} left`;
+    }
 
     // THE FLASH: the frame is taken.
     const flash = el('div', 'mo-flash', root);
@@ -1729,7 +1761,7 @@ export class Moments {
         this.anim(arrow, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: delay + 160 });
       }
     }
-    this.anim(label, [{ opacity: 0, transform: 'translate(-50%, 10px) scale(1.3)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)', filter: 'blur(0)' }], { duration: 380, delay: 120, easing: OUT });
+    if (label) this.anim(label, [{ opacity: 0, transform: 'translate(-50%, 10px) scale(1.3)', filter: 'blur(6px)' }, { opacity: 1, transform: 'translate(-50%, 0) scale(1)', filter: 'blur(0)' }], { duration: 380, delay: 120, easing: OUT });
   }
 
   /** The re-aimed shot is away: time starts again. */

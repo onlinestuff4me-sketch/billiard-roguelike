@@ -27,6 +27,7 @@ import {
   RENDER,
   TIME,
   TRAJECTORY,
+  SHOT,
   FOCUS,
   PLAYER,
   PHYSICS,
@@ -55,6 +56,8 @@ import { KICKBACK_SPEED, pocketSlots } from './systems/Table.js';
 import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
+import { Juice } from './ui/Juice.js';
+import { ShotTray } from './ui/ShotTray.js';
 import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
 import { ENEMY_STATE } from './entities/Enemy.js';
@@ -946,6 +949,8 @@ const audio = new AudioManager();
 const player = new Player(scene);
 const fx = createFX();
 const hud = new HUD(uiLayer, { camera, stage });
+/** The big-moment layer: bursts, beams, camera moves, slams (src/ui/Juice.js). */
+const juice = new Juice({ layer: uiLayer, camera, engine, fx, scene, arena: ARENA, reducedMotion });
 /**
  * THE SCORE PRESENTER. Every number a stroke earns is shown one at a time,
  * beside its cause, and flown into the POINTS or MULT box. See ScoreFeed.js.
@@ -1005,6 +1010,10 @@ player.aimRenderer.onSpark = (x, z) => fx.burst(x, z, 2, Math.random() < 0.5 ? P
 
 /** The shared context every system reads from. */
 const game = {
+  // WHAT THE NEXT SHOT CARRIES (SHOT in config; set by the shot tray)
+  shot: { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false },
+  // what the run owns, and this table's charges
+  abilities: { spin: false, curveOwned: false, bombOwned: false, curve: 0, bomb: 0 },
   scene,
   camera,
   engine,
@@ -1068,6 +1077,11 @@ game.ballInk = PALETTE.ballInk;
 // A handle for the console and for automated smoke runs. Read-only in spirit:
 // nothing in the game reads it back.
 if (typeof window !== 'undefined') window.__game = game;
+
+/** The shot tray: spin, Curve Shot, Bomb Shot (juice batch 2). */
+const tray = new ShotTray(uiLayer, game, () => {
+  game.aimDirty = true;
+});
 
 const rooms = new RoomManager(game, {
   onRoomClear: handleRoomClear,
@@ -1149,6 +1163,80 @@ function multCallout() {
 }
 
 /**
+ * Strike `aim` (a release, or a held curve shot's Shoot). THE SHOT THE LINE
+ * PLAYED, to the last bit: the drawn preview is a record of this exact heading
+ * and power, so that is what is struck.
+ */
+function strikeShot(aim) {
+  // ...when it is the shot being released: a line drawn for some other aim
+  // (an old one, or none since) is no promise about this release
+  let shown = drawnShot();
+  game.drawnShot = null;
+  if (shown) {
+    const dl = Math.hypot(aim.dirX, aim.dirZ) || 1;
+    const turn = Math.acos(clamp((shown.dir.x * aim.dirX + shown.dir.z * aim.dirZ) / dl, -1, 1));
+    if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
+  }
+  player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power, mods: shotMods() } : { ...aim, mods: shotMods() }, game);
+  juiceStrike(aim, shown);
+  spendShotMods();
+  // THE STICK GETS THERE FIRST. The table holds still for the few frames the
+  // cue takes to snap into the ball, so the ball leaves when it is hit, not
+  // when the thumb lets go.
+  if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
+    // The table also holds the frame of contact, longer the harder: briefly
+    // on the snap (picked in review, with this freeze), longer on impact.
+    const power = aim.power ?? 1;
+    const [f0, f1] = TRAJECTORY.strikeFreeze;
+    const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : f0 + f1 * power;
+    engine.hitStop(TRAJECTORY.stickStrike + hold);
+  }
+  // A release either opens a stroke or resumes the one a freeze interrupted.
+  // Resuming keeps the ladder, the budget and every other ball's velocity.
+  if (game.midStroke) resumeStroke();
+  else beginStroke();
+  moments.unfreeze();
+}
+
+/**
+ * A CURVE SHOT, HELD FOR ITS BEND (review round 3: "I need to be able to see
+ * that in real time"). The aim and power are locked where the thumb let go,
+ * the line stays drawn, and the bend bar takes the bottom band: dragging it
+ * bends the line live. Shoot strikes the held shot; ✕ goes back to aiming.
+ */
+function holdForBend(aim) {
+  const shown = drawnShot();
+  game.bendHold = { aim: shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : { ...aim } };
+  game.shot.curve = game.shot.curve || 0;
+  tray.setHolding(true);
+  game.aimDirty = true;
+}
+function shootHeld() {
+  const h = game.bendHold;
+  if (!h) return;
+  game.bendHold = null;
+  tray.setHolding(false);
+  // the line drawn for the held aim, with its bend, is the promise
+  if (!drawnShot()) refreshPrediction();
+  strikeShot(h.aim);
+}
+function cancelHeld() {
+  if (!game.bendHold) return;
+  game.bendHold = null;
+  game.shot.curve = 0;
+  tray.setHolding(false);
+  player.cancelAim();
+  game.drawnShot = null;
+}
+/** Drop a held shot without striking it (a table changes, a menu opens). */
+function clearHeld() {
+  game.bendHold = null;
+  tray.setHolding(false);
+}
+tray.onShoot = shootHeld;
+tray.onCancel = cancelHeld;
+
+/**
  * The moment the draw runs out.
  *
  * Power no longer decides whether anything breaks — nothing breaks from being
@@ -1160,6 +1248,11 @@ let wasMaxed = false;
 function noteAimPower(aim) {
   // The same threshold the ring and the stick use, so everything lands at once.
   const maxed = (aim?.charge ?? 0) >= TRAJECTORY.fullDraw;
+  if (!game.headless && aim) {
+    const level = clamp((aim.charge ?? 0) / TRAJECTORY.fullDraw, 0, 1);
+    juice.charge(aim.valid ? level : null);
+    juice.pushIn(aim.valid ? level : null, player);
+  }
   if (maxed && !wasMaxed) {
     const p = player;
     const style = TRAJECTORY.maxStyle || 'flash';
@@ -1196,6 +1289,118 @@ function noteAimPower(aim) {
     }
   }
   wasMaxed = maxed;
+}
+
+/**
+ * THE STRIKE, AS A MOMENT (juice): when the stick meets the ball, the burst,
+ * the trail, and on a full-power shot the camera's pull back and the slam.
+ */
+function juiceStrike(aim, shown) {
+  juice.charge(null);
+  if (game.headless) return;
+  const power = shown ? shown.power : aim.power ?? 1;
+  const maxed = (aim.charge ?? 0) >= TRAJECTORY.fullDraw;
+  const x = player.x;
+  const z = player.z;
+  const dirX = shown ? shown.dir.x : aim.dirX;
+  const dirZ = shown ? shown.dir.z : aim.dirZ;
+  const at = TRAJECTORY.aimStyle === 'cue' ? TRAJECTORY.stickStrike * 1000 : 0;
+  if (maxed) juice.pullBack({ x, z });
+  else juice.pushIn(null);
+  setTimeout(() => {
+    juice.strike({ x, z, dirX, dirZ, power, maxed });
+    juice.startTrail(power, maxed);
+    if (maxed) juice.slam('Full power!!');
+  }, at);
+}
+
+/**
+ * An ability's cut-in, one at a time (Curve and Bomb on one shot play in
+ * turn). An achievement earned by the same act waits until the cut-in has
+ * gone, so the two never stack on the top band.
+ */
+let cutInQueue = Promise.resolve();
+/**
+ * What a cut-in must not cover (review): the cue ball, the ball nearest it,
+ * and, on a shot just struck, the line the cue ball runs to its first hit.
+ */
+function cutInAvoid(struck) {
+  const pts = [{ x: player.x, z: player.z }];
+  let near = null;
+  let nd = Infinity;
+  for (const b of game.enemies) {
+    if (!b.alive || !(b.number > 0)) continue;
+    const d = Math.hypot(b.x - player.x, b.z - player.z);
+    if (d < nd) {
+      nd = d;
+      near = b;
+    }
+  }
+  if (near) pts.push({ x: near.x, z: near.z });
+  const rec = struck ? (drawnShot() || playedAim())?.rec : null;
+  const cue = rec?.paths?.[0]?.pts;
+  if (cue) {
+    const hit = rec.cueHits[0];
+    for (let i = 0; i + 1 < cue.length; i += 6) {
+      pts.push({ x: cue[i], z: cue[i + 1] });
+      if (hit && Math.hypot(cue[i] - hit.x, cue[i + 1] - hit.z) < 0.6) break;
+    }
+    if (hit) pts.push({ x: hit.x, z: hit.z }, { x: hit.bx, z: hit.bz });
+  }
+  return pts;
+}
+function abilityCutIn(opts) {
+  if (!juice.on('cutin')) return;
+  opts = { ...opts, avoid: opts.avoid || cutInAvoid(opts.struck) };
+  if (!hud._achHold) {
+    hud.holdAchievements(true);
+    game.achHeldByCutIn = true;
+  }
+  cutInQueue = cutInQueue.then(() => juice.cutIn(opts)).then(releaseCutInHold);
+}
+/**
+ * Let a held achievement show once the cut-in is gone, but not over a
+ * freeze's own words (FREEZE FRAME · re-aim from here): then it waits for
+ * the stroke to resume (resumeStroke).
+ */
+function releaseCutInHold() {
+  if (!game.achHeldByCutIn) return;
+  if (menuOpen || game.state !== 'playing' || game.introUp) return;
+  if (game.midStroke && game.phase === 'aim') return;
+  game.achHeldByCutIn = false;
+  hud.holdAchievements(false);
+}
+
+/**
+ * A SHOT'S MODIFIERS ARE SPENT AS IT IS STRUCK: a curve or a bomb uses a
+ * charge (and says so, with its cut-in), and spin goes back to center.
+ */
+function spendShotMods() {
+  const s = game.shot;
+  const a = game.abilities;
+  // a curve shot struck with no bend costs nothing
+  if (s.curveArmed && s.curve) {
+    a.curve = Math.max(0, a.curve - 1);
+    juice.tint(true, '#22e8ff', 'ability');
+    abilityCutIn({ name: 'Curve shot!', line: `${a.curve} left`, color: '#22e8ff', icon: 'curve', struck: true });
+  }
+  if (s.bomb) {
+    a.bomb = Math.max(0, a.bomb - 1);
+    // no tint for the bomb (review round 3): the only orange is the blast,
+    // from where it goes off
+    abilityCutIn({ name: 'Bomb shot!', line: `${a.bomb} left`, color: '#ff8a1e', icon: 'bomb', struck: true });
+  }
+  game.shot = { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false };
+  tray.paint();
+}
+
+/** A table's ability charges, refilled as it opens. */
+function refillAbilities() {
+  const a = game.abilities;
+  a.curve = a.curveOwned ? SHOT.curveCharges : 0;
+  a.bomb = a.bombOwned ? SHOT.bombCharges : 0;
+  game.shot = { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false };
+  clearHeld();
 }
 
 /**
@@ -1420,6 +1625,7 @@ function tableSettled() {
 
 /** Open a stroke: the ladder resets, the gold rings come back. */
 function beginStroke() {
+  game.strokeAch = [];
   game.midStroke = true;
   game.phase = 'resolve';
   game.strokeTimer = 0;
@@ -1440,9 +1646,27 @@ function beginStroke() {
 }
 
 /** Resume a frozen stroke. Same stroke, same ladder — no reset, no cost. */
+/** How long a freeze frame waits for its second shot, seconds (review round 5). */
+const FREEZE_WINDOW = 6;
+
+/**
+ * THE FREEZE RUNS OUT: no second shot was taken, so the table rolls on from
+ * where it stopped. The cue ball stays where the freeze left it.
+ */
+function endFreeze() {
+  game.freezeLeft = null;
+  player.cancelAim();
+  game.drawnShot = null;
+  resumeStroke();
+  moments.unfreeze();
+  juice.tint(false);
+}
+
 function resumeStroke() {
+  game.freezeLeft = null;
   game.phase = 'resolve';
   game.settleTimer = 0;
+  releaseCutInHold();
 }
 
 /**
@@ -1519,6 +1743,7 @@ feed.onTally = (paid, from) => {
 };
 
 function finishStroke() {
+  juice.tint(false);
   game.midStroke = false;
   game.phase = 'aim';
   game.settleTimer = 0;
@@ -1667,6 +1892,12 @@ function tryFreeze() {
     return false;
   }
   game.phase = 'aim';
+  // A FREEZE FRAME LASTS SIX SECONDS (review round 5): a bar fills in the
+  // Freeze box, and if no second shot is taken by then the table rolls on
+  // (not on the practice table or in a lesson, which teach it at their pace)
+  game.freezeLeft = game.practice || tutorial.active ? null : FREEZE_WINDOW;
+  // the cut-in first, so the achievement this earns waits behind it
+  abilityCutIn({ name: 'Freeze frame!', line: `${rules.freezeCharges} left` });
   if (game.practice) practiceFroze();
   else achievements.unlock('freeze');
   // The cue ball stops where it is; it is about to be re-aimed from here.
@@ -1677,11 +1908,13 @@ function tryFreeze() {
   engine.zoomPunch();
   engine.shake(4);
   fx.shockwave(player.x, player.z, PALETTE.player, 7, 0.5);
+  juice.tint(true);
   if (momentsOn()) {
     moments.freeze({
       cue: { x: player.x, z: player.z },
       balls: game.enemies.filter((b) => b.alive && Math.hypot(b.vx, b.vz) > 0.3).map((b) => ({ x: b.x, z: b.z, vx: b.vx, vz: b.vz })),
-      left: rules.freezeCharges
+      left: rules.freezeCharges,
+      label: !juice.on('cutin')
     });
   } else {
     audio.focusEnter?.();
@@ -1882,6 +2115,11 @@ game.on = {
     }
     tutorial.notify('potted', { ball, pocket, paid, bounces: player.bouncesUsed });
     gridPulse(pocket.x, pocket.z, 1);
+    if (!game.headless && !tutorial.running) {
+      const last = game.midStroke && rules.filled;
+      juice.beam({ x: pocket.x, z: pocket.z, kind: last ? 'last' : rules.mult > 1 ? 'mult' : 'pot' });
+      if (last) juice.followLast({ x: pocket.x, z: pocket.z });
+    }
 
     engine.zoomPunch();
     engine.shake(10);
@@ -1896,6 +2134,18 @@ game.on = {
     }
 
     removeBall(ball, pocket);
+  },
+
+  /** A Bomb Shot goes off (PhysicsSystem.blast): light, a boom, and a shove. */
+  bomb({ x, z, radius, balls }) {
+    engine.shake(22);
+    engine.zoomPunch(FEEL.zoomPunch * 2);
+    gridPulse(x, z, 1.4);
+    // the fire front is drawn by juice.blast; no full-screen flash, which read
+    // as the whole table glowing at once (review)
+    fx.burst(x, z, 30, PALETTE.scoreMultHot, 14, 0.9);
+    juice.blast({ x, z, radius, balls });
+    audio.playerDeath?.();
   },
 
   /** The cue ball down a pocket. The stroke pays nothing. */
@@ -2129,6 +2379,21 @@ function doorLabelText(door) {
 const cssHex = (value) => `#${value.toString(16).padStart(6, '0')}`;
 
 /**
+ * ONE LINE PER PIECE OF NEWS (review round 4: "In Order" and "All in order"
+ * read as the same thing twice). An unlock that comes with the achievement
+ * for the same feat folds into that achievement's line.
+ */
+function mergeNews(lines) {
+  const out = [];
+  for (const ln of lines) {
+    const same = out.find((o) => o.title.toLowerCase().replace(/^all /, '') === ln.title.toLowerCase().replace(/^all /, ''));
+    if (same) same.sub = [same.sub, ln.sub].filter(Boolean).join(' · ');
+    else out.push({ ...ln });
+  }
+  return out;
+}
+
+/**
  * The mission is filled. Pay for every stroke left in the budget — the skill
  * income — put the scorecard up, and open the exits.
  */
@@ -2137,6 +2402,12 @@ function completeRoom() {
   game.state = 'cleared';
   const shownRun = rules.snapshot().displayScore;
   const result = rules.endRoom();
+  // THE FINISH CARRIES ITS OWN NEWS (review: CLEAR! covered "All in order").
+  // What this clear earns, an achievement or an unlock, is stamped in under
+  // CLEAR! instead of popping up somewhere the slam then covers.
+  const finishing = momentsOn() && !game.headless && !!juice.on('finish');
+  const lines = [];
+  if (finishing) game.finishLines = lines;
   recordTable(result, true);
   gridPulse(0, 0, 1);
   if (!momentsOn()) audio.roomClear();
@@ -2146,10 +2417,26 @@ function completeRoom() {
   // not a difficulty setting, it is a trap with a menu entry.
   if (result.swept && !strictOrder.unlocked) {
     strictOrder.unlock();
-    hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
+    if (finishing) lines.push({ kicker: 'Unlocked', title: 'All in order', sub: 'Strict Order is in Modes now' });
+    else hud.showBanner('All in order', 'Strict Order unlocked in Modes — the order stops being optional', 2.6);
+  }
+  game.finishLines = null;
+  // AN ACHIEVEMENT NEVER SITS ON CLEAR! (review round 3): one the last shot
+  // earned, already shown at the pot, steps aside and is said again under
+  // CLEAR! with the rest of the news
+  if (finishing) {
+    const said = new Set(lines.map((l) => l.title));
+    const earned = (game.strokeAch || []).filter((a) => !said.has(a.name)).map((a) => ({ kicker: 'Achievement', title: a.name, sub: '' }));
+    lines.unshift(...earned);
+    hud.holdAchievements(true);
   }
   openExits();
-  showRoomResult({ ...tableResult(result), filled: true }, shownRun);
+  const data = { ...tableResult(result), filled: true };
+  // THE FINISH (juice): CLEAR! heads the result itself, with its news under
+  // it (Moments.clear, d.finish); one screen, dismissed by its buttons
+  if (finishing) data.finish = { lines: mergeNews(lines) };
+  juice.release();
+  showRoomResult(data, shownRun);
 }
 
 /** What the end-of-table moment and card show: the ledger, the target, the payout. */
@@ -2333,6 +2620,7 @@ function showRoomResult(data, shownRun) {
     // AN ACHIEVEMENT NEVER SITS ON THE SCORE SCREEN (from review): the one
     // up fades as the screen comes in, and any earned from here on (the
     // table's result, a buy in the shop) wait for the next table to open
+    game.achHeldByCutIn = false;
     hud.holdAchievements(true);
     moments.clear({
       ...data,
@@ -2400,6 +2688,14 @@ const shopRun = { owned: [], bought: [], held: null };
 const achievements = new Achievements();
 achievements.onUnlock = (a) => {
   if (game.headless) return;
+  // kept for the finish screen, should this stroke clear the table
+  (game.strokeAch ||= []).push(a);
+  // earned by the clear itself: said on the finish screen (completeRoom)
+  if (game.finishLines) {
+    game.finishLines.push({ kicker: 'Achievement', title: a.name, sub: '' });
+    audio.boonPick?.();
+    return;
+  }
   hud.achievement(a, { all: openAchievementsInRun });
   audio.boonPick?.();
 };
@@ -2560,6 +2856,7 @@ function failRoom() {
   }
 
   openExits();
+  juice.release();
   showRoomResult({ ...tableResult(result), filled: false }, shownRun);
 }
 
@@ -2718,6 +3015,7 @@ const strictOrder = {
  * first meet it.
  */
 function beginMission() {
+  refillAbilities();
   // The room's own mission (an authored table's rack, shots and target, or
   // the ramp's), with the run's extra shots and the strict-order mode on top.
   rules.beginRoom(game.level, {
@@ -2769,6 +3067,7 @@ function advanceRoom() {
   }
 
   const swap = () => {
+    juice.release();
     hud.root.classList.remove('practicing');
     game.level += 1;
     game.introUp = false;
@@ -2936,6 +3235,7 @@ function spawnZ() {
  * the mission — which is the one thing the player has to know to play.
  */
 function showRoomBanner() {
+  const seq = ++introSeq;
   // an achievement held through the score screen and the shop shows once the
   // table is in play: after its card when it has one (round 12: it sat on
   // the card), straight away when not
@@ -2956,27 +3256,24 @@ function showRoomBanner() {
     hud.setRule(t.name, true);
     return release();
   }
-  if (t?.intro) {
+  if (t?.intro && juice.on('banner') && !game.headless) {
     hud.setRule(null);
     game.introUp = true;
-    moments
-      .tableIntro({
-        // a replay says so (round 13): no hearts or shop, played for stars
-        kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
-        name: t.name,
-        rule: t.intro.sub,
-        // the same facts on every card (from review): number, name, rule, balls, shots.
-        // The target lives on the score bar, where it reads as points.
-        stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, ...(game.shotDebt ? [`−${game.shotDebt} shot: Extra Life`] : [])],
-        // the name IS the rule, so the card and the corner chip say the same thing
-        chip: t.name,
-        chipTo: () => hud.ruleChip
-      })
-      .then(() => {
+    const band = juice.banner({ kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`, title: t.name, sub: t.intro.sub, hold: 1300 });
+    if (juice.on('banner') === 'bandOnly') {
+      band.then(() => {
+        if (seq !== introSeq) return;
         game.introUp = false;
         hud.setRule(t.name, true);
         release();
       });
+      return;
+    }
+    band.then(() => seq === introSeq && !menuOpen && tableCard(t, release));
+    return;
+  }
+  if (t?.intro) {
+    tableCard(t, release);
     return;
   }
   release();
@@ -2991,12 +3288,43 @@ function showRoomBanner() {
   hud.showBanner(`Table ${game.level}`, `${rules.snapshot().missionText} · ${c.strokes} shots`, HOLD);
 }
 
+/** A table's own card: its number, name, rule, balls and shots; tapped away. */
+function tableCard(t, release) {
+  hud.setRule(null);
+  game.introUp = true;
+  moments
+    .tableIntro({
+      // a replay says so (round 13): no hearts or shop, played for stars
+      kicker: game.replay ? `Table ${game.level} · Replay` : `Table ${game.level}`,
+      name: t.name,
+      rule: t.intro.sub,
+      // the same facts on every card (from review): number, name, rule, balls, shots.
+      // The target lives on the score bar, where it reads as points.
+      stats: [`${rules.mission.rack} balls`, `${rules.strokesLeft} shots`, ...(game.shotDebt ? [`−${game.shotDebt} shot: Extra Life`] : [])],
+      // the name IS the rule, so the card and the corner chip say the same thing
+      chip: t.name,
+      chipTo: () => hud.ruleChip
+    })
+    .then(() => {
+      game.introUp = false;
+      hud.setRule(t.name, true);
+      release();
+    });
+}
+
 /** Everything a fresh start clears, minus the room itself. */
 function resetRunState() {
   endPractice();
+  game.abilities = { spin: false, curveOwned: false, bombOwned: false, curve: 0, bomb: 0 };
+  game.shot = { curve: 0, curveArmed: false, follow: 0, side: 0, bomb: false };
+  clearHeld();
+  juice.release();
+  juice.tint(false);
   game.replay = null;
   hud.setSingle(null);
   game.skipIntroCard = false;
+  game.achHeldByCutIn = false;
+  introSeq++;
   boons.reset();
   boons.recompute();
   hud.setBuild(boons.owned);
@@ -4489,7 +4817,7 @@ function playAim(dir, power) {
   const paths = bodies.map((b) => ({ body: b, pts: [b.x, b.z], breaks: [], done: false, v0: Math.hypot(b.vx, b.vz) }));
   try {
     player.scratchGuard = 0;
-    player.launchMotion({ dirX: dir.x, dirZ: dir.z, power });
+    player.launchMotion({ dirX: dir.x, dirZ: dir.z, power, mods: shotMods() });
     let still = 0;
     const max = Math.ceil(RULES.strokeTimeout / SIM_H);
     for (; rec.steps < max; rec.steps++) {
@@ -4537,6 +4865,8 @@ function playAim(dir, power) {
 }
 
 /** A path's corners as the drawn segments: collinear runs merged, portal legs left out. */
+/** True while the shot being drawn curves (only then is a small turn a bend, not a rail). */
+let pathBend = false;
 function pathSegments(pts, breaks, from = 0, to = pts.length / 2 - 1) {
   const segs = [];
   let bounce = 0;
@@ -4567,8 +4897,11 @@ function pathSegments(pts, breaks, from = 0, to = pts.length / 2 - 1) {
       if (Math.abs(ux * dz - uz * dx) < 1e-6 && ux * dx + uz * dz > 0) continue;
       const cx = pts[(i - 1) * 2];
       const cz = pts[(i - 1) * 2 + 1];
-      segs.push({ ax, az, bx: cx, bz: cz, bounce, kind: 'rail' });
-      bounce += 1;
+      // A CURVE TURNS A LITTLE EVERY STEP (Curve Shot): that is one bending
+      // leg, not a rail per step. A rail turns it by far more than this.
+      const bend = pathBend && Math.abs(ux * dz - uz * dx) < 0.07 && ux * dx + uz * dz > 0;
+      segs.push({ ax, az, bx: cx, bz: cz, bounce, kind: bend ? 'curve' : 'rail' });
+      if (!bend) bounce += 1;
       ax = cx;
       az = cz;
     }
@@ -4605,6 +4938,7 @@ const segsLength = (segs) => segs.reduce((t, g) => t + Math.hypot(g.bx - g.ax, g
  */
 function simulateAim(dir, power) {
   const rec = playAim(dir, power);
+  pathBend = !!game.shot.curve;
   const [cue, ...balls] = rec.paths;
   const first = rec.cueHits[0] || null;
   const end = cue.pts.length / 2 - 1;
@@ -4616,7 +4950,7 @@ function simulateAim(dir, power) {
     segments: approach,
     hit: first ? { body: first.body, x: first.x, z: first.z, nx: first.nx, nz: first.nz, bounces: first.bounces } : null,
     caromDir: first ? { x: first.nx, z: first.nz } : null,
-    bounces: Math.max(0, approach.length - 1),
+    bounces: approach.length ? approach[approach.length - 1].bounce : 0,
     totalDistance: segsLength(approach),
     hitSpeed: first ? first.speed : null,
     endSpeed: first ? first.speed : 0,
@@ -4633,7 +4967,7 @@ function simulateAim(dir, power) {
       if (rec.scratch && !scratchedFirst) segments[segments.length - 1].kind = 'pocket';
       cuePath = {
         segments,
-        bounces: Math.max(0, segments.length - 1),
+        bounces: segments[segments.length - 1].bounce,
         portals: cue.breaks.filter((b) => b > split).length,
         pocket: rec.scratch && !scratchedFirst ? rec.scratch.pocket : null,
         hits: [],
@@ -4687,7 +5021,13 @@ let aimMemo = null;
 
 /** The table the shot is played from: where everything is and how it moves. */
 const tableKey = () =>
-  `${player.x},${player.z},${player.vx},${player.vz},${game.enemies.map((b) => (b.alive ? `${b.x},${b.z},${b.vx},${b.vz}` : '-')).join(';')}`;
+  `${player.x},${player.z},${player.vx},${player.vz},${game.enemies.map((b) => (b.alive ? `${b.x},${b.z},${b.vx},${b.vz}` : '-')).join(';')}|${shotMods().key}`;
+
+/** The modifiers the next shot carries, as the physics reads them. */
+function shotMods() {
+  const s = game.shot;
+  return { curve: s.curve || 0, follow: s.follow || 0, side: s.side || 0, bomb: !!s.bomb, key: `${s.curve || 0},${s.follow || 0},${s.side || 0},${s.bomb ? 1 : 0}` };
+}
 const aimKey = () => `${player.aimDir.x},${player.aimDir.z},${player.aimPower}|${tableKey()}`;
 
 function playedAim() {
@@ -4770,6 +5110,8 @@ const input = new InputManager(stage, {
   isEnabled: () =>
     game.running &&
     player.alive &&
+    // a held curve shot: the bend bar has the thumb now
+    !game.bendHold &&
     game.state !== 'modal' &&
     // a table's intro card is up: the first tap starts the table, not a shot
     !game.introUp &&
@@ -4812,6 +5154,8 @@ const input = new InputManager(stage, {
     }
   },
   onAimCancel: () => {
+    juice.charge(null);
+    juice.pushIn(null);
     game.drawnShot = null;
     uiLayer.classList.remove('aiming');
     wasMaxed = false;
@@ -4831,34 +5175,13 @@ const input = new InputManager(stage, {
     }
     if (engine.inBulletTime) audio.focusExit();
     engine.setBulletTime(false);
-    // THE SHOT THE LINE PLAYED, to the last bit: the drawn preview is a record
-    // of this exact heading and power, so that is what is struck.
-    // ...when it is the shot being released: a line drawn for some other aim
-    // (an old one, or none since) is no promise about this release
-    let shown = drawnShot();
-    game.drawnShot = null;
-    if (shown) {
-      const dl = Math.hypot(aim.dirX, aim.dirZ) || 1;
-      const turn = Math.acos(clamp((shown.dir.x * aim.dirX + shown.dir.z * aim.dirZ) / dl, -1, 1));
-      if (turn > (2 * Math.PI) / 180 || Math.abs(shown.power - (aim.power ?? 1)) > 0.08) shown = null;
+    // A CURVE SHOT HOLDS (review round 3): letting go locks the aim, and the
+    // bend is set on the held line before it is struck (holdForBend)
+    if (game.shot.curveArmed && !game.headless) {
+      holdForBend(aim);
+      return;
     }
-    player.launch(shown ? { ...aim, dirX: shown.dir.x, dirZ: shown.dir.z, power: shown.power } : aim, game);
-    // THE STICK GETS THERE FIRST. The table holds still for the few frames the
-    // cue takes to snap into the ball, so the ball leaves when it is hit, not
-    // when the thumb lets go.
-    if (TRAJECTORY.aimStyle === 'cue' && !game.headless) {
-      // The table also holds the frame of contact, longer the harder: briefly
-      // on the snap (picked in review, with this freeze), longer on impact.
-      const power = aim.power ?? 1;
-      const [f0, f1] = TRAJECTORY.strikeFreeze;
-      const hold = TRAJECTORY.strikeStyle === 'impact' ? 0.04 + 0.08 * power : f0 + f1 * power;
-      engine.hitStop(TRAJECTORY.stickStrike + hold);
-    }
-    // A release either opens a stroke or resumes the one a freeze interrupted.
-    // Resuming keeps the ladder, the budget and every other ball's velocity.
-    if (game.midStroke) resumeStroke();
-    else beginStroke();
-    moments.unfreeze();
+    strikeShot(aim);
   },
   onFlick: (aim) => {
     uiLayer.classList.remove('aiming');
@@ -5123,6 +5446,9 @@ const $ = (id) => document.getElementById(id);
  * background can never drift out of sync with how the game currently looks.
  */
 let menuOpen = true;
+/** Bumped whenever a table's intro is overtaken (a menu, a new table): a
+ * band still sweeping then never opens its now-stale card. */
+let introSeq = 0;
 let attractTimer = 0;
 
 let muted = false;
@@ -5426,6 +5752,11 @@ function showTutorialState() {
 
 function openMenu() {
   menuOpen = true;
+  introSeq++;
+  clearHeld();
+  juice.release();
+  juice.clear();
+  juice.tint(false);
   hud.holdAchievements(false);
   input.cancel();
   tutorial.stop();
@@ -5688,6 +6019,10 @@ if (typeof window !== 'undefined') {
       if (tutorial.active) tutorial.stop();
       game.tutorialGuard = null;
       moments.closeIntro();
+      clearHeld();
+      juice.release();
+      juice.clear();
+      introSeq++;
       game.introUp = false;
       game.level = level;
       rooms.generate(level);
@@ -5715,6 +6050,21 @@ if (typeof window !== 'undefined') {
     playShot: (deg, power) => {
       const th = (deg * Math.PI) / 180;
       return simulateAim({ x: Math.sin(th), z: -Math.cos(th) }, power).rec.steps;
+    },
+    /** Own the shot abilities (juice batch 2) for a capture: e.g. { spin: true, curve: true, bomb: true }. */
+    abilities(own = { spin: true, curve: true, bomb: true }) {
+      const a = game.abilities;
+      a.spin = !!own.spin;
+      a.curveOwned = !!own.curve;
+      a.bombOwned = !!own.bomb;
+      refillAbilities();
+    },
+    /** Arm the next shot: { curve, follow, side, bomb }. */
+    arm(mods) {
+      Object.assign(game.shot, mods);
+      if (mods.curve) game.shot.curveArmed = true;
+      tray.paint();
+      game.aimDirty = true;
     },
     /** Earn an achievement now, as play would. */
     unlock: (id) => achievements.unlock(id),
@@ -6045,6 +6395,9 @@ function endStroke() {
   }
   if (game.feedSettling) return;
   game.feedSettling = true;
+  // THE LAST SHOT OF A TABLE COUNTS QUICKER (review round 3), so CLEAR! lands
+  // sooner: the tally into the top number runs at 1.8x
+  if (!game.enemies.some((b) => b.alive && b.number > 0)) feed.speed = Math.max(feed.speed, 1.8);
   feed.settle(rules.strokeResult(), () => {
     game.feedSettling = false;
     if (game.midStroke) finishStroke();
@@ -6058,6 +6411,11 @@ function frame(now) {
   const rawFrame = (now - last) / 1000;
   last = now;
 
+  // THE LAST BALL IS DOWN: only the cue ball rolls on, so the table runs at
+  // 8x to its stop (Engine.rush; it was 3x, and the wait between the boxes
+  // and the tally was still long, review round 3). Same fixed steps, so the
+  // same outcome (a late scratch is still a scratch), just sooner.
+  engine.setRush(game.midStroke && game.phase === 'resolve' && !game.enemies.some((b) => b.alive && b.number > 0) ? 8 : 1);
   const { dt, rawDt } = engine.update(rawFrame);
   gridUniforms.uTime.value += rawDt;
   input.update(rawDt);
@@ -6073,6 +6431,22 @@ function frame(now) {
   feed.setEnabled(game.running && !menuOpen && !tutorial.running && !game.practice && !game.headless && game.state !== 'dead');
   feed.update(rawDt);
   fitScoreFeed();
+  tray.setAiming(game.state === 'playing' && game.phase === 'aim' && !game.introUp && !menuOpen);
+  // the freeze frame's clock: real time, held while a thumb is aiming or a
+  // curve shot is held (the shot being lined up is the second shot)
+  // (on the wall clock: a frame's own time is capped, and a slow phone would
+  // stretch the six seconds)
+  const wall = performance.now();
+  const wallDt = Math.min(0.25, Math.max(0, (wall - (game.freezeWall || wall)) / 1000));
+  game.freezeWall = wall;
+  if (game.freezeLeft != null) {
+    if (!game.midStroke || game.phase !== 'aim' || game.state !== 'playing') game.freezeLeft = null;
+    else if (!input.isAiming && !game.bendHold) {
+      game.freezeLeft -= wallDt;
+      if (game.freezeLeft <= 0) endFreeze();
+    }
+  }
+  juice.update(dt, rawDt, { cue: game.phase === 'resolve' && player.alive ? player : null, now: performance.now() / 1000 });
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
   // The boxes cover the bottom of the felt, where the preview draws where a
@@ -6135,6 +6509,16 @@ function frame(now) {
           player.hideTrajectory();
           game.aimFoul = null;
         }
+      }
+    } else if (game.bendHold) {
+      // A HELD CURVE SHOT: the locked aim, redrawn as the bend changes
+      const a = game.bendHold.aim;
+      player.aimDir.x = a.dirX;
+      player.aimDir.z = a.dirZ;
+      player.aimPower = a.power ?? 1;
+      if (game.aimDirty || !game.drawnShot) {
+        game.aimDirty = false;
+        refreshPrediction();
       }
     } else if (game.aimDirty && input.isAiming) {
       // an aim the frame loop does not own (a frozen stroke): played here
@@ -6222,7 +6606,9 @@ function frame(now) {
         ...(game.livesHold != null ? { lives: game.livesHold } : {}),
         ...(game.freezeHold != null ? { freezeCharges: game.freezeHold } : {}),
         // the FREEZE button is live while the balls roll and a charge is in hand
-        canFreeze: game.phase === 'resolve' && game.midStroke && rules.freezeCharges >= 1 && game.state === 'playing'
+        canFreeze: game.phase === 'resolve' && game.midStroke && rules.freezeCharges >= 1 && game.state === 'playing',
+        // a freeze frame running: how much of its window is left (0..1)
+        freezeLeft: game.freezeLeft != null ? game.freezeLeft / FREEZE_WINDOW : null
       },
       rawDt
     );

@@ -61,6 +61,23 @@ export const UPGRADES = [
     apply: ({ boons }) => boons.addRunBonus({ maxBounces: 1 }),
     unapply: ({ boons }) => boons.addRunBonus({ maxBounces: -1 })
   },
+  /* -- shot abilities (juice batch 2, on trial) ------------------------ */
+  {
+    id: 'spin', name: 'Spin', text: 'Set follow, draw and side on each shot.', rarity: 'rare', price: 8,
+    apply: ({ game }) => { game.abilities.spin = true; },
+    unapply: ({ game }) => { game.abilities.spin = false; }
+  },
+  {
+    id: 'curve-shot', name: 'Curve Shot', text: '2 a table: bend a shot around a ball.', rarity: 'rare', price: 9,
+    apply: ({ game }) => { game.abilities.curveOwned = true; game.abilities.curve = Math.max(game.abilities.curve || 0, 2); },
+    unapply: ({ game }) => { game.abilities.curveOwned = false; game.abilities.curve = 0; }
+  },
+  {
+    id: 'bomb-shot', name: 'Bomb Shot', text: '1 a table: the first ball hit explodes.', rarity: 'rare', price: 8,
+    apply: ({ game }) => { game.abilities.bombOwned = true; game.abilities.bomb = Math.max(game.abilities.bomb || 0, 1); },
+    unapply: ({ game }) => { game.abilities.bombOwned = false; game.abilities.bomb = 0; }
+  },
+
   /* -- hearts (round 11): each costs cash AND a shot ------------------- */
   {
     id: 'extra-life', name: 'Extra Life', text: '+1 heart now. Next table: 1 fewer shot.', rarity: 'rare', price: 10, stack: true, consumable: true,

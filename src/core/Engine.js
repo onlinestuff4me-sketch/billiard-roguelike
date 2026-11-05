@@ -37,6 +37,14 @@ export class Engine {
      */
     this.presentScale = 1;
     this.presentTarget = 1;
+    /**
+     * FAST-FORWARD, a third factor: once the last ball is down and only the
+     * cue ball is rolling, the table runs quicker to its stop. The physics
+     * still takes the same fixed steps, so nothing it does changes, only the
+     * wait before the clear.
+     */
+    this.rush = 1;
+    this.rushTarget = 1;
 
     /** Real-time seconds left of hit-stop. */
     this.hitStopRemaining = 0;
@@ -54,6 +62,14 @@ export class Engine {
     this.realElapsed = 0; // wall-clock seconds
 
     this._lastAppliedZoom = 1;
+
+    /**
+     * A PRESENTATION VIEW on top of the fixed top-down camera (juice: push in,
+     * pull back, follow the last ball). Offsets in table units and a zoom
+     * factor, eased toward a target by whoever owns the moment; the aim is
+     * never rotated, only framed.
+     */
+    this.view = { x: 0, z: 0, zoom: 1 };
   }
 
   /* ---------------------------------------------------------------- *
@@ -73,6 +89,11 @@ export class Engine {
   /** Set the presenter's target speed (1 = normal). Eased, never snapped, except into a stop. */
   setPresentScale(scale) {
     this.presentTarget = Math.max(0, scale);
+  }
+
+  /** Fast-forward the table (1 is normal). */
+  setRush(scale) {
+    this.rushTarget = Math.max(1, scale);
   }
 
   get inBulletTime() {
@@ -134,7 +155,12 @@ export class Engine {
     this.hitStopRemaining = 0;
     this.presentScale = 1;
     this.presentTarget = 1;
+    this.rush = 1;
+    this.rushTarget = 1;
     this.camera.position.set(this.basePosition.x, this.basePosition.y, this.basePosition.z);
+    this.view.x = 0;
+    this.view.z = 0;
+    this.view.zoom = 1;
   }
 
   /** Momentary ortho-zoom compression, released over ~170 ms. */
@@ -158,9 +184,9 @@ export class Engine {
       this.shakeAmplitude = 0;
     }
     this.camera.position.set(
-      this.basePosition.x + offsetX,
+      this.basePosition.x + offsetX + this.view.x,
       this.basePosition.y,
-      this.basePosition.z + offsetZ
+      this.basePosition.z + offsetZ + this.view.z
     );
 
     if (Math.abs(this.zoom - 1) > 0.0004) {
@@ -168,10 +194,11 @@ export class Engine {
     } else {
       this.zoom = 1;
     }
-    if (Math.abs(this.zoom - this._lastAppliedZoom) > 0.0002) {
-      this.camera.zoom = this.zoom;
+    const applied = this.zoom * this.view.zoom;
+    if (Math.abs(applied - this._lastAppliedZoom) > 0.0002) {
+      this.camera.zoom = applied;
       this.camera.updateProjectionMatrix();
-      this._lastAppliedZoom = this.zoom;
+      this._lastAppliedZoom = applied;
     }
   }
 
@@ -218,7 +245,13 @@ export class Engine {
       if (Math.abs(this.presentScale - this.presentTarget) < 0.003) this.presentScale = this.presentTarget;
     }
 
-    const dt = rawDt * this.timeScale * this.presentScale;
+    if (this.rush !== this.rushTarget) {
+      const k = 1 - Math.exp(-rawDt / 0.35);
+      this.rush += (this.rushTarget - this.rush) * k;
+      if (Math.abs(this.rush - this.rushTarget) < 0.01) this.rush = this.rushTarget;
+    }
+
+    const dt = rawDt * this.timeScale * this.presentScale * this.rush;
     this.elapsed += dt;
     return { dt, rawDt, frozen: false };
   }
