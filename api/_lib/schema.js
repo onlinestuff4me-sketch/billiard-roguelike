@@ -27,7 +27,9 @@ export const LIMITS = {
   fieldsPerEvent: 24,
   stringLength: 200,
   // a page load longer than this is not a session we want to trust
-  sessionMs: 48 * 3600 * 1000
+  sessionMs: 48 * 3600 * 1000,
+  // a `late` batch: kept on the device while storage was not set up
+  lateMs: 31 * 24 * 3600 * 1000
 };
 
 const ID = /^[a-z0-9]{8,32}$/i;
@@ -59,7 +61,8 @@ export function parseBatch(raw, serverNow = Date.now()) {
   // onto the server's clock when they disagree by more than a minute.
   const skew = Math.abs(serverNow - sent) > 60000 ? serverNow - sent : 0;
   const base = t0 + skew;
-  if (Math.abs(base - serverNow) > LIMITS.sessionMs) return { ok: false, error: 'stale' };
+  const maxAge = body.late ? LIMITS.lateMs : LIMITS.sessionMs;
+  if (base - serverNow > LIMITS.sessionMs || serverNow - base > maxAge) return { ok: false, error: 'stale' };
 
   const clean = [];
   for (const ev of events) {

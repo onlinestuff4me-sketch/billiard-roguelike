@@ -18,9 +18,9 @@
  *   funnel        first sessions of new players, step by step
  */
 
-export const STALL_GAP = 90 * 1000;
+export const STALL_GAP = 30 * 1000;
 export const STALL_CANCELS = 5;
-export const RAGE_GAP = 30 * 1000;
+export const RAGE_GAP = 60 * 1000;
 export const CHURN_AFTER = 24 * 3600 * 1000;
 export const IDLE_MARK = 30 * 1000;
 const DAY = 24 * 3600 * 1000;
@@ -55,9 +55,74 @@ const mean = (xs) => {
 const pct = (n, d) => (d > 0 ? Math.round((n / d) * 1000) / 10 : null);
 const inc = (o, k, by = 1) => (o[k] = (o[k] || 0) + by);
 
-/** Calendar day key for a timestamp in the viewer's time zone (offset in minutes, as Date#getTimezoneOffset). */
-export const dayKey = (ts, tz = 0) => new Date(ts - tz * 60000).toISOString().slice(0, 10);
-const dayIndex = (ts, tz = 0) => Math.floor((ts - tz * 60000) / DAY);
+/**
+ * TIME ZONE. Days, ranges and the narrative are in one zone, Pacific by
+ * default. `tz` is an IANA name ('America/Los_Angeles') or a fixed offset in
+ * minutes as Date#getTimezoneOffset gives it. With a name, each timestamp
+ * gets its own offset, so a day boundary stays at local midnight across a
+ * daylight-saving change.
+ */
+export const DEFAULT_TZ = 'America/Los_Angeles';
+const zoneFormats = new Map();
+function zoneFormat(tz) {
+  if (!zoneFormats.has(tz)) {
+    zoneFormats.set(tz, new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  }
+  return zoneFormats.get(tz);
+}
+/** Minutes to add to local time to get UTC (480 for PST), like Date#getTimezoneOffset. */
+export function offsetMin(ts, tz = DEFAULT_TZ) {
+  if (typeof tz === 'number') return tz;
+  try {
+    const p = Object.fromEntries(zoneFormat(tz).formatToParts(ts).map((x) => [x.type, x.value]));
+    const local = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+    return Math.round((Math.floor(ts / 1000) * 1000 - local) / 60000);
+  } catch {
+    return 0;
+  }
+}
+/** "PST" (or "PDT" in summer) for a timestamp in the zone. */
+export function zoneAbbr(ts, tz = DEFAULT_TZ) {
+  if (typeof tz === 'number') return tz === 0 ? 'UTC' : `UTC${tz > 0 ? '−' : '+'}${Math.abs(tz / 60)}`;
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' }).formatToParts(ts).find((x) => x.type === 'timeZoneName')?.value || tz;
+  } catch {
+    return tz;
+  }
+}
+/** Calendar day key for a timestamp, in the report's zone. */
+export const dayKey = (ts, tz = DEFAULT_TZ) => new Date(ts - offsetMin(ts, tz) * 60000).toISOString().slice(0, 10);
+const dayIndex = (ts, tz = DEFAULT_TZ) => Math.floor((ts - offsetMin(ts, tz) * 60000) / DAY);
+/** The instant local midnight starts day number `idx`. */
+const dayStartTs = (idx, tz = DEFAULT_TZ) => idx * DAY + offsetMin(idx * DAY + DAY / 2, tz) * 60000;
+
+/**
+ * OURS, OR PLAYERS'. A session is internal when its device was marked
+ * (?internal=1, or the dashboard opened there), its browser was automated,
+ * it ran somewhere other than the live site (localhost, a preview deploy), or
+ * its player was filed under internal from the dashboard. A player with any
+ * internal session is internal throughout, so their numbers never mix.
+ */
+export function isInternalHost(host, prodHost = '') {
+  if (!host) return false;
+  if (/^(localhost|127\.|0\.0\.0\.0|\[::1\]|192\.168\.|10\.)/.test(host)) return true;
+  return !!prodHost && host !== prodHost && /\.vercel\.app$/.test(host);
+}
+export function splitInternal(sessions, internalPids = new Set(), prodHost = '') {
+  const pids = new Set(internalPids);
+  for (const s of sessions) {
+    const m = s.meta || {};
+    if (m.int || m.wd || isInternalHost(m.host, prodHost)) pids.add(s.pid);
+  }
+  return {
+    internal: sessions.filter((s) => pids.has(s.pid)),
+    external: sessions.filter((s) => !pids.has(s.pid)),
+    internalPids: pids
+  };
+}
+
+/** "San Francisco, CA, US", or what is known of it. */
+export const placeOf = (geo) => (geo ? [geo.city, geo.region, geo.country].filter(Boolean).join(', ') : '');
 
 export function fmtMs(ms) {
   if (!Number.isFinite(ms)) return '–';
@@ -153,7 +218,9 @@ export function summarizeSession(s) {
     vh: s.meta?.vh,
     ref: s.meta?.ref,
     prior: !!s.meta?.prior,
-    nav: s.meta?.nav
+    nav: s.meta?.nav,
+    place: placeOf(s.geo),
+    country: s.geo?.country || ''
   };
   for (const e of ev) {
     // stall: a long visible silence
@@ -269,10 +336,10 @@ export function summarizeSession(s) {
  * @param {object} p.players   pid → { first, sessions: [{sid, ts}] }  (all time)
  * @param {number} p.from
  * @param {number} p.to
- * @param {number} [p.tz]      minutes, as Date#getTimezoneOffset
+ * @param {string|number} [p.tz]  IANA zone (default Pacific) or minutes as Date#getTimezoneOffset
  * @param {number} [p.now]
  */
-export function buildReport({ sessions, players, from, to, tz = 0, now = Date.now() }) {
+export function buildReport({ sessions, players, from, to, tz = DEFAULT_TZ, now = Date.now() }) {
   const sums = sessions.map(summarizeSession).sort((a, b) => a.start - b.start);
   const raw = new Map(sessions.map((s) => [s.sid, s]));
   const byPlayer = new Map();
@@ -324,7 +391,7 @@ export function buildReport({ sessions, players, from, to, tz = 0, now = Date.no
       const f = st[0];
       const d0 = dayIndex(f, tz);
       // the window has to be over before the player counts either way
-      const windowEnd = (d0 + days + 1) * DAY + tz * 60000;
+      const windowEnd = dayStartTs(d0 + days + 1, tz);
       if (windowEnd > now) continue;
       eligible += 1;
       const hit = st.some((ts) => {
@@ -599,6 +666,7 @@ export function buildReport({ sessions, players, from, to, tz = 0, now = Date.no
         prior: priorOf(pid),
         device: [last.os, last.br, last.touch ? 'touch' : 'mouse'].filter(Boolean).join(' · '),
         lastState: last.endState,
+        place: [...list].reverse().find((s) => s.place)?.place || '',
         errors: list.reduce((a, s) => a + s.errors, 0)
       };
     })
@@ -621,11 +689,21 @@ export function buildReport({ sessions, players, from, to, tz = 0, now = Date.no
       endState: s.endState,
       first: newSet.has(s.pid) && isFirstSession(s),
       flags: [s.errors ? 'error' : null, s.rage ? 'rage-reload' : s.reloadMid ? 'reload' : null, s.stalls.length ? 'stall' : null, s.tut === 'skipped' ? 'skipped lessons' : null].filter(Boolean),
-      device: [s.os, s.br, s.touch ? 'touch' : 'mouse'].filter(Boolean).join(' · ')
+      device: [s.os, s.br, s.touch ? 'touch' : 'mouse'].filter(Boolean).join(' · '),
+      place: s.place
     }));
 
+  // --- where players are (city level, from Vercel's edge; never the IP) ---
+  const placePlayers = new Map();
+  for (const u of users) {
+    const k = u.place || 'Unknown';
+    placePlayers.set(k, (placePlayers.get(k) || 0) + 1);
+  }
+  const places = [...placePlayers.entries()].sort((a, b) => b[1] - a[1]).map(([where, n]) => ({ where, n }));
+
   const report = {
-    range: { from, to, tz, now, days: Math.max(1, Math.round((Math.min(to, now) - from) / DAY)) },
+    thresholds: { stallMs: STALL_GAP, stallCancels: STALL_CANCELS, rageMs: RAGE_GAP, churnMs: CHURN_AFTER },
+    range: { from, to, tz, zone: zoneAbbr(now, tz), now, days: Math.max(1, Math.round((Math.min(to, now) - from) / DAY)) },
     overview,
     funnel,
     tutorial,
@@ -635,6 +713,7 @@ export function buildReport({ sessions, players, from, to, tz = 0, now = Date.no
     stalls,
     churn,
     daily,
+    places,
     users,
     sessions: sessionList
   };
@@ -653,8 +732,8 @@ const p0 = (x) => (x == null ? '–' : `${Math.round(x)}%`);
 export function narrate(r) {
   const out = [];
   const o = r.overview;
-  const fmtDay = (ts) => new Date(ts - r.range.tz * 60000).toISOString().slice(0, 10);
-  const range = `${fmtDay(r.range.from)} to ${fmtDay(Math.min(r.range.to, r.range.now))}`;
+  const fmtDay = (ts) => dayKey(ts, r.range.tz);
+  const range = `${fmtDay(r.range.from)} to ${fmtDay(Math.min(r.range.to, r.range.now))} (${r.range.zone})`;
   if (!o.sessions) {
     out.push(`No sessions recorded from ${range}.`);
     return { range, lines: out, small: true };
@@ -662,6 +741,13 @@ export function narrate(r) {
   out.push(
     `From ${range}: ${plural(o.players, 'player')} (${o.newPlayers} new, ${o.returningPlayers} returning${o.priorPlayers ? `, of whom ${o.priorPlayers} had played before stats began` : ''}) played ${plural(o.sessions, 'session')}. Median session ${fmtMs(o.medianSessionMs)} of active play; ${plural(o.shots, 'shot')} taken in all.`
   );
+
+  // where
+  const known = (r.places || []).filter((p) => p.where !== 'Unknown');
+  if (known.length) {
+    const top = known.slice(0, 3).map((p) => `${p.where} (${p.n})`).join(', ');
+    out.push(`Players came from ${plural(known.length, 'place')}; most from ${top}.`);
+  }
 
   // funnel
   const f = r.funnel.first;

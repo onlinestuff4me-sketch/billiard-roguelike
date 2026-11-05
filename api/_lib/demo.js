@@ -31,6 +31,7 @@ export function demoData(now = Date.now(), players = 46) {
     const pid = hex(20);
     const dev = r() < 0.75 ? { os: pick(['iOS', 'iOS', 'Android']), br: pick(['Safari', 'Chrome', 'Chrome', 'Samsung']), touch: 1, mob: 1, vw: pick([375, 390, 393, 412, 430]), vh: pick([667, 844, 852, 915, 932]) } : { os: pick(['macOS', 'Windows']), br: pick(['Chrome', 'Safari', 'Firefox', 'Edge']), touch: 0, mob: 0, vw: 1440, vh: 820 };
     const ref = pick(['', '', '', 't.co', 'discord.com', 'wa.me']);
+    const geo = pick([{ city: 'San Francisco', region: 'CA', country: 'US' }, { city: 'Oakland', region: 'CA', country: 'US' }, { city: 'Los Angeles', region: 'CA', country: 'US' }, { city: 'Seattle', region: 'WA', country: 'US' }, { city: 'Portland', region: 'OR', country: 'US' }, { city: 'New York', region: 'NY', country: 'US' }, { city: 'London', region: 'ENG', country: 'GB' }, { city: 'Toronto', region: 'ON', country: 'CA' }]);
     let t = now - Math.floor(r() * 13.5 * DAY) - 3600 * 1000;
     let tutDone = false;
     let skill = 0.55 + r() * 0.4;
@@ -158,7 +159,7 @@ export function demoData(now = Date.now(), players = 46) {
         }
       }
       skill = Math.min(0.97, skill + 0.04);
-      const s = { sid, pid, start: ev[0].ts, last: ev[ev.length - 1].ts, meta: ev[0], events: ev };
+      const s = { sid, pid, start: ev[0].ts, last: ev[ev.length - 1].ts, meta: ev[0], geo, events: ev };
       if (s.start <= now) {
         sessions.push(s);
         (index[pid] ||= { first: s.start, sessions: [] }).sessions.push({ sid, ts: s.start });

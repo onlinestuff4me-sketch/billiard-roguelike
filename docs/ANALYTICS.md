@@ -3,9 +3,15 @@
 The game records anonymous sessions so we can see where players stall, churn,
 succeed and fail. A dashboard at `/dashboard.html` tells that story.
 
-Until storage is provisioned, all of it is a no-op: the first send gets a
-"not configured" answer, and the game stops sending for the rest of that page
-load. Nothing breaks, and nothing slows down.
+Until storage is provisioned nothing reaches a server: the first send gets a
+"not configured" answer (503), and from then on that page load keeps its
+events **on the player's device** in a capped backlog (3,000 events, 30 days,
+in localStorage) instead of sending them. When a later visit finds storage
+set up, the backlog is uploaded one batch at a time under its original
+session ids and times, so the dashboard shows that play as it happened.
+Players who never come back after storage exists are the only ones lost, so
+provision soon. Nothing breaks and nothing slows down either way; turning
+stats off in Settings deletes the backlog.
 
 ## Turning it on (about 5 minutes, in the Vercel dashboard)
 
@@ -30,9 +36,85 @@ load. Nothing breaks, and nothing slows down.
 
 `/dashboard.html?demo=1` shows the dashboard over made-up data, with no setup.
 
-The free Upstash plan (256 MB, 500k commands a month) covers a few thousand
-sessions a month comfortably: each ~10 s batch costs about 15 commands.
-Data expires after 400 days.
+## Keeping the bill under $1 a month
+
+**The built-in limit is what keeps this under $1.** Upstash's own lowest
+budget is $20, so it cannot do it. Pay-as-you-go is fine: set Upstash's
+budget to $20 as a backstop for disasters, and the limit below keeps the
+real bill near $0.70 at most. (A Free-plan database would cost $0, but
+Upstash only offers Free when a database is first created, so it would mean
+replacing this one; see *Replacing it with a Free database* if you want to.)
+
+On pay-as-you-go ($0.20 per 100,000 commands, $0.25 per GB), the two
+guardrails are:
+
+1. **In Upstash.** Its lowest allowed budget is **$20**, so it cannot hold
+   the bill to $1; set it to $20 anyway as a backstop against anything going
+   badly wrong. At the budget the database is stopped. (Database page →
+   **Usage** → **Change Budget**.)
+2. **In the code (keeps you far from that stop).** Every command the
+   functions run is counted in Redis under `ll:budget:<YYYY-MM>`:
+   - at **297,500 commands** (85%) new events stop being stored; the server
+     answers "not configured" and players' devices keep their events in the
+     backlog to upload next month;
+   - at **350,000 commands** (≈ $0.70 at most) the dashboard stops reading too
+     and says so, until the 1st;
+   - set `ANALYTICS_MONTHLY_COMMANDS` to move the total (ingest stays at 85%).
+   The dashboard's footer shows this month's count.
+
+What else keeps usage low: batches go every 20 s (and at once when the page
+is hidden or closed); a steady-state batch costs 6 commands (14 for a
+session's first); `/api/events` refuses anything not posted from the game's
+own pages (Origin check, set `ANALYTICS_ORIGINS` to add a custom domain)
+before it touches storage, and rate-limits each client to 60 posts a minute;
+sessions expire after 180 days, which keeps storage to tens of MB.
+
+At that rate 297,500 commands is roughly 240 hours of play a month. If a
+month runs out, nothing is lost for players who come back within 30 days.
+
+The functions themselves run on Vercel; on the Hobby plan their usage is
+included, and on Pro, Vercel's Spend Management (Settings → Billing) can cap it.
+
+## Replacing it with a Free database (optional)
+
+Upstash cannot move a pay-as-you-go database back to Free, so this means
+making a new database and removing the old one. Vercel keeps these under
+**Integrations**, not under the project. Button names change from time to
+time; look for the closest match, and if you get stuck, a screenshot of the
+page is the quickest way to get help.
+
+1. On **vercel.com**, in the **left sidebar** of your team (not inside the
+   project), click **Integrations**.
+2. Find **Upstash** and click **Manage**.
+3. Click **Projects** in the left menu of that page. Next to
+   **billiard-roguelike**, use the **⋯** menu to **Disconnect** it.
+4. Go back to the Upstash page from step 2, open **Settings**, and delete the
+   old database (**Delete**).
+5. Create the new one: in the project, **Storage** → **Create Database** →
+   **Upstash for Redis**. On the plan step choose **Free** (it may only be
+   offered if your Upstash account has no other free database). Connect it to
+   **billiard-roguelike** with every environment ticked.
+6. **Deployments** tab → **⋯** on the top deployment → **Redeploy**.
+
+Do not add a card to the new database: adding one turns it into
+pay-as-you-go for good.
+
+## Telling our own play apart
+
+Everything we do ourselves is reported separately, under **Internal** on the
+dashboard (a switch at the top), so it never mixes into the player numbers.
+A session counts as internal when:
+
+- the device has opened the dashboard with the token (it marks itself);
+- the device opened the game once at
+  `https://billiard-roguelike.vercel.app/?internal=1`. Do this on your phone
+  and any other device you play on; `?internal=0` undoes it;
+- the browser was automated (tests, or Claude checking the site);
+- it ran anywhere but the live site (a preview deployment or a local copy);
+- or you pressed **Mark internal** next to that player on the dashboard
+  (for a device you forgot to mark; **Not internal** undoes it).
+
+A player with any internal session is internal throughout.
 
 ## What is recorded
 
@@ -40,6 +122,7 @@ Data expires after 400 days.
 |---|---|
 | Identity | A random id in localStorage (`lightline-anon-id`), and a new random session id on each page load. Returning-player detection uses that id plus a visit count. |
 | Device | Viewport size, pixel ratio, touch or mouse, browser and OS **family** (e.g. "Safari · iOS"; never the raw user agent), and the referring site's host name. |
+| Place | Approximate city, region and country, once per session. Vercel's network works this out from the connection and passes on only the result (`x-vercel-ip-city` and friends); the IP address itself is never read or stored. |
 | Lifecycle | Page load and boot time; tab hidden/visible (for idle and away time); leaving (on `pagehide`); JavaScript errors (message, file, line); a reload of a session that was mid-table or mid-lesson. |
 | Lessons | Each lesson's start, pass, skip or quit, its time, shots and aim cancels; the tutorial's start, completion or skip. |
 | Play | Home screen, Play, run start/continue, table replays; each table's start (number, name, rack, shots, target) and end (cleared or failed, score against target, balls down, shots, time, hearts lost); run over / complete, Try again, Quit run; the shop opening, purchases and rerolls; freeze frames; achievements; settings changed. |
@@ -58,7 +141,7 @@ are anonymous and can be turned off.
 ## How it fits together
 
 ```
-src/analytics/Analytics.js   the client: queue, batch every 10 s, sendBeacon on hide
+src/analytics/Analytics.js   the client: queue, batch every 20 s, sendBeacon on hide
 src/main.js                  one-line calls, each ending in `// analytics`
 api/events.js                POST: validate, rate-limit, store
 api/stats.js                 GET, behind STATS_TOKEN: the report, a session, a player
@@ -80,6 +163,10 @@ adds no conflicts beyond the ones `main` already has with it.
 
 ### Definitions the dashboard uses
 
+- **Time zone**: every date and time is Pacific, labeled PST (PDT from
+  March to November, when Pacific time is daylight time). Days start at
+  Pacific midnight.
+
 - **New player**: first seen in the range, and had no game progress saved
   before stats existed (`prior` covers friends who played before this shipped).
 - **Active time**: a session's wall time minus the stretches the tab was hidden.
@@ -89,11 +176,11 @@ adds no conflicts beyond the ones `main` already has with it.
   at the one before it.
 - **D1**: came back on the next calendar day. **Back within 7d**: any session
   on days 1–7. Only players whose window has fully passed are counted.
-- **Stall**: 90 s or more with no event while the tab is visible, or 5 aim
+- **Stall**: 30 s or more with no event while the tab is visible, or 5 aim
   cancels in a row with no shot.
 - **Churn point**: where a player was at the last action of their last
   session, once they have been gone 24 hours.
-- **Rage reload**: a reload mid-table or mid-lesson within 30 s of the last
+- **Rage reload**: a reload mid-table or mid-lesson within 60 s of the last
   action.
 
 ## Checking it
