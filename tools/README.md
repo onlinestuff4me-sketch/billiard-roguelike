@@ -287,6 +287,7 @@ underneath it.
 - `check-portal.mjs` — a line through a portal is still a promise.
 - `check-release.mjs` — letting go does not move the shot.
 - `check-flash.mjs` — a finished lesson draws nothing.
+- `check-analytics.mjs` — anonymous stats end to end: game → /api/events → /api/stats → dashboard (see docs/ANALYTICS.md).
 - `../tool/measure.js` — the editor's side of it: the frame, and the driving.
 
 ## Beyond the tutorial
