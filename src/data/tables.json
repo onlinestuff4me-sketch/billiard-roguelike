@@ -7,7 +7,7 @@
       "name": "Clear the Table",
       "intro": {
         "title": "Table 1 · Clear the Table",
-        "sub": "Sink every ball. Beat the target."
+        "sub": "Sink every ball. Beat the score target."
       },
       "spawn": {
         "x": 0,
@@ -45,7 +45,7 @@
       "name": "In Order Pays More",
       "intro": {
         "title": "Table 2 · In Order Pays More",
-        "sub": "In number order, each pays more."
+        "sub": "Sink the balls in their number order."
       },
       "spawn": {
         "x": 0,
@@ -83,7 +83,7 @@
       "name": "Rails Add Mult",
       "intro": {
         "title": "Table 3 · Rails Add Mult",
-        "sub": "Rails before a pot add Mult."
+        "sub": "Bank off rails to increase the multiplier."
       },
       "spawn": {
         "x": 0,
@@ -129,7 +129,7 @@
       "name": "Two in One Shot",
       "intro": {
         "title": "Table 4 · Two in One Shot",
-        "sub": "Two balls in one shot pays big."
+        "sub": "Two balls in one shot pays more."
       },
       "spawn": {
         "x": 0,
@@ -171,7 +171,7 @@
       "name": "Orange Ring Pays ×2",
       "intro": {
         "title": "Table 5 · Orange Ring Pays ×2",
-        "sub": "Pass through it: ×2 multiplier.",
+        "sub": "Pass through it for ×2 multiplier.",
         "art": [
           "double"
         ]
@@ -273,7 +273,7 @@
       "name": "Tap to Freeze",
       "intro": {
         "title": "Table 7 · Tap to Freeze",
-        "sub": "Grab ice. Tap FREEZE to re-aim.",
+        "sub": "Pass through to add more Freezes.",
         "art": [
           "freeze"
         ]
@@ -393,13 +393,12 @@
     },
     {
       "id": "bumpers",
-      "name": "Bumpers and Free Shots",
+      "name": "Bumpers Bounce",
       "intro": {
-        "title": "Table 9 · Bumpers and Free Shots",
-        "sub": "Bumpers kick. + ring: free shot.",
+        "title": "Table 9 · Bumpers Bounce",
+        "sub": "Bumpers bounce balls back hard.",
         "art": [
-          "bumper",
-          "shot"
+          "bumper"
         ]
       },
       "spawn": {
@@ -457,7 +456,51 @@
           "radius": 1.05,
           "kind": "bumper"
         }
+      ]
+    },
+    {
+      "id": "free-shot",
+      "name": "Free Shot Ring",
+      "intro": {
+        "title": "Table 10 · Free Shot Ring",
+        "sub": "Pass through 1+ for a free shot.",
+        "art": [
+          "shot"
+        ]
+      },
+      "spawn": {
+        "x": 0,
+        "z": 11
+      },
+      "rack": [
+        {
+          "number": 1,
+          "x": -3.0,
+          "z": 1.0
+        },
+        {
+          "number": 2,
+          "x": 3.4,
+          "z": -4.0
+        },
+        {
+          "number": 3,
+          "x": -3.4,
+          "z": -9.0
+        },
+        {
+          "number": 4,
+          "x": 5.0,
+          "z": -11.0
+        },
+        {
+          "number": 8,
+          "x": -6.6,
+          "z": -12.5
+        }
       ],
+      "strokes": 4,
+      "target": 500,
       "objects": [
         {
           "kind": "shot",
@@ -470,8 +513,8 @@
       "id": "last-word",
       "name": "The 8 Goes Last",
       "intro": {
-        "title": "Table 10 · The 8 Goes Last",
-        "sub": "Sink the 8 last or it returns."
+        "title": "Table 11 · The 8 Goes Last",
+        "sub": "Sink the 8 last, or it comes back."
       },
       "spawn": {
         "x": 0,
@@ -519,8 +562,8 @@
       "id": "one-short",
       "name": "Two in One, 8 Last",
       "intro": {
-        "title": "Table 11 · Two in One, 8 Last",
-        "sub": "Two in one needed. 8 last."
+        "title": "Table 12 · Two in One, 8 Last",
+        "sub": "You'll need 2-in-1, and sink 8 last."
       },
       "spawn": {
         "x": 0,
@@ -568,8 +611,8 @@
       "id": "final-table",
       "name": "Everything, 8 Last",
       "intro": {
-        "title": "Table 12 · Everything, 8 Last",
-        "sub": "Everything at once. 8 last."
+        "title": "Table 13 · Everything, 8 Last",
+        "sub": "Every rule in play. Sink 8 last."
       },
       "spawn": {
         "x": 0,

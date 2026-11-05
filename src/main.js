@@ -2677,7 +2677,7 @@ function recordTable(result, cleared) {
 
 /** What clearing this table earns. */
 function tableAchievementIds() {
-  return game.level === 1 ? ['table1'] : game.level === 6 ? ['table6'] : game.level === 12 ? ['table12'] : [];
+  return game.level === 1 ? ['table1'] : game.level === 6 ? ['table6'] : game.level === TABLES.length ? ['table12'] : [];
 }
 
 /* ------------------------------------------------------------------ *

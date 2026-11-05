@@ -23,7 +23,7 @@ export const ACHIEVEMENTS = [
   { id: 'big', name: 'Big Shot', text: 'Score 300 or more in one shot.' },
   { id: 'order', name: 'In Order', text: 'Sink every ball on a table in order.' },
   { id: 'table6', name: 'Halfway', text: 'Clear Table 6.' },
-  { id: 'table12', name: 'First Run', text: 'Clear Table 12.' }
+  { id: 'table12', name: 'First Run', text: 'Clear the last table.' }
 ];
 
 export class Achievements {

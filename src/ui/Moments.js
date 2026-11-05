@@ -573,7 +573,7 @@ export class Moments {
    * your best, and what to do next. Nothing starts again until you choose.
    *
    * @param {object} d
-   * @param {'over'|'complete'} d.kind  out of lives, or through Table 12
+   * @param {'over'|'complete'} d.kind  out of lives, or through the last table
    * @param {number} d.level       the table the run ended on (or finished)
    * @param {number} d.tables      how many authored tables there are
    * @param {number} d.runScore
