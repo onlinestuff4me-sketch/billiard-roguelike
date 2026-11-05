@@ -43,7 +43,8 @@
  */
 
 const ENDPOINT = (import.meta.env && import.meta.env.VITE_ANALYTICS_URL) || '/api/events';
-const FLUSH_MS = 10000;
+// 20 s, not 10: half the storage commands, and leaving still sends at once
+const FLUSH_MS = 20000;
 const MAX_BATCH = 100;
 const MAX_QUEUE = 600;
 const MAX_ERRORS = 15;

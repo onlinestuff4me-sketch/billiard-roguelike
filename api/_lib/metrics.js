@@ -18,9 +18,9 @@
  *   funnel        first sessions of new players, step by step
  */
 
-export const STALL_GAP = 90 * 1000;
+export const STALL_GAP = 30 * 1000;
 export const STALL_CANCELS = 5;
-export const RAGE_GAP = 30 * 1000;
+export const RAGE_GAP = 60 * 1000;
 export const CHURN_AFTER = 24 * 3600 * 1000;
 export const IDLE_MARK = 30 * 1000;
 const DAY = 24 * 3600 * 1000;
@@ -625,6 +625,7 @@ export function buildReport({ sessions, players, from, to, tz = 0, now = Date.no
     }));
 
   const report = {
+    thresholds: { stallMs: STALL_GAP, stallCancels: STALL_CANCELS, rageMs: RAGE_GAP, churnMs: CHURN_AFTER },
     range: { from, to, tz, now, days: Math.max(1, Math.round((Math.min(to, now) - from) / DAY)) },
     overview,
     funnel,

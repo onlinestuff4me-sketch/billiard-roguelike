@@ -36,9 +36,39 @@ stats off in Settings deletes the backlog.
 
 `/dashboard.html?demo=1` shows the dashboard over made-up data, with no setup.
 
-The free Upstash plan (256 MB, 500k commands a month) covers a few thousand
-sessions a month comfortably: each ~10 s batch costs about 15 commands.
-Data expires after 400 days.
+## Keeping the bill under $1 a month
+
+Upstash pay-as-you-go bills $0.20 per 100,000 commands and $0.25 per GB
+stored. Two guardrails keep this project well under $1:
+
+1. **In Upstash (the hard stop — please set it).** From the Vercel project's
+   Storage tab, open the database in Upstash (**Open in Upstash** / the
+   database name), go to its **Usage** tab, click **Change Budget** under the
+   cost figure and set **$1**. Upstash emails at 70% and 90% of it, and at
+   100% it throttles the database instead of charging more. By default a
+   pay-as-you-go database has no ceiling.
+2. **In the code (keeps you far from that stop).** Every command the
+   functions run is counted in Redis under `ll:budget:<YYYY-MM>`:
+   - at **297,500 commands** (85%) new events stop being stored; the server
+     answers "not configured" and players' devices keep their events in the
+     backlog to upload next month;
+   - at **350,000 commands** (≈ $0.70 at most) the dashboard stops reading too
+     and says so, until the 1st;
+   - set `ANALYTICS_MONTHLY_COMMANDS` to move the total (ingest stays at 85%).
+   The dashboard's footer shows this month's count.
+
+What else keeps usage low: batches go every 20 s (and at once when the page
+is hidden or closed); a steady-state batch costs 6 commands (14 for a
+session's first); `/api/events` refuses anything not posted from the game's
+own pages (Origin check, set `ANALYTICS_ORIGINS` to add a custom domain)
+before it touches storage, and rate-limits each client to 60 posts a minute;
+sessions expire after 180 days, which keeps storage to tens of MB.
+
+At that rate 297,500 commands is roughly 240 hours of play a month. If a
+month runs out, nothing is lost for players who come back within 30 days.
+
+The functions themselves run on Vercel; on the Hobby plan their usage is
+included, and on Pro, Vercel's Spend Management (Settings → Billing) can cap it.
 
 ## What is recorded
 
@@ -64,7 +94,7 @@ are anonymous and can be turned off.
 ## How it fits together
 
 ```
-src/analytics/Analytics.js   the client: queue, batch every 10 s, sendBeacon on hide
+src/analytics/Analytics.js   the client: queue, batch every 20 s, sendBeacon on hide
 src/main.js                  one-line calls, each ending in `// analytics`
 api/events.js                POST: validate, rate-limit, store
 api/stats.js                 GET, behind STATS_TOKEN: the report, a session, a player
@@ -95,11 +125,11 @@ adds no conflicts beyond the ones `main` already has with it.
   at the one before it.
 - **D1**: came back on the next calendar day. **Back within 7d**: any session
   on days 1–7. Only players whose window has fully passed are counted.
-- **Stall**: 90 s or more with no event while the tab is visible, or 5 aim
+- **Stall**: 30 s or more with no event while the tab is visible, or 5 aim
   cancels in a row with no shot.
 - **Churn point**: where a player was at the last action of their last
   session, once they have been gone 24 hours.
-- **Rage reload**: a reload mid-table or mid-lesson within 30 s of the last
+- **Rage reload**: a reload mid-table or mid-lesson within 60 s of the last
   action.
 
 ## Checking it

@@ -19,6 +19,8 @@
  *              exists the next visit uploads them; the opt-out stops it
  *   METRICS    the report over demo data is self-consistent
  *   DASHBOARD  the page renders with the token, and refuses without it
+ *   BUDGET     every command is charged to the month; over the cap nothing
+ *              is written, devices keep the events, and reads stop too
  */
 import http from 'node:http';
 import { readFile, stat, mkdir } from 'node:fs/promises';
@@ -55,6 +57,13 @@ function fakeRedis() {
         if (nx && kv.has(a[0])) return null;
         kv.set(a[0], String(a[1]));
         return 'OK';
+      }
+      case 'GET':
+        return kv.has(a[0]) ? String(kv.get(a[0])) : null;
+      case 'INCRBY': {
+        const v = Number(kv.get(a[0]) || 0) + Number(a[1]);
+        kv.set(a[0], String(v));
+        return v;
       }
       case 'INCR': {
         const v = Number(kv.get(a[0]) || 0) + 1;
@@ -339,7 +348,12 @@ async function main() {
     check(sres.session?.events?.length === evs.length && sres.session.events.every((e, i, a) => !i || e.ts >= a[i - 1].ts), 'session drill-down returns the events in order');
 
     // the endpoint's validation
-    const post = (b) => fetch(`${url}/api/events`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: typeof b === 'string' ? b : JSON.stringify(b) });
+    // a browser always sends Origin on a POST; these stand in for the game's own page
+    const post = (b, origin = url) => fetch(`${url}/api/events`, { method: 'POST', headers: { 'content-type': 'text/plain', ...(origin ? { origin } : {}) }, body: typeof b === 'string' ? b : JSON.stringify(b) });
+    const keysBefore = redis.kv.size;
+    check((await post({ pid: 'abcdef1234567890', sid: 'noorigin12345678', t0: Date.now(), sent: Date.now(), events: [{ e: 'boot', t: 0 }] }, '')).status === 403, 'a post with no Origin is refused…');
+    check((await post({ pid: 'abcdef1234567890', sid: 'elsewhere1234567', t0: Date.now(), sent: Date.now(), events: [{ e: 'boot', t: 0 }] }, 'https://example.com')).status === 403, '…and so is one from another site');
+    check(redis.kv.size === keysBefore, 'neither touches storage (so neither costs anything)');
     check((await post('not json')).status === 400, 'garbage is refused');
     check((await post({ pid: 'x', sid: 'y', t0: 1, sent: 1, events: [{ e: 'boot', t: 0 }] })).status === 400, 'bad ids are refused');
     const junk = { pid: 'abcdef1234567890', sid: 'junk1234567890ab', t0: Date.now(), sent: Date.now(), events: [{ e: 'boot', t: 0, nested: { a: 1 }, 'bad key': 1, ok: 'x'.repeat(500) }, { e: 'not_an_event', t: 1 }] };
@@ -428,7 +442,7 @@ async function main() {
     check(st2c.confirmed && st2c.backlog === 0, 'the backlog empties once the server accepts', JSON.stringify(st2c));
     check(parkedStored.length === found && found > st2b.backlog && parkedStored[0]?.e === 'session_start', 'every parked event is stored under its original session', `${parkedStored.length} of ${found}`);
     check(parkedStored.some((e) => e.e === 'play_pressed') && parkedStored.some((e) => e.e === 'leave') && parkedStored.every((e, i, a) => !i || e.ts >= a[i - 1].ts), 'in order, with the times they happened');
-    const tooOld = await fetch(`${url}/api/events`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ pid: 'abcdef1234567890', sid: 'old1234567890abc', t0: Date.now() - 40 * 864e5, sent: Date.now(), late: 1, events: [{ e: 'boot', t: 0 }] }) });
+    const tooOld = await fetch(`${url}/api/events`, { method: 'POST', headers: { 'content-type': 'text/plain', origin: url }, body: JSON.stringify({ pid: 'abcdef1234567890', sid: 'old1234567890abc', t0: Date.now() - 40 * 864e5, sent: Date.now(), late: 1, events: [{ e: 'boot', t: 0 }] }) });
     check(tooOld.status === 400, 'a backlog older than 31 days is refused');
     await page2c.close();
 
@@ -457,8 +471,8 @@ async function main() {
     check((await page4.evaluate(() => window.__analytics.state())).enabled === false, 'Do Not Track is respected');
     await dnt.close();
     let limited = false;
-    for (let i = 0; i < 25 && !limited; i++) limited = (await post({ ...junk, events: [{ e: 'boot', t: i }] })).status === 429;
-    check(limited, 'the endpoint is rate-limited per session');
+    for (let i = 0; i < 80 && !limited; i++) limited = (await post({ ...junk, events: [{ e: 'boot', t: i }] })).status === 429;
+    check(limited, 'the endpoint is rate-limited per client');
 
     /* ---------------- 4. metrics over demo data ---------------- */
     console.log('\nmetrics');
@@ -469,6 +483,7 @@ async function main() {
     check(r.overview.newPlayers + r.overview.returningPlayers === r.overview.players, 'new + returning = players');
     check(r.daily.reduce((a, d) => a + d.sessions, 0) === r.overview.sessions, 'sessions per day add up to the total');
     check(r.tables.every((t) => t.clears + t.fails <= t.attempts), 'no table ends more often than it starts');
+    check(r.thresholds.stallMs === 30000 && r.thresholds.rageMs === 60000 && r.thresholds.stallCancels === 5, 'thresholds: stall 30 s or 5 cancels, rage reload 60 s');
     const blank = r.narrative.lines.find((l) => /undefined|NaN|null/.test(l.replace(/“[^”]*”/g, '')));
     check(!blank, 'the narrative has no blanks in it', blank || '');
 
@@ -509,7 +524,36 @@ async function main() {
     const story = await gp.textContent('.story');
     // the played session plus the junk-validation batch above: two players
     check(/2 players \(2 new/.test(story), 'with the token it shows the real report', story.slice(0, 90));
+    check(/Storage this month: [\d,]+ of 350,000 commands/.test(await gp.textContent('footer')), 'the dashboard shows this month\'s storage use against the budget', (await gp.textContent('footer')).slice(0, 90));
     await gctx.close();
+
+    /* ---------------- 6. the monthly budget ---------------- */
+    // last, because once spent the handler remembers it for the month
+    console.log('\nbudget');
+    const month = `ll:budget:${new Date().toISOString().slice(0, 7)}`;
+    const used = Number(redis.kv.get(month) || 0);
+    check(used > 0, 'every request is charged to this month\'s budget', `${used} commands so far`);
+    redis.kv.set(month, String(297500));
+    const spent = await post({ pid: 'abcdef1234567890', sid: 'budget1234567890', t0: Date.now(), sent: Date.now(), events: [{ e: 'session_start', t: 0 }, { e: 'boot', t: 1 }] });
+    const spentBody = await spent.json();
+    check(spent.status === 503 && spentBody.disabled && spentBody.budget, 'over the ingest budget, events are refused as "not configured"', JSON.stringify(spentBody));
+    check(!redis.kv.has('ll:e:budget1234567890'), 'and nothing is written');
+    // a fresh browser: the shared one turned stats off in the opt-out check
+    const bctx = await browser.newContext();
+    await bctx.addInitScript(() => localStorage.setItem('lightline-stats-force', '1'));
+    const pb = await bctx.newPage();
+    await pb.goto(url + '/', { waitUntil: 'load' });
+    await pb.waitForTimeout(800);
+    await pb.evaluate(() => window.__analytics.flush());
+    await pb.waitForTimeout(500);
+    const stb = await pb.evaluate(() => window.__analytics.state());
+    check(stb.parked && stb.backlog > 0, 'so players\' devices keep them for next month', JSON.stringify(stb));
+    await bctx.close();
+    const r1 = await fetch(`${url}/api/stats?from=${Date.now() - 864e5}&to=${Date.now()}`, { headers: { authorization: `Bearer ${TOKEN}` } });
+    check(r1.ok, 'the dashboard still opens between the ingest cap and the total');
+    redis.kv.set(month, String(350000));
+    const r2 = await fetch(`${url}/api/stats?from=${Date.now() - 864e5}&to=${Date.now()}`, { headers: { authorization: `Bearer ${TOKEN}` } });
+    check(r2.status === 503, 'at the total, the dashboard stops reading too', (await r2.json()).error);
     await ctx.close();
   } finally {
     await browser.close();

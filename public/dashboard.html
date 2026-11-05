@@ -282,8 +282,8 @@
     const list = (rows, empty) => rows.length ? `<ul class="list">${rows.map((x) => `<li><span>${esc(x.where || x.msg)}</span><b>${x.n}</b></li>`).join('')}</ul>` : `<p class="muted">${empty}</p>`;
     html.push(`<div class="grid">
       <section class="card"><h2>Churn: last place before leaving</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.churn.churned} players gone 24h+, ${r.churn.notBackYet} not back yet or still active.</p>${list(r.churn.where.slice(0, 10), 'Nobody has churned yet (no player gone 24h+).')}</section>
-      <section class="card"><h2>Stalls</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.stalls.idle} idle 90s+ while visible · ${r.stalls.cancels} runs of 5+ aim cancels with no shot</p>${list(r.stalls.where, 'No stalls.')}</section>
-      <section class="card"><h2>Health</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.health.errors} errors in ${r.health.sessionsWithErrors} sessions · ${r.health.reloads} reloads, ${r.health.reloadsMid} mid-game, ${r.health.rageReloads} within 30s of the last action</p>${list(r.health.topErrors, 'No JavaScript errors.')}</section>
+      <section class="card"><h2>Stalls</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.stalls.idle} idle ${r.thresholds.stallMs / 1000}s+ while visible · ${r.stalls.cancels} runs of ${r.thresholds.stallCancels}+ aim cancels with no shot</p>${list(r.stalls.where, 'No stalls.')}</section>
+      <section class="card"><h2>Health</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.health.errors} errors in ${r.health.sessionsWithErrors} sessions · ${r.health.reloads} reloads, ${r.health.reloadsMid} mid-game, ${r.health.rageReloads} within ${r.thresholds.rageMs / 1000}s of the last action</p>${list(r.health.topErrors, 'No JavaScript errors.')}</section>
     </div>`);
 
     html.push(`<section class="card"><h2>Players</h2><input class="filter" id="user-filter" placeholder="Filter by id, device or place" aria-label="Filter players" /><div class="scroll"><table>
@@ -292,7 +292,8 @@
     html.push(`<section class="card"><h2>Sessions</h2><input class="filter" id="sess-filter" placeholder="Filter by id, place or flag" aria-label="Filter sessions" /><div class="scroll"><table>
       <thead><tr><th>Started</th><th>Player</th><th class="n">Active</th><th class="n">Events</th><th class="n">Shots</th><th class="n">Cancels</th><th class="n">Furthest</th><th>Ended at</th><th>Flags</th></tr></thead>
       <tbody id="sessions"></tbody></table></div><button id="sess-more" hidden style="margin-top:10px">Show more</button></section>`);
-    html.push(`<footer>Anonymous: a random id per browser, no personal data, no IP addresses. Times are in your time zone. Funnel steps are capped at the step before them; a player who skipped the lessons counts as through them.</footer>`);
+    const bu = r.budget;
+    html.push(`<footer>${bu ? `Storage this month: ${fmtNum(bu.used)} of ${fmtNum(bu.total)} commands (≈ $${(bu.used * 0.2 / 1e5).toFixed(2)} at most). New stats stop being stored at ${fmtNum(bu.ingest)} and wait on players’ devices until next month.<br>` : ''}Anonymous: a random id per browser, no personal data, no IP addresses. Times are in your time zone. Funnel steps are capped at the step before them; a player who skipped the lessons counts as through them.</footer>`);
     $('main').innerHTML = html.join('');
 
     // daily chart

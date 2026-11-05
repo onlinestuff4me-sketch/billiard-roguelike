@@ -12,7 +12,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { buildReport } from './_lib/metrics.js';
 import { demoData } from './_lib/demo.js';
-import { loadPlayers, loadSessions, pipeline, redisConfig, sessionIds } from './_lib/store.js';
+import { budget, budgetKey, loadPlayers, loadSessions, pipeline, redisConfig, sessionIds, TTL_SECONDS, usage } from './_lib/store.js';
 import { validId } from './_lib/schema.js';
 
 const DAY = 24 * 3600 * 1000;
@@ -57,10 +57,25 @@ export default async function handler(req, res) {
   const cfg = redisConfig();
   if (!cfg) return res.status(503).json({ ok: false, error: 'storage not configured' });
 
+  // reads are charged to the same monthly budget as writes; the dashboard
+  // stops at the total, which is above where new events stop being stored
+  const month = budgetKey();
+  const B = budget();
+  let used = 0;
+  try {
+    used = Number((await pipeline([['GET', month]], cfg))[0]) || 0;
+  } catch (err) {
+    return res.status(502).json({ ok: false, error: String(err.message || err) });
+  }
+  if (used >= B.total) return res.status(503).json({ ok: false, error: `this month's storage budget (${B.total.toLocaleString('en-US')} commands) is used up; the dashboard opens again on the 1st` });
+  usage.commands = 0;
+  const charge = () => pipeline([['INCRBY', month, usage.commands + 1]], cfg).catch(() => null);
+
   try {
     if (q.session) {
       if (!validId(q.session)) return res.status(400).json({ ok: false, error: 'bad id' });
       const [s] = await loadSessions([q.session], cfg);
+      await charge();
       return s ? res.status(200).json({ ok: true, session: s }) : res.status(404).json({ ok: false, error: 'no such session' });
     }
     if (q.player) {
@@ -68,6 +83,7 @@ export default async function handler(req, res) {
       const [flat] = await pipeline([['ZRANGE', `ll:p:${q.player}`, 0, -1]], cfg);
       const sids = (flat || []).slice(-60);
       const sessions = (await loadSessions(sids, cfg)).sort((a, b) => a.start - b.start);
+      await charge();
       return res.status(200).json({ ok: true, player: q.player, sessions });
     }
     const to = num(q.to, now);
@@ -75,8 +91,13 @@ export default async function handler(req, res) {
     const sids = await sessionIds(from, to, 2500, cfg);
     const sessions = await loadSessions(sids, cfg);
     const players = await loadPlayers([...new Set(sessions.map((s) => s.pid))], cfg);
+    // drop index entries whose sessions have expired
+    const old = now - TTL_SECONDS * 1000;
+    await pipeline([['ZREMRANGEBYSCORE', 'll:sessions', 0, old], ['ZREMRANGEBYSCORE', 'll:players', 0, old]], cfg);
     const report = buildReport({ sessions, players, from, to, tz, now });
     report.truncated = sids.length >= 2500;
+    await charge();
+    report.budget = { month: month.slice(-7), used: used + usage.commands + 1, ingest: B.ingest, total: B.total };
     return res.status(200).json({ ok: true, report });
   } catch (err) {
     return res.status(502).json({ ok: false, error: String(err.message || err) });
