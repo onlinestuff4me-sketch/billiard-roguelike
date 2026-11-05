@@ -751,6 +751,8 @@ home rather than holding there.
 
 ## 9. Sound
 
+Audit, research and the current proposal: `docs/SOUND.md`.
+
 All synthesised (Web Audio, `src/core/AudioManager.js`). Pitch is quantized to
 a minor pentatonic, so a long shot plays a rising melody.
 
