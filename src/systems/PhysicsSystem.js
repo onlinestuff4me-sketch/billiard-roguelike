@@ -19,7 +19,7 @@
  *   6. projectiles ↔ player / geometry
  */
 
-import { ARENA, PHYSICS, TIME, TRAJECTORY, PLAYER, RULES, TABLE } from '../config.js';
+import { ARENA, PHYSICS, TIME, TRAJECTORY, PLAYER, RULES, TABLE, SHOT } from '../config.js';
 // Shared state vocabulary. Systems may read entity constants; entities never
 // import systems, which is what keeps the dependency graph acyclic.
 import { ENEMY_STATE } from '../entities/Enemy.js';
@@ -1097,10 +1097,44 @@ export class PhysicsSystem {
     return { nx, nz, x: body.x, z: body.z, speed };
   }
 
+  /** A bomb goes off at `center`: every other ball near it is thrown outward. */
+  blast(center, game) {
+    const R = SHOT.bombRadius;
+    // the balls it throws, so the fire can ride with them (review round 3)
+    const thrown = [center];
+    for (const b of game.enemies || []) {
+      if (b === center || !b.alive) continue;
+      const dx = b.x - center.x;
+      const dz = b.z - center.z;
+      const d = Math.hypot(dx, dz);
+      if (d >= R || d < EPS) continue;
+      const k = SHOT.bombSpeed * Math.sqrt(1 - d / R);
+      b.vx += (dx / d) * k;
+      b.vz += (dz / d) * k;
+      b.applyKnock(b.vx, b.vz);
+      thrown.push(b);
+    }
+    game.on?.bomb?.({ x: center.x, z: center.z, radius: R, balls: thrown });
+  }
+
   /** Bounce bookkeeping: budget, boon hooks and feedback. */
   onPlayerRebound(player, game, hit, kind, collider = null) {
     if (player.state !== 'launched') return;
     player.bouncesUsed += 1;
+    // a curve bends only until the ball touches something
+    player.contacted = true;
+    // SIDE SPIN: off each rail the ball is turned a little more (or less),
+    // fading rail by rail
+    if (player.side) {
+      const a = (player.side * SHOT.sideDeg * Math.PI) / 180;
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const vx = player.vx * c - player.vz * s;
+      player.vz = player.vx * s + player.vz * c;
+      player.vx = vx;
+      player.side *= SHOT.sideFade;
+      if (Math.abs(player.side) < 0.05) player.side = 0;
+    }
     game.on?.playerRebound?.({
       player,
       x: hit.x,
@@ -1255,6 +1289,22 @@ export class PhysicsSystem {
       // rule the aim preview draws.
       this.resolveBallImpulse(player, enemy, -nx, -nz, PHYSICS.ballRestitution);
       if (enemy.alive) enemy.applyKnock(enemy.vx, enemy.vz);
+      if (!player.contacted) {
+        player.contacted = true;
+        // FOLLOW OR DRAW: after the first ball, the cue ball runs on (top
+        // spin) or comes back (back spin) along the line it was shot on
+        if (player.follow) {
+          const k = player.follow * SHOT.follow * impactSpeed;
+          player.vx += player.shotDirX * k;
+          player.vz += player.shotDirZ * k;
+          player.follow = 0;
+        }
+        // THE BOMB: the first ball hit throws everything near it outward
+        if (player.bombShot) {
+          player.bombShot = false;
+          this.blast(enemy, game);
+        }
+      }
 
       player.x += nx * (depth + PHYSICS.skin);
       player.z += nz * (depth + PHYSICS.skin);

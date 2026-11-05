@@ -633,6 +633,107 @@ and the name, as a chip, lifts off the card and arcs to the top-right corner,
 under the mission, where it stays for the table. A table whose idea is order (Table 2) also keeps the next
 number showing there all table long.
 
+### 8.5c Juice (on trial, from four reference clips)
+
+Twelve big-moment effects from the reference clips, built as switchable
+versions in `src/ui/Juice.js` for review (`lightline-juice-v2`, a
+{key: version} map; `off` turns one off). The clips are comic style; here
+the same beats are drawn in light. All presentation: none changes a shot,
+the aim or the score.
+
+**The picks (review round 1), now the defaults (`JUICE_DEFAULTS`):** the
+strike's lines on an ordinary shot and its flash at full power; the streak
+trail; the lean while charging and the push gathering over the last
+quarter; scanlines for Freeze and halftone dots for Curve and Bomb; the big
+slam; the panel cut-in; the slam finish. Off: pocket beam, charge glow, pull
+back, follow the last ball, banner sweep.
+
+- **One banner per ability, saying what is left.** The cut-in replaces the
+  freeze's own top banner, and its line is "N left" (Freeze, Curve, Bomb)
+  instead of a quote. A Bomb Shot has no tint: the only orange is the blast.
+  No shockwave ring on the full-power strike (it hung on the cue ball).
+- **The last shot of a table tallies at 1.8x**, so CLEAR! lands sooner.
+- **A cut-in never covers the play.** It takes the top, the bottom or the
+  middle of the table, whichever is clear of the cue ball, the ball nearest
+  it and, on a shot just struck, the line the cue ball runs to its first hit.
+- **The finish carries its news.** What the clear earns (an achievement, the
+  Strict Order unlock) is stamped in under CLEAR!, one line after another,
+  instead of a banner or toast the slam would cover.
+- **The bomb's fire rides the balls it throws** (review round 4): a small
+  flash at the ball hit, then each thrown ball carries a comet of flame and
+  sheds embers, and the fire front is a ring that grows with the farthest of
+  them. A ball that drops leaves the blast, and the fire is out a second
+  after it goes off, whatever the slow-motion.
+- **The freeze box is FREEZE with its charges, nothing else** (round 5): a
+  solid white button while a freeze is possible, dimmed while a freeze frame
+  runs. A freeze frame lasts six seconds: a bar fills in the box, and with
+  no second shot by then the table rolls on from where it stopped (the clock
+  waits while a thumb aims; the practice table and lessons keep an
+  open-ended freeze).
+- **CLEAR! heads the result screen** (round 5): it slams in as the panel's
+  title, the clear's news is stamped under it (an unlock folded into the
+  achievement for the same feat, one line), then the score; the buttons at
+  the foot dismiss it. No separate finish screen.
+- **After the last ball the table runs at 8x** to the cue ball's stop (3x was
+  still a long wait between the boxes and the tally), and an achievement the
+  clearing shot earned is said under CLEAR!, never over it.
+
+| Key | Moment | Versions |
+| --- | --- | --- |
+| strike | the stick meets the ball: lines burst from it, by power | lines · flash |
+| trail | a hard shot (70%+): light behind the cue ball | streak · sparks |
+| beam | a ball drops: cyan, orange with Mult, gold for the last | pillar · rings |
+| charge | pulling back: the table edge glows, orange near full | rails · pulse |
+| tint | an ability's shot (Freeze): the table in its color | scan · dots |
+| push | pulling back: the view leans in | push · lean |
+| pull | a full-power strike: punch in, pull out, settle | swoop · out |
+| follow | the last ball: the view goes to its pocket | drift · punch |
+| banner | a table's rule on a slanted band | band (then card) · bandOnly |
+| slam | full power, said | big · small |
+| cutin | an ability, named, with a line | panel · strip |
+| finish | the last ball down: CLEAR! before the result | bands · slam |
+
+Camera moves go through `engine.view` (offsets and a zoom over the fixed
+top-down camera, eased on real time); the aim is never rotated.
+
+### 8.5d Shot abilities (on trial, juice batch 2)
+
+What a shot can carry besides a heading and a power (`SHOT` in config,
+`game.shot`, set from the **shot tray**, `src/ui/ShotTray.js`). The tray
+sits in the bottom band between Shots and Freeze frame, never on the felt
+(it first sat over the bottom-left pocket), and steps away while the balls
+roll so the points boxes have the spot. Each is played by the same physics the aim preview
+plays, so the drawn line still shows exactly what happens (checked: 1,008
+real shots across plain, curve, follow, draw, side and bomb, all as drawn).
+
+- **Spin** (shop card, rare $8): a cue-ball face; tap or drag the dot. Top
+  is follow, bottom is draw: after the first ball, the cue ball runs on or
+  comes back along the shot's line. Left and right are side spin: off each
+  rail the ball is turned by up to 16°, fading by a third a rail. It resets
+  after each shot.
+- **Curve Shot** (rare $9, 2 charges a table): tap Curve before aiming,
+  then aim and let go as usual: the shot **holds** (review round 3: "I need
+  to see it in real time"). The line stays drawn and a bend bar takes the
+  bottom band; dragging it bends the line live, and Shoot strikes the held
+  shot (✕ goes back to aiming). The cue ball's heading turns as it rolls,
+  strongest at first (curveRate 2.6, strong enough to read in the line),
+  until it touches anything. A charge is spent only on a shot with a bend.
+- **Bomb Shot** (rare $8, 1 charge a table): the first ball the cue ball
+  hits blows up, throwing every ball within 6.5 units outward. The blast
+  is a fireball the size of its reach, a ring and shards, drawn on the
+  top layer: the 3D burst alone was lost under the orange tint.
+
+A curve or bomb shot plays with the ability tint and its cut-in (§8.5c).
+Cut-ins play one at a time, and an achievement earned by the same act (the
+first Freeze) waits until its cut-in has gone, so the two never stack.
+
+**After the last ball** (from the clips): once every ball is down, only the
+cue ball rolls on, and that wait could run for seconds before the clear. The
+table now runs at 8x until it stops (`Engine.rush`). The physics still takes
+the same fixed steps, so a late scratch is still a scratch; only the wait is
+shorter. The Follow-the-last-ball camera leans toward the pocket and comes
+home rather than holding there.
+
 ### 8.6 Smaller beats (today's treatment)
 
 | Beat | Treatment |
