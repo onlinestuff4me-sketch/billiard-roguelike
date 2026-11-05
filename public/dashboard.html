@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Lightline Stats</title>
+<style>
+  @font-face { font-family: 'Orbitron'; font-weight: 700 900; font-display: swap; src: url('./fonts/orbitron-700.woff2') format('woff2'); }
+  @font-face { font-family: 'Rajdhani'; font-weight: 500; font-display: swap; src: url('./fonts/rajdhani-500.woff2') format('woff2'); }
+  @font-face { font-family: 'Rajdhani'; font-weight: 600; font-display: swap; src: url('./fonts/rajdhani-600.woff2') format('woff2'); }
+  @font-face { font-family: 'Rajdhani'; font-weight: 700; font-display: swap; src: url('./fonts/rajdhani-700.woff2') format('woff2'); }
+  @font-face { font-family: 'Oxanium'; font-weight: 600; font-display: swap; src: url('./fonts/oxanium-600.woff2') format('woff2'); }
+  :root {
+    --bg: #02050b; --panel: #061222; --panel2: #0a1a2e; --line: rgba(34, 232, 255, 0.16); --grid: rgba(234, 246, 255, 0.08);
+    --cyan: #22e8ff; --orange: #ff8a1e; --magenta: #ff2e7e; --mint: #2ef2c4; --amber: #ffb340;
+    --mark: #119bad; --mark2: #e0701a;
+    --ink: #eaf6ff; --ink2: rgba(234, 246, 255, 0.72); --muted: rgba(234, 246, 255, 0.5);
+    --font: 'Rajdhani', 'Bahnschrift', 'Segoe UI', Arial, sans-serif;
+    --display: 'Orbitron', 'Rajdhani', 'Arial Black', sans-serif;
+    --num: 'Oxanium', 'Rajdhani', ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body { background: radial-gradient(1200px 600px at 50% -200px, rgba(34, 232, 255, 0.08), transparent 70%), var(--bg); min-height: 100vh; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 16px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+  h1 { font-family: var(--display); font-weight: 900; font-size: 20px; letter-spacing: 0.14em; margin: 0; color: var(--cyan); text-shadow: 0 0 18px rgba(34, 232, 255, 0.45); }
+  h1 small { color: var(--orange); text-shadow: none; font-size: 11px; letter-spacing: 0.3em; margin-left: 8px; }
+  h2 { font-family: var(--display); font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink2); margin: 0 0 12px; font-weight: 700; }
+  .badge { font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--orange); color: var(--orange); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+  button, input, select { font: inherit; font-weight: 600; color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; min-height: 36px; }
+  button { cursor: pointer; letter-spacing: 0.06em; }
+  button:hover { border-color: var(--cyan); }
+  button.on { background: rgba(34, 232, 255, 0.14); border-color: var(--cyan); color: var(--cyan); }
+  button.primary { background: var(--cyan); color: var(--bg); border-color: var(--cyan); }
+  input[type='date'] { min-width: 0; width: 140px; }
+  .card { background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; min-width: 0; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+  .grid > .card { margin-bottom: 0; }
+  .story p { margin: 0 0 8px; font-size: 17px; line-height: 1.45; color: var(--ink); }
+  .story .range { font-family: var(--num); color: var(--orange); font-size: 13px; letter-spacing: 0.08em; margin-bottom: 10px; }
+  .story .warn { color: var(--amber); font-size: 14px; }
+  .kpis { display: grid; gap: 10px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 14px; }
+  @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .kpi .v { font-family: var(--num); font-size: 28px; color: var(--ink); line-height: 1.1; }
+  .kpi .l { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .kpi .s { font-size: 13px; color: var(--ink2); margin-top: 2px; }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  td.n, th.n { text-align: right; font-family: var(--num); font-variant-numeric: tabular-nums; }
+  tr.click { cursor: pointer; }
+  tr.click:hover td { background: rgba(34, 232, 255, 0.06); }
+  .muted { color: var(--muted); }
+  .flag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 6px; margin-right: 4px; border: 1px solid var(--line); color: var(--ink2); }
+  .flag.error, .flag.rage-reload { border-color: var(--magenta); color: var(--magenta); }
+  .flag.stall { border-color: var(--amber); color: var(--amber); }
+  .funnel .row { display: grid; grid-template-columns: minmax(110px, 180px) 1fr auto; gap: 10px; align-items: center; margin: 6px 0; }
+  .funnel .lab { font-size: 14px; color: var(--ink2); }
+  .funnel .bar { position: relative; height: 22px; }
+  .funnel .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--mark); border-radius: 0 4px 4px 0; min-width: 2px; }
+  .funnel .num { font-family: var(--num); font-size: 14px; text-align: right; min-width: 92px; }
+  .funnel .drop { color: var(--orange); font-size: 12px; display: block; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 200px; overflow: visible; }
+  .tip { position: absolute; pointer-events: none; background: #0d2238; border: 1px solid var(--cyan); border-radius: 8px; padding: 6px 9px; font-size: 13px; white-space: nowrap; transform: translate(-50%, -110%); display: none; z-index: 5; }
+  .seg { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .seg button { min-height: 30px; padding: 3px 10px; font-size: 13px; }
+  .list { list-style: none; padding: 0; margin: 0; }
+  .list li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 15px; }
+  .list li b { font-family: var(--num); font-weight: 600; }
+  .gate { max-width: 420px; margin: 12vh auto; }
+  .gate p { color: var(--ink2); line-height: 1.4; }
+  .gate input { width: 100%; margin: 8px 0 12px; }
+  .err { color: var(--magenta); }
+  /* drill-down */
+  #drill { position: fixed; inset: 0; background: rgba(2, 5, 11, 0.86); display: none; z-index: 20; overflow-y: auto; }
+  #drill.show { display: block; }
+  #drill .panel { max-width: 760px; margin: 16px auto; padding: 16px; }
+  #drill .top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; position: sticky; top: 0; background: var(--panel2); padding: 8px 0; z-index: 2; }
+  #drill .top h2 { margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tl { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--line); }
+  .tl li { position: relative; padding: 5px 0 5px 10px; font-size: 15px; line-height: 1.35; }
+  .tl li::before { content: ''; position: absolute; left: -20px; top: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--mark); }
+  .tl li.k-table_start::before, .tl li.k-lesson_start::before { background: var(--cyan); }
+  .tl li.k-table_end.bad::before, .tl li.k-error::before, .tl li.k-run_over::before, .tl li.k-heart_lost::before { background: var(--magenta); }
+  .tl li.k-cancel { color: var(--muted); font-size: 13px; }
+  .tl li.k-cancel::before { width: 5px; height: 5px; left: -19px; top: 9px; background: var(--muted); }
+  .tl li.gap { color: var(--amber); font-size: 13px; letter-spacing: 0.04em; }
+  .tl li.gap::before { background: transparent; border: 2px dashed var(--amber); width: 6px; height: 6px; }
+  .tl li.sess { margin-top: 12px; font-family: var(--display); font-size: 11px; letter-spacing: 0.2em; color: var(--orange); }
+  .tl li.sess::before { background: var(--orange); }
+  .tl .tm { font-family: var(--num); color: var(--muted); font-size: 12px; margin-right: 8px; }
+  .filter { width: 100%; max-width: 260px; margin-bottom: 8px; }
+  footer { color: var(--muted); font-size: 13px; margin-top: 20px; line-height: 1.5; }
+  @media (max-width: 560px) {
+    .controls { margin-left: 0; width: 100%; }
+    .story p { font-size: 16px; }
+    .funnel .row { grid-template-columns: 1fr auto; }
+    .funnel .bar { grid-column: 1 / -1; order: 3; }
+    .kpi .v { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <h1>LIGHTLINE<small>STATS</small></h1>
+    <span class="badge" id="demo-badge" hidden>Demo data</span>
+    <div class="controls" id="controls" hidden>
+      <span id="presets" class="seg" style="margin:0">
+        <button data-days="1">24h</button><button data-days="7">7d</button><button data-days="14" class="on">14d</button><button data-days="30">30d</button><button data-days="90">90d</button>
+      </span>
+      <input type="date" id="from" aria-label="From" /><input type="date" id="to" aria-label="To" />
+      <button id="apply">Apply</button>
+      <button id="logout" title="Forget the token on this device">Lock</button>
+    </div>
+  </header>
+  <div id="main"></div>
+</div>
+
+<div id="drill" role="dialog" aria-modal="true">
+  <div class="panel card">
+    <div class="top"><h2 id="drill-title">Timeline</h2><button id="drill-close">Close</button></div>
+    <div id="drill-body"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const DAY = 864e5;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const params = new URLSearchParams(location.search);
+  const DEMO = params.has('demo');
+  const TOKEN_KEY = 'lightline-stats-token';
+  const tz = new Date().getTimezoneOffset();
+  let token = '';
+  try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch {}
+  // a token in the URL hash (#token=...) is taken once and removed from the address bar
+  const hashTok = new URLSearchParams(location.hash.slice(1)).get('token');
+  if (hashTok) {
+    token = hashTok;
+    try { localStorage.setItem(TOKEN_KEY, token); } catch {}
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  const fmtMs = (ms) => {
+    if (ms == null || !isFinite(ms)) return '–';
+    const s = Math.round(ms / 1000);
+    if (s < 60) return s + 's';
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + 'm ' + String(s % 60).padStart(2, '0') + 's';
+    return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm';
+  };
+  const fmtPct = (x) => (x == null ? '–' : (Math.round(x * 10) / 10) + '%');
+  const fmtNum = (x, d = 0) => (x == null || !isFinite(x) ? '–' : Number(x).toLocaleString(undefined, { maximumFractionDigits: d }));
+  const fmtWhen = (ts) => new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const fmtTime = (ts) => new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+  const isoDay = (ts) => { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  async function api(qs) {
+    const url = '/api/stats?' + new URLSearchParams({ ...qs, tz: String(tz), ...(DEMO ? { demo: '1' } : {}) });
+    const res = await fetch(url, { headers: token && !DEMO ? { authorization: 'Bearer ' + token } : {} });
+    let body = null;
+    try { body = await res.json(); } catch {}
+    if (!res.ok || !body || !body.ok) {
+      const e = new Error((body && body.error) || ('HTTP ' + res.status));
+      e.status = res.status;
+      throw e;
+    }
+    return body;
+  }
+
+  /* ---------- gate ---------- */
+  function gate(message) {
+    $('controls').hidden = true;
+    $('main').innerHTML = `<div class="card gate">
+      <h2>Enter the stats token</h2>
+      <p>This page reads anonymous gameplay stats. Paste the <b>STATS_TOKEN</b> set in the Vercel project's environment variables. It is kept on this device only.</p>
+      ${message ? `<p class="err">${esc(message)}</p>` : ''}
+      <form id="gate-form"><input id="gate-token" type="password" autocomplete="current-password" placeholder="Token" aria-label="Token" />
+      <button class="primary" type="submit">Open dashboard</button></form>
+      <p class="muted">Or look around with <a href="?demo=1" style="color:var(--cyan)">made-up demo data</a>.</p></div>`;
+    $('gate-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      token = $('gate-token').value.trim();
+      try { localStorage.setItem(TOKEN_KEY, token); } catch {}
+      load();
+    });
+  }
+
+  /* ---------- range ---------- */
+  let range = { from: dayStart(Date.now() - 13 * DAY), to: Date.now() };
+  function setPreset(days) {
+    range = { from: days === 1 ? Date.now() - DAY : dayStart(Date.now() - (days - 1) * DAY), to: Date.now() };
+    $('from').value = isoDay(range.from);
+    $('to').value = isoDay(range.to);
+    for (const b of $('presets').children) b.classList.toggle('on', Number(b.dataset.days) === days);
+  }
+  $('presets').addEventListener('click', (e) => {
+    const d = Number(e.target.dataset?.days);
+    if (!d) return;
+    setPreset(d);
+    load();
+  });
+  $('apply').addEventListener('click', () => {
+    const f = $('from').valueAsNumber, t = $('to').valueAsNumber;
+    if (!isFinite(f) || !isFinite(t)) return;
+    range = { from: dayStart(f + tz * 60000), to: dayStart(t + tz * 60000) + DAY - 1 };
+    for (const b of $('presets').children) b.classList.remove('on');
+    load();
+  });
+  $('logout').addEventListener('click', () => {
+    try { localStorage.removeItem(TOKEN_KEY); } catch {}
+    token = '';
+    gate();
+  });
+  setPreset(14);
+
+  /* ---------- load ---------- */
+  let report = null;
+  async function load() {
+    if (!DEMO && !token) return gate();
+    $('main').innerHTML = '<div class="card muted">Loading…</div>';
+    try {
+      const body = await api({ from: String(range.from), to: String(range.to) });
+      report = body.report;
+      $('demo-badge').hidden = !body.demo;
+      $('controls').hidden = false;
+      render(report);
+    } catch (err) {
+      if (err.status === 401) return gate('That token was not accepted.');
+      $('controls').hidden = false;
+      $('main').innerHTML = `<div class="card"><h2>Could not load stats</h2><p class="err">${esc(err.message)}</p>
+        <p class="muted">If this says storage or STATS_TOKEN is not configured, see docs/ANALYTICS.md for the setup steps. <a href="?demo=1" style="color:var(--cyan)">Demo data</a> works without setup.</p></div>`;
+    }
+  }
+
+  /* ---------- render ---------- */
+  function kpi(v, l, s) {
+    return `<div class="kpi"><div class="v">${v}</div><div class="l">${esc(l)}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+  }
+  function render(r) {
+    const o = r.overview, n = r.narrative;
+    const html = [];
+    html.push(`<section class="card story" aria-label="Summary"><div class="range">${esc(n.range)}${r.truncated ? ' · newest 2,500 sessions only' : ''}</div>
+      ${n.lines.map((l) => `<p>${esc(l)}</p>`).join('')}
+      ${n.small ? '<p class="warn">Small sample: fewer than 10 players, so read the percentages as anecdotes.</p>' : ''}</section>`);
+    const ret = (x) => (x.eligible ? `${fmtPct(x.rate)}` : '–');
+    html.push(`<section class="kpis" aria-label="Top line">
+      ${kpi(fmtNum(o.players), 'Players', `${o.newPlayers} new · ${o.returningPlayers} returning`)}
+      ${kpi(fmtNum(o.sessions), 'Sessions', `${o.sessionsPerPlayer ?? '–'} per player`)}
+      ${kpi(fmtMs(o.medianSessionMs), 'Median session', `active play · mean ${fmtMs(o.meanSessionMs)}`)}
+      ${kpi(ret(o.d1), 'D1 return', o.d1.eligible ? `${o.d1.returned} of ${o.d1.eligible} new players` : 'no complete next day yet')}
+      ${kpi(ret(o.d7), 'Back within 7d', o.d7.eligible ? `${o.d7.returned} of ${o.d7.eligible}` : 'needs a week of data')}
+      ${kpi(fmtPct(r.tutorial.completionRate), 'Lessons finished', `${r.tutorial.completed} of ${r.tutorial.started} · ${r.tutorial.skipped} skipped`)}
+      ${kpi(fmtNum(o.shots), 'Shots taken', `${fmtPct(o.touchShare)} of sessions on touch`)}
+      ${kpi(fmtNum(r.health.errors), 'JS errors', `${r.health.reloadsMid} mid-game reload${r.health.reloadsMid === 1 ? '' : 's'} · ${r.health.rageReloads} rage`)}
+    </section>`);
+
+    html.push(`<div class="grid">
+      <section class="card"><h2>Sessions per day</h2><div class="seg" id="daily-mode"><button class="on" data-k="sessions">Sessions</button><button data-k="players">Players</button><button data-k="newPlayers">New players</button><button data-k="table">Table</button></div><div class="chart" id="daily"></div></section>
+      <section class="card funnel"><h2>Funnel</h2><div class="seg" id="funnel-mode"><button class="on" data-k="first">First sessions of new players</button><button data-k="all">All players in range</button></div><div id="funnel"></div></section>
+    </div>`);
+
+    html.push(`<section class="card"><h2>Lessons</h2><div class="scroll"><table>
+      <thead><tr><th>#</th><th>Lesson</th><th class="n">Started</th><th class="n">Passed</th><th class="n">Pass rate</th><th class="n">Stopped here</th><th class="n">Skipped</th><th class="n">Median time</th><th class="n">Median shots</th><th class="n">Cancels (passed)</th><th class="n">Cancels (stopped)</th></tr></thead>
+      <tbody>${r.tutorial.lessons.map((l) => `<tr><td>${l.index + 1}</td><td>${esc(l.id)}</td><td class="n">${l.players}</td><td class="n">${l.completedPlayers}</td><td class="n">${fmtPct(l.completionRate)}</td><td class="n">${l.stoppedHere}</td><td class="n">${l.skips}</td><td class="n">${fmtMs(l.medianMs)}</td><td class="n">${fmtNum(l.medianShots, 1)}</td><td class="n">${fmtNum(l.meanCancels, 1)}</td><td class="n">${fmtNum(l.meanCancelsStopped, 1)}</td></tr>`).join('') || '<tr><td colspan="11" class="muted">No lessons played in this range.</td></tr>'}</tbody></table></div></section>`);
+
+    html.push(`<section class="card"><h2>Tables</h2><div class="scroll"><table>
+      <thead><tr><th>Table</th><th class="n">Players</th><th class="n">Attempts</th><th class="n">Cleared</th><th class="n">Failed</th><th class="n">Clear rate</th><th class="n">Median shots</th><th class="n">Score ÷ target</th><th class="n">Median time</th><th class="n">Hearts lost</th><th class="n">Runs over</th><th class="n">Quit</th><th class="n">Closed game</th><th class="n">Replays</th></tr></thead>
+      <tbody>${r.tables.map((t) => `<tr><td>${t.lv}${t.name ? ` <span class="muted">${esc(t.name)}</span>` : ''}</td><td class="n">${t.players}</td><td class="n">${t.attempts}</td><td class="n">${t.clears}</td><td class="n">${t.fails}</td><td class="n">${fmtPct(t.clearRate)}</td><td class="n">${fmtNum(t.medianShots, 1)}</td><td class="n">${t.medianScoreToTarget == null ? '–' : t.medianScoreToTarget.toFixed(2) + '×'}</td><td class="n">${fmtMs(t.medianMs)}</td><td class="n">${t.heartsLost}</td><td class="n">${t.runsOver}</td><td class="n">${t.runsQuit}</td><td class="n">${t.abandoned}</td><td class="n">${t.replays}</td></tr>`).join('') || '<tr><td colspan="14" class="muted">No tables played in this range.</td></tr>'}</tbody></table></div>
+      <p class="muted" style="margin:10px 0 0;font-size:14px">A run ends at a table when hearts run out there, the player quits the run there, or the session closes mid-table and the player has not been back since.</p></section>`);
+
+    const list = (rows, empty) => rows.length ? `<ul class="list">${rows.map((x) => `<li><span>${esc(x.where || x.msg)}</span><b>${x.n}</b></li>`).join('')}</ul>` : `<p class="muted">${empty}</p>`;
+    html.push(`<div class="grid">
+      <section class="card"><h2>Churn: last place before leaving</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.churn.churned} players gone 24h+, ${r.churn.notBackYet} not back yet or still active.</p>${list(r.churn.where.slice(0, 10), 'Nobody has churned yet (no player gone 24h+).')}</section>
+      <section class="card"><h2>Stalls</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.stalls.idle} idle 90s+ while visible · ${r.stalls.cancels} runs of 5+ aim cancels with no shot</p>${list(r.stalls.where, 'No stalls.')}</section>
+      <section class="card"><h2>Health</h2><p class="muted" style="margin:-4px 0 8px;font-size:14px">${r.health.errors} errors in ${r.health.sessionsWithErrors} sessions · ${r.health.reloads} reloads, ${r.health.reloadsMid} mid-game, ${r.health.rageReloads} within 30s of the last action</p>${list(r.health.topErrors, 'No JavaScript errors.')}</section>
+    </div>`);
+
+    html.push(`<section class="card"><h2>Players</h2><input class="filter" id="user-filter" placeholder="Filter by id, device or place" aria-label="Filter players" /><div class="scroll"><table>
+      <thead><tr><th>Player</th><th>Last seen</th><th class="n">Sessions</th><th class="n">Play time</th><th class="n">Shots</th><th class="n">Furthest</th><th>Lessons</th><th>Last place</th><th>Device</th></tr></thead>
+      <tbody id="users"></tbody></table></div></section>`);
+    html.push(`<section class="card"><h2>Sessions</h2><input class="filter" id="sess-filter" placeholder="Filter by id, place or flag" aria-label="Filter sessions" /><div class="scroll"><table>
+      <thead><tr><th>Started</th><th>Player</th><th class="n">Active</th><th class="n">Events</th><th class="n">Shots</th><th class="n">Cancels</th><th class="n">Furthest</th><th>Ended at</th><th>Flags</th></tr></thead>
+      <tbody id="sessions"></tbody></table></div><button id="sess-more" hidden style="margin-top:10px">Show more</button></section>`);
+    html.push(`<footer>Anonymous: a random id per browser, no personal data, no IP addresses. Times are in your time zone. Funnel steps are capped at the step before them; a player who skipped the lessons counts as through them.</footer>`);
+    $('main').innerHTML = html.join('');
+
+    // daily chart
+    let dailyKey = 'sessions';
+    const drawDaily = () => dailyChart($('daily'), r.daily, dailyKey);
+    $('daily-mode').addEventListener('click', (e) => {
+      const k = e.target.dataset?.k;
+      if (!k) return;
+      dailyKey = k;
+      for (const b of $('daily-mode').children) b.classList.toggle('on', b.dataset.k === k);
+      drawDaily();
+    });
+    drawDaily();
+    // funnel
+    let fk = 'first';
+    const drawFunnel = () => funnel($('funnel'), r.funnel[fk], fk === 'first' ? r.funnel.firstSkipped : null);
+    $('funnel-mode').addEventListener('click', (e) => {
+      const k = e.target.dataset?.k;
+      if (!k) return;
+      fk = k;
+      for (const b of $('funnel-mode').children) b.classList.toggle('on', b.dataset.k === k);
+      drawFunnel();
+    });
+    drawFunnel();
+    // lists
+    const drawUsers = () => {
+      const q = ($('user-filter').value || '').toLowerCase();
+      const rows = r.users.filter((u) => !q || [u.pid, u.device, u.lastState, u.tut].join(' ').toLowerCase().includes(q));
+      $('users').innerHTML = rows.map((u) => `<tr class="click" data-pid="${esc(u.pid)}"><td>${esc(u.pid.slice(0, 8))}${u.isNew ? ' <span class="flag">new</span>' : ''}${u.prior ? ' <span class="flag">pre-stats</span>' : ''}</td><td>${fmtWhen(u.lastSeen)}</td><td class="n">${u.sessions}${u.sessionsAllTime > u.sessions ? `<span class="muted">/${u.sessionsAllTime}</span>` : ''}</td><td class="n">${fmtMs(u.activeMs)}</td><td class="n">${u.shots}</td><td class="n">${u.maxTable || '–'}</td><td>${esc(u.tut)}</td><td>${esc(u.lastState)}</td><td class="muted">${esc(u.device)}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">No players.</td></tr>';
+    };
+    let sessShown = 50;
+    const drawSessions = () => {
+      const q = ($('sess-filter').value || '').toLowerCase();
+      const rows = r.sessions.filter((s) => !q || [s.sid, s.pid, s.endState, s.flags.join(' '), s.device].join(' ').toLowerCase().includes(q));
+      $('sess-more').hidden = rows.length <= sessShown;
+      $('sessions').innerHTML = rows.slice(0, sessShown).map((s) => `<tr class="click" data-sid="${esc(s.sid)}"><td>${fmtWhen(s.start)}</td><td>${esc(s.pid.slice(0, 8))}${s.first ? ' <span class="flag">first</span>' : ''}</td><td class="n">${fmtMs(s.activeMs)}</td><td class="n">${s.events}</td><td class="n">${s.shots}</td><td class="n">${s.cancels}</td><td class="n">${s.maxTable || '–'}</td><td>${esc(s.endState)}</td><td>${s.flags.map((f) => `<span class="flag ${esc(f)}">${esc(f)}</span>`).join('')}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">No sessions.</td></tr>';
+    };
+    $('user-filter').addEventListener('input', drawUsers);
+    $('sess-filter').addEventListener('input', drawSessions);
+    $('sess-more').addEventListener('click', () => { sessShown += 100; drawSessions(); });
+    drawUsers();
+    drawSessions();
+    $('users').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-pid]'); if (tr) openPlayer(tr.dataset.pid); });
+    $('sessions').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-sid]'); if (tr) openSession(tr.dataset.sid); });
+  }
+
+  /* ---------- charts ---------- */
+  function dailyChart(el, days, key) {
+    if (key === 'table') {
+      el.innerHTML = `<div class="scroll"><table><thead><tr><th>Day</th><th class="n">Sessions</th><th class="n">Players</th><th class="n">New</th><th class="n">Play time</th></tr></thead><tbody>${days.map((d) => `<tr><td>${d.day}</td><td class="n">${d.sessions}</td><td class="n">${d.players}</td><td class="n">${d.newPlayers}</td><td class="n">${fmtMs(d.activeMs)}</td></tr>`).join('')}</tbody></table></div>`;
+      return;
+    }
+    const W = Math.max(280, el.clientWidth || 600), H = 200, padL = 28, padB = 22, padT = 10;
+    const max = Math.max(1, ...days.map((d) => d[key]));
+    const step = Math.pow(10, Math.floor(Math.log10(max)));
+    const tick = max / step > 5 ? step * 2 : max / step > 2 ? step : step / 2 >= 1 ? step / 2 : 1;
+    const top = Math.ceil(max / tick) * tick;
+    const bw = (W - padL) / Math.max(1, days.length);
+    const y = (v) => padT + (H - padT - padB) * (1 - v / top);
+    const parts = [];
+    for (let v = 0; v <= top; v += tick) {
+      parts.push(`<line x1="${padL}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(234,246,255,0.08)"/>`);
+      parts.push(`<text x="${padL - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="rgba(234,246,255,0.5)" font-family="Oxanium,monospace">${v}</text>`);
+    }
+    const every = Math.ceil(days.length / Math.max(2, Math.floor(W / 64)));
+    days.forEach((d, i) => {
+      const x = padL + i * bw;
+      const h = y(0) - y(d[key]);
+      const w = Math.max(2, bw - 2);
+      if (d[key] > 0) parts.push(`<path d="M${x + 1},${y(0)} v${-(h - Math.min(4, h))} q0,${-Math.min(4, h)} ${Math.min(4, w / 2)},${-Math.min(4, h)} h${w - 2 * Math.min(4, w / 2)} q${Math.min(4, w / 2)},0 ${Math.min(4, w / 2)},${Math.min(4, h)} v${h - Math.min(4, h)} z" fill="#119bad"/>`);
+      parts.push(`<rect x="${x}" y="${padT}" width="${bw}" height="${H - padT - padB}" fill="transparent" data-i="${i}"/>`);
+      if (i % every === 0) parts.push(`<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="rgba(234,246,255,0.5)" font-family="Oxanium,monospace">${d.day.slice(5)}</text>`);
+    });
+    parts.push(`<line x1="${padL}" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="rgba(234,246,255,0.25)"/>`);
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(key)} per day">${parts.join('')}</svg><div class="tip"></div>`;
+    const tip = el.querySelector('.tip');
+    const svg = el.querySelector('svg');
+    svg.addEventListener('pointermove', (e) => {
+      const i = e.target.dataset?.i;
+      if (i == null) { tip.style.display = 'none'; return; }
+      const d = days[i];
+      const box = el.getBoundingClientRect();
+      tip.innerHTML = `<b>${d.day}</b><br>${d.sessions} sessions · ${d.players} players · ${d.newPlayers} new<br>${fmtMs(d.activeMs)} played`;
+      tip.style.display = 'block';
+      const sx = (padL + (Number(i) + 0.5) * bw) * (box.width / W);
+      tip.style.left = Math.min(box.width - 90, Math.max(90, sx)) + 'px';
+      tip.style.top = Math.max(40, y(d[key]) * (box.height / H)) + 'px';
+    });
+    svg.addEventListener('pointerleave', () => (tip.style.display = 'none'));
+  }
+
+  function funnel(el, steps, skipped) {
+    const max = Math.max(1, steps[0]?.n || 0);
+    el.innerHTML = steps.map((s, i) => `<div class="row"><span class="lab">${esc(s.label)}</span><span class="bar" title="${s.n} players"><i style="width:${(s.n / max) * 100}%"></i></span><span class="num">${s.n} · ${fmtPct(s.pctOfStart)}${i && s.drop ? `<span class="drop">−${s.drop} (${fmtPct(100 - s.pctOfPrev)} drop)</span>` : ''}</span></div>`).join('')
+      + (skipped ? `<p class="muted" style="font-size:14px;margin:8px 0 0">${skipped} of these skipped the lessons.</p>` : '')
+      + (!steps[0]?.n ? '<p class="muted">No first sessions in this range.</p>' : '');
+  }
+
+  /* ---------- drill-down ---------- */
+  const IDLE = 30000;
+  function describe(e) {
+    const lv = e.lv ? `table ${e.lv}` : '';
+    const ls = e.ls ? `lesson “${e.ls}”` : '';
+    switch (e.e) {
+      case 'session_start': return `Opened the game${e.ret ? ' (returning' + (e.sinceLast ? `, last visit ${fmtMs(e.sinceLast * 1000)} ago` : '') + ')' : ' (first visit)'}${e.prior ? ', had played before stats' : ''} · ${[e.os, e.br, e.touch ? 'touch' : 'mouse', e.vw && `${e.vw}×${e.vh}`].filter(Boolean).join(' · ')}${e.ref ? ` · from ${e.ref}` : ''}${e.nav && e.nav !== 'navigate' ? ` · ${e.nav}` : ''}`;
+      case 'boot': return `Booted in ${fmtMs(e.ms)}`;
+      case 'reload': return `Reloaded the page${e.mid ? ` mid-${e.at === 'lesson' ? 'lesson' : 'table'}${e.lv ? ' ' + e.lv : ''}${e.ls ? ' (' + e.ls + ')' : ''}` : ''}${e.gap != null ? `, ${e.gap}s after the last action` : ''}`;
+      case 'hidden': return `Switched away (${e.at || ''}${e.lv ? ' ' + e.lv : ''})`;
+      case 'visible': return `Came back after ${fmtMs((e.away || 0) * 1000)}`;
+      case 'leave': return `Left the page at ${e.at || '?'}${e.lv ? ' ' + e.lv : ''}${e.ls ? ' (' + e.ls + ')' : ''} after ${fmtMs((e.dur || 0) * 1000)}`;
+      case 'error': return `Error: ${e.msg}${e.src ? ` (${e.src}:${e.line || ''})` : ''}`;
+      case 'menu_open': return 'Home screen';
+      case 'play_pressed': return `Pressed Play${e.tut ? '' : ' (goes into the lessons)'}`;
+      case 'setting': return `Changed a setting: ${e.val || e.id}`;
+      case 'stats_off': return 'Turned anonymous stats off';
+      case 'achievement': return `Achievement: ${e.id}`;
+      case 'tut_start': return 'Lessons started';
+      case 'lesson_start': return `Lesson ${(e.li ?? 0) + 1}${e.of ? ' of ' + e.of : ''}: ${e.ls}`;
+      case 'lesson_complete': return `Passed ${ls} in ${fmtMs(e.ms)}, ${e.shots} shots, ${e.cancels || 0} cancels`;
+      case 'lesson_skip': return `Skipped at ${ls} after ${fmtMs(e.ms)}, ${e.shots} shots`;
+      case 'lesson_quit': return `Left ${ls} for the menu after ${e.shots} shots`;
+      case 'lesson_leave': return `Moved off ${ls}`;
+      case 'tut_complete': return `Finished the lessons (${fmtMs(e.ms)})`;
+      case 'tut_skip': return 'Skipped the lessons';
+      case 'tut_quit': return 'Left the lessons';
+      case 'run_start': return 'New run';
+      case 'run_resume': return `Continued a run at table ${e.lv}`;
+      case 'replay_start': return `Replaying table ${e.lv}`;
+      case 'table_start': return `Table ${e.lv}${e.name ? ' “' + e.name + '”' : ''}${e.replay ? ' (replay)' : ''}${e.retry ? ` · try ${e.retry + 1}` : ''} · ${e.rack ?? '?'} balls, ${e.shots ?? '?'} shots, target ${fmtNum(e.target)}${e.lives != null ? ` · ${e.lives} hearts` : ''}`;
+      case 'table_end': return `${e.cleared ? 'Cleared' : 'Failed'} table ${e.lv}: ${fmtNum(e.score)} of ${fmtNum(e.target)}${e.beaten ? ' (target beaten)' : ''}, ${e.down ?? '?'}/${e.rack ?? '?'} down in ${e.shots ?? '?'} shots, ${fmtMs(e.ms)}`;
+      case 'table_abandon': return `Left table ${e.lv} for the menu`;
+      case 'heart_lost': return `Lost a heart (${e.lives} left)`;
+      case 'run_over': return `Run over at table ${e.lv} · ${fmtNum(e.run)}`;
+      case 'run_complete': return `Run complete · ${fmtNum(e.run)}`;
+      case 'quit_run': return `Quit the run at table ${e.lv}`;
+      case 'try_again': return `Try again (table ${e.lv})`;
+      case 'shot': return `Shot${e.n ? ' ' + e.n : ''}${ls ? ' in ' + ls : lv ? ' on ' + lv : ''}: power ${Math.round((e.pw ?? 0) * 100)}%, aimed ${fmtMs(e.aimMs)}${e.cancels ? `, ${e.cancels} cancels first` : ''} → ${e.pots || 0} potted${e.paid != null ? `, +${fmtNum(e.paid)}` : ''}${e.scr ? ', scratch' : ''}${e.fouls ? ', foul' : ''}${e.frz ? ', freeze' : ''}${e.kind ? ' (' + e.kind + ')' : ''}`;
+      case 'cancel': return `Aim cancelled after ${fmtMs(e.ms)}`;
+      case 'freeze': return 'Used a freeze frame';
+      case 'shop_open': return `Shop ($${e.cash})`;
+      case 'buy': return `Bought ${e.item} ($${e.price})`;
+      case 'reroll': return 'Rerolled the shop';
+      case 'shop_next': return 'Left the shop';
+      default: return e.e;
+    }
+  }
+  function timeline(sessions) {
+    const out = [];
+    for (const s of sessions) {
+      out.push(`<li class="sess">Session ${esc(s.sid.slice(0, 8))} · ${fmtWhen(s.start)}</li>`);
+      let prev = null, hidden = false;
+      for (const e of s.events) {
+        if (prev != null && e.ts - prev >= IDLE && !hidden) out.push(`<li class="gap">… idle ${fmtMs(e.ts - prev)}</li>`);
+        if (e.e === 'hidden') hidden = true;
+        if (e.e === 'visible') hidden = false;
+        const bad = e.e === 'table_end' && !e.cleared ? ' bad' : '';
+        out.push(`<li class="k-${esc(e.e)}${bad}"><span class="tm">${fmtTime(e.ts)}</span>${esc(describe(e))}</li>`);
+        prev = e.ts;
+      }
+    }
+    return `<ul class="tl">${out.join('')}</ul>`;
+  }
+  async function openDrill(title, fetcher) {
+    $('drill-title').textContent = title;
+    $('drill-body').innerHTML = '<p class="muted">Loading…</p>';
+    $('drill').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    try {
+      $('drill-body').innerHTML = await fetcher();
+    } catch (err) {
+      $('drill-body').innerHTML = `<p class="err">${esc(err.message)}</p>`;
+    }
+  }
+  function openSession(sid) {
+    openDrill(`Session ${sid.slice(0, 8)}`, async () => {
+      const { session } = await api({ session: sid });
+      const sum = report?.sessions.find((x) => x.sid === sid);
+      return `${sum ? `<p class="muted">Player <a href="#" data-pid="${esc(session.pid)}" style="color:var(--cyan)">${esc(session.pid.slice(0, 8))}</a> · ${fmtMs(sum.activeMs)} active · ended at ${esc(sum.endState)}</p>` : ''}${timeline([session])}`;
+    });
+  }
+  function openPlayer(pid) {
+    openDrill(`Player ${pid.slice(0, 8)}`, async () => {
+      const { sessions } = await api({ player: pid });
+      const u = report?.users.find((x) => x.pid === pid);
+      return `${u ? `<p class="muted">First seen ${fmtWhen(u.first)} · ${u.sessionsAllTime} sessions · ${fmtMs(u.activeMs)} in range · furthest table ${u.maxTable || '–'} · lessons ${esc(u.tut)} · ${esc(u.device)}</p>` : ''}${timeline(sessions)}`;
+    });
+  }
+  $('drill-body').addEventListener('click', (e) => {
+    const a = e.target.closest('[data-pid]');
+    if (a) { e.preventDefault(); openPlayer(a.dataset.pid); }
+  });
+  const closeDrill = () => { $('drill').classList.remove('show'); document.body.style.overflow = ''; };
+  $('drill-close').addEventListener('click', closeDrill);
+  $('drill').addEventListener('click', (e) => { if (e.target === $('drill')) closeDrill(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrill(); });
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => report && $('daily') && $('daily-mode').querySelector('.on')?.click(), 150); });
+
+  load();
+})();
+</script>
+</body>
+</html>

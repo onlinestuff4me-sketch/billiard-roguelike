@@ -20,7 +20,8 @@
     "foul": "node tools/check-foul.mjs",
     "portal": "node tools/check-portal.mjs",
     "release": "node tools/check-release.mjs",
-    "flash": "node tools/check-flash.mjs"
+    "flash": "node tools/check-flash.mjs",
+    "analytics": "node tools/check-analytics.mjs"
   },
   "dependencies": {
     "three": "^0.185.0"
