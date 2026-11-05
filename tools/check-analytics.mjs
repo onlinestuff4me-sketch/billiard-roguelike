@@ -14,8 +14,9 @@
  *   FIELDS     each one carries valid, typed fields (and nothing personal)
  *   TRANSPORT  batches go by fetch, the last one by sendBeacon on pagehide
  *   STORAGE    the server stored them, and /api/stats reports them back
- *   NO-OP      with storage unset the client stops after one refusal and
- *              the game carries on; the opt-out stops it too
+ *   NO-OP      with storage unset the client parks events on the device
+ *              after one refusal and the game carries on; once storage
+ *              exists the next visit uploads them; the opt-out stops it
  *   METRICS    the report over demo data is self-consistent
  *   DASHBOARD  the page renders with the token, and refuses without it
  */
@@ -393,16 +394,43 @@ async function main() {
     await page2.evaluate(() => window.__analytics.flush());
     await page2.waitForTimeout(600);
     const st2 = await page2.evaluate(() => window.__analytics.state());
-    check(st2.dead === true && st2.queued === 0, 'unprovisioned: one refusal turns the client off for the page', JSON.stringify(st2));
+    check(st2.parked === true && st2.queued === 0 && st2.backlog > 0, 'unprovisioned: one 503 parks the events on the device', JSON.stringify(st2));
+    const sidParked = st2.sid;
     await page2.click('#btn-play');
     await page2.waitForTimeout(1500);
     await page2.evaluate(() => window.__analytics.flush());
     await page2.waitForTimeout(400);
     check(log.length - before === 1, 'nothing more is sent after the refusal', `${log.length - before} requests`);
+    const st2b = await page2.evaluate(() => window.__analytics.state());
+    check(st2b.backlog > st2.backlog, 'later events join the backlog', `${st2.backlog} → ${st2b.backlog}`);
     // (lessons on a first visit, the play screen once they are done or skipped)
     const went = await page2.evaluate(() => !!window.__game?.tutorial?.lesson || !document.getElementById('menu-play').hidden);
     check(went && !errs2.length, 'the game plays on regardless', errs2.join(' | '));
     await page2.close();
+    check(!redis.kv.has(`ll:e:${sidParked}`), 'nothing from the parked session reached storage yet');
+
+    // storage arrives: the next visit uploads the backlog under the old session
+    console.log('\nbacklog');
+    process.env.KV_REST_API_URL = `${url}/__redis`;
+    const page2c = await ctx.newPage();
+    await page2c.goto(url + '/', { waitUntil: 'load' });
+    await page2c.waitForTimeout(800);
+    // what the next visit finds: everything parked, including the closing page's leave
+    const found = (await page2c.evaluate(() => window.__analytics.state())).backlog;
+    await page2c.evaluate(() => window.__analytics.flush());
+    for (let i = 0; i < 20; i++) {
+      await page2c.waitForTimeout(250);
+      if ((await page2c.evaluate(() => window.__analytics.state())).backlog === 0) break;
+      await page2c.evaluate(() => window.__analytics.drain());
+    }
+    const st2c = await page2c.evaluate(() => window.__analytics.state());
+    const parkedStored = (redis.kv.get(`ll:e:${sidParked}`) || []).map((x) => JSON.parse(x));
+    check(st2c.confirmed && st2c.backlog === 0, 'the backlog empties once the server accepts', JSON.stringify(st2c));
+    check(parkedStored.length === found && found > st2b.backlog && parkedStored[0]?.e === 'session_start', 'every parked event is stored under its original session', `${parkedStored.length} of ${found}`);
+    check(parkedStored.some((e) => e.e === 'play_pressed') && parkedStored.some((e) => e.e === 'leave') && parkedStored.every((e, i, a) => !i || e.ts >= a[i - 1].ts), 'in order, with the times they happened');
+    const tooOld = await fetch(`${url}/api/events`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ pid: 'abcdef1234567890', sid: 'old1234567890abc', t0: Date.now() - 40 * 864e5, sent: Date.now(), late: 1, events: [{ e: 'boot', t: 0 }] }) });
+    check(tooOld.status === 400, 'a backlog older than 31 days is refused');
+    await page2c.close();
 
     process.env.KV_REST_API_URL = `${url}/__redis`;
     const page3 = await ctx.newPage();

@@ -3,9 +3,15 @@
 The game records anonymous sessions so we can see where players stall, churn,
 succeed and fail. A dashboard at `/dashboard.html` tells that story.
 
-Until storage is provisioned, all of it is a no-op: the first send gets a
-"not configured" answer, and the game stops sending for the rest of that page
-load. Nothing breaks, and nothing slows down.
+Until storage is provisioned nothing reaches a server: the first send gets a
+"not configured" answer (503), and from then on that page load keeps its
+events **on the player's device** in a capped backlog (3,000 events, 30 days,
+in localStorage) instead of sending them. When a later visit finds storage
+set up, the backlog is uploaded one batch at a time under its original
+session ids and times, so the dashboard shows that play as it happened.
+Players who never come back after storage exists are the only ones lost, so
+provision soon. Nothing breaks and nothing slows down either way; turning
+stats off in Settings deletes the backlog.
 
 ## Turning it on (about 5 minutes, in the Vercel dashboard)
 

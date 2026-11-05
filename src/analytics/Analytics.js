@@ -16,8 +16,16 @@
  *   page goes away, with sendBeacon (fetch keepalive as the fallback). A
  *   failed send is dropped, not retried. Until the server says it is set up
  *   (an `{ok:true}` from /api/events) the first refusal turns it off for the
- *   rest of the page load, so an unprovisioned deploy, `vite dev` and the
- *   one-file build all degrade to a no-op.
+ *   rest of the page load, so `vite dev` and the one-file build degrade to a
+ *   no-op.
+ *
+ *   THE BACKLOG. One refusal is different: a deploy whose storage is not
+ *   provisioned yet answers 503 `{disabled:true}`. Then the events are kept
+ *   in a capped localStorage backlog (BACKLOG_MAX_EVENTS, BACKLOG_MAX_AGE)
+ *   instead, and once a later visit finds the server set up, the backlog goes
+ *   up one batch per flush, flagged `late`, under its original session ids
+ *   and times. So play recorded before storage existed is not lost for
+ *   anyone who comes back.
  *
  * HOW IT IS WIRED
  *
@@ -39,6 +47,9 @@ const FLUSH_MS = 10000;
 const MAX_BATCH = 100;
 const MAX_QUEUE = 600;
 const MAX_ERRORS = 15;
+const BACKLOG_KEY = 'lightline-anon-backlog';
+const BACKLOG_MAX_EVENTS = 3000;
+const BACKLOG_MAX_AGE = 30 * 24 * 3600 * 1000;
 
 const PID_KEY = 'lightline-anon-id';
 const META_KEY = 'lightline-anon-meta';
@@ -120,6 +131,8 @@ const S = {
   enabled: false,
   dead: false,
   confirmed: false,
+  parked: false,
+  draining: false,
   deps: null,
   pid: null,
   sid: randomId(),
@@ -184,8 +197,81 @@ function payload(events) {
   return JSON.stringify({ v: 1, pid: S.pid, sid: S.sid, t0: S.t0, b: S.batch, sent: now(), events });
 }
 
+/* ------------------------------------------------------------------ *
+ * The backlog: events kept on this device while storage is not set up
+ * ------------------------------------------------------------------ */
+
+function readBacklog() {
+  try {
+    const list = JSON.parse(get(BACKLOG_KEY) || '[]');
+    if (!Array.isArray(list)) return [];
+    return list.filter((b) => b && Array.isArray(b.events) && b.events.length && typeof b.sid === 'string' && now() - b.t0 < BACKLOG_MAX_AGE);
+  } catch {
+    return [];
+  }
+}
+
+function writeBacklog(list) {
+  let total = list.reduce((n, b) => n + b.events.length, 0);
+  // over the cap, the oldest sessions go first
+  while (list.length > 1 && total > BACKLOG_MAX_EVENTS) total -= list.shift().events.length;
+  if (list.length === 1 && total > BACKLOG_MAX_EVENTS) list[0].events = list[0].events.slice(-BACKLOG_MAX_EVENTS);
+  if (!list.length) return set(BACKLOG_KEY, null);
+  try {
+    localStorage.setItem(BACKLOG_KEY, JSON.stringify(list));
+  } catch {
+    // quota: keep the newer half and try once more
+    try {
+      localStorage.setItem(BACKLOG_KEY, JSON.stringify(list.slice(Math.floor(list.length / 2))));
+    } catch {
+      /* give up quietly */
+    }
+  }
+}
+
+function park(events) {
+  if (!events.length) return;
+  const list = readBacklog();
+  const last = list[list.length - 1];
+  if (last && last.sid === S.sid) last.events.push(...events);
+  else list.push({ pid: S.pid, sid: S.sid, t0: S.t0, events });
+  writeBacklog(list);
+}
+
+/** One backlog batch, oldest first, once the server has said it is set up. */
+function drainOne() {
+  if (!S.enabled || !S.confirmed || S.draining) return;
+  const list = readBacklog();
+  if (!list.length) return set(BACKLOG_KEY, null);
+  const head = list[0];
+  const events = head.events.slice(0, MAX_BATCH);
+  const body = JSON.stringify({ v: 1, pid: head.pid, sid: head.sid, t0: head.t0, b: 0, sent: now(), late: 1, events });
+  S.draining = true;
+  const settle = (drop) => {
+    if (drop) {
+      const l = readBacklog();
+      const h = l.find((x) => x.sid === head.sid);
+      if (h) h.events.splice(0, events.length);
+      writeBacklog(l.filter((x) => x.events.length));
+    }
+    S.draining = false;
+  };
+  try {
+    fetch(ENDPOINT, { method: 'POST', body, headers: { 'content-type': 'text/plain' }, credentials: 'omit' })
+      .then((res) => res.json().catch(() => null).then((json) => settle(!!json?.ok || (res.status >= 400 && res.status < 500 && res.status !== 429))))
+      .catch(() => settle(false));
+  } catch {
+    settle(false);
+  }
+}
+
 function flush(useBeacon) {
   if (!S.enabled || S.dead || !S.queue.length) return;
+  // storage is not set up: keep this page's events on the device instead
+  if (S.parked) {
+    park(S.queue.splice(0));
+    return;
+  }
   while (S.queue.length) {
     const events = S.queue.splice(0, MAX_BATCH);
     const body = payload(events);
@@ -202,10 +288,16 @@ function flush(useBeacon) {
     if (sent) continue;
     try {
       fetch(ENDPOINT, { method: 'POST', body, keepalive: body.length < 60000, headers: { 'content-type': 'text/plain' }, credentials: 'omit' })
-        .then((res) => (res.ok ? res.json() : null))
-        .then((json) => {
-          if (json && json.ok) S.confirmed = true;
-          else stopForPage();
+        .then((res) => res.json().catch(() => null).then((json) => ({ res, json })))
+        .then(({ res, json }) => {
+          if (json && json.ok) {
+            S.confirmed = true;
+            drainOne();
+          } else if (res.status === 503 && json && json.disabled && !S.confirmed) {
+            S.parked = true;
+            park(events);
+            park(S.queue.splice(0));
+          } else stopForPage();
         })
         .catch(() => {
           /* offline or blocked: drop the batch, keep going */
@@ -316,7 +408,15 @@ function startSession() {
   }
   set(MID_KEY, null, 'session');
 
-  if (!S.timer) S.timer = setInterval(() => safe(() => flush(false)), FLUSH_MS);
+  if (!S.timer)
+    S.timer = setInterval(
+      () =>
+        safe(() => {
+          flush(false);
+          drainOne();
+        }),
+      FLUSH_MS
+    );
 }
 
 function enable() {
@@ -329,6 +429,7 @@ function enable() {
 function disable() {
   S.enabled = false;
   S.queue.length = 0;
+  set(BACKLOG_KEY, null);
   if (S.timer) clearInterval(S.timer);
   S.timer = null;
 }
@@ -701,7 +802,8 @@ const api = {
   /** Exposed for tools/check-analytics.mjs and the console. */
   _debug: {
     flush: () => flush(false),
-    state: () => ({ enabled: S.enabled, dead: S.dead, confirmed: S.confirmed, pid: S.pid, sid: S.sid, queued: S.queue.length }),
+    state: () => ({ enabled: S.enabled, dead: S.dead, confirmed: S.confirmed, parked: S.parked, pid: S.pid, sid: S.sid, queued: S.queue.length, backlog: readBacklog().reduce((n, b) => n + b.events.length, 0) }),
+    drain: () => drainOne(),
     queue: () => S.queue.slice()
   }
 };
