@@ -20,7 +20,7 @@ for (const t of levels.tables) {
   const logs = {};
   for (const ver of ['now', 'new']) {
     const d = ver === 'now' ? t.current : t.proposed;
-    const line = (d.robust?.line || d.best?.line || []).slice(0, SHOTS);
+    const line = (d.demo || d.robust?.line || d.best?.line || []).slice(0, SHOTS);
     const cap = await open({ storage: RETURNING });
     await cap.run(1800);
     await cap.ev(() => document.getElementById('btn-play').click());

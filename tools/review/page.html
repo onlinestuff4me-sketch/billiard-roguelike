@@ -111,6 +111,9 @@ table.grid { border-collapse: collapse; font: 600 13px/1.25 var(--num); font-var
 table.grid th { font: 700 10.5px/1.2 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--structure); }
 table.grid td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--grid); }
 table.grid th:first-child, table.grid td:first-child { text-align: left; font-family: var(--ui); font-size: 14px; }
+table.grid.prose td, table.grid.prose th { text-align: left; font: 500 14px/1.35 var(--ui); vertical-align: top; white-space: normal; }
+table.grid.prose { min-width: 0; }
+table.grid.prose td:first-child { font-weight: 700; width: 26%; }
 table.grid td.up { color: var(--you); } table.grid td.dim { color: var(--muted); }
 
 .decide { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--grid); }
@@ -298,7 +301,7 @@ footer { font-size: 14px; color: var(--muted); border-top: 1px solid var(--grid)
     row('Robust line', d.robust ? (d.robust.clears ? '' : 'short · ') + d.robust.total : 'none');
     row('Best line', d.best ? String(d.best.total) : 'n/a');
     if (d.targetOverRobust != null) row('Target ÷ robust', Math.round(d.targetOverRobust * 100) + '%');
-    if (d.widestOpener != null) row('Widest opener', d.widestOpener + '°');
+    if (d.widestOpener != null) row('Widest opener', (d.widestOpener.width != null ? d.widestOpener.width : d.widestOpener) + '° · ' + (d.widestOpener.pots != null ? 'the ' + String(d.widestOpener.pots).replace(',', ' + ') : ''));
     row('Uses its mechanic', d.usesMechanic == null ? 'n/a' : d.usesMechanic ? 'yes' : 'no', d.usesMechanic === false ? 'bad' : d.usesMechanic ? 'good' : '');
   }
   function levelSide(it, which, parent) {
@@ -358,7 +361,7 @@ footer { font-size: 14px; color: var(--muted); border-top: 1px solid var(--grid)
     var cs = el('div', 'case', card);
     [['Problem', it.problem], ['Proposal', it.proposal], ['Why it fits', it.fits], ['Risk', it.risk]].forEach(function (kv) { if (!kv[1]) return; var d = el('div', '', cs); el('span', 'k', d, kv[0]); el('p', '', d, kv[1]); });
     if (it.table) {
-      var w = el('div', 'wide', cs), sc = el('div', 'wide-scroll', w), t = el('table', 'grid', sc), th = el('tr', '', el('thead', '', t));
+      var w = el('div', 'wide', cs), sc = el('div', 'wide-scroll', w), t = el('table', 'grid' + (it.table.rows[0] && String(it.table.rows[0][1]).length > 40 ? ' prose' : ''), sc), th = el('tr', '', el('thead', '', t));
       it.table.head.forEach(function (h) { el('th', '', th, h); });
       var tb = el('tbody', '', t);
       it.table.rows.forEach(function (rw) { var tr = el('tr', '', tb); rw.forEach(function (c, i) { var td = el('td', '', tr, String(c)); if (it.table.up && it.table.up.indexOf(i) >= 0) td.className = 'up'; }); });

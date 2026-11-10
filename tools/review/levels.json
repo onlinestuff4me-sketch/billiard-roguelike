@@ -1,0 +1,5830 @@
+{
+ "note": "All lines measured at 2\u00b0 heading steps, powers 0.5/0.7/0.85/1, every robust shot in a run >= 3\u00b0 (in practice 4\u00b0). \"robust\" is the better clearing line of the repo planner (__runPlan, beam 3) and a wider beam that keeps the best states per set of balls standing; `planner` says which. Lines replay exactly through window.__run.loadSpec(spec, n) then window.__runShot({deg, power}) per shot.",
+ "tables": [
+  {
+   "n": 1,
+   "id": "first-target",
+   "name": "Clear the Table",
+   "verdict": "retune",
+   "problem": "Target 200 is 29% of the robust line (700); one banked 8 pays 425 on a 6\u00b0 window, so the bar is passed on the first pot.",
+   "proposal": "Keep the layout; raise the target.",
+   "catch": "Three plain pots clear the table but fall short of the bar; the 8 off a rail clears it alone.",
+   "current": {
+    "spec": {
+     "id": "first-target",
+     "name": "Clear the Table",
+     "intro": {
+      "title": "Table 1 \u00b7 Clear the Table",
+      "sub": "Sink every ball. Beat the score target."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 5.8,
+       "z": 3
+      },
+      {
+       "number": 2,
+       "x": -5.6,
+       "z": 10.6
+      },
+      {
+       "number": 8,
+       "x": -5.8,
+       "z": 3
+      }
+     ],
+     "strokes": 5,
+     "target": 200,
+     "shop": [
+      "soft-touch",
+      "long-rail",
+      "freeze-charge",
+      "odd-ones"
+     ],
+     "orderBonus": false
+    },
+    "robust": {
+     "clears": true,
+     "total": 700,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 290,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 182,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 168,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 710,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 290,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 138,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 46,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 60,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 200,
+    "targetOverRobust": 0.29,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "2",
+     "paid": 125,
+     "power": 0.5,
+     "from": 235,
+     "to": 239
+    },
+    "plainClear": 225
+   },
+   "proposed": {
+    "spec": {
+     "id": "first-target",
+     "name": "Clear the Table",
+     "intro": {
+      "title": "Table 1 \u00b7 Clear the Table",
+      "sub": "Sink every ball. Beat the score target."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 5.8,
+       "z": 3
+      },
+      {
+       "number": 2,
+       "x": -5.6,
+       "z": 10.6
+      },
+      {
+       "number": 8,
+       "x": -5.8,
+       "z": 3
+      }
+     ],
+     "strokes": 5,
+     "target": 275,
+     "shop": [
+      "soft-touch",
+      "long-rail",
+      "freeze-charge",
+      "odd-ones"
+     ],
+     "orderBonus": false
+    },
+    "robust": {
+     "clears": true,
+     "total": 700,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 290,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 182,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 168,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 710,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 290,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 138,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 46,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 60,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 275,
+    "targetOverRobust": 0.39,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "2",
+     "paid": 125,
+     "power": 0.5,
+     "from": 235,
+     "to": 239
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 2,
+   "id": "by-the-numbers",
+   "name": "In Order Pays More",
+   "verdict": "retune",
+   "problem": "Target 250 is 30% of the in-order robust line (830). Layout is Table 1 mirrored with the 8 moved up-table. The repo planner (greedy) takes the 8 first for 425 and reports 680; the in-order sweep pays 830.",
+   "proposal": "Keep the layout; raise the target so the out-of-order line (725) passes narrowly and the sweep passes clearly.",
+   "catch": "The 8 is the fattest pot on the table, and it pays most if you leave it for last.",
+   "current": {
+    "spec": {
+     "id": "by-the-numbers",
+     "name": "In Order Pays More",
+     "intro": {
+      "title": "Table 2 \u00b7 In Order Pays More",
+      "sub": "Sink the balls in their number order."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -5.8,
+       "z": 3
+      },
+      {
+       "number": 2,
+       "x": 5.6,
+       "z": 10.6
+      },
+      {
+       "number": 8,
+       "x": 6.2,
+       "z": -12.6
+      }
+     ],
+     "strokes": 5,
+     "target": 250,
+     "shop": [
+      "long-rail",
+      "bank-vault",
+      "kiss-chase",
+      "bounce"
+     ],
+     "showOrder": true
+    },
+    "robust": {
+     "clears": true,
+     "total": 830,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": true,
+     "line": [
+      {
+       "deg": 298,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 30,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 118,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 88,
+       "power": 0.5,
+       "width": 30,
+       "pots": [],
+       "paid": 0,
+       "events": [],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 20,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 790,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 316,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 22,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 116,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 250,
+    "targetOverRobust": 0.3,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "2",
+     "paid": 125,
+     "power": 0.5,
+     "from": 121,
+     "to": 125
+    },
+    "plainClear": 325
+   },
+   "proposed": {
+    "spec": {
+     "id": "by-the-numbers",
+     "name": "In Order Pays More",
+     "intro": {
+      "title": "Table 2 \u00b7 In Order Pays More",
+      "sub": "Sink the balls in their number order."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -5.8,
+       "z": 3
+      },
+      {
+       "number": 2,
+       "x": 5.6,
+       "z": 10.6
+      },
+      {
+       "number": 8,
+       "x": 6.2,
+       "z": -12.6
+      }
+     ],
+     "strokes": 5,
+     "target": 350,
+     "shop": [
+      "long-rail",
+      "bank-vault",
+      "kiss-chase",
+      "bounce"
+     ],
+     "showOrder": true
+    },
+    "robust": {
+     "clears": true,
+     "total": 830,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": true,
+     "line": [
+      {
+       "deg": 298,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 30,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 118,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 88,
+       "power": 0.5,
+       "width": 30,
+       "pots": [],
+       "paid": 0,
+       "events": [],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 20,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 790,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 316,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 22,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 116,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 350,
+    "targetOverRobust": 0.42,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "2",
+     "paid": 125,
+     "power": 0.5,
+     "from": 121,
+     "to": 125
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 3,
+   "id": "off-the-rail",
+   "name": "Rails Add Mult",
+   "verdict": "retune",
+   "problem": "Lowest robust total of the first seven tables (510): rails pay less here than on Table 1 (700). The robust line pots the 8 straight (85, no rail) once the cue has moved, so the wall does not force a bank. Shares the 1/2-by-the-side-pockets motif with 5, 6, 7.",
+   "proposal": "Needs a redesign (8 hung by a pocket behind a wall, reachable only by a one-rail kick); the search for it was not finished. Retune only for now.",
+   "catch": "The 8 is behind the wall: the straight shot is gone, and the way round is the one that pays.",
+   "current": {
+    "spec": {
+     "id": "off-the-rail",
+     "name": "Rails Add Mult",
+     "intro": {
+      "title": "Table 3 \u00b7 Rails Add Mult",
+      "sub": "Bank off rails to increase the multiplier."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 6.4,
+       "z": 1.8
+      },
+      {
+       "number": 2,
+       "x": -6.4,
+       "z": 1.8
+      },
+      {
+       "number": 8,
+       "x": -6.5,
+       "z": -13.5
+      }
+     ],
+     "strokes": 5,
+     "target": 300,
+     "obstacles": [
+      {
+       "type": "box",
+       "x": 0,
+       "z": -3.5,
+       "hw": 4.5,
+       "hh": 0.4
+      }
+     ],
+     "shop": [
+      "doubles",
+      "kiss-chase",
+      "opening-break",
+      "extra-life"
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 510,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 196,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 50,
+       "events": [
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 6,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 85,
+       "events": [
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 170,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 710,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 330,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 170,
+       "events": [
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 250,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 288,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 150,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 300,
+    "targetOverRobust": 0.59,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 55,
+     "to": 58
+    },
+    "plainClear": 425
+   },
+   "proposed": {
+    "spec": {
+     "id": "off-the-rail",
+     "name": "Rails Add Mult",
+     "intro": {
+      "title": "Table 3 \u00b7 Rails Add Mult",
+      "sub": "Bank off rails to increase the multiplier."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 6.4,
+       "z": 1.8
+      },
+      {
+       "number": 2,
+       "x": -6.4,
+       "z": 1.8
+      },
+      {
+       "number": 8,
+       "x": -6.5,
+       "z": -13.5
+      }
+     ],
+     "strokes": 5,
+     "target": 250,
+     "obstacles": [
+      {
+       "type": "box",
+       "x": 0,
+       "z": -3.5,
+       "hw": 4.5,
+       "hh": 0.4
+      }
+     ],
+     "shop": [
+      "doubles",
+      "kiss-chase",
+      "opening-break",
+      "extra-life"
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 510,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 196,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 50,
+       "events": [
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 6,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 85,
+       "events": [
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 170,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 710,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 330,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 170,
+       "events": [
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 250,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 288,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 150,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 250,
+    "targetOverRobust": 0.49,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 55,
+     "to": 58
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 4,
+   "id": "two-at-once",
+   "name": "Two in One Shot",
+   "verdict": "redesign",
+   "problem": "The card says two balls in one shot pays more, but the shot is barely there: the widest window that sinks the 1 and 2 together is 2\u00b0 of aim, so no line a new player can hit ever uses it. The robust line (525) pots one ball a shot.",
+   "proposal": "Hang the pair under the left side pocket and start the cue ball over it (spawn x \u22124.5). The two-in-one becomes a 9\u00b0 shot at half power and 7\u00b0 at any other, paying 280. The 3 goes to the far right corner and the 8 near right.",
+   "catch": "Four balls, four shots, but the two by the side pocket go down together for more than both apart.",
+   "current": {
+    "spec": {
+     "id": "two-at-once",
+     "name": "Two in One Shot",
+     "intro": {
+      "title": "Table 4 \u00b7 Two in One Shot",
+      "sub": "Two balls in one shot pays more."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -4.2,
+       "z": 0.7
+      },
+      {
+       "number": 2,
+       "x": -6.2,
+       "z": 0.7
+      },
+      {
+       "number": 3,
+       "x": 6.3,
+       "z": -12.7
+      },
+      {
+       "number": 8,
+       "x": -6,
+       "z": -12.6
+      }
+     ],
+     "strokes": 4,
+     "target": 350,
+     "shop": [
+      "prism",
+      "corner-office",
+      "side-hustle",
+      "freeze-charge"
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 525,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 328,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 105,
+       "events": [
+        "kiss",
+        "bank",
+        "kiss",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 340,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 170,
+       "events": [
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 254,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 184,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1030,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 320,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 160,
+       "events": [
+        "pot",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 58,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 60,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 350,
+    "targetOverRobust": 0.67,
+    "usesMechanic": false,
+    "widestOpener": {
+     "width": 6,
+     "pots": "2",
+     "paid": 25,
+     "power": 0.5,
+     "from": 313,
+     "to": 318
+    },
+    "plainClear": 160
+   },
+   "proposed": {
+    "spec": {
+     "id": "two-at-once",
+     "name": "Two in One Shot",
+     "intro": {
+      "title": "Table 4 \u00b7 Two in One Shot",
+      "sub": "Two balls in one shot pays more."
+     },
+     "spawn": {
+      "x": -4.5,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -8.3,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -7.1,
+       "z": 1.8
+      },
+      {
+       "number": 3,
+       "x": 5.5,
+       "z": -11.5
+      },
+      {
+       "number": 8,
+       "x": 6,
+       "z": 4
+      }
+     ],
+     "strokes": 4,
+     "target": 325,
+     "shop": [
+      "prism",
+      "corner-office",
+      "side-hustle",
+      "freeze-charge"
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 620,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 44,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 70,
+       "events": [
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 192,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 60,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 44,
+       "power": 1,
+       "width": 8,
+       "pots": [
+        2
+       ],
+       "paid": 150,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 46,
+       "power": 0.5,
+       "width": 12,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": null,
+    "target": 325,
+    "targetOverRobust": 0.52,
+    "usesMechanic": false,
+    "widestOpener": {
+     "width": 14,
+     "pots": "1",
+     "paid": 45,
+     "power": 0.5,
+     "from": 311,
+     "to": 324
+    },
+    "layoutChanged": true,
+    "demo": [
+     {
+      "deg": 329,
+      "power": 0.7,
+      "width": 7,
+      "pots": [
+       1,
+       2
+      ],
+      "paid": 280
+     }
+    ]
+   },
+   "risk": "Only partly validated: the two-in-one is now a wide shot (9\u00b0 of aim, measured, paying 280) and a clearing robust line opens with it, but the best-paying robust line found still pots one ball a shot (620 against 545). The 3 and the 8 need one more search so the shot it saves is worth more. Approve the direction and I will finish that search before it ships."
+  },
+  {
+   "n": 5,
+   "id": "pay-twice",
+   "name": "Orange Ring Pays \u00d72",
+   "verdict": "retune",
+   "problem": "Target 400 is 33% of robust (1230). The \u00d72 ring is on the robust opener (1 through the ring, then a sweep). Rack is reused verbatim by Table 6.",
+   "proposal": "Keep this layout (it is the one that should own it); raise the target.",
+   "catch": "The 1 drops either way; through the ring it starts a doubled, in-order run.",
+   "current": {
+    "spec": {
+     "id": "pay-twice",
+     "name": "Orange Ring Pays \u00d72",
+     "intro": {
+      "title": "Table 5 \u00b7 Orange Ring Pays \u00d72",
+      "sub": "Pass through it for \u00d72 multiplier.",
+      "art": [
+       "double"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 6.6,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -6.4,
+       "z": 1.6
+      },
+      {
+       "number": 3,
+       "x": -6.3,
+       "z": -12.8
+      },
+      {
+       "number": 8,
+       "x": 6,
+       "z": -12.6
+      }
+     ],
+     "strokes": 5,
+     "target": 400,
+     "objects": [
+      {
+       "kind": "double",
+       "x": 0,
+       "z": 3
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1230,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": true,
+     "line": [
+      {
+       "deg": 58,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "zone",
+        "kiss",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 36,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 308,
+       "power": 0.5,
+       "width": 8,
+       "pots": [
+        3
+       ],
+       "paid": 140,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 70,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1725,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 302,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 400,
+       "events": [
+        "bank",
+        "zone",
+        "kiss",
+        "pot",
+        "bankPot",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 320,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 315,
+       "events": [
+        "zone",
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 38,
+       "power": 0.5,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 400,
+    "targetOverRobust": 0.33,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "1",
+     "paid": 90,
+     "power": 0.5,
+     "from": 56,
+     "to": 58
+    },
+    "plainClear": 410
+   },
+   "proposed": {
+    "spec": {
+     "id": "pay-twice",
+     "name": "Orange Ring Pays \u00d72",
+     "intro": {
+      "title": "Table 5 \u00b7 Orange Ring Pays \u00d72",
+      "sub": "Pass through it for \u00d72 multiplier.",
+      "art": [
+       "double"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 6.6,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -6.4,
+       "z": 1.6
+      },
+      {
+       "number": 3,
+       "x": -6.3,
+       "z": -12.8
+      },
+      {
+       "number": 8,
+       "x": 6,
+       "z": -12.6
+      }
+     ],
+     "strokes": 5,
+     "target": 675,
+     "objects": [
+      {
+       "kind": "double",
+       "x": 0,
+       "z": 3
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1230,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": true,
+     "line": [
+      {
+       "deg": 58,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "zone",
+        "kiss",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 36,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 308,
+       "power": 0.5,
+       "width": 8,
+       "pots": [
+        3
+       ],
+       "paid": 140,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 70,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 425,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1725,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 302,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 400,
+       "events": [
+        "bank",
+        "zone",
+        "kiss",
+        "pot",
+        "bankPot",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 320,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 315,
+       "events": [
+        "zone",
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 38,
+       "power": 0.5,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 675,
+    "targetOverRobust": 0.55,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "1",
+     "paid": 90,
+     "power": 0.5,
+     "from": 56,
+     "to": 58
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 6,
+   "id": "live-lane",
+   "name": "Mines Void a Shot",
+   "verdict": "retune",
+   "problem": "Identical rack to Table 5. Target 450 is 46% of robust (985). Whether the mines bite was not isolated: the robust line simply never crosses one.",
+   "proposal": "Needs its own rack. One hand-built candidate (a row of four at z -7 to -8, mines at -1,-0.5 and 3.6,-0.5, ring at -3.6,-1.2) measured badly (robust 535, no opener wider than 2\u00b0) and is rejected. Retune only; redesign still open.",
+   "catch": "The \u00d72 ring is still there, but the straight road to it now runs over a mine.",
+   "current": {
+    "spec": {
+     "id": "live-lane",
+     "name": "Mines Void a Shot",
+     "intro": {
+      "title": "Table 6 \u00b7 Mines Void a Shot",
+      "sub": "Hit a mine and the shot pays 0.",
+      "art": [
+       "mine"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 6.6,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -6.4,
+       "z": 1.6
+      },
+      {
+       "number": 3,
+       "x": -6.3,
+       "z": -12.8
+      },
+      {
+       "number": 8,
+       "x": 6,
+       "z": -12.6
+      }
+     ],
+     "strokes": 5,
+     "target": 450,
+     "objects": [
+      {
+       "kind": "mine",
+       "x": 3,
+       "z": 4.2
+      },
+      {
+       "kind": "mine",
+       "x": -2.8,
+       "z": -4
+      },
+      {
+       "kind": "double",
+       "x": -3.4,
+       "z": 4
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 985,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 166,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 45,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 72,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 304,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 224,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1135,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 212,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "zone",
+        "pot"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 74,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 126,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 58,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 450,
+    "targetOverRobust": 0.46,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "1",
+     "paid": 75,
+     "power": 0.5,
+     "from": 164,
+     "to": 166
+    },
+    "plainClear": 460
+   },
+   "proposed": {
+    "spec": {
+     "id": "live-lane",
+     "name": "Mines Void a Shot",
+     "intro": {
+      "title": "Table 6 \u00b7 Mines Void a Shot",
+      "sub": "Hit a mine and the shot pays 0.",
+      "art": [
+       "mine"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 6.6,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -6.4,
+       "z": 1.6
+      },
+      {
+       "number": 3,
+       "x": -6.3,
+       "z": -12.8
+      },
+      {
+       "number": 8,
+       "x": 6,
+       "z": -12.6
+      }
+     ],
+     "strokes": 5,
+     "target": 575,
+     "objects": [
+      {
+       "kind": "mine",
+       "x": 3,
+       "z": 4.2
+      },
+      {
+       "kind": "mine",
+       "x": -2.8,
+       "z": -4
+      },
+      {
+       "kind": "double",
+       "x": -3.4,
+       "z": 4
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 985,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 166,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 45,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 72,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 304,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 224,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1135,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 212,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "zone",
+        "pot"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 74,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 126,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 58,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 575,
+    "targetOverRobust": 0.58,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "1",
+     "paid": 75,
+     "power": 0.5,
+     "from": 164,
+     "to": 166
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 7,
+   "id": "the-freeze",
+   "name": "Tap to Freeze",
+   "verdict": "retune",
+   "problem": "Rack is Table 5 mirrored. Target 450 is 34% of robust (1330). The freeze ring is on the wider planner's line (shot 2) but not on the repo planner's (875).",
+   "proposal": "Retune the target; a new rack (a diagonal from near-left to far-right) was planned but not measured.",
+   "catch": "The ring is a detour on shot one; the freezes it gives are what save the last ball.",
+   "current": {
+    "spec": {
+     "id": "the-freeze",
+     "name": "Tap to Freeze",
+     "intro": {
+      "title": "Table 7 \u00b7 Tap to Freeze",
+      "sub": "Pass through to add more Freezes.",
+      "art": [
+       "freeze"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -6.6,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": 6.4,
+       "z": 1.6
+      },
+      {
+       "number": 3,
+       "x": 6,
+       "z": -12.6
+      },
+      {
+       "number": 8,
+       "x": -6.2,
+       "z": -12.7
+      }
+     ],
+     "strokes": 5,
+     "target": 450,
+     "objects": [
+      {
+       "kind": "freeze",
+       "x": -3,
+       "z": 4.2
+      },
+      {
+       "kind": "mine",
+       "x": 0,
+       "z": -6
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1330,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 30,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 210,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 36,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "freeze"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 48,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 310,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 595,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1220,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 44,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 68,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 70,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 166,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 60,
+       "events": [
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 450,
+    "targetOverRobust": 0.34,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 303,
+     "to": 306
+    },
+    "plainClear": 510
+   },
+   "proposed": {
+    "spec": {
+     "id": "the-freeze",
+     "name": "Tap to Freeze",
+     "intro": {
+      "title": "Table 7 \u00b7 Tap to Freeze",
+      "sub": "Pass through to add more Freezes.",
+      "art": [
+       "freeze"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -6.6,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": 6.4,
+       "z": 1.6
+      },
+      {
+       "number": 3,
+       "x": 6,
+       "z": -12.6
+      },
+      {
+       "number": 8,
+       "x": -6.2,
+       "z": -12.7
+      }
+     ],
+     "strokes": 5,
+     "target": 800,
+     "objects": [
+      {
+       "kind": "freeze",
+       "x": -3,
+       "z": 4.2
+      },
+      {
+       "kind": "mine",
+       "x": 0,
+       "z": -6
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1330,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 30,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 210,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 36,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "freeze"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 48,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 310,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 595,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1220,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 44,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 68,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 70,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 166,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 60,
+       "events": [
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 800,
+    "targetOverRobust": 0.6,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 303,
+     "to": 306
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 8,
+   "id": "through-the-ring",
+   "name": "Rings Teleport",
+   "verdict": "retune",
+   "problem": "The portal is ignorable: the two side walls leave the middle open, and the best robust line (1135) uses the ring once, for the last 90 points. Target 500 is 44% of robust.",
+   "proposal": "Retune the target. Planned and not measured: one wall right across (box x 0, z -4.5, hw 9) so the three far balls can only be reached through the ring.",
+   "catch": "The far balls sit behind the walls; the ring beside you is the door.",
+   "current": {
+    "spec": {
+     "id": "through-the-ring",
+     "name": "Rings Teleport",
+     "intro": {
+      "title": "Table 8 \u00b7 Rings Teleport",
+      "sub": "In one ring, out the other.",
+      "art": [
+       "portal"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 4.5,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -4.5,
+       "z": -1
+      },
+      {
+       "number": 3,
+       "x": -6,
+       "z": -8
+      },
+      {
+       "number": 4,
+       "x": 6,
+       "z": -12.6
+      },
+      {
+       "number": 8,
+       "x": 0,
+       "z": -9
+      }
+     ],
+     "strokes": 6,
+     "target": 500,
+     "obstacles": [
+      {
+       "type": "box",
+       "x": -6.4,
+       "z": -4.5,
+       "hw": 2.6,
+       "hh": 0.95
+      },
+      {
+       "type": "box",
+       "x": 6.4,
+       "z": -4.5,
+       "hw": 2.6,
+       "hh": 0.95
+      }
+     ],
+     "portals": [
+      {
+       "a": {
+        "x": -5.6,
+        "z": 5.4
+       },
+       "b": {
+        "x": 5.6,
+        "z": -9.6
+       }
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1135,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 48,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 45,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 52,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 74,
+       "power": 0.5,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 334,
+       "power": 0.5,
+       "width": 6,
+       "pots": [
+        8
+       ],
+       "paid": 255,
+       "events": [
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 66,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 90,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 2545,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 3,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 314,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 350,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "order",
+        "bank",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 314,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        4,
+        8
+       ],
+       "paid": 750,
+       "events": [
+        "kiss",
+        "pot",
+        "bankPot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 36,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 500,
+    "targetOverRobust": 0.44,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 37,
+     "to": 40
+    },
+    "plainClear": 605
+   },
+   "proposed": {
+    "spec": {
+     "id": "through-the-ring",
+     "name": "Rings Teleport",
+     "intro": {
+      "title": "Table 8 \u00b7 Rings Teleport",
+      "sub": "In one ring, out the other.",
+      "art": [
+       "portal"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 4.5,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -4.5,
+       "z": -1
+      },
+      {
+       "number": 3,
+       "x": -6,
+       "z": -8
+      },
+      {
+       "number": 4,
+       "x": 6,
+       "z": -12.6
+      },
+      {
+       "number": 8,
+       "x": 0,
+       "z": -9
+      }
+     ],
+     "strokes": 6,
+     "target": 725,
+     "obstacles": [
+      {
+       "type": "box",
+       "x": -6.4,
+       "z": -4.5,
+       "hw": 2.6,
+       "hh": 0.95
+      },
+      {
+       "type": "box",
+       "x": 6.4,
+       "z": -4.5,
+       "hw": 2.6,
+       "hh": 0.95
+      }
+     ],
+     "portals": [
+      {
+       "a": {
+        "x": -5.6,
+        "z": 5.4
+       },
+       "b": {
+        "x": 5.6,
+        "z": -9.6
+       }
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1135,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 48,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 45,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 52,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 74,
+       "power": 0.5,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 334,
+       "power": 0.5,
+       "width": 6,
+       "pots": [
+        8
+       ],
+       "paid": 255,
+       "events": [
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 66,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 90,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 2545,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 3,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 314,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 350,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "order",
+        "bank",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 314,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        4,
+        8
+       ],
+       "paid": 750,
+       "events": [
+        "kiss",
+        "pot",
+        "bankPot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 36,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 725,
+    "targetOverRobust": 0.64,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 37,
+     "to": 40
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 9,
+   "id": "bumpers",
+   "name": "Bumpers Bounce",
+   "verdict": "retune",
+   "problem": "Bumpers are on the robust line (three of five shots touch one) and one of them pays 300 off eight rails; target 500 is 54% of robust (920). Rack reused verbatim by Table 10.",
+   "proposal": "Keep this layout; raise the target.",
+   "catch": "A bumper gives back the speed a rail takes, so the long way round is the one that pays.",
+   "current": {
+    "spec": {
+     "id": "bumpers",
+     "name": "Bumpers Bounce",
+     "intro": {
+      "title": "Table 9 \u00b7 Bumpers Bounce",
+      "sub": "Bumpers bounce balls back hard.",
+      "art": [
+       "bumper"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -3,
+       "z": 1
+      },
+      {
+       "number": 2,
+       "x": 3.4,
+       "z": -4
+      },
+      {
+       "number": 3,
+       "x": -3.4,
+       "z": -9
+      },
+      {
+       "number": 4,
+       "x": 5,
+       "z": -11
+      },
+      {
+       "number": 8,
+       "x": -6.6,
+       "z": -12.5
+      }
+     ],
+     "strokes": 5,
+     "target": 500,
+     "obstacles": [
+      {
+       "type": "circle",
+       "x": 0,
+       "z": -6.5,
+       "radius": 1.4,
+       "kind": "bumper"
+      },
+      {
+       "type": "circle",
+       "x": -5.8,
+       "z": -2,
+       "radius": 1.05,
+       "kind": "bumper"
+      },
+      {
+       "type": "circle",
+       "x": 5.8,
+       "z": -2,
+       "radius": 1.05,
+       "kind": "bumper"
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 920,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 342,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 85,
+       "events": [
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 42,
+       "power": 1,
+       "width": 8,
+       "pots": [
+        4
+       ],
+       "paid": 270,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      },
+      {
+       "deg": 100,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 166,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 300,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 8
+      },
+      {
+       "deg": 292,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1995,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 348,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3,
+        8
+       ],
+       "paid": 345,
+       "events": [
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 26,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2,
+        4
+       ],
+       "paid": 630,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "pot",
+        "bankPot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 2
+      },
+      {
+       "deg": 118,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 120,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 2
+      }
+     ]
+    },
+    "target": 500,
+    "targetOverRobust": 0.54,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "8",
+     "paid": 255,
+     "power": 0.5,
+     "from": 340,
+     "to": 342
+    },
+    "plainClear": 205
+   },
+   "proposed": {
+    "spec": {
+     "id": "bumpers",
+     "name": "Bumpers Bounce",
+     "intro": {
+      "title": "Table 9 \u00b7 Bumpers Bounce",
+      "sub": "Bumpers bounce balls back hard.",
+      "art": [
+       "bumper"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -3,
+       "z": 1
+      },
+      {
+       "number": 2,
+       "x": 3.4,
+       "z": -4
+      },
+      {
+       "number": 3,
+       "x": -3.4,
+       "z": -9
+      },
+      {
+       "number": 4,
+       "x": 5,
+       "z": -11
+      },
+      {
+       "number": 8,
+       "x": -6.6,
+       "z": -12.5
+      }
+     ],
+     "strokes": 5,
+     "target": 625,
+     "obstacles": [
+      {
+       "type": "circle",
+       "x": 0,
+       "z": -6.5,
+       "radius": 1.4,
+       "kind": "bumper"
+      },
+      {
+       "type": "circle",
+       "x": -5.8,
+       "z": -2,
+       "radius": 1.05,
+       "kind": "bumper"
+      },
+      {
+       "type": "circle",
+       "x": 5.8,
+       "z": -2,
+       "radius": 1.05,
+       "kind": "bumper"
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 920,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 342,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 85,
+       "events": [
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 42,
+       "power": 1,
+       "width": 8,
+       "pots": [
+        4
+       ],
+       "paid": 270,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      },
+      {
+       "deg": 100,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 166,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 300,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 8
+      },
+      {
+       "deg": 292,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1995,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 348,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3,
+        8
+       ],
+       "paid": 345,
+       "events": [
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 26,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2,
+        4
+       ],
+       "paid": 630,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "pot",
+        "bankPot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 2
+      },
+      {
+       "deg": 118,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 120,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 2
+      }
+     ]
+    },
+    "target": 625,
+    "targetOverRobust": 0.68,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "8",
+     "paid": 255,
+     "power": 0.5,
+     "from": 340,
+     "to": 342
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 10,
+   "id": "free-shot",
+   "name": "Free Shot Ring",
+   "verdict": "redesign",
+   "problem": "Table 10 is Table 9's rack with the bumpers taken off and a ring added, so two tables in a row look the same. Five balls and five shots, with the ring off to one side of the obvious first shot.",
+   "proposal": "Its own rack: five balls in a loose ring round the table, with the +1 shot ring on the line to the 1. The robust line takes the ring on its second shot and clears with a shot to spare (1735, up from 1305).",
+   "catch": "Five balls and five shots leave no room for a miss, unless the 1 is sunk through the ring.",
+   "current": {
+    "spec": {
+     "id": "free-shot",
+     "name": "Free Shot Ring",
+     "intro": {
+      "title": "Table 10 \u00b7 Free Shot Ring",
+      "sub": "Pass through 1+ for a free shot.",
+      "art": [
+       "shot"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -3,
+       "z": 1
+      },
+      {
+       "number": 2,
+       "x": 3.4,
+       "z": -4
+      },
+      {
+       "number": 3,
+       "x": -3.4,
+       "z": -9
+      },
+      {
+       "number": 4,
+       "x": 5,
+       "z": -11
+      },
+      {
+       "number": 8,
+       "x": -6.6,
+       "z": -12.5
+      }
+     ],
+     "strokes": 5,
+     "target": 500,
+     "objects": [
+      {
+       "kind": "shot",
+       "x": 0,
+       "z": 1.6
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1305,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 342,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 85,
+       "events": [
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 42,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 226,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 90,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [
+        "shot"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 350,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 105,
+       "events": [
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 56,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 450,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 2270,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 3,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 348,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        3,
+        8
+       ],
+       "paid": 345,
+       "events": [
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [
+        "shot"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 260,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        2,
+        4
+       ],
+       "paid": 350,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 106,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 500,
+    "targetOverRobust": 0.38,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 3,
+     "pots": "8",
+     "paid": 255,
+     "power": 0.5,
+     "from": 340,
+     "to": 342
+    },
+    "plainClear": 205
+   },
+   "proposed": {
+    "spec": {
+     "id": "free-shot",
+     "name": "Free Shot Ring",
+     "intro": {
+      "title": "Table 10 \u00b7 Free Shot Ring",
+      "sub": "Pass through 1+ for a free shot.",
+      "art": [
+       "shot"
+      ]
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -5.7,
+       "z": -2.3
+      },
+      {
+       "number": 2,
+       "x": 5.7,
+       "z": -2.3
+      },
+      {
+       "number": 3,
+       "x": -3.5,
+       "z": -10.3
+      },
+      {
+       "number": 4,
+       "x": 3.5,
+       "z": -10.3
+      },
+      {
+       "number": 8,
+       "x": 0.8,
+       "z": 2.6
+      }
+     ],
+     "strokes": 5,
+     "target": 1250,
+     "objects": [
+      {
+       "kind": "shot",
+       "x": -2.4,
+       "z": -5
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1735,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 284,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 224,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 75,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [
+        "shot"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 74,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 8,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 210,
+       "events": [
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 98,
+       "power": 0.7,
+       "width": 6,
+       "pots": [
+        4
+       ],
+       "paid": 315,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": null,
+    "target": 1250,
+    "targetOverRobust": 0.72,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "8",
+     "paid": 255,
+     "power": 0.7,
+     "from": 7,
+     "to": 10
+    },
+    "layoutChanged": true
+   }
+  },
+  {
+   "n": 11,
+   "id": "last-word",
+   "name": "The 8 Goes Last",
+   "verdict": "retune",
+   "problem": "Target 550 is 62% of robust (885); the tightest table of the run so far, and it has no shot to spare (5 balls, 5 shots).",
+   "proposal": "Keep the layout and the target is close to the rule already.",
+   "catch": "The 8 hangs over the side pocket and must be left there until the other four are gone.",
+   "current": {
+    "spec": {
+     "id": "last-word",
+     "name": "The 8 Goes Last",
+     "intro": {
+      "title": "Table 11 \u00b7 The 8 Goes Last",
+      "sub": "Sink the 8 last, or it comes back."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -5,
+       "z": 2
+      },
+      {
+       "number": 2,
+       "x": 3,
+       "z": -5
+      },
+      {
+       "number": 3,
+       "x": -4,
+       "z": -9.5
+      },
+      {
+       "number": 4,
+       "x": 2,
+       "z": -12
+      },
+      {
+       "number": 8,
+       "x": 6.6,
+       "z": -0.8
+      }
+     ],
+     "strokes": 5,
+     "target": 550,
+     "eightLast": true,
+     "objects": [
+      {
+       "kind": "double",
+       "x": -2.6,
+       "z": 4.2
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 885,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 314,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 45,
+       "events": [
+        "zone",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 28,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 30,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 225,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 346,
+       "power": 0.5,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 280,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1795,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 62,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        4
+       ],
+       "paid": 160,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 48,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 346,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 166,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 595,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 550,
+    "targetOverRobust": 0.62,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 45,
+     "power": 0.5,
+     "from": 312,
+     "to": 315
+    },
+    "plainClear": 205
+   },
+   "proposed": {
+    "spec": {
+     "id": "last-word",
+     "name": "The 8 Goes Last",
+     "intro": {
+      "title": "Table 11 \u00b7 The 8 Goes Last",
+      "sub": "Sink the 8 last, or it comes back."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -5,
+       "z": 2
+      },
+      {
+       "number": 2,
+       "x": 3,
+       "z": -5
+      },
+      {
+       "number": 3,
+       "x": -4,
+       "z": -9.5
+      },
+      {
+       "number": 4,
+       "x": 2,
+       "z": -12
+      },
+      {
+       "number": 8,
+       "x": 6.6,
+       "z": -0.8
+      }
+     ],
+     "strokes": 5,
+     "target": 675,
+     "eightLast": true,
+     "objects": [
+      {
+       "kind": "double",
+       "x": -2.6,
+       "z": 4.2
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 885,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 314,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 45,
+       "events": [
+        "zone",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 28,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 30,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 225,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 346,
+       "power": 0.5,
+       "width": 6,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 280,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 340,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1795,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 62,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        4
+       ],
+       "paid": 160,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 48,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "kiss",
+        "pot",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 346,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 166,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 595,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 675,
+    "targetOverRobust": 0.76,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 4,
+     "pots": "1",
+     "paid": 45,
+     "power": 0.5,
+     "from": 312,
+     "to": 315
+    },
+    "layoutChanged": false
+   }
+  },
+  {
+   "n": 12,
+   "id": "one-short",
+   "name": "Two in One, 8 Last",
+   "verdict": "redesign",
+   "problem": "This table cannot be cleared by shots a player can rely on. Five balls in four shots needs a two-in-one, and the widest one here is 2\u00b0 of aim; the best robust line leaves a ball standing (355) and costs a heart. It also reuses Table 4's pair by the side pocket.",
+   "proposal": "Put the pair in the near right corner, behind the cue ball, start the cue ball over it (spawn x 6.5) and set the \u00d72 ring between them. The opener is a 6\u00b0 two-in-one through the ring that pays 360; then the 3, the 4 and the 8, one a shot, in order (2040).",
+   "catch": "Four shots for five balls: the pair behind you has to go down together, and the ring on the way doubles it.",
+   "current": {
+    "spec": {
+     "id": "one-short",
+     "name": "Two in One, 8 Last",
+     "intro": {
+      "title": "Table 12 \u00b7 Two in One, 8 Last",
+      "sub": "You'll need 2-in-1, and sink 8 last."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": -4.2,
+       "z": 0.7
+      },
+      {
+       "number": 2,
+       "x": -6.2,
+       "z": 0.7
+      },
+      {
+       "number": 3,
+       "x": 4.2,
+       "z": 0.7
+      },
+      {
+       "number": 4,
+       "x": 6.2,
+       "z": 0.7
+      },
+      {
+       "number": 8,
+       "x": 0,
+       "z": -12.6
+      }
+     ],
+     "strokes": 4,
+     "target": 600,
+     "eightLast": true,
+     "objects": [
+      {
+       "kind": "double",
+       "x": 0,
+       "z": -4
+      }
+     ]
+    },
+    "robust": {
+     "clears": false,
+     "total": 355,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 0,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 44,
+       "power": 0.85,
+       "width": 6,
+       "pots": [
+        4
+       ],
+       "paid": 45,
+       "events": [
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 272,
+       "power": 0.5,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "kiss",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 220,
+       "power": 0.7,
+       "width": 8,
+       "pots": [
+        2
+       ],
+       "paid": 75,
+       "events": [
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 334,
+       "power": 0.7,
+       "width": 6,
+       "pots": [
+        1
+       ],
+       "paid": 60,
+       "events": [
+        "bank",
+        "kiss",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 1595,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 40,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3,
+        4
+       ],
+       "paid": 240,
+       "events": [
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 76,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 245,
+       "events": [
+        "bank",
+        "kiss",
+        "pot",
+        "bank",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 272,
+       "power": 0.7,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "target": 600,
+    "targetOverRobust": null,
+    "usesMechanic": false,
+    "widestOpener": {
+     "width": 7,
+     "pots": "4",
+     "paid": 45,
+     "power": 0.5,
+     "from": 41,
+     "to": 47
+    },
+    "plainClear": 205
+   },
+   "proposed": {
+    "spec": {
+     "id": "one-short",
+     "name": "Two in One, 8 Last",
+     "intro": {
+      "title": "Table 12 \u00b7 Two in One, 8 Last",
+      "sub": "You'll need 2-in-1, and sink 8 last."
+     },
+     "spawn": {
+      "x": 6.5,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 7.45,
+       "z": 13.53
+      },
+      {
+       "number": 2,
+       "x": 5.98,
+       "z": 12.98
+      },
+      {
+       "number": 3,
+       "x": -6,
+       "z": 2
+      },
+      {
+       "number": 4,
+       "x": -5.5,
+       "z": -12
+      },
+      {
+       "number": 8,
+       "x": 5.5,
+       "z": -11.5
+      }
+     ],
+     "strokes": 4,
+     "target": 1600,
+     "eightLast": true,
+     "objects": [
+      {
+       "kind": "double",
+       "x": 7,
+       "z": 9.9
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 2040,
+     "planner": "wider beam (scratchpad lib.mjs)",
+     "savedShots": 0,
+     "sweptInOrder": true,
+     "line": [
+      {
+       "deg": 152,
+       "power": 1,
+       "width": 6,
+       "pots": [
+        1,
+        2
+       ],
+       "paid": 360,
+       "events": [
+        "zone",
+        "bank",
+        "pot",
+        "order",
+        "bank",
+        "pot",
+        "multiPot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 304,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 350,
+       "power": 0.85,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 225,
+       "events": [
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 298,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 680,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": null,
+    "target": 1600,
+    "targetOverRobust": 0.78,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "1,2",
+     "paid": 440,
+     "power": 0.5,
+     "from": 150,
+     "to": 154
+    },
+    "layoutChanged": true
+   }
+  },
+  {
+   "n": 13,
+   "id": "final-table",
+   "name": "Everything, 8 Last",
+   "verdict": "retune",
+   "problem": "Target 625 is 35% of robust (1790) and is less than one unused shot pays at this table (650).",
+   "proposal": "Keep the layout; raise the target.",
+   "catch": "Seven shots is one more than you need, and the spare is worth more than any single pot.",
+   "current": {
+    "spec": {
+     "id": "final-table",
+     "name": "Everything, 8 Last",
+     "intro": {
+      "title": "Table 13 \u00b7 Everything, 8 Last",
+      "sub": "Every rule in play. Sink 8 last."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 5.5,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -5.5,
+       "z": -0.5
+      },
+      {
+       "number": 3,
+       "x": 3.5,
+       "z": -6
+      },
+      {
+       "number": 4,
+       "x": -4,
+       "z": -8.5
+      },
+      {
+       "number": 5,
+       "x": 5,
+       "z": -11.5
+      },
+      {
+       "number": 8,
+       "x": -6.5,
+       "z": -13.5
+      }
+     ],
+     "strokes": 7,
+     "target": 625,
+     "eightLast": true,
+     "obstacles": [
+      {
+       "type": "circle",
+       "x": 0,
+       "z": -3.2,
+       "radius": 1.2,
+       "kind": "bumper"
+      }
+     ],
+     "objects": [
+      {
+       "kind": "double",
+       "x": -3,
+       "z": 3.2
+      },
+      {
+       "kind": "mine",
+       "x": 2.6,
+       "z": -1.8
+      }
+     ],
+     "portals": [
+      {
+       "a": {
+        "x": -6.4,
+        "z": 5.6
+       },
+       "b": {
+        "x": 6.2,
+        "z": -8.4
+       }
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1790,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 274,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 135,
+       "events": [
+        "kiss",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 68,
+       "power": 0.85,
+       "width": 38,
+       "pots": [
+        5
+       ],
+       "paid": 150,
+       "events": [
+        "bank",
+        "kiss",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 292,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 140,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 228,
+       "power": 0.7,
+       "width": 6,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 68,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 105,
+       "events": [
+        "bank",
+        "zone",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 64,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "zone",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 2885,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 348,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        4,
+        5
+       ],
+       "paid": 500,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      },
+      {
+       "deg": 248,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      },
+      {
+       "deg": 334,
+       "power": 0.5,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 2
+      },
+      {
+       "deg": 80,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 105,
+       "events": [
+        "bank",
+        "bank",
+        "zone",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 54,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 680,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 2
+      }
+     ]
+    },
+    "target": 625,
+    "targetOverRobust": 0.35,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 44,
+     "to": 48
+    },
+    "plainClear": 910
+   },
+   "proposed": {
+    "spec": {
+     "id": "final-table",
+     "name": "Everything, 8 Last",
+     "intro": {
+      "title": "Table 13 \u00b7 Everything, 8 Last",
+      "sub": "Every rule in play. Sink 8 last."
+     },
+     "spawn": {
+      "x": 0,
+      "z": 11
+     },
+     "rack": [
+      {
+       "number": 1,
+       "x": 5.5,
+       "z": 1.5
+      },
+      {
+       "number": 2,
+       "x": -5.5,
+       "z": -0.5
+      },
+      {
+       "number": 3,
+       "x": 3.5,
+       "z": -6
+      },
+      {
+       "number": 4,
+       "x": -4,
+       "z": -8.5
+      },
+      {
+       "number": 5,
+       "x": 5,
+       "z": -11.5
+      },
+      {
+       "number": 8,
+       "x": -6.5,
+       "z": -13.5
+      }
+     ],
+     "strokes": 7,
+     "target": 1475,
+     "eightLast": true,
+     "obstacles": [
+      {
+       "type": "circle",
+       "x": 0,
+       "z": -3.2,
+       "radius": 1.2,
+       "kind": "bumper"
+      }
+     ],
+     "objects": [
+      {
+       "kind": "double",
+       "x": -3,
+       "z": 3.2
+      },
+      {
+       "kind": "mine",
+       "x": 2.6,
+       "z": -1.8
+      }
+     ],
+     "portals": [
+      {
+       "a": {
+        "x": -6.4,
+        "z": 5.6
+       },
+       "b": {
+        "x": 6.2,
+        "z": -8.4
+       }
+      }
+     ]
+    },
+    "robust": {
+     "clears": true,
+     "total": 1790,
+     "planner": "tune-tables __runPlan beam 3",
+     "savedShots": 1,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 274,
+       "power": 0.7,
+       "width": 4,
+       "pots": [
+        4
+       ],
+       "paid": 135,
+       "events": [
+        "kiss",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 68,
+       "power": 0.85,
+       "width": 38,
+       "pots": [
+        5
+       ],
+       "paid": 150,
+       "events": [
+        "bank",
+        "kiss",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 292,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        3
+       ],
+       "paid": 140,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 228,
+       "power": 0.7,
+       "width": 6,
+       "pots": [
+        2
+       ],
+       "paid": 100,
+       "events": [
+        "bank",
+        "pot",
+        "bankPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 68,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        1
+       ],
+       "paid": 105,
+       "events": [
+        "bank",
+        "zone",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": false,
+       "bumperHits": 0
+      },
+      {
+       "deg": 64,
+       "power": 1,
+       "width": 4,
+       "pots": [
+        8
+       ],
+       "paid": 510,
+       "events": [
+        "zone",
+        "pot",
+        "bankPot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 0
+      }
+     ]
+    },
+    "best": {
+     "clears": true,
+     "total": 2885,
+     "planner": "tune-tables __runPlan beam 3, 2\u00b0 runs",
+     "savedShots": 2,
+     "sweptInOrder": false,
+     "line": [
+      {
+       "deg": 348,
+       "power": 1,
+       "width": 2,
+       "pots": [
+        4,
+        5
+       ],
+       "paid": 500,
+       "events": [
+        "bank",
+        "bank",
+        "pot",
+        "pot",
+        "multiPot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      },
+      {
+       "deg": 248,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        3
+       ],
+       "paid": 175,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 1
+      },
+      {
+       "deg": 334,
+       "power": 0.5,
+       "width": 2,
+       "pots": [
+        2
+       ],
+       "paid": 125,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot"
+       ],
+       "took": [],
+       "portal": true,
+       "bumperHits": 2
+      },
+      {
+       "deg": 80,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        1
+       ],
+       "paid": 105,
+       "events": [
+        "bank",
+        "bank",
+        "zone",
+        "pot",
+        "order"
+       ],
+       "took": [
+        "double"
+       ],
+       "portal": true,
+       "bumperHits": 0
+      },
+      {
+       "deg": 54,
+       "power": 0.85,
+       "width": 2,
+       "pots": [
+        8
+       ],
+       "paid": 680,
+       "events": [
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "bank",
+        "pot",
+        "order"
+       ],
+       "took": [],
+       "portal": false,
+       "bumperHits": 2
+      }
+     ]
+    },
+    "target": 1475,
+    "targetOverRobust": 0.82,
+    "usesMechanic": true,
+    "widestOpener": {
+     "width": 5,
+     "pots": "1",
+     "paid": 30,
+     "power": 0.5,
+     "from": 44,
+     "to": 48
+    },
+    "layoutChanged": false
+   }
+  }
+ ],
+ "targetProblem": "Targets sit far below what a careful player scores, so beating the target is rarely a decision. Measured against each table's robust line (every shot with at least 3\u00b0 to spare), today's targets run from 29% to 67% with no trend: Table 1 asks for 200 where the robust line makes 700, and one banked 8 alone pays 425. On Table 13 a single unused shot pays 650 against a target of 625. On 7 of the 13 tables one good pot or one spare shot already clears the bar.",
+ "targetRule": "Set each target from its table's measured robust total: 40% of it on Table 1, rising 3.5 points a table to 82% on Table 13, rounded to 25. Early tables stay forgiving; by the end the target takes most of a clean line. Re-measure and re-apply whenever a layout, shot count or scoring rule changes.",
+ "checks": {
+  "aimRun": "100% agree on the three proposed layouts (tables 4, 10, 12; 810 lines drawn and played with the layouts swapped into tables.json), and 100% on all 13 as authored (3,510 lines)",
+  "scoring": "passes (it does not read tables.json)"
+ }
+}
