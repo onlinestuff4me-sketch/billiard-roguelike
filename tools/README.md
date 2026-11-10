@@ -299,3 +299,12 @@ question every procedurally generated room in the run silently assumes a
 "yes" to.
 
 - `check-aim-run.mjs` — the aim line's promise on the twelve run tables: plays every drawn heading the way a frame of the game does (`--mode frame60|frame120|slow`) and compares pots and scratches. Floor 100%.
+
+## `tools/capture` and `tools/review` — the polish plan's clips and review page
+
+- `capture/lib.mjs` — records the real game on a **stepped clock**: timers, frames and every CSS/WAAPI animation run off one counter the recorder steps, so a clip plays evenly however slowly a headless GPU draws. `open()`, `run(ms)`, `record(file, ms)`.
+- `capture/clips.mjs <out>` — each animation proposal recorded twice, today and with its prototype on (`src/ui/Polish.js`), plus a log of the sounds played, by time.
+- `capture/levels.mjs <out>` — each redesigned table's measured line played on the old and the new layout.
+- `review/items.mjs`, `review/levels.json` — the plan as data. `review/build.mjs <out> <clips>` writes `docs/POLISH_PLAN.md` and the review page (`index.html`, `data.js`, `sound.js`, `clips/`), which is published as an artifact.
+
+Needs `npx vite build` first and `CHROMIUM_PATH` pointing at a Chromium.

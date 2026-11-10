@@ -157,6 +157,8 @@ export class Juice {
   }
 
   flash(strength = 0.7, ms = 160) {
+    // POLISH (flash: soft): no whiteout; the strike lights from the ball instead
+    if (this.polish?.on('flash')) strength *= 0.3;
     const f = el('div', 'jc-flash', this.root);
     return this.anim(f, [{ opacity: strength }, { opacity: 0 }], { duration: ms, easing: 'ease-out' }).then(() => f.remove());
   }
@@ -204,7 +206,10 @@ export class Juice {
       const core = el('div', 'jc-core', box);
       core.style.background = `radial-gradient(circle, #ffffff 0%, ${color} 35%, transparent 70%)`;
       this.anim(core, [{ transform: 'translate(-50%,-50%) scale(0.3)', opacity: 1 }, { transform: 'translate(-50%,-50%) scale(1.6)', opacity: 0 }], { duration: 320, easing: OUT });
-      if (power > 0.85) this.flash(0.55, 140);
+      if (power > 0.85) {
+        if (this.polish?.on('flash')) this.polish.softFlash({ x, z });
+        else this.flash(0.55, 140);
+      }
       // no shockwave ring here (review round 3: an orange circle hung on the
       // cue ball through the slow-motion)
     }

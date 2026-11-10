@@ -1,0 +1,136 @@
+/**
+ * build.mjs — write the polish plan's two outputs from one source:
+ *
+ *   docs/POLISH_PLAN.md          the plan
+ *   <out>/index.html + files     the review page (published as an artifact)
+ *
+ *   node tools/review/build.mjs <out> <clips dir>
+ *
+ * Items come from items.mjs; level items are generated from levels.json (the
+ * measured tables); clips and their sound logs from tools/capture/clips.mjs
+ * and levels.mjs.
+ */
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { GROUPS, ITEMS } from './items.mjs';
+import { REVIEW, PERF } from './notes.mjs';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const [out, clipsDir] = process.argv.slice(2);
+const levelsFile = join(HERE, 'levels.json');
+const levels = existsSync(levelsFile) ? JSON.parse(readFileSync(levelsFile, 'utf8')) : null;
+
+/* ---------- level items, from the measurements ---------- */
+const pct = (v) => (v == null ? 'n/a' : `${Math.round(v * 100)}%`);
+const levelItems = [];
+if (levels) {
+  const rows = levels.tables.map((t) => {
+    const p = t.proposed || t.current;
+    return [`${t.n} · ${t.name}`, t.current.robust?.total ?? 'none', t.current.target, pct(t.current.targetOverRobust), p.robust?.total ?? 'none', p.target, pct(p.targetOverRobust)];
+  });
+  levelItems.push({
+    id: 'L0', group: 'levels', kind: 'table', title: 'Targets that ask for something',
+    effort: 'S', riskLevel: 'Med',
+    where: 'src/data/tables.json (target); tools/tune-tables.mjs',
+    problem: levels.targetProblem,
+    proposal: levels.targetRule,
+    fits: 'The schema already says each target is set from the robust line with the margin shrinking as the run goes on, and PUZZLE_RAMP §4 asks for a "greed gap": the obvious pot drops and is not enough. The target only pays (points and cash); hearts are lost for balls left standing, so a higher target never ends a run on its own.',
+    risk: 'Cash comes from beating the target, so higher targets tighten the shop economy early. The curve starts gentle for that reason; worth one playtest of tables 1 to 4 before it ships.',
+    table: { head: ['Table', 'Robust', 'Target', 'T ÷ R', 'New robust', 'New target', 'T ÷ R'], rows, up: [5, 6] }
+  });
+  for (const t of levels.tables) {
+    if (t.verdict !== 'redesign' || !t.proposed) continue;
+    levelItems.push({
+      id: `L${t.n}`, group: 'levels', kind: 'level', clip: `t${t.n}`, title: `Table ${t.n} · ${t.name}`,
+      effort: 'S', riskLevel: 'Med',
+      where: `src/data/tables.json "${t.id}"`,
+      problem: t.problem, proposal: t.proposal,
+      fits: t.catch ? `The catch, in one sentence: ${t.catch}` : '',
+      risk: t.risk || 'A new layout changes what a returning player has learned on this table. The proposal keeps the card, the rule and the shop the same, and passes the aim check (the preview agrees with the played shot on every heading).',
+      level: { current: t.current, proposed: t.proposed }
+    });
+  }
+}
+const items = [...levelItems, ...ITEMS];
+
+/* ---------- the review page ---------- */
+if (out) {
+  mkdirSync(join(out, 'clips'), { recursive: true });
+  const logs = {};
+  const sizes = {};
+  if (clipsDir && existsSync(clipsDir)) {
+    for (const f of readdirSync(clipsDir)) {
+      if (f.endsWith('.json')) logs[f.slice(0, -5)] = JSON.parse(readFileSync(join(clipsDir, f), 'utf8'));
+      if (/\.(mp4|jpg)$/.test(f) && !/sheet/.test(f)) copyFileSync(join(clipsDir, f), join(out, 'clips', f));
+      if (f.endsWith('.mp4')) {
+        const [w, h] = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', join(clipsDir, f)]).toString().trim().split(',').map(Number);
+        sizes[f.slice(0, -4)] = [w, h];
+      }
+    }
+  }
+  // only the sounds a page can play, rounded
+  for (const k of Object.keys(logs)) for (const v of Object.keys(logs[k])) logs[k][v] = (logs[k][v] || []).filter((e) => e.t >= 0).map((e) => ({ t: e.t, name: e.name, args: (e.args || []).map((a) => (typeof a === 'number' ? +a.toFixed(3) : a)) }));
+  const data = { groups: GROUPS, items: items.map(({ where, toggle, ...it }) => it), logs, sizes };
+  writeFileSync(join(out, 'data.js'), `window.PLAN = ${JSON.stringify(data)};\n`);
+  copyFileSync(join(HERE, 'sound.js'), join(out, 'sound.js'));
+  copyFileSync(join(HERE, 'page.html'), join(out, 'index.html'));
+  const missing = items.filter((it) => it.clip && !sizes[`${it.clip}-now`]).map((it) => it.id);
+  console.log(`page: ${items.length} items, ${Object.keys(sizes).length} clips${missing.length ? `, no clip for ${missing.join(' ')}` : ''}`);
+}
+
+/* ---------- docs/POLISH_PLAN.md ---------- */
+const md = [];
+md.push('# Polish plan', '');
+md.push('A review of the level designs, sound, animation, UI and feel of Lightline, and a plan to bring them up a level without changing its style. Generated by `tools/review/build.mjs` from `tools/review/items.mjs` and the measured tables in `tools/review/levels.json`; edit those, not this file.', '');
+md.push('**Review page** (every item side by side, current vs proposed, with Approve / Maybe / Reject): see the link in the pull request or session notes. Decisions are recorded in §7 as they arrive.', '');
+md.push('**Rules this plan keeps:** aiming and shot physics do not change (the preview must agree 100% with the played shot); every prototype is behind a switch in `src/ui/Polish.js` and off by default; nothing here undoes a review decision in `docs/DESIGN_BIBLE.md` without saying so (two items touch one: A4 and A5).', '');
+md.push('## 1. How the game was reviewed', '', ...REVIEW, '');
+const eff = { S: 'small (under a day)', M: 'medium (1 to 2 days)', L: 'large (3+ days)' };
+let n = 2;
+for (const g of GROUPS) {
+  const list = items.filter((it) => it.group === g.id);
+  if (!list.length) continue;
+  md.push(`## ${n++}. ${g.title}`, '', g.lede, '');
+  if (g.id === 'levels' && levels) {
+    md.push('### Measured, as authored and as proposed', '');
+    md.push('| Table | Verdict | Balls · shots | Robust | Best | Target | T ÷ R | Uses its mechanic | Proposed: robust | best | target | T ÷ R | mechanic |', '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+    for (const t of levels.tables) {
+      const c = t.current;
+      const p = t.proposed;
+      const yn = (v) => (v == null ? 'n/a' : v ? 'yes' : 'no');
+      md.push(`| ${t.n} · ${t.name} | ${t.verdict} | ${c.spec.rack.length} · ${c.spec.strokes} | ${c.robust ? (c.robust.clears ? '' : 'short ') + c.robust.total : 'none'} | ${c.best?.total ?? 'n/a'} | ${c.target} | ${pct(c.targetOverRobust)} | ${yn(c.usesMechanic)} | ${p ? (p.robust ? (p.robust.clears ? '' : 'short ') + p.robust.total : 'none') : '—'} | ${p ? p.best?.total ?? 'n/a' : '—'} | ${p ? p.target : '—'} | ${p ? pct(p.targetOverRobust) : '—'} | ${p ? yn(p.usesMechanic) : '—'} |`);
+    }
+    md.push('', '"Robust" is the best line in which every shot sits in a run of headings at least 3° wide (a line a new player can hit); "best" is the ceiling. Measured with `tools/tune-tables.mjs --beam=3 --step=2` in the built game.', '');
+    if (levels.checks) md.push(`Checks on the proposed set: aim preview vs played shot: ${levels.checks.aimRun}. Scoring: ${levels.checks.scoring}.`, '');
+  }
+  for (const it of list) {
+    md.push(`### ${it.id} · ${it.title}`, '');
+    md.push(`- **Problem.** ${it.problem}`);
+    md.push(`- **Proposal.** ${it.proposal}`);
+    if (it.fits) md.push(`- **Why it fits.** ${it.fits}`);
+    md.push(`- **Effort.** ${eff[it.effort] || it.effort}`);
+    md.push(`- **Risk.** ${it.riskLevel}. ${it.risk}`);
+    if (it.where) md.push(`- **Where.** ${it.where}`);
+    if (it.toggle) md.push(`- **Prototype.** \`window.__polish(${it.toggle.replace(': ', ', ').replace(/^(\w+)/, "'$1'")})\` (\`lightline-polish-v1\`), off by default.`);
+    if (it.kind === 'sound') md.push(`- **Sounds.** ${it.sounds.map((s) => s.label || s.id).join('; ')}. Playable on the review page; A/B variants on the sound pass page.`);
+    if (it.kind === 'level') {
+      const { current: c, proposed: p } = it.level;
+      const rack = (s) => s.rack.map((b) => `${b.number} (${b.x}, ${b.z})`).join(' · ');
+      md.push(`- **Layout today.** ${rack(c.spec)}; ${c.spec.strokes} shots, target ${c.target}.`);
+      md.push(`- **Layout proposed.** ${rack(p.spec)}; ${p.spec.strokes} shots, target ${p.target}.`);
+      const line = (r) => (r ? r.line.map((s) => `${s.deg}°@${s.power} [${s.width}°] → ${s.pots.join('+') || 'no pot'} = ${s.paid}`).join(' · ') : 'none');
+      md.push(`- **Robust line today.** ${line(c.robust)} (total ${c.robust?.total ?? 'n/a'}).`);
+      md.push(`- **Robust line proposed.** ${line(p.robust)} (total ${p.robust?.total ?? 'n/a'}).`);
+    }
+    if (it.table) {
+      md.push('', `| ${it.table.head.join(' | ')} |`, `| ${it.table.head.map(() => '---').join(' | ')} |`, ...it.table.rows.map((r) => `| ${r.join(' | ')} |`));
+    }
+    md.push('');
+  }
+}
+md.push(`## ${n++}. Performance on a phone-sized screen`, '', ...PERF, '');
+md.push(`## ${n++}. Decisions`, '', 'None yet. Round 1 is out for review.', '');
+writeFileSync(join(HERE, '../../docs/POLISH_PLAN.md'), md.join('\n'));
+console.log(`docs/POLISH_PLAN.md: ${items.length} items`);

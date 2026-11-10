@@ -713,6 +713,9 @@ export class HUD {
       this.tableValue.classList.toggle('on', !!s.target);
       this.tableValue.classList.toggle('beaten', beaten);
       this.targetFill.parentNode.classList.toggle('beaten', beaten);
+      // POLISH (target): passing the target mid-table is shown, not just ticked
+      if (beaten && cache.targetWas === `${s.target}/false` && (s.displayScore || 0) > 0) this.onTargetBeaten?.(this.targetFill.parentNode);
+      cache.targetWas = targetKey;
     }
     const ratio = s.target ? Math.min(1, (s.displayScore || 0) / s.target) : 0;
     if (Math.abs(ratio - (cache.ratio ?? -1)) > 0.001) {

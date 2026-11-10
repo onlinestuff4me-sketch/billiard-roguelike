@@ -57,6 +57,7 @@ import { HUD, HOLD } from './ui/HUD.js';
 import { ScoreFeed } from './ui/ScoreFeed.js';
 import { Moments } from './ui/Moments.js';
 import { Juice } from './ui/Juice.js';
+import { Polish, POLISH_OPTIONS } from './ui/Polish.js';
 import { ShotTray } from './ui/ShotTray.js';
 import { rollShelf, applyUpgrade, removeUpgrade, UPGRADES } from './systems/Upgrades.js';
 import { BoonModal } from './ui/BoonModal.js';
@@ -952,6 +953,13 @@ const fx = createFX();
 const hud = new HUD(uiLayer, { camera, stage });
 /** The big-moment layer: bursts, beams, camera moves, slams (src/ui/Juice.js). */
 const juice = new Juice({ layer: uiLayer, camera, engine, fx, scene, arena: ARENA, reducedMotion });
+/** The polish plan's prototypes (docs/POLISH_PLAN.md): each off until approved. */
+const polish = new Polish({ layer: uiLayer, toPx: (x, z) => juice.toPx(x, z), arena: ARENA, engine, audio, reducedMotion });
+juice.polish = polish;
+const cssInk = (n) => `#${(n >>> 0).toString(16).padStart(6, '0').slice(-6)}`;
+if (typeof window !== 'undefined') {
+  window.__polish = (key, value) => (key ? polish.set(key, value) : { settings: polish.settings, options: POLISH_OPTIONS });
+}
 /**
  * THE SCORE PRESENTER. Every number a stroke earns is shown one at a time,
  * beside its cause, and flown into the POINTS or MULT box. See ScoreFeed.js.
@@ -1636,6 +1644,7 @@ function beginStroke() {
   game.launchHits = 0;
   game.strokeTookGreen = false;
   rules.beginStroke();
+  polish.idleReset();
   rooms.table.rearmForStroke();
   for (const ball of game.enemies) {
     ball.railsThisStroke = 0;
@@ -2004,6 +2013,7 @@ game.on = {
     engine.shake(speed * enemy.mass * 0.9);
     audio.impact(clamp(speed / PLAYER.launchSpeed, 0, 1));
     fx.burst(x, z, 10, ENEMY_COLOR[enemy.type], speed * 0.45);
+    if (!game.headless && !tutorial.running) polish.contact({ x, z, dirX: enemy.x - p.x, dirZ: enemy.z - p.z, intensity: clamp(speed / PLAYER.launchSpeed, 0, 1), color: cssInk(inkOf(enemy)) });
 
     boons.onImpact({ player: p, enemy, x, z, speed, banked, result: {} });
     return {};
@@ -2035,6 +2045,7 @@ game.on = {
    */
   wallSplat({ enemy, x, z, speed, kind }) {
     noteObjectRail(enemy, x, z, kind);
+    if (kind === 'rail' && !game.headless) polish.rail({ x, z, ...railNormal(x, z), speed });
     audio.wallSplat();
     engine.hitStop(TIME.hitStop);
     engine.shake(speed * 1.4);
@@ -2051,6 +2062,7 @@ game.on = {
   enemyRebound({ enemy, x, z, speed, kind }) {
     noteObjectRail(enemy, x, z, kind);
     if (speed < 6) return;
+    if (kind === 'rail' && !game.headless) polish.rail({ x, z, ...railNormal(x, z), speed });
     fx.burst(x, z, 3, ENEMY_COLOR[enemy.type], speed * 0.25, 0.6);
   },
 
@@ -2124,6 +2136,7 @@ game.on = {
       const last = game.midStroke && rules.filled;
       juice.beam({ x: pocket.x, z: pocket.z, kind: last ? 'last' : rules.mult > 1 ? 'mult' : 'pot' });
       if (last) juice.followLast({ x: pocket.x, z: pocket.z });
+      polish.pocket({ x: pocket.x, z: pocket.z, radius: pocket.radius, color: cssInk(inkOf(ball)), last });
     }
 
     engine.zoomPunch();
@@ -2285,6 +2298,7 @@ game.on = {
       fx.shockwave(x, z, PALETTE.lip, 2.6, 0.3);
     } else {
       fx.burst(x, z, 5, PALETTE.railGlow, speed * 0.3, 0.6);
+      if (!game.headless && speed > 4) polish.rail({ x, z, nx: event.nx, nz: event.nz, speed, pays: speed > RULES.creepSpeed - 1 && !tutorial.running });
     }
 
     boons.onRebound(event);
@@ -3284,6 +3298,14 @@ function showRoomBanner() {
     return;
   }
   if (t?.intro) {
+    // POLISH (rack): the balls rez in first, then the card arrives
+    const rez = game.headless ? 0 : polish.rack(game.enemies, { ink: (b) => cssInk(inkOf(b)) });
+    if (rez > 0) {
+      hud.setRule(null);
+      game.introUp = true;
+      setTimeout(() => seq === introSeq && !menuOpen && tableCard(t, release), rez * 1000);
+      return;
+    }
     tableCard(t, release);
     return;
   }
@@ -5241,6 +5263,7 @@ stage.addEventListener(
   { passive: false }
 );
 hud.onFreeze = () => tryFreeze();
+hud.onTargetBeaten = (bar) => game.state === 'playing' && !game.headless && !tutorial.running && polish.targetBeaten(bar);
 
 /* ------------------------------------------------------------------ *
  * Resize handling
@@ -5554,6 +5577,7 @@ function showPanel(name) {
   $('btn-settings').hidden = name !== 'main';
   $('btn-trophy').hidden = name !== 'main';
   if (name === 'main') showHome();
+  polish.menuPanel({ main: menuMain, settings: menuSettings, modes: menuModes, play: $('menu-play'), ach: $('menu-ach') }[name], { home: name === 'main' });
 }
 
 /* ------------------------------------------------------------------ *
@@ -6106,6 +6130,13 @@ if (typeof window !== 'undefined') {
       }
       beginStroke();
     },
+    /** The release itself, as a lifted thumb plays it: the strike's juice, the stick, the stroke. */
+    strike(deg, power) {
+      const th = (deg * Math.PI) / 180;
+      const aim = { dirX: Math.sin(th), dirZ: -Math.cos(th), power, charge: power, valid: true };
+      input.setHeading(aim.dirX, aim.dirZ);
+      strikeShot(aim);
+    },
     /** Load an arbitrary table spec (tables.json shape) as table `level`, for searches. */
     loadSpec(spec, level = 1) {
       if (tutorial.active) tutorial.stop();
@@ -6124,6 +6155,10 @@ if (typeof window !== 'undefined') {
       return { mission: rooms.mission };
     },
     beginStroke,
+    /** For the capture tools (tools/capture): a table point on screen, the cue ball, and the live systems. */
+    px: (x, z) => juice.toPx(x, z),
+    cue: () => ({ x: player.x, z: player.z }),
+    sys: { player, juice, engine, audio, moments, feed, hud, fx, rules, rooms, input },
     /** Close the stroke the way finishStroke does, minus the screens. */
     endStroke() {
       game.midStroke = false;
@@ -6468,6 +6503,7 @@ function frame(now) {
     }
   }
   juice.update(dt, rawDt, { cue: game.phase === 'resolve' && player.alive ? player : null, now: performance.now() / 1000 });
+  polish.update(rawDt, { resting: game.state === 'playing' && game.phase === 'aim' && !game.introUp && !menuOpen && !tutorial.running && !game.practice && input.state !== 'aiming' && !game.bendHold, cue: player });
 
   const aiming = input.isAiming && player.state === PLAYER_STATE.AIMING;
   // The boxes cover the bottom of the felt, where the preview draws where a

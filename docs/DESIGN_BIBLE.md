@@ -738,6 +738,17 @@ the same fixed steps, so a late scratch is still a scratch; only the wait is
 shorter. The Follow-the-last-ball camera leans toward the pocket and comes
 home rather than holding there.
 
+### 8.5e Polish prototypes (on trial, the polish plan)
+
+Eight prototypes from `docs/POLISH_PLAN.md`, switchable in `src/ui/Polish.js`
+(`lightline-polish-v1`, or `window.__polish(key, version)`), **all off until
+approved in review**: `rail` (light runs along a cushion), `pocket` (the
+mouth gulps the ball), `contact` (sparks and a held beat), `rack` (balls rez
+in by number), `idle` (the resting table stays alive), `target` (passing the
+target is shown), `menu` (the home screen boots, panels arrive, buttons
+dip), `flash` (the full-power strike lights from the ball). Presentation
+only: none changes a shot, the aim or the score.
+
 ### 8.6 Smaller beats (today's treatment)
 
 | Beat | Treatment |
