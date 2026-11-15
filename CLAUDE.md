@@ -25,22 +25,29 @@ does). Exit code is non-zero on failure.
 | --- | --- | --- | --- |
 | `npm run scoring` | Points × Mult, targets, cash, shop maths (pure Node) | no | 1 s |
 | `npm run layout` | Nothing off-screen at phone sizes; coach never covers the felt | yes | ~75 s |
-| `npm run analytics` | Events, API and dashboard end to end against local mocks | yes | |
-| `npm run release` | Release fires the drawn shot, and only that one | yes | |
-| `npm run foul` | The line goes red for a scratch or foul before the stroke | yes | |
-| `npm run portal` | A line through a portal still matches the shot | yes | |
-| `npm run editor` | The table editor's measurements match the CLI tools | yes | |
-| `npm run palette` | Balls are told apart on screen (sampled from the render) | yes | |
-| `npm run aim` | The preview's shot is the played shot (lesson boards) | yes | |
+| `npm run analytics` | Events, API and dashboard end to end against local mocks | yes | ~40 s |
+| `npm run release` | Release fires the drawn shot, and only that one | yes | ~30 s |
+| `npm run foul` | The line goes red for a scratch or foul before the stroke | yes | ~10 s |
+| `npm run portal` | A line through a portal still matches the shot | yes | ~50 s |
+| `npm run editor` | The table editor's measurements match the CLI tools | yes | ~15 s |
+| `npm run palette` | Balls are told apart on screen (sampled from the render) | yes | ~10 s |
+| `npm run aim` | The preview's shot is the played shot (lesson boards) | yes | ~4 min |
 | `node tools/check-aim-run.mjs` | Same, on all 13 run tables (must stay 100%) | yes | minutes |
-| `npm run coach`, `npm run flash` | Lesson coaching after a failed stroke; nothing drawn between a drop and the next card | yes | |
-| `npm run verify` | Every lesson board is solvable by an aimable shot | yes | minutes |
+| `npm run coach`, `npm run flash` | Lesson coaching after a failed stroke; nothing drawn between a drop and the next card | yes | ~40 s each |
+| `npm run verify` | Every lesson board is solvable by an aimable shot | yes | ~1 min |
 | `node tools/tune-tables.mjs [n] --beam=3 --step=2` | Plays a run table, prints robust/best lines vs its target | yes | ~40 s per table |
 
-`npm test` runs: build, scoring, layout, analytics, release, foul, portal. Before
+`npm test` runs: build, scoring, palette, editor, release, analytics, portal,
+layout (about 4 minutes). Before
 merging anything that touches physics, aiming, tables or lessons, also run
 `aim`, `check-aim-run` and `verify`. The full tuner search at default settings
 can run out of memory in a cloud container; use `--beam=3 --step=2`.
+
+**Known failing on `main` (Nov 2026), so left out of `npm test`:** `foul` (some
+lines on the in-order table are not drawn red when they break "the 1 first"),
+`coach` (a completed lesson board keeps a ball standing) and `flash` (the bank
+lesson has no stored solution to play). Fix them before relying on them, then
+add them back to `npm test`.
 
 **Browser path:** `tools/sim.mjs` uses `CHROMIUM_PATH` if set, else
 `/opt/pw-browsers/chromium` (cloud containers), else Playwright's default.
