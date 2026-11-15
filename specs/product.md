@@ -30,7 +30,7 @@ Name: **Lightline: Billiard Roguelike**. Look: Tron, held to the Lightline desig
   - Cue, Slim and Pulse fire a short beam down the line on release, so the intensity lands on taking the shot.
   - Only the drawing changes. What the preview shows, and that it matches the shot, is the same in all three.
 
-## Scoring (building now)
+## Scoring (built)
 
 - Every shot builds two numbers, **Points** and **Mult**, multiplied together at the end.
   - Points: sink a ball +10 × its number, +5 more if the cue ball touched it (a touch is never a number of its own).
@@ -54,7 +54,7 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 - **Next table** (picked: Boot): strips close; the room number rolls over and holds, with what you bought under it; the rails trace in; the strips open.
 - **Cue options** (on trial, Settings → Stick, Full power, Strike): stick *rod / classic / hardlight*; full power *flash / ignite / lock*; strike *snap / impact / pierce*.
 
-**The economy** (decided in review, after Balatro and Gambonanza). Every table has a points **target** (500 on the first, growing 18% a table); points start fresh each table. **Cash** carries over: beating the target pays $4, plus $1 per shot left, plus $1 per 25% past the target (up to $5), plus interest of $1 per $5 held (up to $5). **Three lives** replace hull: missing a target costs one, and the last one ends the run. Hazards void the shot instead of doing damage.
+**The economy** (decided in review, after Balatro and Gambonanza). Every table has a points **target** (500 on the first, growing 18% a table); points start fresh each table. **Cash** carries over: beating the target pays $4, plus $1 per shot left, plus $1 per 25% past the target (up to $5), plus interest of $1 per $5 held (up to $5). **Three hearts** replace hull: running out of shots with balls still on the table costs one and the table is played again (round 14; the target only pays), and losing the last ends the run. Hazards void the shot instead of doing damage.
 
 **The shop** (built; replaces "pick your next table"). Three actions only: buy a card, hold a card ($2, it waits in the next shop), or reroll ($3, +$1 each). Four random cards ($4–10) from a pool of 22, rarity shown as diamonds, never color; a Freeze frame charge is one of the cards. Gold means money. Upgrades change scoring or what a table gives, never physics or the preview.
 
@@ -66,7 +66,7 @@ The full spec is in `docs/DESIGN_BIBLE.md` §8 (`src/ui/Moments.js`, `MOMENTS` i
 
 ## The first run (built, in review)
 
-Two lessons (one shot, then a combination), then twelve authored tables in `src/data/tables.json`, each with the full table-clear, score and shop screens so those are taught early. Each table opens on a card stating its rule, which then flies to a chip in the top-right corner. Every table is played by the real game in `tools/tune-tables.mjs` (a beam search that keeps only shots a person can aim, at least 3° of heading wide); targets sit under the score of the aimable line found and rise every table. Shops on these tables are curated. After Table 12 the rolled tables take over.
+Two lessons (one shot, then a combination), then thirteen authored tables in `src/data/tables.json`, each with the full table-clear, score and shop screens so those are taught early. Each table opens on a card with its rule in one line (it must fit a 360px-wide phone) and a picture of anything new on the table; the rule then flies to a chip in the top-right corner. Each table brings in at most one new thing (bumpers and the free-shot ring were split onto Tables 9 and 10 for this). Every table is played by the real game in `tools/tune-tables.mjs` (a beam search that keeps only shots a person can aim, at least 3° of heading wide); targets sit under the score of the aimable line found and rise every table. Shops on these tables are curated. Clearing Table 13 completes the run.
 
 ## The look (built)
 
@@ -75,5 +75,4 @@ The Tron pass is done: an unlit black Grid floor whose lines ripple from pots, a
 ## Later (agreed direction, not started)
 
 - Short tables: 2–4 balls, 2–3 shots, a score to beat; three tables a round, the third hand-built.
-- Unused shots become money; a shop between tables (upgrades like "walls are worth double").
 
