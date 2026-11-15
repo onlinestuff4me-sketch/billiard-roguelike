@@ -25,7 +25,7 @@
 
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -38,9 +38,18 @@ export function boardIds() {
   return data.lessons.map((l) => l.id);
 }
 
-/** Where the headless Chromium lives in this environment, if it is pinned. */
+/**
+ * Where the headless Chromium lives: CHROMIUM_PATH if set, else the first of
+ * the known cloud-container paths that exists, else Playwright's own default
+ * (undefined). The versioned path changes between container images, so it is
+ * looked up rather than assumed.
+ */
 export function browserPath() {
-  return process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+  if (process.env.CHROMIUM_PATH) return process.env.CHROMIUM_PATH;
+  for (const p of ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome']) {
+    if (existsSync(p)) return p;
+  }
+  return undefined;
 }
 
 /** Wait for the preview server to answer, or give up. */

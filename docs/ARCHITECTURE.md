@@ -324,50 +324,53 @@ pure presentation with no state of their own. Particles use a single ring-buffer
 
 ## 7. Git Versioning & Rollback Workflow
 
-Game feel is found by *iterating and reverting*. The repository is therefore
-organized so that any experiment can be thrown away in one command.
+Game feel is found by *iterating and reverting*, so any experiment has to be
+something you can throw away in one command.
 
-### 7.1 Milestone tags
+### 7.1 Where versions live
 
-| Tag | Contains | Rollback answers |
-| --- | --- | --- |
-| `v0.1-docs-scaffold` | `/docs`, project scaffold, table rendering | "Start the code over from a clean shell" |
-| `v0.2-core-physics` | Engine, InputManager, Player, rails, sweeps, trajectory preview | "The slingshot felt better before" |
-| `v0.3-combat-carom` | Enemy archetypes, cue strikes, caroms, wall-splats, audio | "The carom tuning was better before" |
-| `v0.4-boons-progression` | Boon engine, RoomManager, HUD, BoonModal | "The build economy was better before" |
+**There are no milestone tags on the remote.** The `v0.1`–`v0.4` tags this
+section used to list were never pushed, so a fresh clone does not have them.
+What does exist:
 
-Naming convention: `v<minor>-<kebab-slug>`, where the slug names the *system* the
-milestone introduced, not the date. Tags are immutable; if a milestone needs a fix,
-it gets a new tag (`v0.3.1-carom-tuning`).
+| Version | Where |
+| --- | --- |
+| What is live | `main`. Vercel deploys every push to it |
+| Each shipped change | One squash commit on `main` per merged PR (`git log --oneline main`, PR number in the title) |
+| Work in progress | One branch per task (for example `polish-plan`, `sound-pass`) |
+| The earlier real-time design | Built and committed under `public/classic/`, served at `/classic` (§7.3) |
+
+If a milestone is worth naming, tag the squash commit and push the tag
+(`git tag v0.5-points-mult <sha> && git push origin v0.5-points-mult`), so the
+name exists for everyone, not just one clone.
 
 ### 7.2 Everyday workflow
 
 ```bash
-# Inspect the milestone ladder
-git tag -n
+# Start a task from what is live
+git fetch origin main && git switch -c my-task origin/main
 
-# Play an older build without touching the branch
-git checkout v0.2-core-physics && npm run dev
-git switch -                      # back to work
+# Play an older build without touching your branch
+git switch --detach <sha> && npm run dev
+git switch -                       # back to work
 
-# Diff a whole system across two milestones
-git diff v0.3-combat-carom..HEAD -- src/systems/PhysicsSystem.js
-
-# Branch an experiment off a known-good feel
-git switch -c feel/heavier-caroms v0.3-combat-carom
-#   … tune, playtest …
-git switch main && git merge feel/heavier-caroms   # or just delete the branch
+# Diff a whole system against what is live
+git diff origin/main -- src/systems/PhysicsSystem.js
 ```
+
+Changes reach `main` through a PR that is squash-merged. Never force-push a
+shared branch; bring `main` in with a merge instead.
 
 ### 7.3 Rollback recipes
 
 | Situation | Command |
 | --- | --- |
 | Uncommitted tuning went bad | `git restore src/config.js` |
-| Revert one bad commit, keep history | `git revert <sha>` |
-| Reset the branch to a milestone (destructive) | `git reset --hard v0.3-combat-carom` |
-| Recover one file from a milestone | `git checkout v0.3-combat-carom -- src/systems/PhysicsSystem.js` |
-| Compare balance only | `git diff v0.3-combat-carom..HEAD -- src/config.js` |
+| Undo a shipped change (keeps history, redeploys) | `git revert <squash sha>` on a branch, then PR it to `main` |
+| Recover one file as it was in a past commit | `git checkout <sha> -- src/systems/PhysicsSystem.js` |
+| Compare balance only | `git diff <sha>..origin/main -- src/config.js` |
+| Roll the live site back right now | Vercel dashboard → Deployments → an earlier one → Promote (then fix `main`) |
+| Move the `/classic` snapshot | `node scripts/snapshot-classic.mjs <ref>` and commit `public/classic/` (never edit it by hand) |
 
 ### 7.4 Why the code is shaped for rollback
 
@@ -375,8 +378,9 @@ git switch main && git merge feel/heavier-caroms   # or just delete the branch
   which makes `git diff -- src/config.js` a complete changelog of a balance pass.
 - **Systems are additive.** Each milestone adds files rather than rewriting them, so
   `git revert` of a milestone rarely conflicts.
-- **No generated state in the repo.** `dist/`, `node_modules/` and `.vite/` are
-  ignored, so every tag is a clean, runnable source tree after `npm install`.
+- **No generated state in the repo** apart from the deliberate `/classic`
+  snapshot. `dist/`, `node_modules/` and `.vite/` are ignored, so every commit
+  is a clean, runnable source tree after `npm install`.
 
 ### 7.5 Commit conventions
 

@@ -21,7 +21,8 @@
     "portal": "node tools/check-portal.mjs",
     "release": "node tools/check-release.mjs",
     "flash": "node tools/check-flash.mjs",
-    "analytics": "node tools/check-analytics.mjs"
+    "analytics": "node tools/check-analytics.mjs",
+    "test": "vite build && npm run -s scoring && npm run -s palette && npm run -s editor && npm run -s release && npm run -s analytics && npm run -s portal && npm run -s layout"
   },
   "dependencies": {
     "three": "^0.185.0"

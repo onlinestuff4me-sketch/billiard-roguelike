@@ -1,99 +1,99 @@
 # Lightline: Billiard Roguelike
 
-**Trick-shot billiards on a grid of light, with a boon-stacking roguelike on top.**
-What the game is meant to do lives in [`specs/`](specs/); the design history is in [`docs/`](docs/).
-A portrait (9:16) mobile web prototype built with Vite + Three.js.
+**Trick-shot billiards on a grid of light, with Points × Mult scoring and a roguelike run on top.**
+Portrait (9:16) mobile web, built with Vite and Three.js. Live at
+**https://billiard-roguelike.vercel.app**.
 
-> You are the cue ball. Every room is a static rack: nothing moves until you shoot,
-> so read it for as long as you like — then spend one of the few shots you have.
-> A ball is never destroyed by being hit, only by being knocked into a pocket. The
-> contract says what has to go down; the shots you *don't* spend are worth more
-> than most of the ones you do.
+What the game is meant to do lives in [`specs/product.md`](specs/product.md); the
+look, the rules and every decision made in review are in
+[`docs/DESIGN_BIBLE.md`](docs/DESIGN_BIBLE.md).
 
 ---
 
-## Quick start
+## The game
 
-```bash
-npm install
-npm run dev      # http://localhost:5173  (also served on your LAN for phone testing)
-```
+You are the cue ball. Every table is a static rack: nothing moves until you
+shoot, so take as long as you like to aim, then spend one of the few shots you
+have.
 
-```bash
-npm run build    # production bundle in dist/
-npm run preview  # serve the built bundle
-```
-
-Requires Node 20.19+ (or 22.12+). No other setup, no assets to download — all
-geometry is procedural and all audio is synthesised at runtime.
+- **A run** starts with two short lessons, then **13 authored tables**
+  (`src/data/tables.json`), each opening on a card with its rule in one line and a
+  picture of anything new on it. Clearing Table 13 completes the run.
+- **Scoring:** every shot builds **Points** and **Mult**, multiplied at the end.
+  Nothing counts until a ball drops; a scratch or foul voids the shot. Each number
+  lands beside its cause, one at a time.
+- **Between tables:** a result screen, then a **shop** (buy, hold or reroll
+  cards; cash carries over). Upgrades change scoring and what a table gives, never
+  physics or the aim preview.
+- **Hearts:** you have three. Running out of shots with balls still on the table
+  costs one and the table is played again; out of hearts, the run is over.
+- **New things on the table, one per table:** ×2 ring, mines, ice (Freeze
+  charges), portals, bumpers, the 1+ free-shot ring, and "the 8 goes last".
 
 ## Controls (one thumb)
 
 | Input | Action |
 | --- | --- |
-| **Hold** | Aim. The table is already frozen — there is no clock on this |
-| **Drag** | Pull the cue — distance from the ball is power, direction is `ball − thumb` |
-| **Release** | Fire. One shot |
-| **Tap while the table is moving** | Spend a freeze charge: stop it, aim again, resume. No shot |
+| **Touch and drag** | Aim and set power. The line drawn is exactly the shot the table will play |
+| **Release** | Shoot |
+| **FREEZE** (bottom right, while balls roll) | Spend a charge: the table stops for up to 6 s so you can aim a second shot; it resumes on its own |
+| **Shot tray** (once bought in the shop) | Spin, Curve (hold the shot, then bend it) and Bomb |
+| **Tap during a shot** | Speed up the score presentation |
 
-Fill the contract, then **slingshot into a door** to take its reward.
+## Quick start
 
-## Documentation
+```bash
+npm install
+npm run dev      # http://localhost:5173 (also served on your LAN for phone testing)
+npm run build    # production bundle in dist/
+npm run preview  # serve the built bundle
+npm test         # build, then the fast checks (see CLAUDE.md for the full list)
+```
 
-| Doc | Contents |
-| --- | --- |
-| [`docs/GDD.md`](docs/GDD.md) | Core loop, multiplier & momentum system, 4-phase boon engine, hybrid level generation |
-| [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) | "Dark Velvet Cyber-Billiards" visual language, procedural audio palette, enemy silhouettes |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module graph, loop/physics separation, git milestone & rollback workflow |
+Requires Node 20.19+ (or 22.12+). There are no assets to download: geometry is
+procedural and every sound is synthesised at runtime with Web Audio.
 
 ## Project layout
 
 ```
 src/
-├── main.js              bootstrap · loop · system wiring · FX
-├── config.js            every balance constant, the palette, all feel curves
-├── core/
-│   ├── Engine.js        time dilation · hit-stop · camera shake
-│   ├── InputManager.js  pointer state machine (aim / drag / flick)
-│   └── AudioManager.js  procedural Web Audio synthesis
-├── entities/
-│   ├── Player.js        cue ball, focus gauge, ribbon trail
-│   └── Enemy.js         Solids · Stripes · Heavy Eight-Balls
+├── main.js                bootstrap, the frame loop, and the wiring between systems
+├── config.js              every tuning number, the palette, feel curves
+├── core/                  Engine (time dilation, hit-stop, shake), input, AudioManager
+├── entities/              Player (cue ball, aim, cue stick), Enemy (the object balls)
 ├── systems/
-│   ├── PhysicsSystem.js sweeps, rebounds, caroms, pockets, trajectory prediction
-│   ├── Rules.js         contracts, the shot budget, the multiplier ladder, score
-│   ├── Table.js         pocket capture + the mint and red objects on the felt
-│   ├── BoonSystem.js    4-phase hook registry + card offers
-│   ├── Tutorial.js      the five teaching boards
-│   └── RoomManager.js   layout pool + racking + doors
-└── ui/
-    ├── HUD.js           health · radial focus · room · combo · door labels
-    └── BoonModal.js     3-card reward overlay
+│   ├── PhysicsSystem.js   fixed-step physics; the aim preview plays this same code
+│   ├── Rules.js           missions, shots, Points × Mult, targets, hearts
+│   ├── RoomManager.js     authored tables, rolled layouts, racking
+│   ├── Table.js           pockets and the objects on the felt
+│   ├── Upgrades.js        the shop's cards
+│   ├── Tutorial.js        the two lessons
+│   └── Achievements.js
+├── ui/                    HUD, ScoreFeed, Moments (cards, results, shop), Juice, ShotTray
+├── analytics/             gameplay events (no-op until storage is configured)
+└── data/                  tables.json (the run), lessons.json, layouts.json + schemas
+api/                       Vercel functions for analytics (events in, stats out)
+public/                    fonts, mechanic pictures, the /classic snapshot, dashboard.html
+tools/                     checks and table tools that drive the real game (see tools/README.md)
+docs/                      design bible, aiming, analytics, mechanics, history
+specs/                     product and tech-stack specs
 ```
 
-## Milestones
+## Documentation
 
-| Tag | Contents |
+| Doc | Contents |
 | --- | --- |
-| `v0.1-docs-scaffold` | Design docs, project scaffold, table rendering |
-| `v0.2-core-physics` | Input, slingshot, bullet-time, trajectory prediction |
-| `v0.3-combat-carom` | Enemy archetypes, billiard collisions, caroms, audio |
-| `v0.4-boons-progression` | 4-phase boon engine, hybrid rooms, HUD & boon modal |
-| _(unreleased)_ `v0.5` | Static rack, contracts, shot budget, pockets, scorecard, freeze |
-| _(unreleased)_ `v0.6` | Pockets as architecture, the five-channel palette, plain words |
+| [`CLAUDE.md`](CLAUDE.md) | How to run and check the game, rules that must never regress, deploy and analytics |
+| [`specs/product.md`](specs/product.md) | What the game is supposed to do (wins over everything below) |
+| [`docs/DESIGN_BIBLE.md`](docs/DESIGN_BIBLE.md) | The look, every moment, and the decisions made in review |
+| [`docs/AIMING.md`](docs/AIMING.md) | Why the drawn line is the shot played, and how that is measured |
+| [`docs/ANALYTICS.md`](docs/ANALYTICS.md) | Analytics setup, the dashboard, and the monthly cost cap |
+| [`tools/README.md`](tools/README.md) | Measuring tables instead of eyeballing them |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module graph and the loop (parts describe the earlier prototype) |
+| [`docs/GDD.md`](docs/GDD.md), [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) | History: the original real-time slingshot design |
 
-See [`docs/ARCHITECTURE.md#7-git-versioning--rollback-workflow`](docs/ARCHITECTURE.md#7-git-versioning--rollback-workflow)
-for the rollback recipes.
+## The classic version
 
-## Tuning
-
-Everything that affects feel lives in [`src/config.js`](src/config.js) — time
-dilation, focus economy, chain multipliers, hit-stop, shake, enemy stat blocks,
-threat budgets and the palette. A balance pass should be a one-file diff.
-
-## Design system
-
-The visual and verbal system the table is built to — four families, one word each,
-and the order they are taught in — lives in [`design/system/`](design/system/) and
-is published as a canvas. Every color decision in `src/config.js` traces back to
-the allocation on the first board there.
+`/classic` serves the earlier real-time design, frozen from its own commit. It is a
+committed build snapshot in `public/classic/`; regenerate it only with
+`node scripts/snapshot-classic.mjs [ref]`.
